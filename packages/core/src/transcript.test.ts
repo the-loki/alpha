@@ -420,6 +420,21 @@ describe('[core] the approval gate', () => {
 })
 
 describe('[core] usage', () => {
+  it('counts history and the next turn once each', () => {
+    // What a relaunch is: a conversation that already spent something opens again, and the turn
+    // that follows must not carry the history into its own row.
+    const history = { input: 1000, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 4000, cost: 0 }
+    const turn = { input: 250, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 1000, cost: 0 }
+    const opened = openingTranscript(CONVERSATION, summary, [], history)
+    const after = reduceTranscript(
+      reduceTranscript(opened, { conversationId: 'c1', type: 'usage_recorded', usage: turn }),
+      { conversationId: 'c1', type: 'turn_finished' },
+    )
+
+    expect(after.turns.map((row) => row.usage.totalTokens)).toEqual([4000, 1000])
+    expect(totalUsage(after).totalTokens).toBe(5000)
+  })
+
   const spending = (totalTokens: number, cost = 0) => ({
     input: totalTokens - 100,
     output: 100,
@@ -437,15 +452,15 @@ describe('[core] usage', () => {
       event({ type: 'turn_finished' }),
     ])
 
-    expect(state.usage.totalTokens).toBe(1500)
-    expect(totalUsage(state)).toEqual(state.usage)
+    expect(totalUsage(state).totalTokens).toBe(1500)
   })
 
-  it('counts what is being spent now, before the turn ends', () => {
+  it('counts what is being spent now, without moving the header before the turn lands', () => {
     const state = reduce([event({ type: 'turn_started' }), event({ type: 'usage_recorded', usage: spending(1000) })])
 
-    expect(state.usage.totalTokens).toBe(1000)
+    expect(state.turnUsage.totalTokens).toBe(1000)
     expect(state.turns).toEqual([])
+    expect(totalUsage(state).totalTokens).toBe(0)
   })
 
   it('attributes what was spent to the turn that spent it', () => {
@@ -459,20 +474,25 @@ describe('[core] usage', () => {
     ])
 
     expect(state.turns.map((turn) => turn.usage.totalTokens)).toEqual([1000, 300])
-    expect(state.usage.cost).toBeCloseTo(0.012)
+    expect(totalUsage(state).cost).toBeCloseTo(0.012)
   })
 
-  it('keeps the header total equal to the sum of the turn rows', () => {
-    const state = reduce([
-      event({ type: 'turn_started' }),
-      event({ type: 'usage_recorded', usage: spending(700) }),
+  it('does not compound when a relaunch follows a relaunch', () => {
+    // The failure this guards is the one that only showed up on the second open: each relaunch
+    // reads the running total back as history, and the turn after it must still count once.
+    const first = openingTranscript(CONVERSATION, summary, [], spending(4000))
+    const afterFirst = reduceTranscript(
+      reduceTranscript(first, event({ type: 'usage_recorded', usage: spending(1000) })),
       event({ type: 'turn_finished' }),
-      event({ type: 'turn_started' }),
-      event({ type: 'usage_recorded', usage: spending(90) }),
+    )
+    const second = openingTranscript(CONVERSATION, summary, [], totalUsage(afterFirst))
+    const afterSecond = reduceTranscript(
+      reduceTranscript(second, event({ type: 'usage_recorded', usage: spending(200) })),
       event({ type: 'turn_finished' }),
-    ])
+    )
 
-    expect(state.usage).toEqual(totalUsage(state))
+    expect(afterSecond.turns.map((row) => row.usage.totalTokens)).toEqual([5000, 200])
+    expect(totalUsage(afterSecond).totalTokens).toBe(5200)
   })
 
   it('records no empty row for a turn that spent nothing', () => {
@@ -490,7 +510,7 @@ describe('[core] usage', () => {
   it('carries the spending of earlier sessions in one row, so the sum still adds up', () => {
     const state = openingTranscript(CONVERSATION, summary, [], spending(4000, 0.04))
     expect(state.turns).toEqual([{ usage: spending(4000, 0.04), earlier: true }])
-    expect(totalUsage(state)).toEqual(state.usage)
+    expect(totalUsage(state)).toEqual(spending(4000, 0.04))
   })
 
   it('has nothing to carry when the conversation has never spent anything', () => {
@@ -507,8 +527,7 @@ describe('[core] usage', () => {
       }),
     ])
 
-    expect(state.usage.totalTokens).toBe(2500)
-    expect(totalUsage(state)).toEqual(state.usage)
+    expect(totalUsage(state).totalTokens).toBe(2500)
   })
 })
 

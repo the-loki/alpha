@@ -34,11 +34,12 @@ export interface TranscriptState {
   approvals: ApprovalRequest[]
   /** Messages waiting behind the running turn, oldest first. */
   queued: QueuedMessage[]
-  /** The session's spending, which is the sum of `turns`. */
-  usage: UsageTotals
-  /** What each turn spent, so a review can see where the tokens went. */
+  /**
+   * What each turn spent, so a review can see where the tokens went. This is the session's
+   * spending: `totalUsage` sums it rather than keeping a second copy that could drift.
+   */
   turns: TurnUsage[]
-  /** The turn being counted; closed when the turn finishes. */
+  /** The turn being counted, which becomes a row when it finishes. Never carries history. */
   turnUsage: UsageTotals
   status: 'idle' | 'running' | 'failed'
   error?: string
@@ -50,7 +51,6 @@ export function emptyTranscript(conversationId: string): TranscriptState {
     messages: [],
     approvals: [],
     queued: [],
-    usage: EMPTY_USAGE,
     turns: [],
     turnUsage: EMPTY_USAGE,
     status: 'idle',
@@ -60,7 +60,8 @@ export function emptyTranscript(conversationId: string): TranscriptState {
 /**
  * A conversation that already has spending behind it opens with one row for it. The history is a
  * row of its own rather than being spread over turns nobody can see any more: the header's total
- * is the sum of the rows, and that has to stay true across a relaunch.
+ * is the sum of the rows, and that has to stay true across a relaunch — which means the next turn
+ * counts from zero, not from the history it would otherwise carry into its own row.
  */
 export function openingTranscript(
   conversationId: string,
@@ -68,14 +69,11 @@ export function openingTranscript(
   messages: ChatMessage[],
   usage: UsageTotals,
 ): TranscriptState {
-  const empty = emptyTranscript(conversationId)
   return {
-    ...empty,
+    ...emptyTranscript(conversationId),
     summary: conversation,
     messages,
-    usage,
     turns: usage.totalTokens === 0 ? [] : [{ usage, earlier: true }],
-    turnUsage: usage,
   }
 }
 
@@ -171,7 +169,7 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
       return { ...state, queued: event.queued }
 
     case 'usage_recorded':
-      return { ...state, usage: addUsage(state.usage, event.usage), turnUsage: addUsage(state.turnUsage, event.usage) }
+      return { ...state, turnUsage: addUsage(state.turnUsage, event.usage) }
 
     case 'history_compacted':
       return {
