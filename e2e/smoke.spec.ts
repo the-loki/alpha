@@ -97,8 +97,12 @@ test('the remembered workspaces are one click away', async () => {
   await window.getByRole('button', { name: /beta/ }).click()
   await window.getByRole('menuitem', { name: /alpha/ }).click()
 
-  await expect(window.getByRole('button', { name: /alpha/ })).toBeVisible()
   await expect(window.getByRole('button', { name: new RegExp(alpha) })).toBeVisible()
+
+  await window.setViewportSize({ width: 1440, height: 900 })
+  await window.getByRole('button', { name: /alpha/ }).click()
+  await expect(window.getByRole('menu', { name: 'Workspaces' })).toBeVisible()
+  await window.screenshot({ path: join(SHOT_DIR, 'workspace-menu.png') })
   await app.close()
 })
 
