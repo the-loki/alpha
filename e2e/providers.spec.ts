@@ -72,10 +72,42 @@ test('a custom endpoint is refused when it is not filled in', async () => {
 
   await window.getByRole('textbox', { name: 'Id', exact: true }).fill('local-endpoint')
   await window.getByRole('textbox', { name: 'Base URL', exact: true }).fill('https://llm.internal.example/v1')
-  await window.getByRole('textbox', { name: 'Model id', exact: true }).fill('local-7b')
+  await window.getByRole('textbox', { name: 'Model id 1', exact: true }).fill('local-7b')
   await window.getByRole('button', { name: 'Add custom provider' }).click()
   await expect(window.getByText('llm.internal.example/v1')).toBeVisible()
 
+  await app.close()
+})
+
+test('a custom endpoint takes a wire protocol and as many models as it serves', async () => {
+  const { app, window, directory } = await launch()
+  await openSettings(window)
+
+  await window.getByRole('textbox', { name: 'Id', exact: true }).fill('local-endpoint')
+  await window.getByRole('textbox', { name: 'Base URL', exact: true }).fill('https://llm.internal.example/v1')
+  await window.getByLabel('Wire protocol').selectOption('anthropic-messages')
+
+  // The first model arrives with the form; the second is added by hand.
+  await window.getByRole('textbox', { name: 'Model id 1', exact: true }).fill('local-7b')
+  await window.getByRole('textbox', { name: 'Context window 1', exact: true }).fill('64000')
+  await window.getByRole('textbox', { name: 'Max output 1', exact: true }).fill('4096')
+  await window.getByRole('button', { name: 'Add model' }).click()
+  await window.getByRole('textbox', { name: 'Model id 2', exact: true }).fill('local-70b')
+  await window.getByRole('textbox', { name: 'Display name 2', exact: true }).fill('Local 70B')
+  await window.getByRole('checkbox', { name: 'Reasoning 2' }).check()
+
+  await window.getByRole('button', { name: 'Add custom provider' }).click()
+  await expect(window.getByText('2 models · local-7b, local-70b')).toBeVisible()
+
+  // What was typed is what was stored: the protocol reaches the runtime, and each model keeps
+  // its own window and output limit.
+  const stored = JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8'))
+  const provider = stored.providers.find((entry: { id: string }) => entry.id === 'local-endpoint')
+  expect(provider.api).toBe('anthropic-messages')
+  expect(provider.models).toEqual([
+    { id: 'local-7b', name: 'local-7b', contextWindow: 64000, maxTokens: 4096, reasoning: false },
+    { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: true },
+  ])
   await app.close()
 })
 

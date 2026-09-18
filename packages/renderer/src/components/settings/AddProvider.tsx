@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useProviders } from '../../stores/providers.ts'
+import { ApiField, type DraftProvider, emptyDraft, ModelFields, providerInput } from './CustomProviderFields.tsx'
 
 /** Two ways in: a catalog provider (one click) or an endpoint the user describes. */
 export function AddProvider() {
@@ -7,28 +8,14 @@ export function AddProvider() {
   const addFromCatalog = useProviders((state) => state.addFromCatalog)
   const addCustom = useProviders((state) => state.addCustom)
   const [selected, setSelected] = useState('')
-  const [custom, setCustom] = useState({ id: '', name: '', baseUrl: '', model: '', contextWindow: '128000' })
+  const [custom, setCustom] = useState<DraftProvider>(emptyDraft)
   const [error, setError] = useState('')
 
   const add = async () => {
     setError('')
     try {
-      await addCustom({
-        id: custom.id,
-        name: custom.name === '' ? custom.id : custom.name,
-        api: 'openai-completions',
-        baseUrl: custom.baseUrl,
-        models: [
-          {
-            id: custom.model,
-            name: custom.model,
-            contextWindow: Number(custom.contextWindow),
-            maxTokens: 8192,
-            reasoning: false,
-          },
-        ],
-      })
-      setCustom({ id: '', name: '', baseUrl: '', model: '', contextWindow: '128000' })
+      await addCustom(providerInput(custom))
+      setCustom(emptyDraft())
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure))
     }
@@ -81,19 +68,9 @@ export function AddProvider() {
             onChange={(baseUrl) => setCustom({ ...custom, baseUrl })}
             placeholder="the provider base url"
           />
-          <Field
-            label="Model id"
-            value={custom.model}
-            onChange={(model) => setCustom({ ...custom, model })}
-            placeholder="model-id"
-          />
-          <Field
-            label="Context window"
-            value={custom.contextWindow}
-            onChange={(contextWindow) => setCustom({ ...custom, contextWindow })}
-            placeholder="128000"
-          />
+          <ApiField api={custom.api} onChange={(api) => setCustom({ ...custom, api })} />
         </div>
+        <ModelFields models={custom.models} onChange={(models) => setCustom({ ...custom, models })} />
         <button
           type="button"
           onClick={() => void add()}
@@ -112,6 +89,7 @@ function Field(props: { label: string; value: string; placeholder: string; onCha
     <label className="block">
       <span className="mb-1 block text-[11px] text-parchment-faint">{props.label}</span>
       <input
+        aria-label={props.label}
         value={props.value}
         placeholder={props.placeholder}
         onChange={(event) => props.onChange(event.target.value)}
