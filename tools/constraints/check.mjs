@@ -39,17 +39,30 @@ const walk = (directory, files) => {
 
 const main = () => {
   const quiet = process.argv.includes('--quiet')
-  const files = walk(ROOT, [])
+  const scanned = walk(ROOT, []).map((path) => ({
+    path: relative(ROOT, path).split('\\').join('/'),
+    text: readFileSync(path, 'utf-8'),
+  }))
   const violations = []
 
-  for (const path of files) {
-    const repoPath = relative(ROOT, path).split('\\').join('/')
-    const text = readFileSync(path, 'utf-8')
-    violations.push(...checkFile({ path: repoPath, text }))
+  for (const file of scanned) violations.push(...checkFile(file))
+
+  // A few rules are about how files agree with each other — the contract, its handlers and the
+  // bridge — so they run once over the whole tree rather than per file.
+  for (const rule of RULES) {
+    if (rule.checkAll === undefined) continue
+    violations.push(
+      ...rule.checkAll(scanned).map((violation) => ({
+        ...violation,
+        rule: rule.id,
+        constraint: rule.constraint,
+        path: violation.path ?? rule.id,
+      })),
+    )
   }
 
   if (violations.length === 0) {
-    if (!quiet) console.log(`constraints: ${RULES.length} rules, ${files.length} files, no violations`)
+    if (!quiet) console.log(`constraints: ${RULES.length} rules, ${scanned.length} files, no violations`)
     return
   }
 

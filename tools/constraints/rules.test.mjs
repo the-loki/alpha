@@ -291,6 +291,70 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
   })
 })
 
+/**
+ * The one rule that reads more than one file: the contract, the handlers, and the bridge have to
+ * agree, and a mistake in that agreement is the most expensive one this repo can make.
+ */
+describe('02-architecture:contract-channels', () => {
+  const rule = '02-architecture:contract-channels'
+  const crossViolations = (files) => ruleById(rule).checkAll(files)
+
+  const contract = file(
+    'packages/core/src/contract.ts',
+    ['export const IPC = {', "  ping: 'alpha:ping',", "  pong: 'alpha:pong',", '} as const'].join('\n'),
+  )
+  const mainHandling = (body) => file('packages/main/src/ipc.ts', body)
+  const preloadUsing = (body) => file('packages/preload/src/index.ts', body)
+  const handlesPing = mainHandling('ipcMain.handle(IPC.ping, () => {})\nwebContents.send(IPC.pong, 1)')
+
+  it('flags a channel the window asks for that nothing answers', () => {
+    const found = crossViolations([
+      contract,
+      mainHandling('ipcMain.handle(IPC.ping, () => {})'),
+      preloadUsing('ipcRenderer.invoke(IPC.pong)'),
+    ])
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('alpha:pong')
+  })
+
+  it('flags an event the window waits for that nothing sends', () => {
+    const found = crossViolations([contract, handlesPing, preloadUsing('ipcRenderer.on(IPC.ping, handler)')])
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('alpha:ping')
+  })
+
+  it('passes the bridge and the handlers that agree', () => {
+    const found = crossViolations([
+      contract,
+      handlesPing,
+      preloadUsing('ipcRenderer.invoke(IPC.ping)\nipcRenderer.on(IPC.pong, h)'),
+    ])
+    expect(found).toEqual([])
+  })
+
+  it('flags a channel string written out instead of taken from the contract', () => {
+    const inMain = violationsFor(rule, file('packages/main/src/ipc.ts', "ipcMain.handle('alpha:ping', () => {})"))
+    expect(inMain).toHaveLength(1)
+
+    const inPreload = violationsFor(rule, file('packages/preload/src/index.ts', "ipcRenderer.invoke('alpha:ping')"))
+    expect(inPreload).toHaveLength(1)
+  })
+
+  it('flags the renderer reaching for the transport itself', () => {
+    const found = violationsFor(rule, file('packages/renderer/src/a.ts', "import { ipcRenderer } from 'electron'"))
+    expect(found).toHaveLength(1)
+  })
+
+  it('lets a line opt out with a marker, like every other rule', () => {
+    const marked = preloadUsing('ipcRenderer.invoke(IPC.pong) // constraints-ignore 02-architecture')
+    expect(crossViolations([contract, mainHandling('ipcMain.handle(IPC.ping, () => {})'), marked])).toEqual([])
+  })
+
+  it('says nothing about files that do not touch the seam', () => {
+    expect(violationsFor(rule, file('packages/renderer/src/a.tsx', 'const x = 1'))).toEqual([])
+  })
+})
+
 describe('checkFile', () => {
   it('runs every rule that applies to the path', () => {
     const found = checkFile(file('packages/core/src/a.ts', 'const x: string | null = 1'))

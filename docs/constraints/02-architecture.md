@@ -33,8 +33,11 @@ on `window`. The main process registers one handler per contract channel and no 
 Adding a capability means adding it to the contract first. A handler with no contract entry is
 dead code the checker will find.
 
-**Enforcement:** `pnpm check:constraints` verifies every channel string used in `main` and
-`preload` appears in the contract module.
+**Enforcement:** `pnpm check:constraints` rule `02-architecture:contract-channels`. It reads the
+three sides at once and fails when a channel string is written out by hand instead of taken from
+the contract module, when the window calls a channel nothing in `main` handles, or when it listens
+for an event nothing sends. It also fails on `ipcMain`/`ipcRenderer` anywhere outside the two seam
+files, and on the renderer so much as naming the transport.
 
 ## C2.3 — The agent runtime lives in `main`
 

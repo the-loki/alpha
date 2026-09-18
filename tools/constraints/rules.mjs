@@ -141,6 +141,39 @@ const lineRule = ({ id, constraint, description, applies, pattern, message }) =>
   },
 })
 
+/**
+ * The contract's channel names, read out of the module that declares them. The object is a plain
+ * literal by construction, so this reads it rather than importing it: the checker stays a script
+ * over text, and a rule that cannot parse its own repo is a rule nobody can trust.
+ */
+const contractChannels = (text) => {
+  const channels = new Map()
+  const body = text.split(/export const IPC = \{/)[1]?.split('} as const')[0] ?? ''
+  for (const line of body.split('\n')) {
+    const entry = line.match(/^\s*([A-Za-z_$][\w$]*):\s*'([^']+)'/)
+    if (entry) channels.set(entry[1], entry[2])
+  }
+  return channels
+}
+
+const channelsUsedWith = (files, prefix, pattern) => {
+  const used = []
+  for (const { path, text } of files) {
+    if (!prefix(path)) continue
+    text.split('\n').forEach((line, index) => {
+      const found = line.match(pattern)
+      if (found) used.push({ path, line: index + 1, name: found[1], text: line.trim(), raw: line })
+    })
+  }
+  return used
+}
+
+const isMainSource = (path) => path.startsWith('packages/main/src/')
+const isPreloadSource = (path) => path.startsWith('packages/preload/src/')
+
+/** The one file on each side that is allowed to know the transport exists. */
+const isSeamFile = (path) => path === 'packages/main/src/ipc.ts' || path === 'packages/preload/src/index.ts'
+
 export const RULES = [
   lineRule({
     id: '01-typescript:no-null-union',
@@ -297,6 +330,74 @@ export const RULES = [
           })
         }
       })
+      return found
+    },
+  },
+
+  {
+    id: '02-architecture:contract-channels',
+    constraint: '02-architecture.md',
+    description: 'the contract, the handlers and the bridge agree',
+    // The two sides of the seam are different files, so this rule reads all of them at once and
+    // follows only what it can decide: a channel written out by hand, a renderer that reached for
+    // the transport, a call nothing answers, and an event nothing sends.
+    check({ path, text }) {
+      const found = []
+      if (isMainSource(path) || isPreloadSource(path)) {
+        text.split('\n').forEach((line, index) => {
+          const literal = line.match(/ipc(Main|Renderer)\.(?:handle|invoke|on|send)\(\s*'([^']+)'/)
+          if (literal) {
+            found.push({
+              line: index + 1,
+              message: 'a channel written out by hand; take it from the contract module',
+              text: line.trim(),
+            })
+          }
+          if (/\bipcMain\b|\bipcRenderer\b/.test(line) && !isSeamFile(path)) {
+            found.push({
+              line: index + 1,
+              message: 'the transport is touched outside the seam (main ipc.ts and the preload)',
+              text: line.trim(),
+            })
+          }
+        })
+      }
+      if (path.startsWith('packages/renderer/src/') && /\b(ipcRenderer|ipcMain|contextBridge)\b/.test(text)) {
+        found.push({ line: 1, message: 'the renderer must reach the main process through the bridge', text: '' })
+      }
+      return found
+    },
+    checkAll(files) {
+      const contract = files.find((candidate) => candidate.path === 'packages/core/src/contract.ts')
+      if (contract === undefined) return []
+      const channels = contractChannels(contract.text)
+      const named = (used) => used.filter((one) => channels.has(one.name)).map((one) => channels.get(one.name))
+      const handled = named(channelsUsedWith(files, isMainSource, /ipcMain\.handle\(\s*IPC\.([A-Za-z_$][\w$]*)/))
+      const sent = named(channelsUsedWith(files, isMainSource, /\.send\(\s*IPC\.([A-Za-z_$][\w$]*)/))
+      const invoked = channelsUsedWith(files, isPreloadSource, /ipcRenderer\.invoke\(\s*IPC\.([A-Za-z_$][\w$]*)/)
+      const listened = channelsUsedWith(files, isPreloadSource, /ipcRenderer\.on\(\s*IPC\.([A-Za-z_$][\w$]*)/)
+
+      const found = []
+      const ignoreable = (one) =>
+        ignoredFor(one.raw, { id: '02-architecture:contract-channels', constraint: '02-architecture.md' })
+      for (const call of invoked) {
+        if (handled.includes(channels.get(call.name)) || ignoreable(call)) continue
+        found.push({
+          path: call.path,
+          line: call.line,
+          message: `the window calls ${channels.get(call.name)}, and nothing in main handles it`,
+          text: call.text,
+        })
+      }
+      for (const waiting of listened) {
+        if (sent.includes(channels.get(waiting.name)) || ignoreable(waiting)) continue
+        found.push({
+          path: waiting.path,
+          line: waiting.line,
+          message: `the window listens for ${channels.get(waiting.name)}, and nothing in main sends it`,
+          text: waiting.text,
+        })
+      }
       return found
     },
   },
