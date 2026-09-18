@@ -1,0 +1,95 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { _electron as electron, expect, type Page, test } from '@playwright/test'
+
+const REPO_ROOT = process.cwd()
+const SHOT_DIR = join(REPO_ROOT, 'test-results')
+const REPLY = 'Two files use that name. I can rename both.'
+
+/** A fresh install pointed at a real folder, with the model scripted rather than dialled. */
+async function launch(
+  options: { dataDirectory?: string; replies?: string[]; workspace?: string; faux?: boolean } = {},
+) {
+  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
+  const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
+  writeFileSync(
+    join(dataDirectory, 'workbench-state.json'),
+    JSON.stringify({
+      workspace: {
+        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
+        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
+      },
+      permissionLevel: 'ask',
+    }),
+    'utf-8',
+  )
+
+  const app = await electron.launch({
+    args: [REPO_ROOT],
+    cwd: REPO_ROOT,
+    env: {
+      ...process.env,
+      ALPHA_DATA_DIR: dataDirectory,
+      ...(options.faux === false
+        ? {}
+        : { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]) }),
+      NODE_ENV: 'production',
+    },
+  })
+  const window = await app.firstWindow()
+  await window.waitForSelector('#root > *')
+  return { app, window, dataDirectory, workspace }
+}
+
+async function ask(window: Page, text: string) {
+  const composer = window.getByRole('textbox', { name: 'Message the agent' })
+  await composer.fill(text)
+  await composer.press('Enter')
+}
+
+test('a message streams a reply into the transcript', async () => {
+  const { app, window } = await launch()
+  await window.setViewportSize({ width: 1440, height: 900 })
+
+  await ask(window, 'rename the parser module')
+
+  await expect(window.getByRole('main').getByText('rename the parser module')).toBeVisible()
+  await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 15_000 })
+  // The turn is over when the composer stops saying the agent is working, and it has cleared
+  // itself, so Send is disabled again for the next message.
+  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Send' })).toBeDisabled()
+
+  await window.screenshot({ path: join(SHOT_DIR, 'conversation-streamed.png') })
+  await app.close()
+})
+
+test('the conversation is listed, titled, and restored after a relaunch', async () => {
+  const first = await launch()
+  await ask(first.window, 'rename the parser module')
+  await expect(first.window.getByText(REPLY)).toBeVisible({ timeout: 15_000 })
+  await first.app.close()
+
+  const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
+  await second.window.setViewportSize({ width: 1440, height: 900 })
+
+  const listed = second.window.getByRole('button', { name: /rename the parser module/ })
+  await expect(listed).toBeVisible()
+  await listed.click()
+
+  await expect(second.window.getByText(REPLY)).toBeVisible()
+  await second.window.screenshot({ path: join(SHOT_DIR, 'conversation-restored.png') })
+  await second.app.close()
+})
+
+test('with no model configured the app opens and says what is missing', async () => {
+  const { app, window } = await launch({ faux: false })
+
+  await expect(window.getByText(/No model configured yet/)).toBeVisible()
+
+  await ask(window, 'anything')
+  await expect(window.getByText(/No model configured yet/)).toBeVisible()
+
+  await app.close()
+})

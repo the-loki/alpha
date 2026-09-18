@@ -107,8 +107,11 @@ content, details, isError, and usage.
 
 ## The harness (persistence, tools, events)
 
+Note: 0.85.1 declares a standalone `createAgentHarness` in its type definitions but does not
+export it from the built JavaScript. The runtime export is the factory object it also declares:
+
 ```ts
-const { harness, open } = await createAgentHarness({
+const { harness, open } = await AgentHarness.create({
   session, models, model, thinkingLevel?, activeToolNames?, tools?, toolContext?,
   systemPrompt?, resources?, streamOptions?, retry?, compaction?, steeringMode?,
   followUpMode?, toolExecution?, toProviderMessages?, entryProjectors?,
@@ -272,8 +275,16 @@ process — but it is the escape hatch if a future web build appears.
 
 ## Open questions resolved during implementation
 
-- Whether the CommandCode endpoint needs a `compat` override (developer role, reasoning effort,
-  `max_tokens` field, usage-in-streaming) is not documented anywhere available; the live test
-  exists to settle it empirically.
+- **Live endpoints, measured.** The env-gated live test
+  (`packages/main/src/runtime/live.test.ts`) ran against both configured endpoints:
+  - `https://api.deepseek.com/anthropic` with model `deepseek-v4.1-flash-expires-on-0910` and
+    `ALPHA_API=anthropic-messages` — streams a reply, persists a transcript, passes in ~900ms.
+    The Anthropic SDK posts to `<baseUrl>/v1/messages?beta=true`, so the base URL must **not**
+    carry `/v1` itself (adding it produces `/v1/v1/messages` and a 404).
+  - `https://api.commandcode.ai/provider/v1` with model `deepseek/deepseek-v4.1-flash` and
+    `ALPHA_API=openai-completions` — the request reaches the provider and comes back as a clean
+    `400 {"message":"You have insufficient credits…"}`, which the runtime surfaces as a failed
+    turn carrying the provider's own words. The wire path is therefore wired correctly; the
+    account behind that key has no credits, so a text reply could not be observed from it.
 - `@earendil-works/pi-session-backend-sqlite-node` is not installed and is not needed: JSONL
   covers the workbench's scale.

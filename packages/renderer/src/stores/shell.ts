@@ -16,6 +16,7 @@ export interface ShellStore {
   workspace: WorkspaceSelection
   recents: WorkspaceRef[]
   permissionLevel: PermissionLevel
+  model: LaunchState['model']
   windowMaximized: boolean
   load: () => Promise<void>
   pickWorkspace: () => Promise<void>
@@ -31,6 +32,7 @@ const applyLaunchState = (state: LaunchState) => ({
   workspace: state.workspace,
   recents: state.recents,
   permissionLevel: state.permissionLevel,
+  model: state.model,
 })
 
 export const useShell = create<ShellStore>((set, get) => ({
@@ -40,6 +42,7 @@ export const useShell = create<ShellStore>((set, get) => ({
   workspace: emptyWorkspaceState().selection,
   recents: [],
   permissionLevel: DEFAULT_LEVEL,
+  model: { configured: false, description: '' },
   windowMaximized: false,
 
   load: async () => set(applyLaunchState(await bridge().launchState())),

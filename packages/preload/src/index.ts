@@ -7,8 +7,10 @@ import {
   type AlphaBridge,
   IPC,
   type LaunchState,
+  type OpenedConversation,
   type PermissionLevel,
   type PickWorkspaceResult,
+  type RuntimeEvent,
   WINDOW_COMMAND_CHANNELS,
   type WindowCommand,
   type WindowState,
@@ -26,6 +28,19 @@ const bridge: AlphaBridge = {
     const handler = (_event: unknown, state: WindowState) => listener(state)
     ipcRenderer.on(IPC.windowStateChanged, handler)
     return () => ipcRenderer.removeListener(IPC.windowStateChanged, handler)
+  },
+
+  listConversations: () => ipcRenderer.invoke(IPC.listConversations) as Promise<OpenedConversation['conversation'][]>,
+  createConversation: (workspacePath: string) =>
+    ipcRenderer.invoke(IPC.createConversation, workspacePath) as Promise<OpenedConversation>,
+  openConversation: (id: string) => ipcRenderer.invoke(IPC.openConversation, id) as Promise<OpenedConversation>,
+  sendPrompt: (conversationId: string, text: string) =>
+    ipcRenderer.invoke(IPC.sendPrompt, conversationId, text) as Promise<void>,
+  abortRun: (conversationId: string) => ipcRenderer.invoke(IPC.abortRun, conversationId) as Promise<void>,
+  onRuntimeEvent: (listener: (event: RuntimeEvent) => void) => {
+    const handler = (_event: unknown, runtimeEvent: RuntimeEvent) => listener(runtimeEvent)
+    ipcRenderer.on(IPC.runtimeEvent, handler)
+    return () => ipcRenderer.removeListener(IPC.runtimeEvent, handler)
   },
 }
 

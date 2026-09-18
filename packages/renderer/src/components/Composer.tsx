@@ -1,12 +1,38 @@
+import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
 
 /**
- * Present, focused and honest about why it cannot send yet. Sending arrives with the runtime;
- * until then the hint names the missing piece rather than letting the button fail silently.
+ * The composer sends; everything about whether it *may* send is stated in the hint under it
+ * rather than left to a disabled button with no explanation.
  */
 export function Composer() {
+  const [text, setText] = useState('')
   const workspace = useShell((state) => state.workspace)
+  const model = useShell((state) => state.model)
+  const status = useConversations((state) => state.transcript.status)
+  const sendOrCreate = useConversations((state) => state.sendOrCreate)
+  const navigate = useNavigate()
+
   const hasWorkspace = workspace.kind === 'selected'
+  const running = status === 'running'
+  const canSend = hasWorkspace && model.configured && !running && text.trim() !== ''
+
+  const send = async () => {
+    if (!canSend || workspace.kind !== 'selected') return
+    const message = text
+    setText('')
+    const id = await sendOrCreate(workspace.workspace.path, message)
+    void navigate({ to: '/c/$conversationId', params: { conversationId: id } })
+  }
+
+  const hint = () => {
+    if (!hasWorkspace) return 'A workspace is the folder the agent works in.'
+    if (!model.configured) return `No model configured yet: ${model.description}`
+    if (running) return 'The agent is working. Stop and queueing arrive with turn control.'
+    return 'Enter sends, Shift+Enter starts a new line.'
+  }
 
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 px-6 pb-5 pt-4">
@@ -15,19 +41,24 @@ export function Composer() {
           <textarea
             rows={2}
             aria-label="Message the agent"
+            value={text}
             placeholder={hasWorkspace ? 'Ask the agent to change something…' : 'Open a folder first'}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                void send()
+              }
+            }}
             className="block w-full resize-none bg-transparent text-[15px] leading-relaxed text-parchment placeholder:text-parchment-faint focus:outline-none"
           />
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-[11px] text-parchment-faint">
-              {hasWorkspace
-                ? 'Sending arrives with the agent runtime.'
-                : 'A workspace is the folder the agent works in.'}
-            </span>
+          <div className="mt-1 flex items-center justify-between gap-4">
+            <span className="text-[11px] text-parchment-faint">{hint()}</span>
             <button
               type="button"
-              disabled
-              className="rounded-control bg-ember/30 px-3 py-1 text-[12px] font-medium text-ember-ink/70 disabled:cursor-not-allowed"
+              onClick={() => void send()}
+              disabled={!canSend}
+              className="rounded-control bg-ember px-3 py-1 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:cursor-not-allowed disabled:bg-ember/25 disabled:text-ember-ink/60"
             >
               Send
             </button>

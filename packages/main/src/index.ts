@@ -1,6 +1,8 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
-import { registerIpcHandlers } from './ipc.ts'
+import { registerIpcHandlers, runtimeEventSender } from './ipc.ts'
+import { RuntimeManager } from './runtime/manager.ts'
+import { resolveModelRuntime } from './runtime/models.ts'
 import { StateStore } from './state-store.ts'
 import { createMainWindow } from './window.ts'
 
@@ -13,12 +15,24 @@ const windowPaths = {
 app.setName('Alpha')
 
 app.whenReady().then(() => {
-  const store = new StateStore(process.env.ALPHA_DATA_DIR ?? app.getPath('userData'))
+  const dataDirectory = process.env.ALPHA_DATA_DIR ?? app.getPath('userData')
+  const store = new StateStore(dataDirectory)
   const window = createMainWindow(windowPaths)
-  registerIpcHandlers(store, () => BrowserWindow.getAllWindows()[0])
+  const runtime = new RuntimeManager({
+    dataDirectory,
+    sessionsRoot: join(dataDirectory, 'sessions'),
+    modelRuntime: () => resolveModelRuntime(process.env),
+    emit: runtimeEventSender(() => BrowserWindow.getAllWindows()[0]),
+  })
+
+  registerIpcHandlers({ store, runtime, getWindow: () => BrowserWindow.getAllWindows()[0] })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow(windowPaths)
+  })
+
+  app.on('before-quit', () => {
+    void runtime.closeAll()
   })
 
   return window

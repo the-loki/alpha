@@ -1,32 +1,38 @@
-import { createRequire } from 'node:module'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'electron-vite'
 
-const require = createRequire(import.meta.url)
-
 /**
- * What stays out of each bundle is derived from the manifest of the package being built: a
- * dependency a package declares is one it resolves through Node at runtime, so it must not be
- * inlined. `@alpha/core` is the deliberate exception — it is source-only (`exports` points at
- * `src`), so it is bundled into whoever imports it.
+ * `electron` is the only import left unresolved in the main bundle; everything else is inlined.
  *
- * This is written out by hand rather than left to `build.externalizeDeps` because that option
- * had no effect under electron-vite 5 + Vite 8 in this repo: the built output still contained
- * Electron's own `getElectronPath()` inlined into the main bundle, which is what made the app
- * fail to launch with "Unable to find Electron app". An explicit list is checkable, and the
- * smoke test catches a regression here loudly.
+ * That is deliberate. The alternative — leaving the runtime's dependencies external so Node
+ * resolves them at load time — does not work in this layout: the bundle is emitted to `out/` at
+ * the repository root, while pnpm installs a workspace package's dependencies under that
+ * package's own `node_modules`, so `import "@earendil-works/pi-ai"` from `out/main/index.js`
+ * fails with ERR_MODULE_NOT_FOUND. Bundling makes `out/` self-contained in dev, in CI and in a
+ * packaged build alike.
+ *
+ * The provider SDKs that `pi-ai` only reaches for lazily (Bedrock, Google, OAuth) stay external:
+ * Alpha supports neither today, and dragging them into the bundle would multiply its size for
+ * code paths nothing calls.
  */
-const externalFor = (manifest: string): string[] =>
-  [...Object.keys(require(manifest).dependencies ?? {}), 'electron'].filter((name) => name !== '@alpha/core')
+const MAIN_EXTERNALS = [
+  'electron',
+  /^@aws-sdk\//,
+  /^@google\//,
+  /^@anthropic-ai\//,
+  /^@openai\//,
+  /^undici$/,
+  /^@mariozechner\//,
+]
 
 export default defineConfig({
   main: {
     build: {
       rollupOptions: {
         input: { index: 'packages/main/src/index.ts' },
-        external: externalFor('./packages/main/package.json'),
+        external: MAIN_EXTERNALS,
       },
     },
   },

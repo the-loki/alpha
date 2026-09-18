@@ -6,19 +6,21 @@ import { type ElectronApplication, _electron as electron, expect, type Page, tes
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 
-async function launchApp(options: { state?: unknown } = {}): Promise<{ app: ElectronApplication; window: Page }> {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
+async function launchApp(
+  options: { state?: unknown; dataDirectory?: string; env?: Record<string, string> } = {},
+): Promise<{ app: ElectronApplication; window: Page; dataDirectory: string }> {
+  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   if (options.state !== undefined) {
     writeFileSync(join(dataDirectory, 'workbench-state.json'), JSON.stringify(options.state), 'utf-8')
   }
   const app = await electron.launch({
     args: [REPO_ROOT],
     cwd: REPO_ROOT,
-    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production' },
+    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production', ...options.env },
   })
   const window = await app.firstWindow()
   await window.waitForSelector('#root > *')
-  return { app, window }
+  return { app, window, dataDirectory }
 }
 
 test('a fresh install opens on the empty workbench', async () => {

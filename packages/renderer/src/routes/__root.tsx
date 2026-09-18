@@ -2,16 +2,25 @@ import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Sidebar } from '../components/Sidebar.tsx'
 import { TitleBar } from '../components/TitleBar.tsx'
+import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
 
 function RootLayout() {
   const load = useShell((state) => state.load)
   const setWindowMaximized = useShell((state) => state.setWindowMaximized)
+  const loadList = useConversations((state) => state.loadList)
+  const applyEvent = useConversations((state) => state.applyEvent)
 
   useEffect(() => {
     void load()
-    return window.alpha?.onWindowState((state) => setWindowMaximized(state.maximized))
-  }, [load, setWindowMaximized])
+    void loadList()
+    const stopWindowState = window.alpha?.onWindowState((state) => setWindowMaximized(state.maximized))
+    const stopRuntimeEvents = window.alpha?.onRuntimeEvent((event) => applyEvent(event))
+    return () => {
+      stopWindowState?.()
+      stopRuntimeEvents?.()
+    }
+  }, [load, loadList, applyEvent, setWindowMaximized])
 
   return (
     <div className="flex h-screen flex-col bg-ink-900">

@@ -1,5 +1,9 @@
 import { useShell } from '../stores/shell.ts'
 
+/**
+ * One sentence and one action. Which sentence depends on how far the user has got: no folder,
+ * or a folder with nothing asked of it yet.
+ */
 export function EmptyState() {
   const workspace = useShell((state) => state.workspace)
   const pickWorkspace = useShell((state) => state.pickWorkspace)
@@ -28,7 +32,8 @@ export function EmptyState() {
       <h1 className="text-[20px] font-medium text-parchment">{workspace.workspace.name}</h1>
       <p className="mt-2 max-w-md font-mono text-[12px] text-parchment-faint">{workspace.workspace.path}</p>
       <p className="mt-4 max-w-md text-[13px] leading-relaxed text-parchment-dim">
-        The agent is pointed at this folder. Add a model provider in settings, then start a conversation.
+        Ask for something to change in this folder. The agent reads before it writes, and every tool it reaches for is
+        gated by the permission level in the header.
       </p>
     </div>
   )

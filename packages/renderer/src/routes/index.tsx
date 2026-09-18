@@ -1,16 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Composer } from '../components/Composer.tsx'
-import { EmptyState } from '../components/EmptyState.tsx'
+import { ConversationPane } from '../components/ConversationPane.tsx'
 
-function Workbench() {
-  return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1">
-        <EmptyState />
-      </div>
-      <Composer />
-    </div>
-  )
+/** The "no conversation yet" state: the composer here starts one. */
+function NewConversation() {
+  return <ConversationPane />
 }
 
-export const Route = createFileRoute('/')({ component: Workbench })
+export const Route = createFileRoute('/')({ component: NewConversation })
