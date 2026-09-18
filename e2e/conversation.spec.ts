@@ -120,6 +120,7 @@ test('the caret follows text that ends inside a code fence', async () => {
     return caretBox.top >= codeBox.top - 1 && caretBox.bottom <= codeBox.bottom + 1
   })
   expect(caretIsInTheCode).toBe(true)
+  await window.screenshot({ path: join(SHOT_DIR, 'conversation-code-caret.png') })
   await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 30_000 })
   await app.close()
 })
