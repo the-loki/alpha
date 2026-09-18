@@ -7,7 +7,12 @@ import { defineConfig } from 'vitest/config'
  */
 export default defineConfig({
   test: {
-    include: ['packages/*/src/**/*.test.{ts,tsx}', 'tools/**/*.test.mjs', 'tools/**/__fixtures__/**/*.test.mjs'],
+    include: [
+      'packages/*/src/**/*.test.{ts,tsx}',
+      // Design-system checks read the repository rather than a package, so they live in tools/.
+      'tools/**/*.test.{mjs,ts}',
+      'tools/**/__fixtures__/**/*.test.mjs',
+    ],
     exclude: ['**/node_modules/**', 'out/**', 'e2e/**', 'test-results/**'],
     environment: 'node',
     reporters: ['default'],

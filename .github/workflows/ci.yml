@@ -1,4 +1,6 @@
-name: CI
+# The gate: everything that has to be green before a change is good, on the platform most of it
+# is developed on, plus a packaging job that proves the app still builds into something installable.
+name: ci
 
 on:
   push:
@@ -7,42 +9,51 @@ on:
 
 jobs:
   check:
-    name: Constraints, types, lint, unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
 
+      # One command, the same one a developer runs: constraints, types, lint, unit and integration
+      # tests. If this passes, the rest of the jobs are about the app rather than the code.
       - run: pnpm check
 
-  window:
-    name: The window opens
+      # The window, driven for real: the build first, because the E2E suite runs what ships.
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --grep-invert "packaged app"
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'
+
+  package:
     runs-on: ubuntu-latest
+    needs: check
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm build
-
-      # Electron needs a display even when the window is never looked at.
-      - run: xvfb-run -a pnpm exec playwright test
+      # The packaging smoke job: an installer that builds, and then the packaged binary itself
+      # opening, keeping its data directory and storing a credential.
+      - run: pnpm package:linux
+      - run: pnpm exec playwright test e2e/packaged.spec.ts
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-installers
+          path: dist/*.AppImage
+          if-no-files-found: error

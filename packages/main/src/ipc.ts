@@ -11,6 +11,7 @@ import {
   IPC,
   isPermissionLevel,
   isRuleScope,
+  isTheme,
   isThinkingLevel,
   type LaunchState,
   type OpenedConversation,
@@ -50,6 +51,7 @@ function registerWorkspaceHandlers({ store, runtime, getWindow }: IpcContext): v
     workspace: store.read().workspace.selection,
     recents: store.read().workspace.recents,
     permissionLevel: store.read().permissionLevel,
+    theme: store.read().theme,
     model: runtime.modelStatus(),
   })
 
@@ -80,6 +82,11 @@ function registerWorkspaceHandlers({ store, runtime, getWindow }: IpcContext): v
 
   ipcMain.handle(IPC.setPermissionLevel, (_event, level: unknown): LaunchState => {
     if (isPermissionLevel(level)) store.write({ ...store.read(), permissionLevel: level })
+    return launchState()
+  })
+
+  ipcMain.handle(IPC.setTheme, (_event, theme: unknown): LaunchState => {
+    if (isTheme(theme)) store.write({ ...store.read(), theme })
     return launchState()
   })
 }

@@ -45,9 +45,20 @@ const RuleSchema = Type.Object({
  * Rules are validated one by one rather than with the rest of the file: one unreadable rule should
  * cost the user that rule, not the remembered workspace and the permission level with it.
  */
+export const THEMES = ['system', 'dark', 'light'] as const
+
+export type Theme = (typeof THEMES)[number]
+
+const ThemeSchema = Type.Union(THEMES.map((theme) => Type.Literal(theme)))
+
+export function isTheme(value: unknown): value is Theme {
+  return typeof value === 'string' && (THEMES as readonly string[]).includes(value)
+}
+
 const PersistedStateSchema = Type.Object({
   workspace: WorkspaceStateSchema,
   permissionLevel: PermissionLevelSchema,
+  theme: Type.Optional(ThemeSchema),
 })
 
 type PersistedStateShape = Static<typeof PersistedStateSchema>
@@ -56,10 +67,12 @@ export interface PersistedState {
   workspace: WorkspaceState
   permissionLevel: PermissionLevel
   permissionRules: PermissionRule[]
+  /** System by default: the app follows the room it is in unless told otherwise. */
+  theme: Theme
 }
 
 export function emptyPersistedState(): PersistedState {
-  return { workspace: emptyWorkspaceState(), permissionLevel: DEFAULT_LEVEL, permissionRules: [] }
+  return { workspace: emptyWorkspaceState(), permissionLevel: DEFAULT_LEVEL, permissionRules: [], theme: 'system' }
 }
 
 /**
@@ -75,6 +88,7 @@ export function parsePersistedState(raw: unknown): PersistedState {
     workspace: state.workspace,
     permissionLevel: state.permissionLevel,
     permissionRules: readRules(readRulesField(candidate)),
+    theme: state.theme ?? 'system',
   }
 }
 

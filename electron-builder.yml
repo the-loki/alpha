@@ -1,0 +1,37 @@
+# Packaging. The app ships as a packaged Electron app; the main process is bundled by
+# electron-vite into out/, and the package's own dependencies stay outside the bundle only where
+# they must (Electron itself, and the provider SDKs' optional native pieces).
+appId: com.theloki.alpha
+productName: Alpha
+copyright: Alpha
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+
+extraMetadata:
+  main: out/main/index.js
+
+# One command produces each platform's installer; each must be run on (or for) its own platform,
+# which is a property of electron-builder rather than a choice here.
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+  maintainer: the-loki <the-loki@users.noreply.github.com>
+  synopsis: An agent workbench for local code
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+
+win:
+  target:
+    - nsis

@@ -11,6 +11,7 @@ const rule = {
 }
 
 const valid = {
+  theme: 'system',
   workspace: {
     selection: { kind: 'selected', workspace: { path: '/dev/alpha', name: 'alpha', lastOpenedAt: 12 } },
     recents: [{ path: '/dev/alpha', name: 'alpha', lastOpenedAt: 12 }],
@@ -20,12 +21,13 @@ const valid = {
 }
 
 describe('emptyPersistedState', () => {
-  it('has nothing selected, the default level, and no remembered rules', () => {
+  it('has nothing selected, the default level, no remembered rules, and follows the system', () => {
     const state = emptyPersistedState()
     expect(state.workspace.selection.kind).toBe('none')
     expect(state.workspace.recents).toEqual([])
     expect(state.permissionLevel).toBe('ask')
     expect(state.permissionRules).toEqual([])
+    expect(state.theme).toBe('system')
   })
 })
 
@@ -62,6 +64,7 @@ describe('parsePersistedState', () => {
       workspace: { selection: { kind: 'none' }, recents: [] },
       permissionLevel: 'plan',
       permissionRules: [],
+      theme: 'light',
     }
     expect(parsePersistedState(fresh)).toEqual(fresh)
   })
@@ -84,6 +87,19 @@ describe('parsePersistedState', () => {
 
   it('has no rules when the rules are not a list', () => {
     expect(parsePersistedState({ ...valid, permissionRules: 'all of them' }).permissionRules).toEqual([])
+  })
+
+  it('follows the system when the file predates the theme choice', () => {
+    const older = { workspace: valid.workspace, permissionLevel: 'ask' }
+    expect(parsePersistedState(older).theme).toBe('system')
+  })
+
+  it('keeps a chosen theme', () => {
+    expect(parsePersistedState({ ...valid, theme: 'light' }).theme).toBe('light')
+  })
+
+  it('falls back to following the system when the theme is not one', () => {
+    expect(parsePersistedState({ ...valid, theme: 'midnight' })).toEqual(emptyPersistedState())
   })
 
   it('survives a file that was truncated mid-write', () => {

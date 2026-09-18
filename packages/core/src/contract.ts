@@ -5,6 +5,7 @@
  */
 
 import type { PermissionLevel, PermissionRule } from './permission.ts'
+import type { Theme } from './persisted-state.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ThinkingLevel } from './thinking.ts'
@@ -26,6 +27,7 @@ export const IPC = {
   pickWorkspace: 'alpha:pick-workspace',
   selectWorkspace: 'alpha:select-workspace',
   setPermissionLevel: 'alpha:set-permission-level',
+  setTheme: 'alpha:set-theme',
   windowMinimize: 'alpha:window-minimize',
   windowToggleMaximize: 'alpha:window-toggle-maximize',
   windowClose: 'alpha:window-close',
@@ -73,6 +75,7 @@ export interface LaunchState {
   workspace: WorkspaceSelection
   recents: WorkspaceRef[]
   permissionLevel: PermissionLevel
+  theme: Theme
   model: ModelStatus
 }
 
@@ -125,6 +128,7 @@ export interface AlphaBridge {
   pickWorkspace(): Promise<PickWorkspaceResult>
   selectWorkspace(path: string): Promise<LaunchState>
   setPermissionLevel(level: PermissionLevel): Promise<LaunchState>
+  setTheme(theme: Theme): Promise<LaunchState>
   sendWindowCommand(command: WindowCommand): Promise<void>
   onWindowState(listener: (state: WindowState) => void): () => void
 

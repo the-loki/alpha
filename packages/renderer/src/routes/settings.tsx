@@ -1,4 +1,4 @@
-import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS } from '@alpha/core'
+import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS, THEMES, type Theme } from '@alpha/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
@@ -40,6 +40,39 @@ function PermissionSection() {
   )
 }
 
+const THEME_LABELS: Record<Theme, string> = { system: 'Follow the system', dark: 'Dark', light: 'Light' }
+
+function ThemeSection() {
+  const theme = useShell((state) => state.theme)
+  const setTheme = useShell((state) => state.setTheme)
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-[15px] font-medium text-parchment">Theme</h2>
+      <p className="mt-1 text-[12px] text-parchment-dim">
+        Alpha follows the system by default. The light theme is its own palette, not a filter over the dark one.
+      </p>
+      <div className="mt-3 flex gap-1.5">
+        {THEMES.map((candidate) => (
+          <button
+            key={candidate}
+            type="button"
+            aria-pressed={candidate === theme}
+            onClick={() => void setTheme(candidate)}
+            className={`rounded-control border px-3 py-1.5 text-[12px] transition-colors ${
+              candidate === theme
+                ? 'border-ember/50 bg-ember/10 text-ember'
+                : 'border-line text-parchment-dim hover:bg-ink-700'
+            }`}
+          >
+            {THEME_LABELS[candidate]}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function Settings() {
   return (
     <div className="h-full overflow-y-auto px-8 py-8">
@@ -47,6 +80,7 @@ function Settings() {
         <h1 className="text-[20px] font-medium text-parchment">Settings</h1>
         <ProvidersSection />
         <PermissionSection />
+        <ThemeSection />
         <RememberedRules />
       </div>
     </div>

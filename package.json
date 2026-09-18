@@ -1,8 +1,9 @@
 {
   "name": "alpha",
   "version": "0.1.0",
-  "private": true,
   "description": "A local-first desktop workbench for a pi agent",
+  "author": "the-loki",
+  "private": true,
   "license": "MIT",
   "type": "module",
   "main": "out/main/index.js",
@@ -22,6 +23,10 @@
     "test:e2e": "pnpm build && playwright test",
     "check:constraints": "node tools/constraints/check.mjs",
     "check": "pnpm check:constraints && pnpm typecheck && pnpm lint && pnpm test",
+    "package": "pnpm build && electron-builder",
+    "package:linux": "pnpm build && electron-builder --linux",
+    "package:mac": "pnpm build && electron-builder --mac",
+    "package:win": "pnpm build && electron-builder --win",
     "format": "biome format --write ."
   },
   "devDependencies": {
@@ -34,6 +39,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "electron": "44.4.1",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "5.9.3",

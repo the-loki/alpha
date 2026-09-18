@@ -3,6 +3,7 @@ import {
   emptyWorkspaceState,
   type LaunchState,
   type PermissionLevel,
+  type Theme,
   type WorkspaceRef,
   type WorkspaceSelection,
 } from '@alpha/core'
@@ -16,12 +17,14 @@ export interface ShellStore {
   workspace: WorkspaceSelection
   recents: WorkspaceRef[]
   permissionLevel: PermissionLevel
+  theme: Theme
   model: LaunchState['model']
   windowMaximized: boolean
   load: () => Promise<void>
   pickWorkspace: () => Promise<void>
   openRecent: (path: string) => Promise<void>
   setPermissionLevel: (level: PermissionLevel) => Promise<void>
+  setTheme: (theme: Theme) => Promise<void>
   setWindowMaximized: (maximized: boolean) => void
 }
 
@@ -32,8 +35,16 @@ const applyLaunchState = (state: LaunchState) => ({
   workspace: state.workspace,
   recents: state.recents,
   permissionLevel: state.permissionLevel,
+  theme: state.theme,
   model: state.model,
 })
+
+/** System is the absence of the attribute: the stylesheet's `prefers-color-scheme` decides. */
+export function applyTheme(theme: Theme): void {
+  const root = document.documentElement
+  if (theme === 'system') root.removeAttribute('data-theme')
+  else root.setAttribute('data-theme', theme)
+}
 
 export const useShell = create<ShellStore>((set, get) => ({
   ready: false,
@@ -42,10 +53,15 @@ export const useShell = create<ShellStore>((set, get) => ({
   workspace: emptyWorkspaceState().selection,
   recents: [],
   permissionLevel: DEFAULT_LEVEL,
+  theme: 'system',
   model: { configured: false, description: '' },
   windowMaximized: false,
 
-  load: async () => set(applyLaunchState(await bridge().launchState())),
+  load: async () => {
+    const state = await bridge().launchState()
+    applyTheme(state.theme)
+    set(applyLaunchState(state))
+  },
 
   pickWorkspace: async () => {
     const result = await bridge().pickWorkspace()
@@ -59,6 +75,12 @@ export const useShell = create<ShellStore>((set, get) => ({
 
   setPermissionLevel: async (level: PermissionLevel) => {
     set(applyLaunchState(await bridge().setPermissionLevel(level)))
+  },
+
+  setTheme: async (theme: Theme) => {
+    const state = await bridge().setTheme(theme)
+    applyTheme(state.theme)
+    set(applyLaunchState(state))
   },
 
   setWindowMaximized: (maximized: boolean) => set({ windowMaximized: maximized }),

@@ -39,9 +39,39 @@
   --radius-overlay: 14px;
 }
 
+/*
+ * The light theme is its own palette rather than an inversion: warm paper rather than white, ink
+ * that keeps the same hue relationship, and accents darkened until they clear the same contrast
+ * thresholds as the dark ones. docs/constraints/05-design.md C5.2 is the rule; `theme.test.ts`
+ * checks these numbers.
+ */
 @layer base {
   :root {
     color-scheme: dark;
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+
+    --color-ink-900: #faf5ed;
+    --color-ink-800: #f3ece0;
+    --color-ink-700: #fffdf9;
+    --color-ink-600: #ebe0cf;
+    --color-line: #ded2c0;
+    --color-line-strong: #b8a288;
+
+    --color-parchment: #241c14;
+    --color-parchment-dim: #55483a;
+    --color-parchment-faint: #6b5946;
+
+    --color-ember: #a8481a;
+    --color-ember-bright: #8f3c13;
+    --color-ember-ink: #fff8f0;
+
+    --color-jade: #26654c;
+    --color-amber: #7a520e;
+    --color-danger: #a8322c;
+    --color-info: #33549b;
   }
 
   html,
