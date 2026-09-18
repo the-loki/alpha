@@ -19,3 +19,7 @@ Single-context: one `CONTEXT.md` at the repo root plus `docs/adr/`. See `docs/ag
 ### Ponytail
 
 All coding tasks load the `ponytail` skill.
+
+### TDD
+
+All coding tasks follow TDD.
