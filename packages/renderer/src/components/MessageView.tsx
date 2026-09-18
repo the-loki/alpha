@@ -1,4 +1,4 @@
-import type { ChatBlockThinking, ChatMessage } from '@alpha/core'
+import type { ChatBlockCompaction, ChatBlockThinking, ChatMessage } from '@alpha/core'
 import { memo, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { Markdown } from './Markdown.tsx'
@@ -19,6 +19,19 @@ function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
         Thinking{elapsed === '' ? '' : ` · ${elapsed}`}
       </summary>
       <p className="mt-2 whitespace-pre-wrap font-mono text-[12.5px] leading-[1.6] text-parchment-dim">{block.text}</p>
+    </details>
+  )
+}
+
+/** Where the runtime summarised the history, with the summary readable rather than folded away. */
+function CompactionMarker({ block }: { block: ChatBlockCompaction }) {
+  return (
+    <details className="mb-3 rounded-card border border-dashed border-line bg-ink-800/50 px-3 py-2">
+      <summary className="cursor-pointer list-none font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
+        History summarised here
+        {block.replaced === undefined ? '' : ` · ${block.replaced} messages`}
+      </summary>
+      <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-[1.6] text-parchment-dim">{block.summary}</p>
     </details>
   )
 }
@@ -94,10 +107,7 @@ export const MessageView = memo(function MessageView({ message, index }: { messa
           <EditBox message={message} index={index} />
         ) : (
           <div className="max-w-[75%] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
-            {message.blocks
-              .filter((block) => block.kind !== 'tool')
-              .map((block) => block.text)
-              .join('\n')}
+            {message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')}
           </div>
         )}
         {!editing && !running && (
@@ -123,6 +133,7 @@ export const MessageView = memo(function MessageView({ message, index }: { messa
         const key = `${message.id}-${index}`
         if (block.kind === 'thinking') return <ThinkingBlock key={key} block={block} />
         if (block.kind === 'tool') return <ToolRow key={block.callId} block={block} />
+        if (block.kind === 'compaction') return <CompactionMarker key={key} block={block} />
         return (
           <div key={key} className="relative">
             <Markdown text={block.text} />

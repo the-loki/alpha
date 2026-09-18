@@ -74,7 +74,7 @@ test('the conversation is listed, titled, and restored after a relaunch', async 
   const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
   await second.window.setViewportSize({ width: 1440, height: 900 })
 
-  const listed = second.window.getByRole('button', { name: /rename the parser module/ })
+  const listed = second.window.getByRole('button', { name: /^rename the parser module (idle|working)$/ })
   await expect(listed).toBeVisible()
   await listed.click()
 

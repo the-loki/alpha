@@ -1,11 +1,35 @@
-import { type TranscriptState, visibleMessages } from '@alpha/core'
-import { useEffect, useRef } from 'react'
+import { formatCost, formatTokens, type TranscriptState, type TurnUsage, visibleMessages } from '@alpha/core'
+import { Fragment, useEffect, useRef } from 'react'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { MessageView } from './MessageView.tsx'
 
 /** Which user message this is, counting from the top, which is how an edit names its target. */
 const userIndex = (messages: { role: string }[], index: number): number =>
   messages.slice(0, index + 1).filter((message) => message.role === 'user').length - 1
+
+/**
+ * The usage row belongs to the end of a turn, so it is drawn under the last message of the turn —
+ * which is the last assistant message before the next user message.
+ */
+const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]): TurnUsage | undefined => {
+  const isLastOfTurn = messages[index]?.role === 'assistant' && messages[index + 1]?.role !== 'assistant'
+  if (!isLastOfTurn) return undefined
+  const finished = messages.slice(0, index + 1).filter((message) => message.role === 'user').length - 1
+  return turns[finished]
+}
+
+/** What one turn spent, so the header's total can be read back to the turns that made it. */
+function TurnUsageNote({ turn }: { turn: TurnUsage | undefined }) {
+  if (turn === undefined) return null
+  const cost = formatCost(turn.usage.cost)
+
+  return (
+    <p className="mt-1 font-mono text-[11px] text-parchment-faint">
+      {turn.earlier === true ? 'Earlier turns · ' : 'Turn · '}
+      {formatTokens(turn.usage.totalTokens)} tokens{cost === '' ? '' : ` · ${cost}`}
+    </p>
+  )
+}
 
 /**
  * The transcript. It sticks to the bottom while the reader is already there, and stops sticking
@@ -39,7 +63,10 @@ export function MessageList({ transcript }: { transcript: TranscriptState }) {
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-8 py-6">
         {messages.map((message, index) => (
-          <MessageView key={message.id} message={message} index={userIndex(messages, index)} />
+          <Fragment key={message.id}>
+            <MessageView message={message} index={userIndex(messages, index)} />
+            <TurnUsageNote turn={turnFor(messages, index, transcript.turns)} />
+          </Fragment>
         ))}
         {transcript.approvals.map((request) => (
           <ApprovalCard key={request.requestId} request={request} />

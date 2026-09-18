@@ -8,6 +8,7 @@ import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ThinkingLevel } from './thinking.ts'
+import type { UsageTotals } from './usage.ts'
 
 export interface CustomProviderInput {
   id: string
@@ -49,6 +50,9 @@ export const IPC = {
   cancelQueued: 'alpha:cancel-queued',
   regenerate: 'alpha:regenerate',
   editMessage: 'alpha:edit-message',
+  renameConversation: 'alpha:rename-conversation',
+  deleteConversation: 'alpha:delete-conversation',
+  exportConversation: 'alpha:export-conversation',
   permissionRules: 'alpha:permission-rules',
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
@@ -96,6 +100,8 @@ export type EditEffect = 'replace' | 'fork'
 export interface OpenedConversation {
   conversation: ConversationSummary
   messages: ChatMessage[]
+  /** What this conversation has spent, so a window opening it shows the same totals as before. */
+  usage: UsageTotals
 }
 
 export interface ProvidersSnapshotMessage {
@@ -152,6 +158,11 @@ export interface AlphaBridge {
     text: string,
     effect: EditEffect,
   ): Promise<OpenedConversation>
+  renameConversation(id: string, title: string): Promise<ConversationSummary>
+  /** Removes the conversation and its transcript from disk. */
+  deleteConversation(id: string): Promise<ConversationSummary[]>
+  /** Writes a markdown file next to the workspace and answers with where it went. */
+  exportConversation(id: string): Promise<{ path: string }>
   permissionRules(): Promise<PermissionRule[]>
   revokePermissionRule(ruleId: string): Promise<PermissionRule[]>
   /** The one thing the renderer says about a card: the answer, and its scope when it is remembered. */

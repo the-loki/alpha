@@ -16,6 +16,14 @@ import type {
   QueuedMessage,
   RuntimeEvent,
 } from './runtime-events.ts'
+import { addUsage, EMPTY_USAGE, type UsageTotals } from './usage.ts'
+
+/** One turn's spending, in the order the turns happened. */
+export interface TurnUsage {
+  usage: UsageTotals
+  /** True for the one row that stands in for everything spent before this window opened. */
+  earlier?: true
+}
 
 export interface TranscriptState {
   conversationId: string
@@ -26,12 +34,43 @@ export interface TranscriptState {
   approvals: ApprovalRequest[]
   /** Messages waiting behind the running turn, oldest first. */
   queued: QueuedMessage[]
+  /** The session's spending, which is the sum of `turns`. */
+  usage: UsageTotals
+  /** What each turn spent, so a review can see where the tokens went. */
+  turns: TurnUsage[]
+  /** The turn being counted; closed when the turn finishes. */
+  turnUsage: UsageTotals
   status: 'idle' | 'running' | 'failed'
   error?: string
 }
 
 export function emptyTranscript(conversationId: string): TranscriptState {
-  return { conversationId, messages: [], approvals: [], queued: [], status: 'idle' }
+  return {
+    conversationId,
+    messages: [],
+    approvals: [],
+    queued: [],
+    usage: EMPTY_USAGE,
+    turns: [],
+    turnUsage: EMPTY_USAGE,
+    status: 'idle',
+  }
+}
+
+/**
+ * Opens a transcript that already has a history of spending, which is what a relaunch is. The
+ * history is one row of its own rather than being spread over turns nobody can see any more: the
+ * header's total is the sum of the rows, and that has to stay true across a relaunch.
+ */
+export function transcriptWithUsage(conversationId: string, usage: UsageTotals): TranscriptState {
+  const empty = emptyTranscript(conversationId)
+  if (usage.totalTokens === 0) return empty
+  return { ...empty, usage, turns: [{ usage, earlier: true }] }
+}
+
+/** The total is the sum of the rows, so the two can never drift apart. */
+export function totalUsage(state: TranscriptState): UsageTotals {
+  return state.turns.reduce((sum, turn) => addUsage(sum, turn.usage), EMPTY_USAGE)
 }
 
 export function streamingMessage(state: TranscriptState): ChatMessage | undefined {
@@ -48,12 +87,9 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
   switch (event.type) {
     case 'conversation_opened':
       return {
-        conversationId: state.conversationId,
+        ...emptyTranscript(state.conversationId),
         summary: event.conversation,
         messages: event.messages,
-        approvals: [],
-        queued: [],
-        status: 'idle',
       }
 
     case 'conversation_updated':
@@ -90,7 +126,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return finishStreaming(state, event.interrupted)
 
     case 'turn_finished':
-      return { ...state, status: 'idle', approvals: [] }
+      return closeTurn({ ...state, status: 'idle', approvals: [] })
 
     case 'run_failed':
       return failRun(state, event.message)
@@ -127,6 +163,24 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
     case 'queue_updated':
       return { ...state, queued: event.queued }
 
+    case 'usage_recorded':
+      return { ...state, usage: addUsage(state.usage, event.usage), turnUsage: addUsage(state.turnUsage, event.usage) }
+
+    case 'history_compacted':
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            id: `compaction-${state.messages.length}`,
+            role: 'assistant',
+            blocks: [{ kind: 'compaction', summary: event.summary, replaced: event.replaced }],
+            createdAt: Date.now(),
+            status: 'complete',
+          },
+        ],
+      }
+
     default:
       return state
   }
@@ -136,6 +190,13 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
  * A tool call arrives after the assistant message that requested it has been written, so the row
  * is attached to that message: the ledger reads as one entry per request, with its result.
  */
+/** A finished turn's spending joins the list, and the next turn starts counting from zero. */
+function closeTurn(state: TranscriptState): TranscriptState {
+  const spent = state.turnUsage
+  const turns = spent.totalTokens === 0 ? state.turns : [...state.turns, { usage: spent }]
+  return { ...state, turns, turnUsage: EMPTY_USAGE }
+}
+
 function appendToolCall(
   state: TranscriptState,
   event: Extract<RuntimeEvent, { type: 'tool_started' }>,

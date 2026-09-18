@@ -15,7 +15,7 @@ const ConversationSummarySchema = Type.Object({
   title: Type.String(),
   createdAt: Type.Number(),
   updatedAt: Type.Number(),
-  status: Type.Union([Type.Literal('idle'), Type.Literal('running')]),
+  status: Type.Union([Type.Literal('idle'), Type.Literal('running'), Type.Literal('waiting')]),
   model: Type.Object({ providerId: Type.String(), modelId: Type.String() }),
   thinkingLevel: Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level))),
 })
@@ -48,6 +48,40 @@ export function listForWorkspace(index: ConversationIndex, workspacePath: string
   return index.conversations
     .filter((conversation) => conversation.workspacePath === workspacePath)
     .sort((left, right) => right.updatedAt - left.updatedAt)
+}
+
+/** One workspace's conversations, as the sidebar shows them. */
+export interface WorkspaceGroup {
+  path: string
+  name: string
+  count: number
+  conversations: ConversationSummary[]
+}
+
+/**
+ * The sidebar's shape: one group per workspace, the most recently used workspace first, each
+ * group ordered by recency. Grouping is by path, not by name, because two folders can share a
+ * name and merging them would be a lie.
+ */
+export function groupByWorkspace(conversations: ConversationSummary[]): WorkspaceGroup[] {
+  const groups = new Map<string, ConversationSummary[]>()
+  for (const conversation of conversations) {
+    const existing = groups.get(conversation.workspacePath)
+    if (existing === undefined) groups.set(conversation.workspacePath, [conversation])
+    else existing.push(conversation)
+  }
+
+  return [...groups.entries()]
+    .map(([path, items]) => {
+      const sorted = [...items].sort((left, right) => right.updatedAt - left.updatedAt)
+      return { path, name: nameOf(path), count: sorted.length, conversations: sorted }
+    })
+    .sort((left, right) => (right.conversations[0]?.updatedAt ?? 0) - (left.conversations[0]?.updatedAt ?? 0))
+}
+
+function nameOf(path: string): string {
+  const segments = path.split(/[/\\]/).filter((segment) => segment !== '')
+  return segments[segments.length - 1] ?? path
 }
 
 export function upsertConversation(index: ConversationIndex, conversation: ConversationSummary): ConversationIndex {

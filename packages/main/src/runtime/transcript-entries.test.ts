@@ -83,9 +83,9 @@ describe('entriesToMessages', () => {
     expect(message.status).toBe('failed')
   })
 
-  it('skips entries that are not messages', () => {
+  it('turns a compaction into the marker that stands where the history was summarised', () => {
     const messages = entriesToMessages([
-      entry({ type: 'custom', seq: 1, id: 'e1', parentId: null, timestamp: 1, customType: 'note', data: {} }),
+      userEntry(1, 'before'),
       entry({
         type: 'compaction',
         seq: 2,
@@ -97,6 +97,17 @@ describe('entriesToMessages', () => {
         tokensBefore: 10,
         fromHook: false,
       }),
+      userEntry(3, 'after compaction'),
+    ])
+
+    expect(messages.map((message) => message.role)).toEqual(['user', 'assistant', 'user'])
+    expect(messages[1].blocks).toEqual([{ kind: 'compaction', summary: 'sum', replaced: undefined }])
+  })
+
+  it('skips entries that are not messages', () => {
+    const messages = entriesToMessages([
+      entry({ type: 'custom', seq: 1, id: 'e1', parentId: null, timestamp: 1, customType: 'note', data: {} }),
+      entry({ type: 'custom', seq: 2, id: 'e2', parentId: null, timestamp: 2, customType: 'note', data: {} }),
       userEntry(3, 'after compaction'),
     ])
     expect(messages.map((message) => message.role)).toEqual(['user'])

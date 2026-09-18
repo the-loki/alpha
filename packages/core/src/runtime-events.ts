@@ -11,6 +11,7 @@
 import type { PermissionLevel, RuleScope } from './permission.ts'
 import type { ThinkingLevel } from './thinking.ts'
 import type { ToolRisk } from './tools.ts'
+import type { UsageTotals } from './usage.ts'
 
 export interface ChatBlockText {
   kind: 'text'
@@ -89,7 +90,15 @@ export interface ChatBlockTool {
   endedAt?: number
 }
 
-export type ChatBlock = ChatBlockText | ChatBlockThinking | ChatBlockTool
+/** Where the runtime summarised the history to stay inside the context window. */
+export interface ChatBlockCompaction {
+  kind: 'compaction'
+  summary: string
+  /** How many messages the summary stands in for, when the runtime said so. */
+  replaced?: number
+}
+
+export type ChatBlock = ChatBlockText | ChatBlockThinking | ChatBlockTool | ChatBlockCompaction
 
 export type ChatMessageStatus = 'streaming' | 'complete' | 'interrupted' | 'failed'
 
@@ -120,7 +129,8 @@ export interface ConversationSummary {
   title: string
   createdAt: number
   updatedAt: number
-  status: 'idle' | 'running'
+  /** `waiting` is a run that is stopped on a person: it is neither idle nor getting on with it. */
+  status: 'idle' | 'running' | 'waiting'
   /** Empty strings mean no model has been chosen yet, which the composer reports. */
   model: ConversationModel
   thinkingLevel: ThinkingLevel
@@ -169,6 +179,8 @@ export type RuntimeEvent =
       reason?: string
     }
   | { conversationId: string; type: 'queue_updated'; queued: QueuedMessage[] }
+  | { conversationId: string; type: 'usage_recorded'; usage: UsageTotals }
+  | { conversationId: string; type: 'history_compacted'; summary: string; replaced?: number }
   /** The conversation's path changed under it: an answer was replaced, so the list is replaced too. */
   | { conversationId: string; type: 'transcript_replaced'; messages: ChatMessage[] }
   | { conversationId: string; type: 'run_failed'; message: string }

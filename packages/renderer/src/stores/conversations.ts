@@ -8,6 +8,7 @@ import {
   reduceTranscript,
   type ThinkingLevel,
   type TranscriptState,
+  transcriptWithUsage,
 } from '@alpha/core'
 import { create } from 'zustand'
 import { bridge } from '../lib/bridge.ts'
@@ -35,6 +36,9 @@ export interface ConversationStore {
   stop: () => Promise<void>
   regenerate: () => Promise<void>
   editMessage: (userMessageIndex: number, text: string, effect: EditEffect) => Promise<void>
+  rename: (id: string, title: string) => Promise<void>
+  remove: (id: string) => Promise<void>
+  exportMarkdown: (id: string) => Promise<string>
   /** Bumped when a card is answered, so the composer can take the focus back. */
   composerFocus: number
 }
@@ -72,7 +76,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
     set({
       list: listWithUpdated(get().list, opened.conversation),
       activeId: id,
-      transcript: reduceTranscript(emptyTranscript(id), {
+      transcript: reduceTranscript(transcriptWithUsage(id, opened.usage), {
         conversationId: id,
         type: 'conversation_opened',
         conversation: opened.conversation,
@@ -176,6 +180,25 @@ export const useConversations = create<ConversationStore>((set, get) => ({
       }),
     })
   },
+
+  rename: async (id, title) => {
+    const updated = await bridge().renameConversation(id, title)
+    set({
+      list: listWithUpdated(get().list, updated),
+      transcript: reduceTranscript(get().transcript, {
+        conversationId: get().transcript.conversationId,
+        type: 'conversation_updated',
+        conversation: updated,
+      }),
+    })
+  },
+
+  remove: async (id) => {
+    set({ list: await bridge().deleteConversation(id) })
+    if (get().activeId === id) set({ activeId: '', transcript: emptyTranscript('') })
+  },
+
+  exportMarkdown: async (id) => (await bridge().exportConversation(id)).path,
 
   answerApproval: async (answer) => {
     const id = get().activeId

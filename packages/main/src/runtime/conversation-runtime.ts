@@ -11,6 +11,7 @@ import type {
   PermissionLevel,
   PermissionRule,
   RuntimeEvent,
+  UsageTotals,
 } from '@alpha/core'
 import {
   AgentHarness,
@@ -74,6 +75,8 @@ const SUBSCRIBED_EVENTS: HarnessEventType[] = [
   'tool_update',
   'tool_end',
   'queue_update',
+  'usage',
+  'compaction_end',
   'run_end',
   'fault',
 ]
@@ -133,6 +136,14 @@ export class ConversationRuntime {
         for (const translated of translator.translate(event)) runtime.#emit(translated)
       })
     }
+    // A compaction is not a message event: it is a structural change whose summary has an entry of
+    // its own, so the runtime reads that entry and tells the window what it stands for.
+    harness.events.on('compaction_end', (event) => {
+      if (event.status !== 'completed') return
+      void compactionSummary(session, event.entryId).then((summary) =>
+        runtime.#emit({ conversationId, type: 'history_compacted', ...summary }),
+      )
+    })
     if (options.permissions !== undefined) {
       const gate = createToolGate({
         ...options.permissions,
@@ -150,6 +161,13 @@ export class ConversationRuntime {
   async prompt(text: string): Promise<void> {
     const result = await this.#lane.prompt(text, undefined, BACKGROUND_CONTEXT)
     if (!result.ok) this.#emitFailure(result.error)
+  }
+
+  /** Summarises the history now, which is the same work the runtime does when it runs out of room. */
+  async compact(): Promise<boolean> {
+    const result = await this.#lane.compact(undefined, BACKGROUND_CONTEXT)
+    if (!result.ok) this.#emitFailure(result.error)
+    return result.ok
   }
 
   async abort(): Promise<void> {
@@ -213,6 +231,19 @@ export class ConversationRuntime {
     return this.#session.metadata
   }
 
+  /** What the session has spent so far, which is what a window opening it has to show. */
+  async usage(): Promise<UsageTotals> {
+    const stats = await this.#session.getStats(BACKGROUND_CONTEXT)
+    return {
+      input: stats.usage.input,
+      output: stats.usage.output,
+      cacheRead: stats.usage.cacheRead,
+      cacheWrite: stats.usage.cacheWrite,
+      totalTokens: stats.usage.totalTokens,
+      cost: stats.usage.cost.total,
+    }
+  }
+
   /** Moves the tip to the entry before the given one, or to the root when it is the first. */
   async #navigateBefore(entryId: string): Promise<boolean> {
     const ordered = await this.#tipPath()
@@ -272,6 +303,18 @@ async function tipPathOf(session: Session<JsonlSessionMetadata>): Promise<Entry[
   const tip = await branch.getTipId(BACKGROUND_CONTEXT)
   if (tip === null) return []
   return branch.findEntries({ start: tip, order: 'oldestFirst' }, BACKGROUND_CONTEXT)
+}
+
+/** The summary a compaction wrote, read from the entry it was written to. */
+async function compactionSummary(
+  session: Session<JsonlSessionMetadata>,
+  entryId: string,
+): Promise<{ summary: string; replaced: number | undefined }> {
+  const entry = await session.getEntry(entryId, BACKGROUND_CONTEXT)
+  if (entry === undefined) return { summary: '', replaced: undefined }
+  if (entry.type === 'compaction') return { summary: entry.summary, replaced: undefined }
+  if (entry.type === 'branch_summary') return { summary: entry.summary, replaced: undefined }
+  return { summary: '', replaced: undefined }
 }
 
 /** The text of a user message entry, which is what a resend or a fork has to carry. */

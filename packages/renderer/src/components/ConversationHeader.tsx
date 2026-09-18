@@ -1,7 +1,49 @@
-import { THINKING_LEVELS, type ThinkingLevel, thinkingLabel } from '@alpha/core'
-import { useEffect } from 'react'
+import { formatCost, formatTokens, THINKING_LEVELS, type ThinkingLevel, thinkingLabel, totalUsage } from '@alpha/core'
+import { useEffect, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useProviders } from '../stores/providers.ts'
+
+/** What the session has spent. Cost is shown only when the model's own cost data is non-zero. */
+function UsageReadout() {
+  const transcript = useConversations((state) => state.transcript)
+  const totals = totalUsage(transcript)
+  if (totals.totalTokens === 0) return null
+
+  return (
+    <span className="shrink-0 font-mono text-[11px] text-parchment-faint" title="Tokens and cost for this conversation">
+      {formatTokens(totals.totalTokens)} tokens
+      {formatCost(totals.cost) === '' ? '' : ` · ${formatCost(totals.cost)}`}
+    </span>
+  )
+}
+
+/** Exporting and deleting are things you do to a conversation, so they live with its title. */
+function ConversationActions() {
+  const activeId = useConversations((state) => state.activeId)
+  const exportMarkdown = useConversations((state) => state.exportMarkdown)
+  const remove = useConversations((state) => state.remove)
+  const [written, setWritten] = useState('')
+
+  return (
+    <span className="flex shrink-0 items-center gap-2">
+      {written !== '' && <span className="font-mono text-[11px] text-jade">Exported to {written}</span>}
+      <button
+        type="button"
+        onClick={() => void exportMarkdown(activeId).then(setWritten)}
+        className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
+      >
+        Export
+      </button>
+      <button
+        type="button"
+        onClick={() => void remove(activeId)}
+        className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-danger"
+      >
+        Delete
+      </button>
+    </span>
+  )
+}
 
 /**
  * What this conversation runs on. Both choices are per conversation — a throwaway question can
@@ -28,6 +70,8 @@ export function ConversationHeader() {
     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-6 py-2">
       <h1 className="min-w-0 truncate text-[13px] font-medium text-parchment">{summary.title}</h1>
       <div className="flex items-center gap-2">
+        <UsageReadout />
+        <ConversationActions />
         <select
           aria-label="Model"
           value={chosen}

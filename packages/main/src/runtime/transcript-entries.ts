@@ -83,6 +83,16 @@ export function entriesToMessages(entries: Entry[]): ChatMessage[] {
   // The session makes no promise about the order it hands entries back in, and the transcript's
   // order is the whole point, so the sequence number decides it.
   for (const entry of [...entries].sort((left, right) => left.seq - right.seq)) {
+    if (entry.type === 'compaction' || entry.type === 'branch_summary') {
+      messages.push({
+        id: entry.id,
+        role: 'assistant',
+        blocks: [{ kind: 'compaction', summary: entry.summary, replaced: undefined }],
+        createdAt: entry.timestamp,
+        status: 'complete',
+      })
+      continue
+    }
     if (entry.type !== 'message') continue
     const message: AgentMessage = entry.message
     if (message.role === 'user') {

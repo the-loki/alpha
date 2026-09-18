@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
-import { emptyTranscript, reduceTranscript, streamingMessage, visibleMessages } from './transcript.ts'
+import {
+  emptyTranscript,
+  reduceTranscript,
+  streamingMessage,
+  totalUsage,
+  transcriptWithUsage,
+  visibleMessages,
+} from './transcript.ts'
 
 const CONVERSATION = 'c1'
 
@@ -405,4 +412,102 @@ describe('the approval gate', () => {
     const block = state.messages.flatMap((message) => message.blocks).find((candidate) => candidate.kind === 'tool')
     return block?.kind === 'tool' ? block : undefined
   }
+})
+
+describe('usage', () => {
+  const spending = (totalTokens: number, cost = 0) => ({
+    input: totalTokens - 100,
+    output: 100,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens,
+    cost,
+  })
+
+  it('adds what arrives to the session total', () => {
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spending(1000) }),
+      event({ type: 'usage_recorded', usage: spending(500) }),
+      event({ type: 'turn_finished' }),
+    ])
+
+    expect(state.usage.totalTokens).toBe(1500)
+    expect(totalUsage(state)).toEqual(state.usage)
+  })
+
+  it('counts what is being spent now, before the turn ends', () => {
+    const state = reduce([event({ type: 'turn_started' }), event({ type: 'usage_recorded', usage: spending(1000) })])
+
+    expect(state.usage.totalTokens).toBe(1000)
+    expect(state.turns).toEqual([])
+  })
+
+  it('attributes what was spent to the turn that spent it', () => {
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spending(1000, 0.01) }),
+      event({ type: 'turn_finished' }),
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spending(300, 0.002) }),
+      event({ type: 'turn_finished' }),
+    ])
+
+    expect(state.turns.map((turn) => turn.usage.totalTokens)).toEqual([1000, 300])
+    expect(state.usage.cost).toBeCloseTo(0.012)
+  })
+
+  it('keeps the header total equal to the sum of the turn rows', () => {
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spending(700) }),
+      event({ type: 'turn_finished' }),
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spending(90) }),
+      event({ type: 'turn_finished' }),
+    ])
+
+    expect(state.usage).toEqual(totalUsage(state))
+  })
+
+  it('records no empty row for a turn that spent nothing', () => {
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spending(700) }),
+      event({ type: 'turn_finished' }),
+      event({ type: 'turn_started' }),
+      event({ type: 'turn_finished' }),
+    ])
+
+    expect(state.turns).toHaveLength(1)
+  })
+
+  it('carries the spending of earlier sessions in one row, so the sum still adds up', () => {
+    const state = transcriptWithUsage(CONVERSATION, spending(4000, 0.04))
+    expect(state.turns).toEqual([{ usage: spending(4000, 0.04), earlier: true }])
+    expect(totalUsage(state)).toEqual(state.usage)
+  })
+
+  it('has nothing to carry when the conversation has never spent anything', () => {
+    expect(transcriptWithUsage(CONVERSATION, spending(0)).turns).toEqual([])
+  })
+})
+
+describe('compaction', () => {
+  it('marks where the history was summarised, and keeps the summary readable', () => {
+    const state = reduce([
+      event({ type: 'user_message', message: userMessage }),
+      event({ type: 'history_compacted', summary: 'Earlier turns were about the parser.', replaced: 12 }),
+    ])
+
+    const marker = state.messages.at(-1)
+    expect(marker?.blocks).toEqual([
+      { kind: 'compaction', summary: 'Earlier turns were about the parser.', replaced: 12 },
+    ])
+  })
+
+  it('says nothing about a count the runtime did not give', () => {
+    const state = reduce([event({ type: 'history_compacted', summary: 'Summarised.' })])
+    expect(state.messages.at(-1)?.blocks).toEqual([{ kind: 'compaction', summary: 'Summarised.', replaced: undefined }])
+  })
 })

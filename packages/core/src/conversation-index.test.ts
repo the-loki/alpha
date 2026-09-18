@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   emptyConversationIndex,
   findConversation,
+  groupByWorkspace,
   listForWorkspace,
   parseConversationIndex,
   removeConversation,
@@ -90,5 +91,43 @@ describe('findConversation', () => {
 
   it('reports nothing for an unknown id', () => {
     expect(findConversation(index, 'zzz')).toBeUndefined()
+  })
+})
+
+describe('groupByWorkspace', () => {
+  it('groups conversations under the folder they belong to', () => {
+    const groups = groupByWorkspace([
+      conversation('a', '/dev/alpha', 10),
+      conversation('b', '/dev/beta', 30),
+      conversation('c', '/dev/alpha', 20),
+    ])
+
+    expect(groups.map((group) => group.path)).toEqual(['/dev/beta', '/dev/alpha'])
+    expect(groups[1].name).toBe('alpha')
+    expect(groups[1].conversations.map((entry) => entry.id)).toEqual(['c', 'a'])
+  })
+
+  it('orders each workspace by recency, newest first', () => {
+    const groups = groupByWorkspace([
+      conversation('old', '/dev/alpha', 1),
+      conversation('new', '/dev/alpha', 90),
+      conversation('other', '/dev/beta', 50),
+    ])
+
+    expect(groups.map((group) => group.name)).toEqual(['alpha', 'beta'])
+    expect(groups[0].conversations.map((entry) => entry.id)).toEqual(['new', 'old'])
+  })
+
+  it('carries the count of what is in each group', () => {
+    const groups = groupByWorkspace([conversation('a', '/dev/alpha', 1), conversation('b', '/dev/alpha', 2)])
+    expect(groups[0].count).toBe(2)
+  })
+
+  it('has nothing to group when there are no conversations', () => {
+    expect(groupByWorkspace([])).toEqual([])
+  })
+
+  it('names a workspace from its last segment, whatever the platform', () => {
+    expect(groupByWorkspace([conversation('a', 'C:\\dev\\alpha', 1)])[0].name).toBe('alpha')
   })
 })

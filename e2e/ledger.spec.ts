@@ -92,7 +92,7 @@ test('the ledger rows of a past conversation come back the same', async () => {
   await first.app.close()
 
   const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
-  const listed = second.window.getByRole('button', { name: /check the notes file/ })
+  const listed = second.window.getByRole('button', { name: /^check the notes file (idle|working)$/ })
   await listed.click()
 
   const read = row(second.window, 'read')

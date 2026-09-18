@@ -146,6 +146,21 @@ function registerConversationHandlers({ runtime }: IpcContext): void {
     ),
   )
 
+  ipcMain.handle(IPC.renameConversation, (_event, id: unknown, title: unknown) =>
+    runtime.rename(requireString(id, 'conversationId'), requireString(title, 'title')),
+  )
+
+  ipcMain.handle(IPC.deleteConversation, (_event, id: unknown) => runtime.remove(requireString(id, 'conversationId')))
+
+  ipcMain.handle(IPC.exportConversation, (_event, id: unknown) =>
+    runtime.exportMarkdown(requireString(id, 'conversationId')),
+  )
+
+  registerTurnHandlers(runtime)
+}
+
+/** Turn control: steering, queueing, stopping, and answering a message again. */
+function registerTurnHandlers(runtime: RuntimeManager): void {
   ipcMain.handle(IPC.steer, async (_event, id: unknown, text: unknown) => {
     await runtime.steer(requireString(id, 'conversationId'), requireString(text, 'text'))
   })

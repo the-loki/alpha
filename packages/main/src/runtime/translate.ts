@@ -9,12 +9,31 @@
  * and reused for every delta and for the finish.
  */
 
-import { type ApprovalRecord, type QueuedMessage, type RuntimeEvent, toolRiskOf } from '@alpha/core'
+import { type ApprovalRecord, type QueuedMessage, type RuntimeEvent, toolRiskOf, type UsageTotals } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 export interface EventTranslator {
   translate(event: HarnessEvent): RuntimeEvent[]
+}
+
+/** pi's usage in the workbench's terms: one total and one cost, with no provider-specific fields. */
+function usageTotals(usage: {
+  input?: number
+  output?: number
+  cacheRead?: number
+  cacheWrite?: number
+  totalTokens?: number
+  cost?: { total?: number }
+}): UsageTotals {
+  return {
+    input: usage.input ?? 0,
+    output: usage.output ?? 0,
+    cacheRead: usage.cacheRead ?? 0,
+    cacheWrite: usage.cacheWrite ?? 0,
+    totalTokens: usage.totalTokens ?? 0,
+    cost: usage.cost?.total ?? 0,
+  }
 }
 
 /** How a row learns why its call got past the gate. */
@@ -56,6 +75,9 @@ function translateEvent(
 
     case 'queue_update':
       return [{ conversationId, type: 'queue_updated', queued: queuedItems(event.queues) }]
+
+    case 'usage':
+      return [{ conversationId, type: 'usage_recorded', usage: usageTotals(event.row.usage) }]
 
     case 'run_end':
       state.openAssistantId = undefined

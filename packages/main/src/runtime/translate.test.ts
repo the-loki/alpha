@@ -149,10 +149,48 @@ describe('createEventTranslator', () => {
   it('ignores events it has no use for', () => {
     expect(
       translateAll([
-        { type: 'usage', usage: {} },
         { type: 'entry_added', entry: {} },
+        { type: 'value_update', value: 'session_name' },
       ]),
     ).toEqual([])
+  })
+
+  it('reports what a call spent, in the workbench vocabulary', () => {
+    const translated = translateAll([
+      asHarnessEvent({
+        type: 'usage',
+        lane: 'main',
+        row: {
+          id: 'u1',
+          seq: 1,
+          adjustment: false,
+          usage: {
+            input: 1200,
+            output: 300,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 1500,
+            cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+          },
+        },
+        totals: {},
+      }),
+    ])
+
+    expect(translated).toEqual([
+      {
+        conversationId: 'c1',
+        type: 'usage_recorded',
+        usage: {
+          input: 1200,
+          output: 300,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 1500,
+          cost: 0.003,
+        },
+      },
+    ])
   })
 
   it('stamps a row with the decision the gate made for that call', () => {

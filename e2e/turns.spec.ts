@@ -97,7 +97,7 @@ test('a stopped turn survives a relaunch, marker and all', async () => {
   await first.app.close()
 
   const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
-  await second.window.getByRole('button', { name: /say something long/ }).click()
+  await second.window.getByRole('button', { name: /^say something long (idle|working)$/ }).click()
 
   await expect(second.window.getByText(/Stopped —/)).toBeVisible()
   const restored = await second.window.getByRole('main').locator('[data-role="assistant"]').innerText()
@@ -139,6 +139,8 @@ test('a queued message is sent when the turn it waited behind is done', async ()
 
   await ask(window, 'first task')
   await expect(window.getByRole('button', { name: 'Steer' })).toBeVisible({ timeout: 20_000 })
+  // The sidebar says a conversation is working while it works, not only once it is done.
+  await expect(window.getByRole('complementary').getByRole('button', { name: /^first task working$/ })).toBeVisible()
   const composer = window.getByRole('textbox', { name: 'Message the agent' })
   await composer.fill('then do this')
   await window.getByRole('button', { name: 'Queue' }).click()

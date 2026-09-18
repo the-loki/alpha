@@ -8,35 +8,51 @@
  */
 
 import {
-  type ApprovalAsk,
+  type ChatMessage,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
   type EditEffect,
+  EMPTY_USAGE,
   type ModelStatus,
   type OpenedConversation,
   type PermissionRule,
   type RuntimeEvent,
-  summarize,
   type ThinkingLevel,
-  titleFromMessage,
   titleFromPath,
+  type UsageTotals,
 } from '@alpha/core'
 import type { Api, Model } from '@earendil-works/pi-ai'
-import { ConversationIndexStore } from '../conversations/index-store.ts'
 import { createProviderModelRuntime } from '../providers/model-runtime.ts'
 import type { ProviderStore } from '../providers/store.ts'
 import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
+import { ConversationBookkeeper } from './bookkeeping.ts'
 import {
   ConversationRuntime,
   findSessionMetadata,
   type PermissionPorts,
   readTranscript,
 } from './conversation-runtime.ts'
-import { forkConversation } from './fork.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, resolveModelRuntime } from './models.ts'
+import { createPermissionPorts, revokeRule } from './permissions.ts'
+import {
+  deleteSession,
+  readSessionTranscript,
+  readSessionUsage,
+  type SessionLocation,
+  writeSessionMarkdown,
+} from './session-files.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
+import {
+  cancelQueued,
+  compactConversation,
+  editMessage,
+  queueMessage,
+  regenerate,
+  steerConversation,
+  type TurnPorts,
+} from './turn-ops.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string
@@ -55,14 +71,13 @@ const NO_MODEL: ConversationSummary['model'] = { providerId: '', modelId: '' }
 
 export class RuntimeManager {
   readonly #options: RuntimeManagerOptions
-  readonly #index: ConversationIndexStore
+  readonly #books: ConversationBookkeeper
   readonly #open = new Map<string, ConversationRuntime>()
-  readonly #named = new Set<string>()
   readonly #approvals: ApprovalBroker
 
   constructor(options: RuntimeManagerOptions) {
     this.#options = options
-    this.#index = new ConversationIndexStore(options.dataDirectory)
+    this.#books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
     this.#approvals = new ApprovalBroker({ emit: options.emit })
   }
 
@@ -71,8 +86,8 @@ export class RuntimeManager {
   }
 
   revokeRule(ruleId: string): PermissionRule[] {
-    const rules = this.permissionRules().filter((rule) => rule.id !== ruleId)
-    this.#writeRules(rules)
+    const rules = revokeRule(this.#options.store, ruleId)
+    this.#options.emitRules(rules)
     return rules
   }
 
@@ -81,7 +96,7 @@ export class RuntimeManager {
   }
 
   list(): ConversationSummary[] {
-    return this.#index.all()
+    return this.#books.list()
   }
 
   modelStatus(): ModelStatus {
@@ -109,16 +124,18 @@ export class RuntimeManager {
       thinkingLevel: DEFAULT_THINKING_LEVEL,
     }
     if (opened.runtime !== undefined) this.#open.set(conversation.id, opened.runtime)
-    this.#index.upsert(conversation)
+    this.#books.upsert(conversation)
 
-    return { conversation, messages: opened.messages }
+    return { conversation, messages: opened.messages, usage: EMPTY_USAGE }
   }
 
   async open(id: string): Promise<OpenedConversation> {
     const conversation = this.#requireConversation(id)
 
     const existing = this.#open.get(id)
-    if (existing !== undefined) return { conversation, messages: await existing.transcript() }
+    if (existing !== undefined) {
+      return { conversation, messages: await existing.transcript(), usage: await existing.usage() }
+    }
 
     const opened = await this.#tryOpen({
       conversationId: id,
@@ -133,9 +150,9 @@ export class RuntimeManager {
       emit: (event) => this.#observe(event),
     })
     if (opened.runtime !== undefined) this.#open.set(id, opened.runtime)
-    if (conversation.title !== DEFAULT_TITLE) this.#named.add(id)
+    if (conversation.title !== DEFAULT_TITLE) this.#books.markNamed(id)
 
-    return { conversation, messages: opened.messages }
+    return { conversation, messages: opened.messages, usage: await this.#usageOf(id, opened.runtime) }
   }
 
   async prompt(id: string, text: string): Promise<void> {
@@ -148,71 +165,30 @@ export class RuntimeManager {
   }
 
   async steer(id: string, text: string): Promise<void> {
-    const runtime = await this.#openFor(id)
-    await runtime.steer(text)
+    await steerConversation(this.#turnPorts(), id, text)
   }
 
   async queueMessage(id: string, text: string): Promise<void> {
-    const runtime = await this.#openFor(id)
-    await runtime.followUp(text)
+    await queueMessage(this.#turnPorts(), id, text)
   }
 
   async cancelQueued(id: string, entryId: string): Promise<void> {
-    const runtime = await this.#openFor(id)
-    await runtime.cancelQueued(entryId)
+    await cancelQueued(this.#turnPorts(), id, entryId)
   }
 
-  /** Answers the last user message again, with the previous answer leaving the transcript's path. */
   async regenerate(id: string): Promise<void> {
-    const conversation = this.#requireConversation(id)
-    if (conversation.status === 'running') throw new Error('The agent is still working on this conversation.')
-    const runtime = await this.#openFor(id)
-    await runtime.regenerate()
-    // The replaced answer left the path, so the window is told to show the path as it is now.
-    this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages: await runtime.transcript() })
+    await regenerate(this.#turnPorts(), id)
+    this.#emittedTranscript(id)
   }
 
-  /**
-   * Replaces an earlier user message. `replace` continues this conversation from the edit;
-   * `fork` copies the conversation up to (but not including) the edited message into a new one,
-   * so both versions stay readable.
-   */
-  async editMessage(
-    id: string,
-    userMessageIndex: number,
-    text: string,
-    effect: EditEffect,
-  ): Promise<OpenedConversation> {
-    const conversation = this.#requireConversation(id)
-    if (conversation.status === 'running') throw new Error('The agent is still working on this conversation.')
-    const runtime = await this.#openFor(id)
-    if (effect === 'replace') {
-      await runtime.resend(userMessageIndex, text)
-      const messages = await runtime.transcript()
-      // The old answer is off the path now, so the window is told to replace what it is showing.
-      this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages })
-      return { conversation, messages }
-    }
-    const entryId = await runtime.userEntryId(userMessageIndex)
-    if (entryId === undefined) throw new Error('That message is not in this conversation.')
-    const source = await findSessionMetadata({
-      sessionsRoot: this.#options.sessionsRoot,
-      workspacePath: conversation.workspacePath,
-      conversationId: id,
-    })
-    if (source === undefined) throw new Error('That conversation is not on disk yet.')
-    const forked = await forkConversation({
-      source,
-      conversation,
-      entryId,
-      text,
-      sessionsRoot: this.#options.sessionsRoot,
-    })
-    this.#index.upsert(forked)
-    this.#named.add(forked.id)
-    const opened = await this.open(forked.id)
-    await this.#open.get(forked.id)?.prompt(text)
-    return { conversation: forked, messages: opened.messages }
+  async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
+    const opened = await editMessage(this.#turnPorts(), id, index, text, effect)
+    if (effect === 'replace') this.#emittedTranscript(id)
+    return opened
+  }
+
+  async compactConversation(id: string): Promise<boolean> {
+    return compactConversation(this.#turnPorts(), id)
   }
 
   async abort(id: string): Promise<void> {
@@ -221,18 +197,72 @@ export class RuntimeManager {
     await this.#open.get(id)?.abort()
   }
 
+  rename(id: string, title: string): ConversationSummary {
+    return this.#books.rename(id, title)
+  }
+
+  /**
+   * Deleting means deleting: the transcript directory goes with it, so the conversation is gone
+   * from the list and from the disk, not merely hidden from one of them.
+   */
+  async remove(id: string): Promise<ConversationSummary[]> {
+    const conversation = this.#requireConversation(id)
+    this.#approvals.abandon(id, 'The conversation was deleted.')
+    const runtime = this.#open.get(id)
+    if (runtime !== undefined) {
+      await runtime.close()
+      this.#open.delete(id)
+    }
+    await deleteSession(this.#location(conversation))
+    this.#books.forget(id)
+    return this.list()
+  }
+
+  /** A markdown file beside the workspace, with everything the conversation said and did. */
+  async exportMarkdown(id: string): Promise<{ path: string }> {
+    const conversation = this.#requireConversation(id)
+    return writeSessionMarkdown(conversation, await this.transcriptFor(id))
+  }
+
+  /** The transcript of a conversation, open or not: the same reading either way. */
+  async transcriptFor(id: string): Promise<ChatMessage[]> {
+    const runtime = this.#open.get(id)
+    if (runtime !== undefined) return runtime.transcript()
+    return readSessionTranscript(this.#location(this.#requireConversation(id)))
+  }
+
+  #turnPorts(): TurnPorts {
+    return {
+      conversation: (id) => this.#requireConversation(id),
+      runtime: (id) => this.#openFor(id),
+      register: (conversation) => {
+        this.#books.upsert(conversation)
+        this.#books.markNamed(conversation.id)
+      },
+      openConversation: (id) => this.open(id),
+      sessionsRoot: this.#options.sessionsRoot,
+    }
+  }
+
+  /** The window is shown the path as it is now, because an answer it was showing is off it. */
+  #emittedTranscript(id: string): void {
+    void this.transcriptFor(id).then((messages) =>
+      this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages }),
+    )
+  }
+
   async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
     const conversation = this.#requireConversation(id)
     const model = this.#modelRuntime().models.getModel(providerId, modelId)
     if (model === undefined) throw new Error(`${providerId} does not serve ${modelId}`)
     await this.#open.get(id)?.setModel(model)
-    return this.#update(conversation, { model: { providerId, modelId } })
+    return this.#books.upsert({ ...conversation, model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
   async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {
     const conversation = this.#requireConversation(id)
     await this.#open.get(id)?.setThinkingLevel(level)
-    return this.#update(conversation, { thinkingLevel: level })
+    return this.#books.upsert({ ...conversation, thinkingLevel: level, updatedAt: Date.now() })
   }
 
   async closeAll(): Promise<void> {
@@ -252,7 +282,7 @@ export class RuntimeManager {
   }
 
   #requireConversation(id: string): ConversationSummary {
-    const conversation = this.#index.find(id)
+    const conversation = this.#books.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
     return conversation
   }
@@ -287,7 +317,7 @@ export class RuntimeManager {
         sessionsRoot: this.#options.sessionsRoot,
         workspacePath: options.workspacePath,
         conversationId: options.conversationId ?? '',
-      })
+      } satisfies SessionLocation)
       return { conversationId: options.conversationId ?? crypto.randomUUID(), messages: transcript }
     }
 
@@ -311,17 +341,25 @@ export class RuntimeManager {
    * applies to the next call rather than the next conversation.
    */
   #permissionPorts(): PermissionPorts {
-    return {
-      level: () => this.#options.store.read().permissionLevel,
-      rules: () => this.#options.store.read().permissionRules,
-      remember: (rule) => this.#writeRules([...this.permissionRules(), rule]),
-      ask: (conversationId, ask: ApprovalAsk) => this.#approvals.ask(conversationId, ask),
-    }
+    return createPermissionPorts({
+      store: this.#options.store,
+      ask: (conversationId, ask) => this.#approvals.ask(conversationId, ask),
+      changed: this.#options.emitRules,
+    })
   }
 
-  #writeRules(rules: PermissionRule[]): void {
-    this.#options.store.write({ ...this.#options.store.read(), permissionRules: rules })
-    this.#options.emitRules(rules)
+  /** Usage for a conversation that has just been opened: live when it runs, from disk when it does not. */
+  async #usageOf(id: string, runtime: ConversationRuntime | undefined): Promise<UsageTotals> {
+    if (runtime !== undefined) return runtime.usage()
+    return readSessionUsage(this.#location(this.#requireConversation(id)))
+  }
+
+  #location(conversation: ConversationSummary): SessionLocation {
+    return {
+      sessionsRoot: this.#options.sessionsRoot,
+      workspacePath: conversation.workspacePath,
+      conversationId: conversation.id,
+    }
   }
 
   #modelRuntime(): ModelRuntime {
@@ -330,31 +368,6 @@ export class RuntimeManager {
 
   /** Bookkeeping that follows from what the runtime said, before the window hears about it. */
   #observe(event: RuntimeEvent): void {
-    const conversation = this.#index.find(event.conversationId)
-    if (conversation === undefined) {
-      this.#options.emit(event)
-      return
-    }
-
-    if (event.type === 'user_message' && !this.#named.has(event.conversationId)) {
-      const text = event.message.blocks
-        .filter((block) => block.kind !== 'tool')
-        .map((block) => block.text)
-        .join(' ')
-      this.#named.add(event.conversationId)
-      this.#update(conversation, { title: titleFromMessage(text) })
-    }
-
-    if (event.type === 'turn_started') this.#update(conversation, { status: 'running' })
-    if (event.type === 'turn_finished' || event.type === 'run_failed') this.#update(conversation, { status: 'idle' })
-
-    this.#options.emit(event)
-  }
-
-  #update(conversation: ConversationSummary, changes: Partial<ConversationSummary>): ConversationSummary {
-    const updated = summarize(conversation, changes)
-    this.#index.upsert(updated)
-    this.#options.emit({ conversationId: updated.id, type: 'conversation_updated', conversation: updated })
-    return updated
+    this.#books.observe(event)
   }
 }
