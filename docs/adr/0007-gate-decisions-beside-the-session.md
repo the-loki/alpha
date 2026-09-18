@@ -37,3 +37,6 @@ it, and the visual gate caught it again from the screenshots.
 - The log is keyed by call id, so a forked conversation inherits the notes of the calls it copied.
 - The decision survives a relaunch, not a deleted file — a user who removes `decisions/` loses the
   provenance line and keeps the transcript. That is the intended order of importance.
+- The log hands out a ledger per conversation rather than a bare map, and the conversation's id is
+  bound when it is opened. The id is minted before the session exists, so the file a note lands in
+  is decided once — a new gate path cannot write a decision to the wrong conversation's file.

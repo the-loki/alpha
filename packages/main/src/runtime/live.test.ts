@@ -36,6 +36,7 @@ describe.skipIf(live === undefined)('[runtime] a real provider', () => {
     })
 
     const { runtime } = await ConversationRuntime.open({
+      conversationId: crypto.randomUUID(),
       workspacePath: mkdtempSync(join(tmpdir(), 'alpha-live-')),
       sessionsRoot: mkdtempSync(join(tmpdir(), 'alpha-live-sessions-')),
       modelRuntime,

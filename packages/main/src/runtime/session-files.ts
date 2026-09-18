@@ -13,8 +13,8 @@ import {
   type UsageTotals,
 } from '@alpha/core'
 import type { ConversationRuntime } from './conversation-runtime.ts'
+import type { DecisionLookup } from './decisions.ts'
 import { type SessionLocation, sessionUsage, withSession } from './session-reader.ts'
-import type { DecisionLookup } from './transcript-entries.ts'
 
 /** What a conversation that is not running has spent, read straight from its session. */
 export const readSessionUsage = sessionUsage

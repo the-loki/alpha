@@ -15,7 +15,8 @@ import {
   type Session,
 } from '@earendil-works/pi-agent-core'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
-import { type DecisionLookup, entriesToMessages } from './transcript-entries.ts'
+import type { DecisionLookup } from './decisions.ts'
+import { entriesToMessages } from './transcript-entries.ts'
 
 export interface SessionLocation {
   sessionsRoot: string
@@ -111,7 +112,8 @@ export async function findSessionMetadata(location: SessionLocation): Promise<Js
 /**
  * Opens the session a conversation is stored in. A conversation that has never run has none, and
  * the caller is told so (`undefined`) rather than handed an empty session it might write into —
- * unless it asked for one, which is what starting a conversation does.
+ * unless it asked for one, which is what starting a conversation does. A new session is created
+ * under the id it was asked for, so the conversation's id is the one its file is named after.
  */
 export async function openSession(
   location: SessionLocation,
@@ -124,7 +126,7 @@ export async function openSession(
     return new SessionReader(session, { decisions: options.decisions, owns: true })
   }
   if (options.create !== true) return undefined
-  const session = await repo.create({ cwd: location.workspacePath }, BACKGROUND_CONTEXT)
+  const session = await repo.create({ cwd: location.workspacePath, id: location.conversationId }, BACKGROUND_CONTEXT)
   return new SessionReader(session, { decisions: options.decisions, owns: true })
 }
 

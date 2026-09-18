@@ -6,7 +6,6 @@
 
 import {
   type ApprovalAsk,
-  type ApprovalRecord,
   type ChatMessage,
   type PermissionLevel,
   type PermissionRule,
@@ -27,12 +26,12 @@ import {
 } from '@earendil-works/pi-agent-core'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
 import type { Api, Model } from '@earendil-works/pi-ai'
+import { DecisionLedger } from './decisions.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { createToolGate } from './gate.ts'
 import type { ModelRuntime } from './models.ts'
 import { openSession, type SessionReader, tipPathOf } from './session-reader.ts'
 import { createWorkspaceTools, workspaceToolNames } from './tools.ts'
-import type { DecisionLookup } from './transcript-entries.ts'
 import { createEventTranslator } from './translate.ts'
 
 /** How the gate reaches the policy and the person: all four are read at the moment of a call. */
@@ -44,8 +43,8 @@ export interface PermissionPorts {
 }
 
 export interface OpenConversationOptions {
-  /** Absent when the conversation is new; the session mints the id and it is adopted. */
-  conversationId?: string
+  /** Minted by the caller before the runtime exists, so the ledger can be opened for it first. */
+  conversationId: string
   workspacePath: string
   sessionsRoot: string
   modelRuntime: ModelRuntime
@@ -58,10 +57,8 @@ export interface OpenConversationOptions {
   toolNames?: string[]
   /** Absent only in tests that want the gate out of the way; every real conversation has one. */
   permissions?: PermissionPorts
-  /** How earlier calls got past the gate, so a restored row still says how (decisions.ts). */
-  decisions?: DecisionLookup
-  /** Told about each decision as it is made, so the note outlives the process. */
-  onDecision?: (callId: string, record: ApprovalRecord) => void
+  /** How earlier calls got past the gate, and where the next decision is written (decisions.ts). */
+  decisions?: DecisionLedger
   emit: (event: RuntimeEvent) => void
 }
 
@@ -108,14 +105,15 @@ export class ConversationRuntime {
 
   static async open(options: OpenConversationOptions): Promise<OpenedRuntime> {
     const env = new NodeExecutionEnv({ cwd: options.workspacePath })
-    // The decisions are handed to the reader, not just to the runtime: the transcript it opens
-    // with is the same one the window sees a second later.
-    const decisions: DecisionLookup = options.decisions ?? new Map<string, ApprovalRecord>()
+    // The ledger is handed to the reader as well as to the gate: the transcript a runtime opens
+    // with is the same one the window sees a second later, decisions and all. With none handed in
+    // the gate still records what it decided; the notes simply do not outlive the run.
+    const decisions = options.decisions ?? new DecisionLedger()
     const reader = await openSession(
       {
         sessionsRoot: options.sessionsRoot,
         workspacePath: options.workspacePath,
-        conversationId: options.conversationId ?? '',
+        conversationId: options.conversationId,
       },
       { create: true, decisions },
     )
@@ -168,10 +166,7 @@ export class ConversationRuntime {
         ...options.permissions,
         conversationId,
         workspacePath: options.workspacePath,
-        note: (callId, record) => {
-          decisions.set(callId, record)
-          options.onDecision?.(callId, record)
-        },
+        note: (callId, record) => decisions.note(callId, record),
       })
       harness.hooks.on('before_tool', (event) => gate(event))
     }

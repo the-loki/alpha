@@ -4,19 +4,10 @@
  * for live events.
  */
 
-import {
-  type ApprovalRecord,
-  type ChatBlock,
-  type ChatBlockTool,
-  type ChatMessage,
-  textOfContent,
-  toolRiskOf,
-} from '@alpha/core'
+import { type ChatBlock, type ChatBlockTool, type ChatMessage, textOfContent, toolRiskOf } from '@alpha/core'
 import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
+import type { DecisionLookup } from './decisions.ts'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
-
-/** How each call got past the gate, by call id: the part of the ledger pi's session does not hold. */
-export type DecisionLookup = Map<string, ApprovalRecord>
 
 const blocksOf = (content: unknown[], timestamp: number, decisions: DecisionLookup): ChatBlock[] => {
   const blocks: ChatBlock[] = []

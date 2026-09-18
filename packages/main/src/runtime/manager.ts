@@ -8,7 +8,6 @@
  */
 
 import {
-  type ApprovalRecord,
   type ChatMessage,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
@@ -97,6 +96,7 @@ export class RuntimeManager {
   async create(workspacePath: string): Promise<OpenedConversation> {
     const model = this.#modelRuntime().defaultModel
     const opened = await this.#tryOpen({
+      conversationId: crypto.randomUUID(),
       workspacePath,
       model,
       thinkingLevel: DEFAULT_THINKING_LEVEL,
@@ -220,7 +220,7 @@ export class RuntimeManager {
     const runtime = this.#open.get(id)
     if (runtime !== undefined) return runtime.transcript()
     const conversation = this.#requireConversation(id)
-    return readSessionTranscript(sessionLocation(this.#options.sessionsRoot, conversation), this.#decisions.read(id))
+    return readSessionTranscript(sessionLocation(this.#options.sessionsRoot, conversation), this.#decisions.opened(id))
   }
 
   #turnPorts(): TurnPorts {
@@ -294,7 +294,7 @@ export class RuntimeManager {
    * composer explains what is missing, rather than the window refusing to open it at all.
    */
   async #tryOpen(options: {
-    conversationId?: string
+    conversationId: string
     workspacePath: string
     model?: Model<Api>
     thinkingLevel: ThinkingLevel
@@ -304,28 +304,20 @@ export class RuntimeManager {
     const model = options.model ?? modelRuntime.defaultModel
 
     if (model === undefined) {
-      const transcript =
-        options.conversationId === undefined
-          ? []
-          : await readSessionTranscript({
-              sessionsRoot: this.#options.sessionsRoot,
-              workspacePath: options.workspacePath,
-              conversationId: options.conversationId,
-            })
-      return { conversationId: options.conversationId ?? crypto.randomUUID(), messages: transcript }
+      const transcript = await readSessionTranscript(
+        {
+          sessionsRoot: this.#options.sessionsRoot,
+          workspacePath: options.workspacePath,
+          conversationId: options.conversationId,
+        },
+        this.#decisions.opened(options.conversationId),
+      )
+      return { conversationId: options.conversationId, messages: transcript }
     }
 
-    // Everything that decides how a call got past the gate is restored with the transcript, so a
-    // ledger read back after a relaunch says the same thing as the one that was on screen.
-    // One map per conversation, and it is the manager's: the gate fills it as calls are decided,
-    // and the write callback below persists that same map.
-    const decisions =
-      options.conversationId === undefined
-        ? new Map<string, ApprovalRecord>()
-        : this.#decisions.read(options.conversationId)
-    // Assigned the moment the session exists and read only when a decision is made, which cannot
-    // happen during open: no turn runs until the caller prompts.
-    let savedAs = options.conversationId ?? ''
+    // The id is the manager's to mint, and it is minted before the runtime exists, so the ledger
+    // that records how calls got past the gate can be opened for it first. The ledger is where a
+    // decision is written; nothing downstream needs to know which file that is.
     const opened = await ConversationRuntime.open({
       conversationId: options.conversationId,
       workspacePath: options.workspacePath,
@@ -334,11 +326,9 @@ export class RuntimeManager {
       model,
       systemPrompt: buildSystemPrompt({ workspacePath: options.workspacePath }),
       permissions: this.#permissionPorts(),
-      decisions,
-      onDecision: () => this.#decisions.write(savedAs, decisions),
+      decisions: this.#decisions.opened(options.conversationId),
       emit: options.emit,
     })
-    savedAs = opened.conversationId
     await opened.runtime.setThinkingLevel(options.thinkingLevel)
     return { runtime: opened.runtime, conversationId: opened.conversationId, messages: opened.messages }
   }
