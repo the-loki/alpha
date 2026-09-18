@@ -12,7 +12,11 @@ export function ConversationPane() {
   return (
     <div className="flex h-full flex-col">
       <ConversationHeader />
-      <div className="min-h-0 flex-1">{hasMessages ? <MessageList transcript={transcript} /> : <EmptyState />}</div>
+      {/* A flex column, so the transcript inside it shrinks to the space left by the composer
+          instead of growing to its own content and painting over it. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {hasMessages ? <MessageList transcript={transcript} /> : <EmptyState />}
+      </div>
       <Composer />
     </div>
   )

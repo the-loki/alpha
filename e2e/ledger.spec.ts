@@ -101,6 +101,40 @@ test('a tool call becomes a ledger row in the transcript', async () => {
   await expect(bash).toContainText('Output')
   await expect(bash).toContainText('No such file')
 
+  // Rows that are open make the transcript taller than the pane. It scrolls, and it stays inside
+  // the pane: a transcript that grows past the composer is a transcript you cannot read.
+  const geometry = await window.evaluate(() => {
+    const box = (el: Element) => {
+      const rect = el.getBoundingClientRect()
+      return { top: Math.round(rect.top), bottom: Math.round(rect.bottom) }
+    }
+    const last = [...document.querySelectorAll('[data-role]')].at(-1)
+    let node: Element | null = last?.parentElement ?? null
+    let scroller: Element | null = null
+    while (node !== null && scroller === null) {
+      if (['auto', 'scroll'].includes(getComputedStyle(node).overflowY)) scroller = node
+      node = node.parentElement
+    }
+    const field = document.querySelector('textarea')
+    return {
+      scrollable: scroller !== null && scroller.scrollHeight > scroller.clientHeight,
+      transcriptBottom: scroller === null ? 0 : box(scroller).bottom,
+      composerTop: field === null ? 0 : box(field).top,
+    }
+  })
+  expect(geometry.scrollable).toBe(true)
+  expect(geometry.transcriptBottom).toBeLessThanOrEqual(geometry.composerTop)
+
+  // Scrolling to the end is what puts the last row on screen, and it lands above the composer.
+  const lastRowBottom = await window.evaluate(() => {
+    const scroller = [...document.querySelectorAll('main *')].find((el) => getComputedStyle(el).overflowY === 'auto')
+    if (scroller === undefined || scroller === null) return 0
+    scroller.scrollTop = scroller.scrollHeight
+    const last = [...scroller.querySelectorAll('[data-role]')].at(-1)
+    return last === undefined ? 0 : Math.round(last.getBoundingClientRect().bottom)
+  })
+  expect(lastRowBottom).toBeLessThanOrEqual(geometry.composerTop)
+
   await app.close()
 })
 
