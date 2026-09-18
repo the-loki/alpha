@@ -11,6 +11,7 @@ import {
   type ApprovalAsk,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
+  type EditEffect,
   type ModelStatus,
   type OpenedConversation,
   type PermissionRule,
@@ -32,6 +33,7 @@ import {
   type PermissionPorts,
   readTranscript,
 } from './conversation-runtime.ts'
+import { forkConversation } from './fork.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, resolveModelRuntime } from './models.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
@@ -138,16 +140,79 @@ export class RuntimeManager {
 
   async prompt(id: string, text: string): Promise<void> {
     const conversation = this.#requireConversation(id)
-    const runtime = this.#open.get(id)
-    if (runtime !== undefined) {
-      await runtime.prompt(text)
-      return
-    }
     if (this.#modelFor(conversation) === undefined) {
       throw new Error('No model is configured. Add a provider and a model in Settings first.')
     }
-    await this.open(id)
-    await this.#open.get(id)?.prompt(text)
+    const runtime = await this.#openFor(id)
+    await runtime.prompt(text)
+  }
+
+  async steer(id: string, text: string): Promise<void> {
+    const runtime = await this.#openFor(id)
+    await runtime.steer(text)
+  }
+
+  async queueMessage(id: string, text: string): Promise<void> {
+    const runtime = await this.#openFor(id)
+    await runtime.followUp(text)
+  }
+
+  async cancelQueued(id: string, entryId: string): Promise<void> {
+    const runtime = await this.#openFor(id)
+    await runtime.cancelQueued(entryId)
+  }
+
+  /** Answers the last user message again, with the previous answer leaving the transcript's path. */
+  async regenerate(id: string): Promise<void> {
+    const conversation = this.#requireConversation(id)
+    if (conversation.status === 'running') throw new Error('The agent is still working on this conversation.')
+    const runtime = await this.#openFor(id)
+    await runtime.regenerate()
+    // The replaced answer left the path, so the window is told to show the path as it is now.
+    this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages: await runtime.transcript() })
+  }
+
+  /**
+   * Replaces an earlier user message. `replace` continues this conversation from the edit;
+   * `fork` copies the conversation up to (but not including) the edited message into a new one,
+   * so both versions stay readable.
+   */
+  async editMessage(
+    id: string,
+    userMessageIndex: number,
+    text: string,
+    effect: EditEffect,
+  ): Promise<OpenedConversation> {
+    const conversation = this.#requireConversation(id)
+    if (conversation.status === 'running') throw new Error('The agent is still working on this conversation.')
+    const runtime = await this.#openFor(id)
+    if (effect === 'replace') {
+      await runtime.resend(userMessageIndex, text)
+      const messages = await runtime.transcript()
+      // The old answer is off the path now, so the window is told to replace what it is showing.
+      this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages })
+      return { conversation, messages }
+    }
+    const entryId = await runtime.userEntryId(userMessageIndex)
+    if (entryId === undefined) throw new Error('That message is not in this conversation.')
+    const source = await findSessionMetadata({
+      sessionsRoot: this.#options.sessionsRoot,
+      workspacePath: conversation.workspacePath,
+      conversationId: id,
+    })
+    if (source === undefined) throw new Error('That conversation is not on disk yet.')
+    const forked = await forkConversation({
+      source,
+      conversation,
+      entryId,
+      text,
+      sessionsRoot: this.#options.sessionsRoot,
+    })
+    this.#index.upsert(forked)
+    this.#named.add(forked.id)
+    const opened = await this.open(forked.id)
+    await this.#open.get(forked.id)?.prompt(text)
+    return { conversation: forked, messages: opened.messages }
   }
 
   async abort(id: string): Promise<void> {
@@ -174,6 +239,16 @@ export class RuntimeManager {
     for (const id of this.#open.keys()) this.#approvals.abandon(id, 'The window closed before this call was answered.')
     for (const runtime of this.#open.values()) await runtime.close()
     this.#open.clear()
+  }
+
+  /** The runtime for a conversation, opening it first when it is not already open. */
+  async #openFor(id: string): Promise<ConversationRuntime> {
+    const open = this.#open.get(id)
+    if (open !== undefined) return open
+    await this.open(id)
+    const opened = this.#open.get(id)
+    if (opened === undefined) throw new Error('No model is configured. Add a provider and a model in Settings first.')
+    return opened
   }
 
   #requireConversation(id: string): ConversationSummary {

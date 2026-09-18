@@ -9,7 +9,7 @@
  * and reused for every delta and for the finish.
  */
 
-import { type ApprovalRecord, type RuntimeEvent, toolRiskOf } from '@alpha/core'
+import { type ApprovalRecord, type QueuedMessage, type RuntimeEvent, toolRiskOf } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
@@ -54,6 +54,9 @@ function translateEvent(
     case 'turn_start':
       return [{ conversationId, type: 'turn_started' }]
 
+    case 'queue_update':
+      return [{ conversationId, type: 'queue_updated', queued: queuedItems(event.queues) }]
+
     case 'run_end':
       state.openAssistantId = undefined
       if (event.status === 'failed') {
@@ -84,6 +87,34 @@ function translateEvent(
     default:
       return []
   }
+}
+
+/**
+ * What the composer shows while it waits: the messages behind the turn, in the order they will be
+ * sent. A steer is already in the transcript by the time it queues, so only the waiting ones are
+ * listed — which is exactly the difference between steering and queueing.
+ */
+function queuedItems(queues: readonly { entryId: string; kind: string; message?: unknown }[]): QueuedMessage[] {
+  return queues.flatMap((item) =>
+    item.kind === 'followUp'
+      ? [{ entryId: item.entryId, kind: 'followUp' as const, text: messageText(item.message) }]
+      : [],
+  )
+}
+
+function messageText(message: unknown): string {
+  const content =
+    typeof message === 'object' && message !== null ? (message as { content?: unknown }).content : undefined
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content
+    .map((part) =>
+      typeof part === 'object' && part !== null && (part as { type?: string }).type === 'text'
+        ? String((part as { text?: unknown }).text ?? '')
+        : '',
+    )
+    .filter((text) => text !== '')
+    .join('\n')
 }
 
 /** A row is stamped with the gate's decision here, so the ledger can say why the call was allowed. */
@@ -181,10 +212,10 @@ function updateMessage(
   const messageId = state.openAssistantId
   if (messageId === undefined || event.delta === undefined) return []
   if (event.type === 'text_delta') {
-    return [{ conversationId, type: 'assistant_text_delta', messageId, delta: event.delta }]
+    return [{ conversationId, type: 'assistant_text_delta', messageId, delta: event.delta, at: Date.now() }]
   }
   if (event.type === 'thinking_delta') {
-    return [{ conversationId, type: 'assistant_thinking_delta', messageId, delta: event.delta }]
+    return [{ conversationId, type: 'assistant_thinking_delta', messageId, delta: event.delta, at: Date.now() }]
   }
   return []
 }

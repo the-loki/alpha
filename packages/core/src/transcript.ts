@@ -13,6 +13,7 @@ import type {
   ChatBlockTool,
   ChatMessage,
   ConversationSummary,
+  QueuedMessage,
   RuntimeEvent,
 } from './runtime-events.ts'
 
@@ -23,12 +24,14 @@ export interface TranscriptState {
   streaming?: ChatMessage
   /** Calls waiting on the user, oldest first. */
   approvals: ApprovalRequest[]
+  /** Messages waiting behind the running turn, oldest first. */
+  queued: QueuedMessage[]
   status: 'idle' | 'running' | 'failed'
   error?: string
 }
 
 export function emptyTranscript(conversationId: string): TranscriptState {
-  return { conversationId, messages: [], approvals: [], status: 'idle' }
+  return { conversationId, messages: [], approvals: [], queued: [], status: 'idle' }
 }
 
 export function streamingMessage(state: TranscriptState): ChatMessage | undefined {
@@ -49,11 +52,15 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
         summary: event.conversation,
         messages: event.messages,
         approvals: [],
+        queued: [],
         status: 'idle',
       }
 
     case 'conversation_updated':
       return { ...state, summary: event.conversation }
+
+    case 'transcript_replaced':
+      return { ...state, messages: event.messages, streaming: undefined, queued: [], status: 'idle', error: undefined }
 
     case 'turn_started':
       return { ...state, status: 'running', error: undefined }
@@ -74,10 +81,10 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       }
 
     case 'assistant_text_delta':
-      return appendDelta(state, event.messageId, 'text', event.delta)
+      return appendDelta(state, event.messageId, 'text', event.delta, event.at)
 
     case 'assistant_thinking_delta':
-      return appendDelta(state, event.messageId, 'thinking', event.delta)
+      return appendDelta(state, event.messageId, 'thinking', event.delta, event.at)
 
     case 'assistant_message_finished':
       return finishStreaming(state, event.interrupted)
@@ -116,6 +123,9 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
 
     case 'approval_decided':
       return { ...state, approvals: state.approvals.filter((request) => request.requestId !== event.requestId) }
+
+    case 'queue_updated':
+      return { ...state, queued: event.queued }
 
     default:
       return state
@@ -211,17 +221,23 @@ function appendDelta(
   messageId: string,
   kind: 'text' | 'thinking',
   delta: string,
+  at: number,
 ): TranscriptState {
   const streaming = state.streaming
   if (streaming === undefined || streaming.id !== messageId) return state
 
   const last = streaming.blocks[streaming.blocks.length - 1]
-  const blocks: ChatBlock[] =
-    last !== undefined && last.kind === kind
-      ? [...streaming.blocks.slice(0, -1), { kind, text: last.text + delta }]
-      : [...streaming.blocks, { kind, text: delta }]
+  if (last !== undefined && last.kind === kind) {
+    const grown: ChatBlock =
+      last.kind === 'thinking'
+        ? { ...last, text: last.text + delta, endedAt: at }
+        : { ...last, text: last.text + delta }
+    return { ...state, streaming: { ...streaming, blocks: [...streaming.blocks.slice(0, -1), grown] } }
+  }
 
-  return { ...state, streaming: { ...streaming, blocks } }
+  const fresh: ChatBlock =
+    kind === 'thinking' ? { kind, text: delta, startedAt: at, endedAt: at } : { kind, text: delta }
+  return { ...state, streaming: { ...streaming, blocks: [...streaming.blocks, fresh] } }
 }
 
 function finishStreaming(state: TranscriptState, interrupted: boolean): TranscriptState {

@@ -54,8 +54,8 @@ describe('reduceTranscript', () => {
   it('accumulates text deltas into the streaming message', () => {
     const state = reduce([
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Hel' }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'lo' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Hel', at: 30 }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'lo', at: 30 }),
     ])
     expect(streamingMessage(state)?.blocks).toEqual([{ kind: 'text', text: 'Hello' }])
   })
@@ -63,21 +63,32 @@ describe('reduceTranscript', () => {
   it('keeps thinking separate from the answer, in arrival order', () => {
     const state = reduce([
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: 'weighing' }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'answer' }),
-      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: ' more' }),
+      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: 'weighing', at: 30 }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'answer', at: 31 }),
+      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: ' more', at: 32 }),
     ])
     expect(streamingMessage(state)?.blocks).toEqual([
-      { kind: 'thinking', text: 'weighing' },
+      { kind: 'thinking', text: 'weighing', startedAt: 30, endedAt: 30 },
       { kind: 'text', text: 'answer' },
-      { kind: 'thinking', text: ' more' },
+      { kind: 'thinking', text: ' more', startedAt: 32, endedAt: 32 },
     ])
+  })
+
+  it('gives a thinking block the span from its first delta to its last', () => {
+    const state = reduce([
+      event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
+      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: 'weighing', at: 30 }),
+      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: ' it', at: 90 }),
+      event({ type: 'assistant_thinking_delta', messageId: 'a1', delta: ' up', at: 150 }),
+    ])
+    const block = streamingMessage(state)?.blocks[0]
+    expect(block).toMatchObject({ kind: 'thinking', startedAt: 30, endedAt: 150 })
   })
 
   it('ignores a delta whose message is not the one streaming', () => {
     const state = reduce([
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'other', delta: 'stray' }),
+      event({ type: 'assistant_text_delta', messageId: 'other', delta: 'stray', at: 30 }),
     ])
     expect(streamingMessage(state)?.blocks).toEqual([])
   })
@@ -85,7 +96,7 @@ describe('reduceTranscript', () => {
   it('moves the streaming message into the transcript when it finishes, exactly once', () => {
     const state = reduce([
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'done' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'done', at: 30 }),
       event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
       event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
     ])
@@ -97,7 +108,7 @@ describe('reduceTranscript', () => {
   it('marks an interrupted message as interrupted rather than complete', () => {
     const state = reduce([
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'half' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'half', at: 30 }),
       event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: true }),
     ])
     expect(state.messages[0].status).toBe('interrupted')
@@ -112,7 +123,7 @@ describe('reduceTranscript', () => {
     const state = reduce([
       event({ type: 'turn_started' }),
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'partial' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'partial', at: 30 }),
       event({ type: 'run_failed', message: 'the provider refused the key' }),
     ])
     expect(state.status).toBe('failed')
@@ -146,7 +157,7 @@ describe('streaming discipline', () => {
   const deltas = (count: number): RuntimeEvent[] => [
     event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
     ...Array.from({ length: count }, (_, index) =>
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: `w${index} ` }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: `w${index} `, at: 30 + index }),
     ),
   ]
 
@@ -172,7 +183,7 @@ describe('visibleMessages', () => {
     const state = reduce([
       event({ type: 'user_message', message: userMessage }),
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'streaming' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'streaming', at: 30 }),
     ])
     expect(visibleMessages(state).map((message) => message.role)).toEqual(['user', 'assistant'])
     expect(visibleMessages(state)[1].status).toBe('streaming')
@@ -196,7 +207,7 @@ describe('the tool ledger', () => {
     reduce([
       event({ type: 'user_message', message: userMessage }),
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Reading it.' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Reading it.', at: 30 }),
       event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
       started,
     ])
@@ -287,7 +298,7 @@ describe('the tool ledger', () => {
     return [
       event({ type: 'user_message', message: userMessage }),
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: createAt }),
-      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Reading it.' }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Reading it.', at: 30 }),
       event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
       started,
     ]

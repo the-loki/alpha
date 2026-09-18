@@ -17,6 +17,7 @@ import {
   type AgentHarnessTool,
   type AgentLane,
   BACKGROUND_CONTEXT,
+  type Entry,
   type HarnessEventType,
   type JsonlSessionMetadata,
   JsonlSessionRepo,
@@ -72,6 +73,7 @@ const SUBSCRIBED_EVENTS: HarnessEventType[] = [
   'tool_start',
   'tool_update',
   'tool_end',
+  'queue_update',
   'run_end',
   'fault',
 ]
@@ -155,6 +157,78 @@ export class ConversationRuntime {
     if (!result.ok) this.#emitFailure(result.error)
   }
 
+  /** A message for the running turn: it arrives now, and changes what the agent does next. */
+  async steer(text: string): Promise<void> {
+    const result = await this.#lane.steer(text, undefined, BACKGROUND_CONTEXT)
+    if (!result.ok) this.#emitFailure(result.error)
+  }
+
+  /** A message for after the running turn: it waits, and can be taken back until then. */
+  async followUp(text: string): Promise<void> {
+    const result = await this.#lane.followUp(text, undefined, BACKGROUND_CONTEXT)
+    if (!result.ok) this.#emitFailure(result.error)
+  }
+
+  async cancelQueued(entryId: string): Promise<void> {
+    const result = await this.#lane.cancelQueued(entryId, BACKGROUND_CONTEXT)
+    if (!result.ok) this.#emitFailure(result.error)
+  }
+
+  /**
+   * Answers the last user message again. The transcript's tip moves back to just before it, so
+   * the answer that is being replaced leaves the conversation's path rather than being appended to.
+   */
+  async regenerate(): Promise<boolean> {
+    const users = (await this.#tipPath()).filter((entry) => entry.type === 'message' && entry.message.role === 'user')
+    const last = users.at(-1)
+    if (last === undefined) return false
+    const text = last.type === 'message' && last.message.role === 'user' ? textOfMessage(last.message) : ''
+    if (text === '') return false
+
+    const before = await this.#navigateBefore(last.id)
+    if (!before) return false
+    await this.#lane.prompt(text, undefined, BACKGROUND_CONTEXT)
+    return true
+  }
+
+  /**
+   * Replaces an earlier user message. `truncate` continues this conversation from the edit;
+   * `fork` is the manager's job, because it needs a conversation of its own.
+   */
+  async resend(userMessageIndex: number, text: string): Promise<boolean> {
+    const entry = await this.#userEntry(userMessageIndex)
+    if (entry === undefined) return false
+    if (!(await this.#navigateBefore(entry.id))) return false
+    await this.#lane.prompt(text, undefined, BACKGROUND_CONTEXT)
+    return true
+  }
+
+  /** The id of the nth user message, so the manager can fork at it. */
+  async userEntryId(userMessageIndex: number): Promise<string | undefined> {
+    const entry = await this.#userEntry(userMessageIndex)
+    return entry?.id
+  }
+
+  async sessionMetadata(): Promise<JsonlSessionMetadata> {
+    return this.#session.metadata
+  }
+
+  /** Moves the tip to the entry before the given one, or to the root when it is the first. */
+  async #navigateBefore(entryId: string): Promise<boolean> {
+    const ordered = await this.#tipPath()
+    const index = ordered.findIndex((entry) => entry.id === entryId)
+    if (index === -1) return false
+    const target = index === 0 ? null : ordered[index - 1].id
+    const result = await this.#lane.navigateTree(target, undefined, BACKGROUND_CONTEXT)
+    if (!result.ok) this.#emitFailure(result.error)
+    return result.ok
+  }
+
+  async #userEntry(index: number): Promise<Entry | undefined> {
+    const users = (await this.#tipPath()).filter((entry) => entry.type === 'message' && entry.message.role === 'user')
+    return users[index]
+  }
+
   async close(): Promise<void> {
     await this.#harness.close(BACKGROUND_CONTEXT)
   }
@@ -168,15 +242,51 @@ export class ConversationRuntime {
     await this.#lane.setThinkingLevel(level, BACKGROUND_CONTEXT)
   }
 
-  /** The conversation as it stands on disk, for a window that just opened it. */
+  /**
+   * The conversation as it stands on disk, for a window that just opened it. It is the path from
+   * the branch tip, not the whole log: answering a message again moves the tip, and the answers it
+   * left behind are then history rather than transcript.
+   */
   async transcript(): Promise<ChatMessage[]> {
-    return entriesToMessages(await this.#session.findEntries(undefined, BACKGROUND_CONTEXT))
+    return entriesToMessages(await this.#tipPath())
+  }
+
+  async #tipPath(): Promise<Entry[]> {
+    return tipPathOf(this.#session)
   }
 
   #emitFailure(error: unknown): void {
     const message = error instanceof Error ? error.message : String(error)
     this.#emit({ conversationId: this.#session.metadata.id, type: 'run_failed', message })
   }
+}
+
+/**
+ * The conversation's path: from the branch's tip back to its root, in order. The session's entry
+ * list is the whole log, including answers that a later edit replaced — those are history, not
+ * transcript, and this is the difference the transcript is built from.
+ */
+async function tipPathOf(session: Session<JsonlSessionMetadata>): Promise<Entry[]> {
+  const branch = await session.branch('main', BACKGROUND_CONTEXT)
+  if (branch === undefined) return []
+  const tip = await branch.getTipId(BACKGROUND_CONTEXT)
+  if (tip === null) return []
+  return branch.findEntries({ start: tip, order: 'oldestFirst' }, BACKGROUND_CONTEXT)
+}
+
+/** The text of a user message entry, which is what a resend or a fork has to carry. */
+export function textOfMessage(message: { content: unknown }): string {
+  const content = message.content
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content
+    .map((part) =>
+      typeof part === 'object' && part !== null && (part as { type?: string }).type === 'text'
+        ? String((part as { text?: unknown }).text ?? '')
+        : '',
+    )
+    .filter((text) => text !== '')
+    .join('\n')
 }
 
 /** The transcript of a conversation that is not open, read straight from its session. */
@@ -193,9 +303,9 @@ export async function readTranscript(options: {
     sessionsRoot: options.sessionsRoot,
   })
   const session = await repo.open(metadata, BACKGROUND_CONTEXT)
-  const messages = entriesToMessages(await session.findEntries(undefined, BACKGROUND_CONTEXT))
+  const entries = await tipPathOf(session)
   await session.close(BACKGROUND_CONTEXT)
-  return messages
+  return entriesToMessages(entries)
 }
 
 /** Finds the session a conversation is stored in, so it can be reopened after a restart. */

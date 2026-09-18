@@ -8,6 +8,7 @@ import {
   type ApprovalAnswerInput,
   type ConversationSummary,
   type CustomProviderInput,
+  type EditEffect,
   IPC,
   type LaunchState,
   type OpenedConversation,
@@ -63,6 +64,14 @@ const bridge: AlphaBridge = {
     ipcRenderer.invoke(IPC.setConversationModel, id, providerId, modelId) as Promise<ConversationSummary>,
   setThinkingLevel: (id: string, level: ThinkingLevel) =>
     ipcRenderer.invoke(IPC.setThinkingLevel, id, level) as Promise<ConversationSummary>,
+  steer: (conversationId: string, text: string) => ipcRenderer.invoke(IPC.steer, conversationId, text) as Promise<void>,
+  queueMessage: (conversationId: string, text: string) =>
+    ipcRenderer.invoke(IPC.queueMessage, conversationId, text) as Promise<void>,
+  cancelQueued: (conversationId: string, entryId: string) =>
+    ipcRenderer.invoke(IPC.cancelQueued, conversationId, entryId) as Promise<void>,
+  regenerate: (conversationId: string) => ipcRenderer.invoke(IPC.regenerate, conversationId) as Promise<void>,
+  editMessage: (conversationId: string, userMessageIndex: number, text: string, effect: EditEffect) =>
+    ipcRenderer.invoke(IPC.editMessage, conversationId, userMessageIndex, text, effect) as Promise<OpenedConversation>,
   permissionRules: () => ipcRenderer.invoke(IPC.permissionRules) as Promise<PermissionRule[]>,
   revokePermissionRule: (ruleId: string) =>
     ipcRenderer.invoke(IPC.revokePermissionRule, ruleId) as Promise<PermissionRule[]>,

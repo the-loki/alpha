@@ -20,6 +20,9 @@ export interface ChatBlockText {
 export interface ChatBlockThinking {
   kind: 'thinking'
   text: string
+  /** When the first thinking delta arrived, and when the last one did: the block's own span. */
+  startedAt?: number
+  endedAt?: number
 }
 
 export interface ToolDetails {
@@ -99,6 +102,13 @@ export interface ChatMessage {
   error?: string
 }
 
+/** A message the user queued behind the running turn, waiting its turn. */
+export interface QueuedMessage {
+  entryId: string
+  text: string
+  kind: 'steer' | 'followUp'
+}
+
 export interface ConversationModel {
   providerId: string
   modelId: string
@@ -122,8 +132,8 @@ export type RuntimeEvent =
   | { conversationId: string; type: 'turn_started' }
   | { conversationId: string; type: 'user_message'; message: ChatMessage }
   | { conversationId: string; type: 'assistant_message_started'; messageId: string; createdAt: number }
-  | { conversationId: string; type: 'assistant_text_delta'; messageId: string; delta: string }
-  | { conversationId: string; type: 'assistant_thinking_delta'; messageId: string; delta: string }
+  | { conversationId: string; type: 'assistant_text_delta'; messageId: string; delta: string; at: number }
+  | { conversationId: string; type: 'assistant_thinking_delta'; messageId: string; delta: string; at: number }
   | { conversationId: string; type: 'assistant_message_finished'; messageId: string; interrupted: boolean }
   | { conversationId: string; type: 'turn_finished' }
   | {
@@ -158,4 +168,7 @@ export type RuntimeEvent =
       scope?: RuleScope
       reason?: string
     }
+  | { conversationId: string; type: 'queue_updated'; queued: QueuedMessage[] }
+  /** The conversation's path changed under it: an answer was replaced, so the list is replaced too. */
+  | { conversationId: string; type: 'transcript_replaced'; messages: ChatMessage[] }
   | { conversationId: string; type: 'run_failed'; message: string }

@@ -1,22 +1,76 @@
-import type { ChatMessage } from '@alpha/core'
-import { memo } from 'react'
+import type { ChatBlockThinking, ChatMessage } from '@alpha/core'
+import { memo, useState } from 'react'
+import { useConversations } from '../stores/conversations.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
-function ThinkingBlock({ text }: { text: string }) {
+/** How long thinking took, from the first of its deltas to the last. */
+export function thinkingDuration(block: ChatBlockThinking): string {
+  if (block.startedAt === undefined || block.endedAt === undefined) return ''
+  const seconds = Math.max(0, (block.endedAt - block.startedAt) / 1000)
+  return seconds < 1 ? `${Math.round(seconds * 1000)}ms` : `${seconds.toFixed(1)}s`
+}
+
+function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
+  const elapsed = thinkingDuration(block)
   return (
     <details className="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
       <summary className="cursor-pointer list-none font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
-        Thinking
+        Thinking{elapsed === '' ? '' : ` · ${elapsed}`}
       </summary>
-      <p className="mt-2 whitespace-pre-wrap font-mono text-[12.5px] leading-[1.6] text-parchment-dim">{text}</p>
+      <p className="mt-2 whitespace-pre-wrap font-mono text-[12.5px] leading-[1.6] text-parchment-dim">{block.text}</p>
     </details>
+  )
+}
+
+/**
+ * Editing a message that has already been answered is a decision about the transcript, so both
+ * outcomes are named here rather than one of them being the silent default.
+ */
+function EditBox({ message, index }: { message: ChatMessage; index: number }) {
+  const editMessage = useConversations((state) => state.editMessage)
+  const [text, setText] = useState(message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n'))
+
+  return (
+    <div className="w-[75%] rounded-card border border-amber/40 bg-ink-800 p-3">
+      <textarea
+        rows={3}
+        value={text}
+        aria-label="Edit the message"
+        onChange={(event) => setText(event.target.value)}
+        className="block w-full resize-none rounded-control border border-line bg-ink-900 px-2.5 py-2 text-[14px] leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void editMessage(index, text, 'replace')}
+          className="rounded-control bg-ember px-3 py-1 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+        >
+          Resend, replacing what followed
+        </button>
+        <button
+          type="button"
+          onClick={() => void editMessage(index, text, 'fork')}
+          className="rounded-control border border-line px-3 py-1 text-[12px] text-parchment transition-colors hover:bg-ink-700"
+        >
+          Fork into a new conversation
+        </button>
+      </div>
+      <p className="mt-1.5 text-[11px] text-parchment-faint">
+        Replacing drops the messages after this one. Forking copies them to a new conversation and leaves this one
+        alone.
+      </p>
+    </div>
   )
 }
 
 function StatusNote({ message }: { message: ChatMessage }) {
   if (message.status === 'interrupted') {
-    return <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-amber">Interrupted</p>
+    return (
+      <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-amber">
+        Stopped — what arrived before the stop is kept
+      </p>
+    )
   }
   if (message.status === 'failed') {
     return (
@@ -28,16 +82,33 @@ function StatusNote({ message }: { message: ChatMessage }) {
   return null
 }
 
-export const MessageView = memo(function MessageView({ message }: { message: ChatMessage }) {
+export const MessageView = memo(function MessageView({ message, index }: { message: ChatMessage; index: number }) {
+  const regenerate = useConversations((state) => state.regenerate)
+  const running = useConversations((state) => state.transcript.status === 'running')
+  const [editing, setEditing] = useState(false)
+
   if (message.role === 'user') {
     return (
-      <article className="flex justify-end" data-role="user">
-        <div className="max-w-[75%] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
-          {message.blocks
-            .filter((block) => block.kind !== 'tool')
-            .map((block) => block.text)
-            .join('\n')}
-        </div>
+      <article className="group flex flex-col items-end gap-1.5" data-role="user">
+        {editing ? (
+          <EditBox message={message} index={index} />
+        ) : (
+          <div className="max-w-[75%] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
+            {message.blocks
+              .filter((block) => block.kind !== 'tool')
+              .map((block) => block.text)
+              .join('\n')}
+          </div>
+        )}
+        {!editing && !running && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="font-mono text-[11px] text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+          >
+            Edit
+          </button>
+        )}
       </article>
     )
   }
@@ -50,7 +121,7 @@ export const MessageView = memo(function MessageView({ message }: { message: Cha
         // Blocks are append-only within a message, so the position is the identity: two text
         // blocks with the same text are still two blocks.
         const key = `${message.id}-${index}`
-        if (block.kind === 'thinking') return <ThinkingBlock key={key} text={block.text} />
+        if (block.kind === 'thinking') return <ThinkingBlock key={key} block={block} />
         if (block.kind === 'tool') return <ToolRow key={block.callId} block={block} />
         return (
           <div key={key} className="relative">
@@ -61,6 +132,15 @@ export const MessageView = memo(function MessageView({ message }: { message: Cha
       })}
       {streaming && message.blocks.length === 0 && <span className="ember-cursor" aria-hidden="true" />}
       <StatusNote message={message} />
+      {!streaming && !running && (
+        <button
+          type="button"
+          onClick={() => void regenerate()}
+          className="mt-1.5 self-start font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
+        >
+          Regenerate
+        </button>
+      )}
     </article>
   )
 })

@@ -2,6 +2,7 @@ import {
   type ApprovalAnswerInput,
   type ChatMessage,
   type ConversationSummary,
+  type EditEffect,
   emptyTranscript,
   type RuntimeEvent,
   reduceTranscript,
@@ -27,6 +28,13 @@ export interface ConversationStore {
   setThinkingLevel: (level: ThinkingLevel) => Promise<void>
   /** The answer a card was clicked with, on its way to the gate that is waiting for it. */
   answerApproval: (answer: Omit<ApprovalAnswerInput, 'conversationId'>) => Promise<void>
+  /** A message for the running turn, or one queued behind it. */
+  steer: (text: string) => Promise<void>
+  queueMessage: (text: string) => Promise<void>
+  cancelQueued: (entryId: string) => Promise<void>
+  stop: () => Promise<void>
+  regenerate: () => Promise<void>
+  editMessage: (userMessageIndex: number, text: string, effect: EditEffect) => Promise<void>
   /** Bumped when a card is answered, so the composer can take the focus back. */
   composerFocus: number
 }
@@ -124,6 +132,47 @@ export const useConversations = create<ConversationStore>((set, get) => ({
         conversationId: id,
         type: 'conversation_updated',
         conversation,
+      }),
+    })
+  },
+
+  steer: async (text) => {
+    const id = get().activeId
+    if (id !== '') await bridge().steer(id, text)
+  },
+
+  queueMessage: async (text) => {
+    const id = get().activeId
+    if (id !== '') await bridge().queueMessage(id, text)
+  },
+
+  cancelQueued: async (entryId) => {
+    const id = get().activeId
+    if (id !== '') await bridge().cancelQueued(id, entryId)
+  },
+
+  stop: async () => {
+    const id = get().activeId
+    if (id !== '') await bridge().abortRun(id)
+  },
+
+  regenerate: async () => {
+    const id = get().activeId
+    if (id !== '') await bridge().regenerate(id)
+  },
+
+  editMessage: async (userMessageIndex, text, effect) => {
+    const id = get().activeId
+    if (id === '') return
+    const opened = await bridge().editMessage(id, userMessageIndex, text, effect)
+    set({
+      list: listWithUpdated(get().list, opened.conversation),
+      activeId: opened.conversation.id,
+      transcript: reduceTranscript(emptyTranscript(opened.conversation.id), {
+        conversationId: opened.conversation.id,
+        type: 'conversation_opened',
+        conversation: opened.conversation,
+        messages: opened.messages,
       }),
     })
   },

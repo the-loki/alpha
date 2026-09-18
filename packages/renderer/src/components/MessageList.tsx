@@ -3,6 +3,10 @@ import { useEffect, useRef } from 'react'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { MessageView } from './MessageView.tsx'
 
+/** Which user message this is, counting from the top, which is how an edit names its target. */
+const userIndex = (messages: { role: string }[], index: number): number =>
+  messages.slice(0, index + 1).filter((message) => message.role === 'user').length - 1
+
 /**
  * The transcript. It sticks to the bottom while the reader is already there, and stops sticking
  * the moment they scroll up: reading back through a long answer should not be yanked away by the
@@ -34,8 +38,8 @@ export function MessageList({ transcript }: { transcript: TranscriptState }) {
       className="min-h-0 flex-1 overflow-y-auto"
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-8 py-6">
-        {messages.map((message) => (
-          <MessageView key={message.id} message={message} />
+        {messages.map((message, index) => (
+          <MessageView key={message.id} message={message} index={userIndex(messages, index)} />
         ))}
         {transcript.approvals.map((request) => (
           <ApprovalCard key={request.requestId} request={request} />

@@ -14,6 +14,7 @@ import {
   fauxAssistantMessage,
   fauxProvider,
   fauxText,
+  fauxThinking,
   fauxToolCall,
   type Model,
   type MutableModels,
@@ -34,6 +35,8 @@ export interface ModelRuntime {
  */
 export interface ScriptedReply {
   text?: string
+  /** What the model thought before answering, when a test wants a thinking block to render. */
+  thinking?: string
   tool?: { name: string; args: Record<string, unknown> }
 }
 
@@ -60,7 +63,14 @@ export function resolveModelRuntime(
 
   if (env.ALPHA_FAUX === '1') {
     const replies = readScriptedReplies(env.ALPHA_FAUX_REPLIES)
-    const faux = fauxProvider({ provider: 'faux', models: [{ id: 'scripted', name: 'Scripted' }] })
+    const faux = fauxProvider({
+      provider: 'faux',
+      models: [{ id: 'scripted', name: 'Scripted', reasoning: true }],
+      // A scripted reply is normally as fast as the microtask queue; a test that wants to interrupt
+      // one mid-flight slows it down here instead of racing it.
+      ...(readTokenRate(env) === undefined ? {} : { tokensPerSecond: readTokenRate(env) }),
+      ...(readTokenSize(env) === undefined ? {} : { tokenSize: { min: readTokenSize(env), max: readTokenSize(env) } }),
+    })
     // The faux provider hands out one queued step per call and errors when the queue runs dry,
     // so each reply re-arms the queue for the call after it. The script outlives the list by
     // repeating its last entry, which is what a test wants: turn two of a two-reply script is
@@ -116,6 +126,18 @@ export function resolveModelRuntime(
   return { models, defaultModel: model, kind: 'configured' }
 }
 
+/** How many characters arrive at a time, when a test wants a stream it can interrupt between pieces. */
+function readTokenSize(env: NodeJS.ProcessEnv): number | undefined {
+  const requested = Number(env.ALPHA_FAUX_TOKEN_SIZE ?? '')
+  return Number.isFinite(requested) && requested > 0 ? requested : undefined
+}
+
+/** How fast the scripted model streams, in tokens per second, when a test asks for a slow one. */
+function readTokenRate(env: NodeJS.ProcessEnv): number | undefined {
+  const requested = Number(env.ALPHA_FAUX_TOKENS_PER_SECOND ?? '')
+  return Number.isFinite(requested) && requested > 0 ? requested : undefined
+}
+
 /** Which wire protocol the configured endpoint speaks. */
 function readApi(requested: string | undefined): 'openai-completions' | 'anthropic-messages' {
   return requested === 'anthropic-messages' ? 'anthropic-messages' : 'openai-completions'
@@ -123,6 +145,7 @@ function readApi(requested: string | undefined): 'openai-completions' | 'anthrop
 
 function scriptedMessage(reply: ScriptedReply): ReturnType<typeof fauxAssistantMessage> {
   const content = [
+    ...(reply.thinking === undefined ? [] : [fauxThinking(reply.thinking)]),
     ...(reply.text === undefined ? [] : [fauxText(reply.text)]),
     ...(reply.tool === undefined ? [] : [fauxToolCall(reply.tool.name, reply.tool.args)]),
   ]
@@ -154,5 +177,5 @@ function isScriptedReply(item: unknown): item is ScriptedReply {
     record.tool !== null &&
     typeof (record.tool as { name?: unknown }).name === 'string' &&
     typeof (record.tool as { args?: unknown }).args === 'object'
-  return typeof record.text === 'string' || hasTool
+  return typeof record.text === 'string' || typeof record.thinking === 'string' || hasTool
 }

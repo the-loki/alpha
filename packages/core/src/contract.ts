@@ -44,6 +44,11 @@ export const IPC = {
   testProvider: 'alpha:test-provider',
   setConversationModel: 'alpha:set-conversation-model',
   setThinkingLevel: 'alpha:set-thinking-level',
+  steer: 'alpha:steer',
+  queueMessage: 'alpha:queue-message',
+  cancelQueued: 'alpha:cancel-queued',
+  regenerate: 'alpha:regenerate',
+  editMessage: 'alpha:edit-message',
   permissionRules: 'alpha:permission-rules',
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
@@ -84,6 +89,9 @@ export const WINDOW_COMMAND_CHANNELS = {
   'toggle-maximize': IPC.windowToggleMaximize,
   close: IPC.windowClose,
 } as const
+
+/** Editing an answered message has to decide what happens to what followed it. */
+export type EditEffect = 'replace' | 'fork'
 
 export interface OpenedConversation {
   conversation: ConversationSummary
@@ -132,6 +140,18 @@ export interface AlphaBridge {
   testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
   setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary>
   setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary>
+  /** A message for the running turn, or one queued behind it. */
+  steer(conversationId: string, text: string): Promise<void>
+  queueMessage(conversationId: string, text: string): Promise<void>
+  cancelQueued(conversationId: string, entryId: string): Promise<void>
+  regenerate(conversationId: string): Promise<void>
+  /** What to do with the messages that came after the one being edited. */
+  editMessage(
+    conversationId: string,
+    userMessageIndex: number,
+    text: string,
+    effect: EditEffect,
+  ): Promise<OpenedConversation>
   permissionRules(): Promise<PermissionRule[]>
   revokePermissionRule(ruleId: string): Promise<PermissionRule[]>
   /** The one thing the renderer says about a card: the answer, and its scope when it is remembered. */

@@ -146,6 +146,30 @@ function registerConversationHandlers({ runtime }: IpcContext): void {
     ),
   )
 
+  ipcMain.handle(IPC.steer, async (_event, id: unknown, text: unknown) => {
+    await runtime.steer(requireString(id, 'conversationId'), requireString(text, 'text'))
+  })
+
+  ipcMain.handle(IPC.queueMessage, async (_event, id: unknown, text: unknown) => {
+    await runtime.queueMessage(requireString(id, 'conversationId'), requireString(text, 'text'))
+  })
+
+  ipcMain.handle(IPC.cancelQueued, async (_event, id: unknown, entryId: unknown) => {
+    await runtime.cancelQueued(requireString(id, 'conversationId'), requireString(entryId, 'entryId'))
+  })
+
+  ipcMain.handle(IPC.regenerate, async (_event, id: unknown) => {
+    await runtime.regenerate(requireString(id, 'conversationId'))
+  })
+
+  ipcMain.handle(IPC.editMessage, async (_event, id: unknown, index: unknown, text: unknown, effect: unknown) => {
+    if (effect !== 'replace' && effect !== 'fork') throw new Error('effect must be replace or fork')
+    if (typeof index !== 'number' || !Number.isInteger(index) || index < 0) {
+      throw new Error('userMessageIndex must be a whole number')
+    }
+    return runtime.editMessage(requireString(id, 'conversationId'), index, requireString(text, 'text'), effect)
+  })
+
   ipcMain.handle(IPC.setThinkingLevel, async (_event, id: unknown, level: unknown) => {
     const conversationId = requireString(id, 'conversationId')
     if (!isThinkingLevel(level)) throw new Error('level must be a thinking level')
