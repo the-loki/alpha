@@ -81,6 +81,10 @@ test('the answer is visibly still arriving, with a caret at its end', async () =
   // moment before the first token, when there is nothing but a caret.
   await expect(window.getByRole('main')).toContainText('Two files', { timeout: 20_000 })
   await expect(caret).toBeVisible()
+  // It sits in the paragraph that is still being written, right after the last character, rather
+  // than on a line of its own below the text.
+  const caretIsInline = await caret.evaluate((element) => element.parentElement?.tagName === 'P')
+  expect(caretIsInline).toBe(true)
   await expect(window.getByRole('button', { name: 'Regenerate' })).toHaveCount(0)
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-streamed.png') })
 

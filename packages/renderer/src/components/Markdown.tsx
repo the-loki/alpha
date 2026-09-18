@@ -6,13 +6,24 @@ import remarkGfm from 'remark-gfm'
  * Message text renders as markdown, built from React elements rather than injected HTML, so a
  * model that writes a script tag gets a script tag printed rather than a script tag run.
  */
-export const Markdown = memo(function Markdown({ text }: { text: string }) {
+export const Markdown = memo(function Markdown({ text, caret = false }: { text: string; caret?: boolean }) {
+  // The caret goes inside the paragraph that is still arriving, at the end of the last character:
+  // as a sibling after the block it would sit on a line of its own and read as a stray bar.
+  const endsHere = (end: number | undefined): boolean => caret && end !== undefined && end >= text.trimEnd().length
+
   return (
     <div className="max-w-[68ch] text-[15px] leading-[1.65] text-parchment">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: (props) => <p className="mb-3 last:mb-0 whitespace-pre-wrap" {...props} />,
+          p: (props) => (
+            <p className="mb-3 last:mb-0 whitespace-pre-wrap" {...props}>
+              {props.children}
+              {endsHere(props.node?.position?.end.offset) && (
+                <span className="ember-cursor ml-0.5" aria-hidden="true" />
+              )}
+            </p>
+          ),
           h1: (props) => <h1 className="mb-2 mt-4 text-[17px] font-semibold" {...props} />,
           h2: (props) => <h2 className="mb-2 mt-4 text-[16px] font-semibold" {...props} />,
           h3: (props) => <h3 className="mb-1.5 mt-3 text-[15px] font-semibold" {...props} />,

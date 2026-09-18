@@ -145,8 +145,7 @@ export const MessageView = memo(function MessageView({
         if (block.kind === 'compaction') return <CompactionMarker key={key} block={block} />
         return (
           <div key={key} className="relative">
-            <Markdown text={block.text} />
-            {streaming && isLast && <span className="ember-cursor ml-0.5" aria-hidden="true" />}
+            <Markdown text={block.text} caret={streaming && isLast} />
           </div>
         )
       })}
