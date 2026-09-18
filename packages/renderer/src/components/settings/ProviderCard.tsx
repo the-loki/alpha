@@ -1,4 +1,4 @@
-import type { ProviderView } from '@alpha/core'
+import type { ProviderModelDefinition, ProviderView } from '@alpha/core'
 import { useEffect, useState } from 'react'
 import { type ProviderTestOutcome, useProviders } from '../../stores/providers.ts'
 
@@ -13,11 +13,12 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
   const test = useProviders((state) => state.test)
   const [secret, setSecret] = useState('')
   const [outcome, setOutcome] = useState<ProviderTestOutcome | undefined>(undefined)
-  const [firstModel, setFirstModel] = useState('')
+  const [models, setModels] = useState<ProviderModelDefinition[]>([])
 
   useEffect(() => {
-    void loadModels(provider.id).then((models) => setFirstModel(models[0]?.id ?? ''))
+    void loadModels(provider.id).then(setModels)
   }, [provider.id, loadModels])
+  const firstModel = models[0]?.id ?? ''
 
   return (
     <li className="rounded-card border border-line bg-ink-800 p-3">
@@ -30,6 +31,17 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           {provider.hasCredential ? 'key stored' : 'no key'}
         </span>
       </div>
+
+      {/* What a stored key unlocks. Choosing one happens in the conversation header, so this
+          line is the answer to "did my key work?", not a picker. */}
+      {models.length > 0 && (
+        <p
+          className="mt-1.5 truncate font-mono text-[11px] text-parchment-faint"
+          title={models.map((m) => m.id).join(', ')}
+        >
+          {models.length} model{models.length === 1 ? '' : 's'} · {models.map((m) => m.id).join(', ')}
+        </p>
+      )}
 
       <div className="mt-2.5 flex gap-2">
         <input

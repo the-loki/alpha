@@ -100,6 +100,20 @@ test('a renamed conversation keeps its name across a relaunch', async () => {
   await second.app.close()
 })
 
+test('the header names the conversation the sidebar names', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'rename the parser module')
+  await expect(window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
+
+  // The first message names the conversation: the pane and the sidebar must agree on the name,
+  // rather than the pane keeping the folder name it opened with.
+  await expect(window.getByRole('main').getByRole('heading')).toContainText('rename the parser module')
+  await expect(
+    window.getByRole('complementary').getByRole('button', { name: /^rename the parser module/ }),
+  ).toBeVisible()
+  await app.close()
+})
+
 test('a relaunch comes back to the conversation that was open', async () => {
   const first = await launch()
   await ask(first.window, 'what did we decide')

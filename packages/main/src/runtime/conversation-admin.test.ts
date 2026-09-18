@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { groupByWorkspace } from '@alpha/core'
+import { groupByWorkspace, type RuntimeEvent } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'
 import { ProviderStore } from '../providers/store.ts'
@@ -135,6 +135,56 @@ describe('[runtime] the conversation that was open', () => {
     expect(new StateStore(dataDirectory).read().lastConversationId).toBe(created.conversation.id)
   })
 })
+
+describe('[runtime] the reason a tool call ran', () => {
+  it('is still in the ledger after a relaunch, and goes when the conversation does', async () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
+    const events: RuntimeEvent[] = []
+    const manager = new RuntimeManager({
+      dataDirectory,
+      sessionsRoot: join(dataDirectory, 'sessions'),
+      providers: new ProviderStore(dataDirectory, new CredentialVault(dataDirectory, testCipher)),
+      store: new StateStore(dataDirectory),
+      env: {
+        ALPHA_FAUX: '1',
+        ALPHA_FAUX_REPLIES: JSON.stringify([
+          { tool: { name: 'write', args: { path: 'notes.txt', content: 'written' } } },
+          'Written.',
+        ]),
+      },
+      emit: (event) => events.push(event),
+      emitRules: () => undefined,
+    })
+
+    // Level ask: the write has to go past the gate, and the answer is what gets remembered.
+    const created = await manager.create(workspace)
+    const running = manager.prompt(created.conversation.id, 'write the file')
+    manager.answerApproval(created.conversation.id, await waitForApproval(events), { decision: 'once' })
+    await running
+    await manager.closeAll()
+
+    const reopened = freshManagerAt(dataDirectory, workspace)
+    const opened = await reopened.open(created.conversation.id)
+    const tool = opened.messages.flatMap((message) => message.blocks).find((block) => block.kind === 'tool')
+    expect(tool?.kind === 'tool' ? tool.approval : undefined).toEqual({ kind: 'once', level: 'ask' })
+    await reopened.closeAll()
+
+    // The note is part of the conversation: deleting it deletes the file too.
+    await manager.remove(created.conversation.id)
+    expect(existsSync(join(dataDirectory, 'decisions', `${created.conversation.id}.json`))).toBe(false)
+  })
+})
+
+/** The window learns about the card from the events, so the test does the same. */
+async function waitForApproval(events: RuntimeEvent[]): Promise<string> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const request = events.find((event) => event.type === 'approval_requested')
+    if (request?.type === 'approval_requested') return request.request.requestId
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+  throw new Error('no approval was asked for')
+}
 
 describe('[runtime] exporting a conversation', () => {
   it('writes the markdown beside the workspace and reports where it went', async () => {

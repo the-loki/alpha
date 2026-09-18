@@ -9,7 +9,7 @@ const REPLY = 'Two files use that name. I can rename both.'
 
 /** A fresh install pointed at a real folder, with the model scripted rather than dialled. */
 async function launch(
-  options: { dataDirectory?: string; replies?: string[]; workspace?: string; faux?: boolean } = {},
+  options: { dataDirectory?: string; replies?: string[]; workspace?: string; faux?: boolean; slow?: boolean } = {},
 ) {
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
@@ -34,6 +34,8 @@ async function launch(
       ...(options.faux === false
         ? {}
         : { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]) }),
+      // slow: a stream a test can catch mid-answer, for the frames that are about streaming.
+      ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '20', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
       NODE_ENV: 'production',
     },
   })
@@ -54,14 +56,31 @@ test('a message streams a reply into the transcript', async () => {
 
   await ask(window, 'rename the parser module')
 
-  await expect(window.getByRole('main').getByText('rename the parser module')).toBeVisible()
+  // The header takes the question as the conversation's name, so the bubble is what is asserted.
+  await expect(window.getByRole('main').locator('[data-role="user"]')).toContainText('rename the parser module')
   await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 15_000 })
   // The turn is over when the composer stops saying the agent is working, and it has cleared
   // itself, so Send is disabled again for the next message.
   await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible()
   await expect(window.getByRole('button', { name: 'Send' })).toBeDisabled()
 
+  await window.screenshot({ path: join(SHOT_DIR, 'conversation-settled.png') })
+  await app.close()
+})
+
+test('the answer is visibly still arriving, with a caret at its end', async () => {
+  const { app, window } = await launch({ slow: true })
+  await window.setViewportSize({ width: 1440, height: 900 })
+  await ask(window, 'rename the parser module')
+
+  // The caret is the state: while it is there the answer is still arriving, and the actions
+  // that only make sense on a finished answer are not offered yet.
+  const caret = window.getByRole('main').locator('.ember-cursor')
+  await expect(caret).toBeVisible({ timeout: 20_000 })
+  await expect(window.getByRole('button', { name: 'Regenerate' })).toHaveCount(0)
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-streamed.png') })
+
+  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 30_000 })
   await app.close()
 })
 

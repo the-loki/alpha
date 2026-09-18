@@ -4,36 +4,48 @@
  * for live events.
  */
 
-import { type ChatBlock, type ChatBlockTool, type ChatMessage, textOfContent, toolRiskOf } from '@alpha/core'
+import {
+  type ApprovalRecord,
+  type ChatBlock,
+  type ChatBlockTool,
+  type ChatMessage,
+  textOfContent,
+  toolRiskOf,
+} from '@alpha/core'
 import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
-const blocksOf = (content: unknown[], timestamp: number): ChatBlock[] => {
+/** How each call got past the gate, by call id: the part of the ledger pi's session does not hold. */
+export type DecisionLookup = Map<string, ApprovalRecord>
+
+const blocksOf = (content: unknown[], timestamp: number, decisions: DecisionLookup): ChatBlock[] => {
   const blocks: ChatBlock[] = []
   for (const part of content) {
     if (typeof part !== 'object' || part === null || !('type' in part)) continue
     const typed = part as { type: string; text?: unknown }
     if (typed.type === 'text' && typeof typed.text === 'string') blocks.push({ kind: 'text', text: typed.text })
     if (typed.type === 'thinking' && typeof typed.text === 'string') blocks.push({ kind: 'thinking', text: typed.text })
-    if (typed.type === 'toolCall') blocks.push(toolBlockOf(part, timestamp))
+    if (typed.type === 'toolCall') blocks.push(toolBlockOf(part, timestamp, decisions))
   }
   return blocks
 }
 
 /** A call that was persisted starts as running; its result entry, later in the log, finishes it. */
-function toolBlockOf(part: unknown, timestamp: number): ChatBlockTool {
+function toolBlockOf(part: unknown, timestamp: number, decisions: DecisionLookup): ChatBlockTool {
   const call = part as { id?: unknown; name?: unknown; arguments?: unknown }
   const name = typeof call.name === 'string' ? call.name : 'tool'
   const args = call.arguments ?? {}
+  const callId = typeof call.id === 'string' ? call.id : `${name}-${timestamp}`
   return {
     kind: 'tool',
-    callId: typeof call.id === 'string' ? call.id : `${name}-${timestamp}`,
+    callId,
     name,
     risk: toolRiskOf(name),
     summary: summarizeToolCall(name, args),
     raw: JSON.stringify(args),
     status: 'running',
     output: '',
+    approval: decisions.get(callId),
     startedAt: timestamp,
   }
 }
@@ -64,7 +76,7 @@ interface ToolResultContent {
   timestamp: number
 }
 
-export function entriesToMessages(entries: Entry[]): ChatMessage[] {
+export function entriesToMessages(entries: Entry[], decisions: DecisionLookup = new Map()): ChatMessage[] {
   const messages: ChatMessage[] = []
   // The session makes no promise about the order it hands entries back in, and the transcript's
   // order is the whole point, so the sequence number decides it.
@@ -97,7 +109,7 @@ export function entriesToMessages(entries: Entry[]): ChatMessage[] {
       messages.push({
         id: entry.id,
         role: 'assistant',
-        blocks: blocksOf(message.content, entry.timestamp),
+        blocks: blocksOf(message.content, entry.timestamp, decisions),
         createdAt: entry.timestamp,
         status: failed ? 'failed' : interrupted ? 'interrupted' : 'complete',
       })

@@ -90,6 +90,25 @@ test('in ask the card shows the change, and Allow once runs it', async () => {
   await app.close()
 })
 
+test('the row still says who allowed it after a relaunch', async () => {
+  const first = await launch()
+  await ask(first.window, 'write the file')
+  await expect(card(first.window)).toBeVisible({ timeout: 20_000 })
+  await first.window.getByRole('button', { name: 'Allow once' }).click()
+  await expect(row(first.window, 'write')).toContainText('allowed once', { timeout: 20_000 })
+  await first.app.close()
+
+  // The decision is Alpha's, not the session's, so the ledger has to bring it back itself.
+  const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
+  const listed = second.window.getByRole('button', { name: /^write the file (idle|working)$/ })
+  await listed.click()
+  const restored = row(second.window, 'write')
+  await expect(restored).toContainText('made.txt')
+  await restored.locator('button').first().click()
+  await expect(restored).toContainText('Allowed once by you, at the Ask level.')
+  await second.app.close()
+})
+
 test('denying returns the reason to the agent and runs nothing', async () => {
   const { app, window, workspace } = await launch()
 

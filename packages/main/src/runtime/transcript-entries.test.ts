@@ -104,6 +104,34 @@ describe('[runtime] entriesToMessages', () => {
     expect(messages[1].blocks).toEqual([{ kind: 'compaction', summary: 'sum', replaced: undefined }])
   })
 
+  it('stamps a restored tool row with how it got past the gate', () => {
+    const call = assistantEntry(1, [
+      { type: 'toolCall', id: 'call-1', name: 'bash', arguments: { command: 'rm -rf build' } },
+    ])
+    const result = entry({
+      type: 'message',
+      seq: 2,
+      id: 'e2',
+      parentId: null,
+      timestamp: 2,
+      message: {
+        role: 'toolResult',
+        toolCallId: 'call-1',
+        isError: false,
+        content: [{ type: 'text', text: 'done' }],
+        timestamp: 2,
+      },
+    })
+    const decisions = new Map([['call-1', { kind: 'once' as const, level: 'ask' as const }]])
+
+    const [message] = entriesToMessages([call, result], decisions)
+    const block = message.blocks[0]
+    expect(block.kind === 'tool' && block.approval).toEqual({ kind: 'once', level: 'ask' })
+    // Without a decision on record the row is still a row: the note is what is missing, not the call.
+    const [bare] = entriesToMessages([call, result])
+    expect(bare.blocks[0].kind === 'tool' && bare.blocks[0].approval).toBeUndefined()
+  })
+
   it('skips entries that are not messages', () => {
     const messages = entriesToMessages([
       entry({ type: 'custom', seq: 1, id: 'e1', parentId: null, timestamp: 1, customType: 'note', data: {} }),

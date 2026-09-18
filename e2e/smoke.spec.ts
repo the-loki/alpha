@@ -82,6 +82,13 @@ test('the settings route is addressable', async () => {
   await window.getByRole('link', { name: 'Settings' }).click()
   await expect(window.getByRole('heading', { name: 'Settings' })).toBeVisible()
   await expect(window.getByRole('heading', { name: 'Default permission level' })).toBeVisible()
+  await expect(window.getByRole('heading', { name: 'Remembered approvals' })).toBeVisible()
+
+  // Tall enough for the whole page: the capture has to show every level and the remembered
+  // rules, not the first screenful of them.
+  await window.setViewportSize({ width: 1440, height: 1200 })
+  const fits = await window.evaluate(() => document.documentElement.scrollHeight <= globalThis.innerHeight)
+  expect(fits).toBe(true)
 
   await window.screenshot({ path: join(SHOT_DIR, 'settings-permissions.png') })
   await app.close()

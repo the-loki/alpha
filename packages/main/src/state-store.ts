@@ -26,6 +26,11 @@ export class StateStore {
     return this.#state
   }
 
+  /** Which conversation is open, so the next launch can come back to it (T2). */
+  rememberConversation(id: string): void {
+    this.write({ ...this.#state, lastConversationId: id })
+  }
+
   #read(): PersistedState {
     try {
       return parsePersistedState(readFileSync(this.#path, 'utf-8'))

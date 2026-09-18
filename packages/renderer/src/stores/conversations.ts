@@ -210,10 +210,9 @@ export const useConversations = create<ConversationStore>((set, get) => ({
 
   applyEvent: (event: RuntimeEvent) => {
     const state = get()
-    if (event.type === 'conversation_updated') {
-      set({ list: listWithUpdated(state.list, event.conversation) })
-      return
-    }
+    if (event.type === 'conversation_updated') set({ list: listWithUpdated(state.list, event.conversation) })
+    // The open conversation's summary follows the event as well: the header shows the name the
+    // sidebar shows, and the model and level the conversation is actually running under.
     if (event.conversationId !== state.activeId) return
     set({ transcript: reduceTranscript(state.transcript, event) })
   },

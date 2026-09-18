@@ -210,14 +210,30 @@ test('the light theme is selectable, and both themes are captured', async () => 
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })
 
   await window.getByRole('link', { name: 'Settings' }).click()
+  const card = () =>
+    window.evaluate(() => {
+      const button = document.querySelector('aside button')
+      return button === null ? '' : getComputedStyle(button).backgroundColor
+    })
+  const paintedDark = await card()
   await window.getByRole('button', { name: 'Light' }).click()
   await expect(window.locator('html')).toHaveAttribute('data-theme', 'light')
-  await window.screenshot({ path: join(SHOT_DIR, 'theme-light.png') })
+  // The palette repaints rather than switching instantly, so the capture waits for the sidebar
+  // to actually be paper-coloured instead of catching the switch halfway.
+  await expect.poll(card).not.toBe(paintedDark)
+  await window.screenshot({ path: join(SHOT_DIR, 'theme-light-settings.png') })
 
-  // The workspace stays legible in the light theme: the transcript is readable against paper.
+  // The workspace stays legible in the light theme: the transcript is readable against paper,
+  // and the sidebar still names the folder it is pointed at rather than only its path.
   const paper = await window.evaluate(() => getComputedStyle(document.body).backgroundColor)
   expect(paper).not.toBe('rgb(20, 17, 14)')
+  await expect(window.getByRole('complementary').getByRole('button', { name: /sandbox/ })).toBeVisible()
 
+  await window.getByRole('button', { name: /^which theme is this/ }).click()
+  await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible()
+  await window.screenshot({ path: join(SHOT_DIR, 'theme-light.png') })
+
+  await window.getByRole('link', { name: 'Settings' }).click()
   await window.getByRole('button', { name: 'Follow the system' }).click()
   await expect(window.locator('html')).not.toHaveAttribute('data-theme', 'light')
   await app.close()

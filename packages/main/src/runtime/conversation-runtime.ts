@@ -32,7 +32,7 @@ import type { ApprovalAnswer } from './gate.ts'
 import { createToolGate } from './gate.ts'
 import type { ModelRuntime } from './models.ts'
 import { createWorkspaceTools, workspaceToolNames } from './tools.ts'
-import { entriesToMessages } from './transcript-entries.ts'
+import { type DecisionLookup, entriesToMessages } from './transcript-entries.ts'
 import { createEventTranslator } from './translate.ts'
 
 /** How the gate reaches the policy and the person: all four are read at the moment of a call. */
@@ -58,6 +58,10 @@ export interface OpenConversationOptions {
   toolNames?: string[]
   /** Absent only in tests that want the gate out of the way; every real conversation has one. */
   permissions?: PermissionPorts
+  /** How earlier calls got past the gate, so a restored row still says how (decisions.ts). */
+  decisions?: DecisionLookup
+  /** Told about each decision as it is made, so the note outlives the process. */
+  onDecision?: (callId: string, record: ApprovalRecord) => void
   emit: (event: RuntimeEvent) => void
 }
 
@@ -87,17 +91,20 @@ export class ConversationRuntime {
   readonly #lane: AgentLane
   readonly #session: Session<JsonlSessionMetadata>
   readonly #emit: (event: RuntimeEvent) => void
+  readonly #decisions: DecisionLookup
 
   private constructor(
     harness: AgentHarness<object>,
     lane: AgentLane,
     session: Session<JsonlSessionMetadata>,
     emit: (event: RuntimeEvent) => void,
+    decisions: DecisionLookup,
   ) {
     this.#harness = harness
     this.#lane = lane
     this.#session = session
     this.#emit = emit
+    this.#decisions = decisions
   }
 
   static async open(options: OpenConversationOptions): Promise<OpenedRuntime> {
@@ -129,8 +136,8 @@ export class ConversationRuntime {
     // `lane()` is async: acquiring a lane is an admission step, not a lookup.
     const lane = await harness.lane('main', BACKGROUND_CONTEXT)
     const conversationId = session.metadata.id
-    const runtime = new ConversationRuntime(harness, lane, session, options.emit)
-    const decisions = new Map<string, ApprovalRecord>()
+    const decisions: DecisionLookup = options.decisions ?? new Map<string, ApprovalRecord>()
+    const runtime = new ConversationRuntime(harness, lane, session, options.emit, decisions)
     const translator = createEventTranslator(conversationId, (callId) => decisions.get(callId))
     for (const type of SUBSCRIBED_EVENTS) {
       harness.events.on(type, (event) => {
@@ -155,13 +162,16 @@ export class ConversationRuntime {
         ...options.permissions,
         conversationId,
         workspacePath: options.workspacePath,
-        note: (callId, record) => decisions.set(callId, record),
+        note: (callId, record) => {
+          decisions.set(callId, record)
+          options.onDecision?.(callId, record)
+        },
       })
       harness.hooks.on('before_tool', (event) => gate(event))
     }
 
     const entries = await session.findEntries(undefined, BACKGROUND_CONTEXT)
-    return { runtime, conversationId, messages: entriesToMessages(entries) }
+    return { runtime, conversationId, messages: entriesToMessages(entries, decisions) }
   }
 
   async prompt(text: string): Promise<void> {
@@ -203,10 +213,10 @@ export class ConversationRuntime {
    * the answer that is being replaced leaves the conversation's path rather than being appended to.
    */
   async regenerate(): Promise<boolean> {
-    const users = (await this.#tipPath()).filter((entry) => entry.type === 'message' && entry.message.role === 'user')
+    const users = userEntries(await tipPathOf(this.#session))
     const last = users.at(-1)
     if (last === undefined) return false
-    const text = last.type === 'message' && last.message.role === 'user' ? textOfMessage(last.message) : ''
+    const text = last.type === 'message' && last.message.role === 'user' ? textOfContent(last.message.content) : ''
     if (text === '') return false
 
     const before = await this.#navigateBefore(last.id)
@@ -245,7 +255,7 @@ export class ConversationRuntime {
 
   /** Moves the tip to the entry before the given one, or to the root when it is the first. */
   async #navigateBefore(entryId: string): Promise<boolean> {
-    const ordered = await this.#tipPath()
+    const ordered = await tipPathOf(this.#session)
     const index = ordered.findIndex((entry) => entry.id === entryId)
     if (index === -1) return false
     const target = index === 0 ? null : ordered[index - 1].id
@@ -255,7 +265,7 @@ export class ConversationRuntime {
   }
 
   async #userEntry(index: number): Promise<Entry | undefined> {
-    const users = (await this.#tipPath()).filter((entry) => entry.type === 'message' && entry.message.role === 'user')
+    const users = userEntries(await tipPathOf(this.#session))
     return users[index]
   }
 
@@ -278,11 +288,7 @@ export class ConversationRuntime {
    * left behind are then history rather than transcript.
    */
   async transcript(): Promise<ChatMessage[]> {
-    return entriesToMessages(await this.#tipPath())
-  }
-
-  async #tipPath(): Promise<Entry[]> {
-    return tipPathOf(this.#session)
+    return entriesToMessages(await tipPathOf(this.#session), this.#decisions)
   }
 
   #emitFailure(error: unknown): void {
@@ -323,6 +329,10 @@ export function usageOf(usage: {
   }
 }
 
+/** The user's own messages, in order: what a resend or a fork works from. */
+const userEntries = (entries: Entry[]): Entry[] =>
+  entries.filter((entry) => entry.type === 'message' && entry.message.role === 'user')
+
 /** The summary a compaction wrote, read from the entry it was written to. */
 async function compactionSummary(
   session: Session<JsonlSessionMetadata>,
@@ -335,16 +345,12 @@ async function compactionSummary(
   return { summary: '', replaced: undefined }
 }
 
-/** The text of a user message entry, which is what a resend or a fork has to carry. */
-export function textOfMessage(message: { content: unknown }): string {
-  return textOfContent(message.content)
-}
-
 /** The transcript of a conversation that is not open, read straight from its session. */
 export async function readTranscript(options: {
   sessionsRoot: string
   workspacePath: string
   conversationId: string
+  decisions?: DecisionLookup
 }): Promise<ChatMessage[]> {
   if (options.conversationId === '') return []
   const metadata = await findSessionMetadata(options)
@@ -356,7 +362,7 @@ export async function readTranscript(options: {
   const session = await repo.open(metadata, BACKGROUND_CONTEXT)
   const entries = await tipPathOf(session)
   await session.close(BACKGROUND_CONTEXT)
-  return entriesToMessages(entries)
+  return entriesToMessages(entries, options.decisions)
 }
 
 /** Finds the session a conversation is stored in, so it can be reopened after a restart. */

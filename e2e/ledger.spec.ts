@@ -6,11 +6,15 @@ import { _electron as electron, expect, type Page, test } from '@playwright/test
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 
-/** The tool-calling turn: a read that works, then a shell command that fails. */
+/** The tool-calling turn: a read that works, an edit that changes the file, then a command that fails. */
 const SCRIPT = [
   { tool: { name: 'read', args: { path: 'notes.txt' } } },
-  { text: 'It says hello from the ledger.', tool: { name: 'bash', args: { command: 'cat missing.txt' } } },
-  'The second one failed; the file does not exist.',
+  {
+    text: 'It says hello from the ledger.',
+    tool: { name: 'edit', args: { path: 'notes.txt', edits: [{ oldText: 'hello', newText: 'goodbye' }] } },
+  },
+  { tool: { name: 'bash', args: { command: 'cat missing.txt' } } },
+  'The last one failed; the file does not exist.',
 ]
 
 /** A workspace with one file, and a window pointed at it. */
@@ -48,6 +52,11 @@ async function launch(options: { dataDirectory?: string; workspace?: string } = 
   return { app, window, dataDirectory, workspace }
 }
 
+/** Two painted frames: the window is at rest before anything is captured. */
+async function settle(window: Page) {
+  await window.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+}
+
 async function ask(window: Page, text: string) {
   const composer = window.getByRole('textbox', { name: 'Message the agent' })
   await composer.fill(text)
@@ -69,13 +78,23 @@ test('a tool call becomes a ledger row in the transcript', async () => {
   await expect(read).toContainText('notes.txt')
   await expect(read).toContainText('done')
 
+  // Then the file the agent changed: the row carries the diff, not just a note that it wrote.
+  const edit = row(window, 'edit')
+  await expect(edit).toBeVisible({ timeout: 20_000 })
+  await expect(edit).toContainText('notes.txt')
+  await expect(edit).toContainText('done')
+  await edit.locator('button').first().click()
+  await expect(edit).toContainText('hello from the ledger')
+  await expect(edit).toContainText('goodbye from the ledger')
+
   // Then the failing shell command: a row that says so, with what the tool printed.
   const bash = row(window, 'bash')
   await expect(bash).toBeVisible({ timeout: 20_000 })
   await expect(bash).toContainText('cat missing.txt')
   await expect(bash).toContainText('failed')
 
-  await expect(window.getByText('The second one failed; the file does not exist.')).toBeVisible()
+  await expect(window.getByText('The last one failed; the file does not exist.')).toBeVisible()
+  await settle(window)
   await window.screenshot({ path: join(SHOT_DIR, 'ledger-rows.png') })
 
   // A failed row is opened by default, so the audit trail is visible without a click.
@@ -102,6 +121,11 @@ test('the ledger rows of a past conversation come back the same', async () => {
   const bash = row(second.window, 'bash')
   await expect(bash).toContainText('failed')
   await expect(bash).toContainText('No such file')
+  // The diff survives the relaunch too: it is part of what the session recorded.
+  const edit = row(second.window, 'edit')
+  await edit.locator('button').first().click()
+  await expect(edit).toContainText('goodbye from the ledger')
+  await settle(second.window)
   await second.window.screenshot({ path: join(SHOT_DIR, 'ledger-restored.png') })
   await second.app.close()
 })

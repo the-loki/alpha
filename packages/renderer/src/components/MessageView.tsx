@@ -130,6 +130,9 @@ export const MessageView = memo(function MessageView({
   }
 
   const streaming = message.status === 'streaming'
+  // Nothing to copy until something has been said: an action row under an empty streaming
+  // answer is a control for a thing that is not there yet.
+  const spoken = message.blocks.some((block) => block.kind === 'text' && block.text !== '')
   return (
     <article className="flex flex-col" data-role="assistant">
       {message.blocks.map((block, index) => {
@@ -149,20 +152,22 @@ export const MessageView = memo(function MessageView({
       })}
       {streaming && message.blocks.length === 0 && <span className="ember-cursor" aria-hidden="true" />}
       <StatusNote message={message} />
-      <div className="mt-1.5 flex items-center gap-3">
-        <CopyButton what="answer" text={markdownOf(message.blocks)} />
-        {/* Only the last answer can be regenerated: it re-runs the last question, so offering it
-            under every answer would replace a different one than the reader is pointing at. */}
-        {last && !streaming && !running && (
-          <button
-            type="button"
-            onClick={() => void regenerate()}
-            className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
-          >
-            Regenerate
-          </button>
-        )}
-      </div>
+      {spoken && (
+        <div className="mt-1.5 flex items-center gap-3">
+          <CopyButton what="answer" text={markdownOf(message.blocks)} />
+          {/* Only the last answer can be regenerated: it re-runs the last question, so offering
+              it under every answer would replace a different one than the reader is pointing at. */}
+          {last && !streaming && !running && (
+            <button
+              type="button"
+              onClick={() => void regenerate()}
+              className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
+            >
+              Regenerate
+            </button>
+          )}
+        </div>
+      )}
     </article>
   )
 })

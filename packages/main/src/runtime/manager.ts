@@ -8,6 +8,7 @@
  */
 
 import {
+  type ApprovalRecord,
   type ChatMessage,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
@@ -20,7 +21,6 @@ import {
   type PermissionRule,
   type RuntimeEvent,
   type ThinkingLevel,
-  type UsageTotals,
 } from '@alpha/core'
 import type { Api, Model } from '@earendil-works/pi-ai'
 import { createProviderModelRuntime } from '../providers/model-runtime.ts'
@@ -29,14 +29,15 @@ import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
 import { ConversationBookkeeper, DEFAULT_TITLE, NO_MODEL, newConversation } from './bookkeeping.ts'
 import { ConversationRuntime, findSessionMetadata, type PermissionPorts } from './conversation-runtime.ts'
+import { DecisionLog } from './decisions.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
 import { createPermissionPorts, rememberWorkspaceLevel, revokeRule, withLevel } from './permissions.ts'
 import {
   deleteSession,
   readSessionTranscript,
-  readSessionUsage,
-  type SessionLocation,
+  sessionLocation,
+  usageFor,
   writeSessionMarkdown,
 } from './session-files.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
@@ -67,11 +68,13 @@ export class RuntimeManager {
   readonly #books: ConversationBookkeeper
   readonly #open = new Map<string, ConversationRuntime>()
   readonly #approvals: ApprovalBroker
+  readonly #decisions: DecisionLog
 
   constructor(options: RuntimeManagerOptions) {
     this.#options = options
     this.#books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
     this.#approvals = new ApprovalBroker({ emit: options.emit })
+    this.#decisions = new DecisionLog(options.dataDirectory)
   }
 
   permissionRules(): PermissionRule[] {
@@ -102,7 +105,7 @@ export class RuntimeManager {
       workspacePath,
       model,
       thinkingLevel: DEFAULT_THINKING_LEVEL,
-      emit: (event) => this.#observe(event),
+      emit: (event: RuntimeEvent) => this.#books.observe(event),
     })
 
     const conversation = newConversation({
@@ -114,7 +117,7 @@ export class RuntimeManager {
     })
     if (opened.runtime !== undefined) this.#open.set(conversation.id, opened.runtime)
     this.#books.upsert(conversation)
-    this.#rememberOpened(conversation.id)
+    this.#options.store.rememberConversation(conversation.id)
 
     return { conversation, messages: opened.messages, usage: EMPTY_USAGE }
   }
@@ -122,7 +125,7 @@ export class RuntimeManager {
   async open(id: string): Promise<OpenedConversation> {
     const conversation = this.#requireConversation(id)
 
-    this.#rememberOpened(id)
+    this.#options.store.rememberConversation(id)
     const existing = this.#open.get(id)
     if (existing !== undefined) {
       return { conversation, messages: await existing.transcript(), usage: await existing.usage() }
@@ -131,24 +134,28 @@ export class RuntimeManager {
     const opened = await this.#tryOpen({
       conversationId: id,
       workspacePath: conversation.workspacePath,
-      model: this.#modelFor(conversation),
+      model: modelFor(this.#modelRuntime(), conversation),
       thinkingLevel: conversation.thinkingLevel,
       sessionMetadata: await findSessionMetadata({
         sessionsRoot: this.#options.sessionsRoot,
         workspacePath: conversation.workspacePath,
         conversationId: id,
       }),
-      emit: (event) => this.#observe(event),
+      emit: (event: RuntimeEvent) => this.#books.observe(event),
     })
     if (opened.runtime !== undefined) this.#open.set(id, opened.runtime)
     if (conversation.title !== DEFAULT_TITLE) this.#books.markNamed(id)
 
-    return { conversation, messages: opened.messages, usage: await this.#usageOf(id, opened.runtime) }
+    return {
+      conversation,
+      messages: opened.messages,
+      usage: await usageFor(conversation, this.#options.sessionsRoot, opened.runtime),
+    }
   }
 
   async prompt(id: string, text: string): Promise<void> {
     const conversation = this.#requireConversation(id)
-    if (this.#modelFor(conversation) === undefined) {
+    if (modelFor(this.#modelRuntime(), conversation) === undefined) {
       throw new Error('No model is configured. Add a provider and a model in Settings first.')
     }
     const runtime = await this.#openFor(id)
@@ -174,7 +181,7 @@ export class RuntimeManager {
 
   async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
     const opened = await editMessage(this.#turnPorts(), id, index, text, effect)
-    this.#rememberOpened(opened.conversation.id)
+    this.#options.store.rememberConversation(opened.conversation.id)
     if (effect === 'replace') this.#emittedTranscript(id)
     return opened
   }
@@ -205,9 +212,10 @@ export class RuntimeManager {
       await runtime.close()
       this.#open.delete(id)
     }
-    await deleteSession(this.#location(conversation))
+    await deleteSession(sessionLocation(this.#options.sessionsRoot, conversation))
+    this.#decisions.forget(id)
     this.#books.forget(id)
-    if (this.#options.store.read().lastConversationId === id) this.#rememberOpened('')
+    if (this.#options.store.read().lastConversationId === id) this.#options.store.rememberConversation('')
     return this.list()
   }
 
@@ -221,12 +229,8 @@ export class RuntimeManager {
   async transcriptFor(id: string): Promise<ChatMessage[]> {
     const runtime = this.#open.get(id)
     if (runtime !== undefined) return runtime.transcript()
-    return readSessionTranscript(this.#location(this.#requireConversation(id)))
-  }
-
-  /** Where the next launch points: the conversation the window has open. */
-  #rememberOpened(id: string): void {
-    this.#options.store.write({ ...this.#options.store.read(), lastConversationId: id })
+    const conversation = this.#requireConversation(id)
+    return readSessionTranscript(sessionLocation(this.#options.sessionsRoot, conversation), this.#decisions.read(id))
   }
 
   #turnPorts(): TurnPorts {
@@ -295,10 +299,6 @@ export class RuntimeManager {
     return conversation
   }
 
-  #modelFor(conversation: ConversationSummary): Model<Api> | undefined {
-    return modelFor(this.#modelRuntime(), conversation)
-  }
-
   /**
    * A conversation without a usable model still exists: its transcript stays readable and the
    * composer explains what is missing, rather than the window refusing to open it at all.
@@ -326,6 +326,15 @@ export class RuntimeManager {
       return { conversationId: options.conversationId ?? crypto.randomUUID(), messages: transcript }
     }
 
+    // Everything that decides how a call got past the gate is restored with the transcript, so a
+    // ledger read back after a relaunch says the same thing as the one that was on screen.
+    // One map per conversation, and it is the manager's: the gate fills it as calls are decided,
+    // and the write callback below persists that same map.
+    const decisions =
+      options.conversationId === undefined
+        ? new Map<string, ApprovalRecord>()
+        : this.#decisions.read(options.conversationId)
+    let savedAs = options.conversationId ?? ''
     const opened = await ConversationRuntime.open({
       conversationId: options.conversationId,
       workspacePath: options.workspacePath,
@@ -335,8 +344,11 @@ export class RuntimeManager {
       systemPrompt: buildSystemPrompt({ workspacePath: options.workspacePath }),
       sessionMetadata: options.sessionMetadata,
       permissions: this.#permissionPorts(),
+      decisions,
+      onDecision: () => this.#decisions.write(savedAs, decisions),
       emit: options.emit,
     })
+    savedAs = opened.conversationId
     await opened.runtime.setThinkingLevel(options.thinkingLevel)
     return { runtime: opened.runtime, conversationId: opened.conversationId, messages: opened.messages }
   }
@@ -354,26 +366,7 @@ export class RuntimeManager {
     })
   }
 
-  /** Usage for a conversation that has just been opened: live when it runs, from disk when it does not. */
-  async #usageOf(id: string, runtime: ConversationRuntime | undefined): Promise<UsageTotals> {
-    if (runtime !== undefined) return runtime.usage()
-    return readSessionUsage(this.#location(this.#requireConversation(id)))
-  }
-
-  #location(conversation: ConversationSummary): SessionLocation {
-    return {
-      sessionsRoot: this.#options.sessionsRoot,
-      workspacePath: conversation.workspacePath,
-      conversationId: conversation.id,
-    }
-  }
-
   #modelRuntime(): ModelRuntime {
     return resolveModelRuntime(this.#options.env, () => createProviderModelRuntime(this.#options.providers))
-  }
-
-  /** Bookkeeping that follows from what the runtime said, before the window hears about it. */
-  #observe(event: RuntimeEvent): void {
-    this.#books.observe(event)
   }
 }

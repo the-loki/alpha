@@ -15,7 +15,8 @@ import {
 } from '@alpha/core'
 import { BACKGROUND_CONTEXT, JsonlSessionRepo } from '@earendil-works/pi-agent-core'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
-import { findSessionMetadata, readTranscript, usageOf } from './conversation-runtime.ts'
+import { type ConversationRuntime, findSessionMetadata, readTranscript, usageOf } from './conversation-runtime.ts'
+import type { DecisionLookup } from './transcript-entries.ts'
 
 export interface SessionLocation {
   sessionsRoot: string
@@ -51,11 +52,34 @@ export async function deleteSession(location: SessionLocation): Promise<void> {
   await repo.close(BACKGROUND_CONTEXT)
 }
 
-export async function readSessionTranscript(location: SessionLocation): Promise<ChatMessage[]> {
+/** Where one conversation's session lives. */
+export function sessionLocation(sessionsRoot: string, conversation: ConversationSummary): SessionLocation {
+  return {
+    sessionsRoot,
+    workspacePath: conversation.workspacePath,
+    conversationId: conversation.id,
+  }
+}
+
+/** Usage for a conversation that has just been opened: live when it runs, from disk when it does not. */
+export async function usageFor(
+  conversation: ConversationSummary,
+  sessionsRoot: string,
+  runtime?: ConversationRuntime,
+): Promise<UsageTotals> {
+  if (runtime !== undefined) return runtime.usage()
+  return readSessionUsage(sessionLocation(sessionsRoot, conversation))
+}
+
+export async function readSessionTranscript(
+  location: SessionLocation,
+  decisions?: DecisionLookup,
+): Promise<ChatMessage[]> {
   return readTranscript({
     sessionsRoot: location.sessionsRoot,
     workspacePath: location.workspacePath,
     conversationId: location.conversationId,
+    decisions,
   })
 }
 
