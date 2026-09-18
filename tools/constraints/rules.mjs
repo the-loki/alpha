@@ -156,6 +156,17 @@ const contractChannels = (text) => {
   return channels
 }
 
+/** The keys of the `CHANNELS` table, mapped to the channel strings the contract gives them. */
+const handledNamesOf = (text, contract) => {
+  const body = text.split(/export const CHANNELS[^=]*= \{/)[1]?.split('\n}')[0] ?? ''
+  const names = []
+  for (const line of body.split('\n')) {
+    const entry = line.match(/^\s{2}([A-Za-z_$][\w$]*):/)
+    if (entry && contract.has(entry[1])) names.push(entry[1])
+  }
+  return names
+}
+
 const channelsUsedWith = (files, prefix, pattern) => {
   const used = []
   for (const { path, text } of files) {
@@ -353,7 +364,8 @@ export const RULES = [
               text: line.trim(),
             })
           }
-          if (/\bipcMain\b|\bipcRenderer\b/.test(line) && !isSeamFile(path)) {
+          // A comment may name the transport; only a call touches it.
+          if (/\bipcMain\s*\.|\bipcRenderer\s*\./.test(line) && !isSeamFile(path)) {
             found.push({
               line: index + 1,
               message: 'the transport is touched outside the seam (main ipc.ts and the preload)',
@@ -372,7 +384,11 @@ export const RULES = [
       if (contract === undefined) return []
       const channels = contractChannels(contract.text)
       const named = (used) => used.filter((one) => channels.has(one.name)).map((one) => channels.get(one.name))
-      const handled = named(channelsUsedWith(files, isMainSource, /ipcMain\.handle\(\s*IPC\.([A-Za-z_$][\w$]*)/))
+      // The handlers are a table now, so what is handled is read from its keys rather than from
+      // the registrations: both transports dispatch that one table.
+      const table = files.find((candidate) => candidate.path === 'packages/main/src/channels.ts')
+      const handledNames = table === undefined ? [] : handledNamesOf(table.text, channels)
+      const handled = handledNames.map((name) => channels.get(name))
       const sent = named(channelsUsedWith(files, isMainSource, /\.send\(\s*IPC\.([A-Za-z_$][\w$]*)/))
       const invoked = channelsUsedWith(files, isPreloadSource, /ipcRenderer\.invoke\(\s*IPC\.([A-Za-z_$][\w$]*)/)
       const listened = channelsUsedWith(files, isPreloadSource, /ipcRenderer\.on\(\s*IPC\.([A-Za-z_$][\w$]*)/)

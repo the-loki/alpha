@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, safeStorage } from 'electron'
+import { desktopWindowPort } from './desktop-window.ts'
 import { permissionRulesSender, registerIpcHandlers, runtimeEventSender } from './ipc.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
 import { ProviderService } from './providers/service.ts'
@@ -47,6 +48,7 @@ app.whenReady().then(() => {
     runtime,
     providers: new ProviderService(providers),
     getWindow: () => BrowserWindow.getAllWindows()[0],
+    window: desktopWindowPort(() => BrowserWindow.getAllWindows()[0]),
   })
 
   app.on('activate', () => {

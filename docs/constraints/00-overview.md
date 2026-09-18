@@ -13,6 +13,7 @@ machine-checkable ones are wired into `pnpm check`, which runs in CI and before 
 | [03-product-scope.md](./03-product-scope.md) | What this product is, and what it deliberately is not |
 | [04-testing.md](./04-testing.md) | Seams, the red-green loop, and how live model tests run |
 | [05-design.md](./05-design.md) | The visual language, tokens, and accessibility floor |
+| [06-network.md](./06-network.md) | Serving the workbench to a browser: exposure, auth, and what a browser may do |
 
 ## Why a written list
 
