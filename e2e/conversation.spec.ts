@@ -35,7 +35,7 @@ async function launch(
         ? {}
         : { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]) }),
       // slow: a stream a test can catch mid-answer, for the frames that are about streaming.
-      ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '20', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
+      ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '10', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
       NODE_ENV: 'production',
     },
   })
@@ -77,6 +77,10 @@ test('the answer is visibly still arriving, with a caret at its end', async () =
   // that only make sense on a finished answer are not offered yet.
   const caret = window.getByRole('main').locator('.ember-cursor')
   await expect(caret).toBeVisible({ timeout: 20_000 })
+  // Once part of the answer is on screen, so the frame shows text still arriving rather than the
+  // moment before the first token, when there is nothing but a caret.
+  await expect(window.getByRole('main')).toContainText('Two files', { timeout: 20_000 })
+  await expect(caret).toBeVisible()
   await expect(window.getByRole('button', { name: 'Regenerate' })).toHaveCount(0)
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-streamed.png') })
 

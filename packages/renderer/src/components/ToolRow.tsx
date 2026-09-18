@@ -85,12 +85,16 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
           <p className="font-mono text-[11px] uppercase tracking-wider text-parchment-faint">Arguments</p>
           <pre className="mt-1 overflow-x-auto font-mono text-[12px] leading-[1.5] text-parchment-dim">{block.raw}</pre>
           {block.details?.diff !== undefined && <DiffView diff={block.details.diff} />}
-          {block.output !== '' && <CopyButton what={`the output of ${block.name}`} text={block.output} />}
           {block.output !== '' && (
             <>
-              <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
-                Output{block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
-              </p>
+              {/* The button sits on the heading it belongs to: two rows on screen can each have
+                  an output, and "copy" alone would not say which one it takes. */}
+              <div className="mt-2 flex items-center justify-between">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
+                  Output{block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
+                </p>
+                <CopyButton what={`the output of ${block.name}`} text={block.output} label="copy output" />
+              </div>
               <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-[12px] leading-[1.55] text-parchment-dim">
                 {block.output}
               </pre>

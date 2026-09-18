@@ -36,6 +36,13 @@ const PRIMARY =
   'rounded-control bg-ember px-3 py-1 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:cursor-not-allowed disabled:bg-ember/25 disabled:text-ember-ink/60'
 
 /**
+ * The secondary actions are outlined, not filled: while a turn runs the accent belongs to the one
+ * primary control, and a filled button that cannot be pressed reads as a button that can.
+ */
+const SECONDARY =
+  'rounded-control border border-line px-3 py-1 text-[12px] text-parchment transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-40'
+
+/**
  * While a turn is running the send control splits in three, because stopping, steering and
  * queueing do different things and the choice is made at the moment of pressing.
  */
@@ -57,15 +64,10 @@ function RunningActions({
       >
         Stop
       </button>
-      <button
-        type="button"
-        onClick={() => onRedirect('queue')}
-        disabled={!canRedirect}
-        className="rounded-control border border-line px-3 py-1 text-[12px] text-parchment transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-40"
-      >
+      <button type="button" onClick={() => onRedirect('queue')} disabled={!canRedirect} className={SECONDARY}>
         Queue
       </button>
-      <button type="button" onClick={() => onRedirect('steer')} disabled={!canRedirect} className={PRIMARY}>
+      <button type="button" onClick={() => onRedirect('steer')} disabled={!canRedirect} className={SECONDARY}>
         Steer
       </button>
     </div>

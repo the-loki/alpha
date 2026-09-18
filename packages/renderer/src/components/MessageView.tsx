@@ -173,7 +173,18 @@ export const MessageView = memo(function MessageView({
 })
 
 /** Copies what is on screen: a message as markdown, a tool row as its output. */
-export function CopyButton({ what, text, className = '' }: { what: string; text: string; className?: string }) {
+export function CopyButton({
+  what,
+  text,
+  label = 'copy',
+  className = '',
+}: {
+  what: string
+  text: string
+  /** What the button says, when "copy" alone would not say what it copies. */
+  label?: string
+  className?: string
+}) {
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
 
   return (
@@ -187,7 +198,7 @@ export function CopyButton({ what, text, className = '' }: { what: string; text:
         state === 'done' ? 'text-jade' : ''
       } ${state === 'failed' ? 'text-danger' : ''} ${className}`}
     >
-      {state === 'done' ? 'copied' : state === 'failed' ? 'copy failed' : 'copy'}
+      {state === 'done' ? 'copied' : state === 'failed' ? 'copy failed' : label}
     </button>
   )
 }
