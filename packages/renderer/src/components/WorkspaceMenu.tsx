@@ -46,7 +46,12 @@ export function WorkspaceButton() {
         aria-haspopup="menu"
         aria-expanded={open}
         title={selected ? workspace.workspace.path : 'Choose a folder for the agent to work in'}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          // With nothing remembered the menu would hold one item; the picker is what the click
+          // means (T1), so it opens straight away.
+          if (elsewhere.length === 0) void pickWorkspace()
+          else setOpen((value) => !value)
+        }}
         className="w-full rounded-card border border-line bg-ink-700 px-3 py-2.5 text-left transition-colors hover:border-line-strong hover:bg-ink-600"
       >
         <span className="block truncate text-ui font-medium text-parchment">

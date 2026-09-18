@@ -45,6 +45,16 @@ describe('[runtime] DecisionLog', () => {
     expect(log.read('c1').size).toBe(0)
   })
 
+  it('does not throw when the note cannot be written', () => {
+    // A directory path that is actually a file: mkdir fails, and the gate is mid-call.
+    const blocked = mkdtempSync(join(tmpdir(), 'alpha-decisions-'))
+    writeFileSync(join(blocked, 'decisions'), 'not a directory')
+    const log = new DecisionLog(blocked)
+
+    expect(() => log.write('c1', new Map([['call-1', { kind: 'auto', level: 'ask' }]]))).not.toThrow()
+    expect(log.read('c1').size).toBe(0)
+  })
+
   it('never writes outside its own directory, whatever it is handed as an id', () => {
     const directory = mkdtempSync(join(tmpdir(), 'alpha-decisions-'))
     const log = new DecisionLog(directory)

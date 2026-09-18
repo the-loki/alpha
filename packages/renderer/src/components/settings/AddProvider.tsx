@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useProviders } from '../../stores/providers.ts'
-import { ApiField, type DraftProvider, emptyDraft, ModelFields, providerInput } from './CustomProviderFields.tsx'
+import {
+  ApiField,
+  type DraftProvider,
+  emptyDraft,
+  ModelFields,
+  providerInput,
+  TextField,
+} from './CustomProviderFields.tsx'
 
 /** Two ways in: a catalog provider (one click) or an endpoint the user describes. */
 export function AddProvider() {
@@ -50,19 +57,19 @@ export function AddProvider() {
       <fieldset className="rounded-card border border-line p-3">
         <legend className="px-1 text-micro uppercase tracking-wider text-parchment-faint">Custom endpoint</legend>
         <div className="grid grid-cols-2 gap-2">
-          <Field
+          <TextField
             label="Id"
             value={custom.id}
             onChange={(id) => setCustom({ ...custom, id })}
             placeholder="my-endpoint"
           />
-          <Field
+          <TextField
             label="Name"
             value={custom.name}
             onChange={(name) => setCustom({ ...custom, name })}
             placeholder="My endpoint"
           />
-          <Field
+          <TextField
             label="Base URL"
             value={custom.baseUrl}
             onChange={(baseUrl) => setCustom({ ...custom, baseUrl })}
@@ -81,20 +88,5 @@ export function AddProvider() {
         {error !== '' && <p className="mt-2 text-xs text-danger">{error}</p>}
       </fieldset>
     </div>
-  )
-}
-
-function Field(props: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-micro text-parchment-faint">{props.label}</span>
-      <input
-        aria-label={props.label}
-        value={props.value}
-        placeholder={props.placeholder}
-        onChange={(event) => props.onChange(event.target.value)}
-        className="w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none"
-      />
-    </label>
   )
 }

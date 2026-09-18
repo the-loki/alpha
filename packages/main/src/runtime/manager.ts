@@ -334,6 +334,8 @@ export class RuntimeManager {
       options.conversationId === undefined
         ? new Map<string, ApprovalRecord>()
         : this.#decisions.read(options.conversationId)
+    // Assigned the moment the session exists and read only when a decision is made, which cannot
+    // happen during open: no turn runs until the caller prompts.
     let savedAs = options.conversationId ?? ''
     const opened = await ConversationRuntime.open({
       conversationId: options.conversationId,

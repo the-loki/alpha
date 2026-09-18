@@ -31,7 +31,7 @@ export function DiffView({ diff }: { diff: string }) {
       <p className="mb-1 font-mono text-micro text-parchment-faint">
         <span className="text-jade">+{added}</span> <span className="text-danger">−{removed}</span>
       </p>
-      <pre className="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-xs leading-[1.5]">
+      <pre className="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-code">
         {keyedLines(lines).map(({ key, line }) => (
           <span key={key} className={`block ${LINE_CLASS(line)}`}>
             {line === '' ? ' ' : line}

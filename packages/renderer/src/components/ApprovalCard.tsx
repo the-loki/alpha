@@ -52,7 +52,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
       </header>
 
       <div className="px-3.5 pb-1">
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-ui leading-relaxed text-parchment">
+        <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment">
           {request.detail === '' ? riskLabel(request.risk) : request.detail}
         </pre>
         <p className="mt-0.5 font-mono text-micro text-parchment-faint">in {request.cwd}</p>
@@ -95,7 +95,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           onChange={(event) => setReason(event.target.value)}
           aria-label="Reason for denying"
           placeholder="Reason (optional)"
-          className="min-w-40 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 font-mono text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          className="min-w-40 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 font-mono text-code text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
         <button

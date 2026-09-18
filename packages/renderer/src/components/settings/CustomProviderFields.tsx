@@ -1,4 +1,4 @@
-import { PROVIDER_APIS, type ProviderApi } from '@alpha/core'
+import { type CustomProviderInput, PROVIDER_APIS, type ProviderApi } from '@alpha/core'
 
 /** One model as the form holds it: every field is a string until the submit reads it. */
 export interface DraftModel {
@@ -30,7 +30,7 @@ export function emptyDraft(): DraftProvider {
 }
 
 /** The draft in the shape the IPC contract validates, so the boundary sees exactly what was typed. */
-export const providerInput = (draft: DraftProvider) => ({
+export const providerInput = (draft: DraftProvider): CustomProviderInput => ({
   id: draft.id,
   name: draft.name === '' ? draft.id : draft.name,
   api: draft.api,
@@ -47,7 +47,12 @@ export const providerInput = (draft: DraftProvider) => ({
 const FIELD =
   'w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none'
 
-function TextField(props: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
+export function TextField(props: {
+  label: string
+  value: string
+  placeholder: string
+  onChange: (value: string) => void
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-micro text-parchment-faint">{props.label}</span>

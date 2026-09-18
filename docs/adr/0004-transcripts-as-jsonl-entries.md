@@ -2,7 +2,9 @@
 
 A conversation's transcript is persisted as `pi-agent-core`'s format-4 JSONL entries through
 `JsonlSessionRepo`, one directory per conversation under the app's data directory. Alpha stores
-only conversation metadata (title, workspace, model, level, timestamps) alongside it.
+only conversation metadata (title, workspace, model, level, timestamps) alongside it, plus the
+gate's approval decisions in its own file (ADR-0007) — the one thing the session cannot hold
+because the gate is Alpha's.
 
 ## Context
 

@@ -56,10 +56,11 @@ own scale.
 | --- | --- | --- | --- |
 | Body, message text | IBM Plex Sans | `text-body` | 0.9375rem / 1.65 |
 | Markdown headings inside a message | IBM Plex Sans | `text-lg`, `text-base`, `text-body` | 1.125, 1, 0.9375rem / 1.4 |
-| UI labels, buttons, panel headings, sidebar rows | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 |
+| UI labels, buttons, panel headings, sidebar labels | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 |
+| Conversation titles in the sidebar | JetBrains Mono | `text-code` | 0.78125rem / 1.55 |
 | Metadata, chips | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 |
 | Code, tool output, diffs, inline code | JetBrains Mono | `text-code` | 0.78125rem / 1.55 |
-| Mono metadata: paths, counts, editable fields | JetBrains Mono | `text-xs` | 0.75rem / 1.4 |
+| Mono metadata: paths, counts, editable fields | JetBrains Mono | `text-xs` | 0.75rem / 1.3 |
 | Micro-labels: block markers, status words, action links | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase, tracking wider |
 
 Both families are bundled with the app; there is no runtime font fetch.
@@ -94,7 +95,7 @@ removed:
 2. **The gate.** A pending approval is not a modal. It is an amber-railed card inline in the
    transcript with the exact command, its working directory, and three buttons: Allow once,
    Always allow, Deny.
-3. **The ember cursor.** Streaming text is followed by a 2px copper block that pulses at
+3. **The ember cursor.** Streaming text is followed by a 0.125rem copper block that pulses at
    1.2s. It is the only animation running in a resting window.
 4. **The level chip.** The permission level sits in the header as a coloured chip with a
     one-word label. It is never hidden, including in `full-access`.
@@ -107,7 +108,7 @@ overlay entry, and the ember cursor. Nothing animates on hover except colour and
 
 ## C5.7 — Accessibility floor
 
-Keyboard reachable: every control, including the approval buttons, with a visible 2px ember focus
+Keyboard reachable: every control, including the approval buttons, with a visible 0.125rem ember focus
 ring that is never removed. The approval prompt takes focus when it appears and is operable with
 `Enter` (allow once) and `Escape` (deny). Colour is never the only carrier of meaning: each level
 chip pairs its colour with its name, and each tool status pairs its colour with a glyph.

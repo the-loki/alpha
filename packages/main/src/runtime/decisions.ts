@@ -9,7 +9,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type ApprovalRecord, isPermissionLevel, type PermissionLevel } from '@alpha/core'
+import { type ApprovalRecord, isPermissionLevel } from '@alpha/core'
 import { Type } from 'typebox'
 import { Value } from 'typebox/value'
 import type { DecisionLookup } from './transcript-entries.ts'
@@ -48,9 +48,18 @@ export class DecisionLog {
     return decisions
   }
 
+  /**
+   * A write that fails is not worth failing a turn over — the gate calls this while a tool call is
+   * waiting on it, and the note is the least important thing in the room. The next decision tries
+   * again; a note that stays unwritten costs a line in the ledger, not a conversation.
+   */
   write(conversationId: string, decisions: DecisionLookup): void {
-    mkdirSync(this.#directory, { recursive: true })
-    writeFileSync(this.#path(conversationId), JSON.stringify({ decisions: Object.fromEntries(decisions) }, null, 2))
+    try {
+      mkdirSync(this.#directory, { recursive: true })
+      writeFileSync(this.#path(conversationId), JSON.stringify({ decisions: Object.fromEntries(decisions) }, null, 2))
+    } catch {
+      // Nothing to do and nowhere to say it: the gate is mid-call.
+    }
   }
 
   forget(conversationId: string): void {
@@ -71,7 +80,7 @@ function readRecord(candidate: unknown): ApprovalRecord | undefined {
   if (!isPermissionLevel(record.level)) return undefined
   return {
     kind: record.kind,
-    level: record.level as PermissionLevel,
+    level: record.level,
     reason: record.reason,
     ruleId: record.ruleId,
   }

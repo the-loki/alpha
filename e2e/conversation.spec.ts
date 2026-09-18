@@ -81,13 +81,45 @@ test('the answer is visibly still arriving, with a caret at its end', async () =
   // moment before the first token, when there is nothing but a caret.
   await expect(window.getByRole('main')).toContainText('Two files', { timeout: 20_000 })
   await expect(caret).toBeVisible()
-  // It sits in the paragraph that is still being written, right after the last character, rather
-  // than on a line of its own below the text.
-  const caretIsInline = await caret.evaluate((element) => element.parentElement?.tagName === 'P')
-  expect(caretIsInline).toBe(true)
+  // It sits on the line that is still being written, right after the last character, rather than
+  // on a line of its own below the text.
+  const caretIsOnTheLine = await caret.evaluate((element) => {
+    const caretBox = element.getBoundingClientRect()
+    const paragraph = element.closest('p')
+    if (paragraph === null) return false
+    const textBox = paragraph.getBoundingClientRect()
+    return caretBox.top >= textBox.top - 1 && caretBox.bottom <= textBox.bottom + 1
+  })
+  expect(caretIsOnTheLine).toBe(true)
   await expect(window.getByRole('button', { name: 'Regenerate' })).toHaveCount(0)
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-streamed.png') })
 
+  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 30_000 })
+  await app.close()
+})
+
+test('the caret follows text that ends inside a code fence', async () => {
+  const { app, window } = await launch({
+    slow: true,
+    replies: ['Here it is:\n\n```ts\nconst answer = 42\nconst next = answer + 1\n'],
+  })
+  await window.setViewportSize({ width: 1440, height: 900 })
+  await ask(window, 'write me a snippet')
+
+  // A stream rarely stops at a paragraph: an unclosed fence is a code block, and the caret has
+  // to be in it rather than nowhere. Wait until the fence is what is being written.
+  const caret = window.getByRole('main').locator('.ember-cursor')
+  await expect(window.getByRole('main')).toContainText('const answer', { timeout: 20_000 })
+  await expect(caret).toBeVisible()
+  // Drawn inside the code block that is being written, not after it.
+  const caretIsInTheCode = await caret.evaluate((element) => {
+    const caretBox = element.getBoundingClientRect()
+    const code = document.querySelector('[data-role="assistant"] pre')
+    if (code === null) return false
+    const codeBox = code.getBoundingClientRect()
+    return caretBox.top >= codeBox.top - 1 && caretBox.bottom <= codeBox.bottom + 1
+  })
+  expect(caretIsInTheCode).toBe(true)
   await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 30_000 })
   await app.close()
 })

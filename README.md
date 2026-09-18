@@ -77,7 +77,7 @@ per-user data directory.
 | `conversations.json` | The sidebar's index: titles, ordering, status |
 | `sessions/<id>/*.jsonl` | The transcripts themselves, append-only (ADR-0004) |
 | `credentials.json` | Provider credentials, encrypted by the OS keychain where there is one |
-| `decisions/<id>.json` | How each tool call got past the gate, so a restored ledger still says why |
+| `decisions/<id>.json` | How each tool call got past the gate, so a restored ledger still says why (ADR-0007) |
 
 Deleting a conversation deletes its session directory and its decision log. Export writes a
 self-contained markdown file next to the workspace.

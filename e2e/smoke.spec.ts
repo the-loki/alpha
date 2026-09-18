@@ -115,10 +115,25 @@ test('the settings route is addressable', async () => {
   await expect(window.getByRole('heading', { name: 'Remembered approvals' })).toBeVisible()
 
   // Tall enough for the whole page: the capture has to show every level and the remembered
-  // rules, not the first screenful of them.
-  await window.setViewportSize({ width: 1440, height: 1200 })
-  const fits = await window.evaluate(() => document.documentElement.scrollHeight <= globalThis.innerHeight)
-  expect(fits).toBe(true)
+  // rules, not the first screenful of them. The page scrolls inside itself, so what is checked is
+  // that the last section's heading is on screen, not that the document has no overflow.
+  const pageHeight = await window.evaluate(() => {
+    const heading = [...document.querySelectorAll('h2')].find(
+      (element) => element.textContent === 'Remembered approvals',
+    )
+    const scroller = heading?.closest('.overflow-y-auto')
+    return Math.ceil(scroller?.scrollHeight ?? document.documentElement.scrollHeight)
+  })
+  await window.setViewportSize({ width: 1440, height: Math.min(pageHeight + 40, 1600) })
+  const lastSectionIsOnScreen = await window.evaluate(() => {
+    const heading = [...document.querySelectorAll('h2')].find(
+      (element) => element.textContent === 'Remembered approvals',
+    )
+    if (heading === undefined) return false
+    const rect = heading.getBoundingClientRect()
+    return rect.top >= 0 && rect.bottom <= globalThis.innerHeight
+  })
+  expect(lastSectionIsOnScreen).toBe(true)
 
   await window.screenshot({ path: join(SHOT_DIR, 'settings-permissions.png') })
   await app.close()

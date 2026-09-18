@@ -274,12 +274,18 @@ export const RULES = [
     description: 'lengths are rem, so the window scale applies',
     check({ path, text }) {
       if (!path.startsWith('packages/renderer/')) return []
-      if (!/\.(ts|tsx|css)$/.test(path)) return []
+      if (!/\.(ts|tsx|css|html)$/.test(path)) return []
       const found = []
+      // A comment may talk about px; a length in one is still a length, so the comment state is
+      // tracked rather than guessed from the line's first character — `* { gap: 6px }` is a
+      // selector, not a comment.
+      let inComment = false
       text.split('\n').forEach((line, index) => {
         const trimmed = line.trim()
-        // A comment may talk about px; only lengths count.
-        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+        const comment = inComment || trimmed.startsWith('//')
+        if (inComment && trimmed.includes('*/')) inComment = false
+        if (trimmed.startsWith('/*') && !trimmed.includes('*/')) inComment = true
+        if (comment) return
         // 1px hairlines are the one length that has to stay a device pixel to stay crisp.
         const lengths = line.match(/(?<![\d.])[\d.]+px\b/g) ?? []
         for (const length of lengths) {

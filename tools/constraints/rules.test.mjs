@@ -46,6 +46,27 @@ describe('05-design:no-px-lengths', () => {
     expect(comment).toEqual([])
   })
 
+  it('tracks comments rather than guessing from the first character', () => {
+    // A universal selector is not a comment, and a length in one is a length.
+    const selector = violationsFor(rule, file('packages/renderer/src/styles/a.css', '* { gap: 6px }'))
+    expect(selector).toHaveLength(1)
+
+    // A JSDoc block is a comment, even where a line starts with a star.
+    const jsdoc = file(
+      'packages/renderer/src/a.ts',
+      ['/**', ' * The caret is 2px wide.', ' */', 'const x = 1'].join('\n'),
+    )
+    expect(violationsFor(rule, jsdoc)).toEqual([])
+
+    const lineComment = violationsFor(rule, file('packages/renderer/src/a.ts', '// 6px of air'))
+    expect(lineComment).toEqual([])
+  })
+
+  it('reads the html the renderer ships too', () => {
+    const found = violationsFor(rule, file('packages/renderer/index.html', '<meta name="x" content="12px" />'))
+    expect(found).toHaveLength(1)
+  })
+
   it('says nothing about files outside the renderer', () => {
     expect(violationsFor(rule, file('packages/main/src/a.ts', 'const pad = "6px"'))).toEqual([])
   })

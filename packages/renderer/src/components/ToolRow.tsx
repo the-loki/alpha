@@ -59,8 +59,8 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
         <span className={`font-mono text-micro ${TONE[block.status]}`} title={riskLabel(block.risk)}>
           {GLYPH[block.risk]}
         </span>
-        <span className="shrink-0 font-mono text-xs text-parchment">{block.name}</span>
-        <span className="min-w-0 flex-1 truncate font-mono text-xs text-parchment-dim">{block.summary}</span>
+        <span className="shrink-0 font-mono text-code text-parchment">{block.name}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-code text-parchment-dim">{block.summary}</span>
         {block.approval !== undefined && MARK[block.approval.kind] !== '' && (
           <span
             className={`shrink-0 rounded-control border px-1.5 text-micro font-mono tracking-wide ${MARK_TONE[block.approval.kind]}`}
@@ -83,7 +83,7 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
             </p>
           )}
           <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">Arguments</p>
-          <pre className="mt-1 overflow-x-auto font-mono text-xs leading-[1.5] text-parchment-dim">{block.raw}</pre>
+          <pre className="mt-1 overflow-x-auto font-mono text-code text-parchment-dim">{block.raw}</pre>
           {block.details?.diff !== undefined && <DiffView diff={block.details.diff} />}
           {block.output !== '' && (
             <>
@@ -95,7 +95,7 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
                 </p>
                 <CopyButton what={`the output of ${block.name}`} text={block.output} label="copy output" />
               </div>
-              <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-xs leading-[1.55] text-parchment-dim">
+              <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
                 {block.output}
               </pre>
             </>
