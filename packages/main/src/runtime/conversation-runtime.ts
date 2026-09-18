@@ -89,6 +89,8 @@ export class ConversationRuntime {
   readonly #session: Session<JsonlSessionMetadata>
   readonly #reader: SessionReader
   readonly #emit: (event: RuntimeEvent) => void
+  /** Whether a run is in flight, which the lane's own record cannot answer: see `isRunning`. */
+  #running = false
 
   private constructor(
     harness: AgentHarness<object>,
@@ -148,6 +150,23 @@ export class ConversationRuntime {
         for (const translated of translator.translate(event)) runtime.#emit(translated)
       })
     }
+    harness.events.on('run_start', () => {
+      runtime.#running = true
+    })
+    // A fault ends the run in the translator's terms, so it ends it here too.
+    harness.events.on('run_end', () => {
+      runtime.#running = false
+    })
+    harness.events.on('fault', () => {
+      runtime.#running = false
+    })
+
+    // A run that was in flight when the process died is still "current" on the lane, and the lane
+    // refuses to navigate while anything is current — so the conversation could never be edited
+    // again. Nothing is driving that run here, which makes it over: settling it now, before the
+    // window can ask for anything, is what lets the next edit land.
+    const unsettled = (await lane.inspectExecution(BACKGROUND_CONTEXT)).current !== null
+    if (unsettled) await lane.abort(BACKGROUND_CONTEXT)
     // A compaction is not a message event: it is a structural change whose summary has an entry of
     // its own, so the runtime reads that entry and tells the window what it stands for.
     harness.events.on('compaction_end', (event) => {
@@ -184,6 +203,19 @@ export class ConversationRuntime {
     const result = await this.#lane.compact(undefined, BACKGROUND_CONTEXT)
     if (!result.ok) this.#emitFailure(result.error)
     return result.ok
+  }
+
+  /**
+   * Whether a run is in flight, read from the events the runtime already translates rather than
+   * from what the window was told.
+   *
+   * The lane's own record cannot answer it: an operation that was admitted and never settled —
+   * the window was closed mid-turn — stays "current" forever, and would hold an edit against the
+   * user after a relaunch. This starts false for every runtime, so a run is in flight exactly
+   * when this process is running it.
+   */
+  isRunning(): boolean {
+    return this.#running
   }
 
   async abort(): Promise<void> {
@@ -268,7 +300,13 @@ export class ConversationRuntime {
     return users[index]
   }
 
+  /**
+   * Stops a run that is still in flight before closing. Closing under one leaves the operation
+   * unsettled and the promise that was driving it rejected, which is a crash in miniature — and
+   * the conversation it belongs to could not be edited afterwards.
+   */
   async close(): Promise<void> {
+    if (this.#running) await this.abort()
     await this.#harness.close(BACKGROUND_CONTEXT)
   }
 

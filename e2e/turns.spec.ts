@@ -106,6 +106,36 @@ test('a stopped turn survives a relaunch, marker and all', async () => {
   await second.app.close()
 })
 
+test('a turn killed with the process can still be edited after the relaunch', async () => {
+  const first = await launch({
+    slow: true,
+    replies: ['An answer nobody reads to the end, because the process goes away.'],
+  })
+  await ask(first.window, 'say something long')
+  await expect(first.window.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 20_000 })
+  await expect(first.window.getByRole('main').locator('[data-role="assistant"]')).toContainText('An answer', {
+    timeout: 20_000,
+  })
+  // No Stop and no close: the process is killed with the turn in flight, which is the state a
+  // crash leaves behind — a run nothing is driving, still sitting on the lane.
+  first.app.process().kill('SIGKILL')
+
+  const second = await launch({
+    dataDirectory: first.dataDirectory,
+    workspace: first.workspace,
+    replies: ['The corrected answer.'],
+  })
+  await second.window.getByRole('button', { name: /^say something long (idle|working)$/ }).click()
+  await second.window.getByRole('button', { name: 'Edit' }).first().click()
+  await second.window.getByRole('textbox', { name: 'Edit the message' }).fill('a better question')
+  await second.window.getByRole('button', { name: 'Resend, replacing what followed' }).click()
+
+  // The edit landing is the assertion: a lane holding that dead operation refuses to navigate.
+  await expect(second.window.getByRole('main').getByText('The corrected answer.')).toBeVisible({ timeout: 20_000 })
+  await expect(second.window.getByRole('main')).not.toContainText('An answer nobody reads')
+  await second.app.close()
+})
+
 test('a message typed while the agent works can be queued, and taken back', async () => {
   const { app, window } = await launch({
     slow: true,

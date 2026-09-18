@@ -11,13 +11,13 @@ import { resolveModelRuntime } from './models.ts'
  * queueing behind the turn, and answering a message again. The scripted model makes the timing
  * decidable, so "mid-flight" is a fact of the test rather than a race.
  */
-const open = async (options: { replies: unknown[]; workspace?: string; slow?: boolean }) => {
+const open = async (options: { replies: unknown[]; workspace?: string; sessionsRoot?: string; slow?: boolean }) => {
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
   const events: RuntimeEvent[] = []
   const opened = await ConversationRuntime.open({
     conversationId: 'turn',
     workspacePath: workspace,
-    sessionsRoot: mkdtempSync(join(tmpdir(), 'alpha-sessions-')),
+    sessionsRoot: options.sessionsRoot ?? mkdtempSync(join(tmpdir(), 'alpha-sessions-')),
     modelRuntime: resolveModelRuntime({
       ALPHA_FAUX: '1',
       ALPHA_FAUX_REPLIES: JSON.stringify(options.replies),
@@ -102,6 +102,24 @@ describe('[runtime] stopping a turn', () => {
   })
 })
 
+describe('[runtime] closing a conversation', () => {
+  it('stops the run it was in the middle of, so the next open can edit', async () => {
+    const sessionsRoot = mkdtempSync(join(tmpdir(), 'alpha-sessions-'))
+    const first = await open({ slow: true, sessionsRoot, replies: ['An answer still arriving when it closed.'] })
+    const running = first.runtime.prompt('a long task')
+    await waitForDeltas(first.events, 1)
+    // No Stop first: the window going away is what interrupts the turn.
+    await first.runtime.close()
+    await running.catch(() => undefined)
+
+    const second = await open({ workspace: first.workspace, sessionsRoot, replies: ['The corrected answer.'] })
+    const resent = await second.runtime.resend(0, 'a better question')
+    await second.runtime.close()
+
+    expect(resent).toBe(true)
+  })
+})
+
 describe('[runtime] steering and queueing', () => {
   it('delivers a steer while a tool is running, and it changes what happens next', async () => {
     const { runtime, events } = await open({
@@ -182,6 +200,21 @@ describe('[runtime] steering and queueing', () => {
   })
 })
 
+describe('[runtime] whether a turn is in flight', () => {
+  it('is asked of the lane: idle before a prompt, working during it, idle after it', async () => {
+    const { runtime, events } = await open({ slow: true, replies: ['An answer long enough to catch it working.'] })
+
+    expect(runtime.isRunning()).toBe(false)
+    const running = runtime.prompt('go')
+    await waitForDeltas(events, 1)
+    expect(runtime.isRunning()).toBe(true)
+
+    await running
+    expect(runtime.isRunning()).toBe(false)
+    await runtime.close()
+  })
+})
+
 describe('[runtime] answering a message again', () => {
   it('replaces the previous answer with a new one from the same question', async () => {
     const { runtime, events } = await open({ replies: ['The first answer.', 'The second answer.'] })
@@ -219,6 +252,27 @@ describe('[runtime] answering a message again', () => {
       .flatMap((message) => message.blocks.filter((block) => block.kind === 'text').map((block) => block.text))
     expect(assistantText).toEqual(['The corrected answer.'])
     expect(events.some((event) => event.type === 'assistant_text_delta')).toBe(true)
+  })
+
+  it('edits a conversation whose last run died with the process', async () => {
+    // Closed mid-stream, so the lane still holds the operation nobody is driving. Asking for the
+    // edit is what proves it was settled: a lane with an active operation refuses to navigate.
+    const sessionsRoot = mkdtempSync(join(tmpdir(), 'alpha-sessions-'))
+    const first = await open({ slow: true, sessionsRoot, replies: ['An answer still arriving when the app went.'] })
+    const running = first.runtime.prompt('a long task')
+    await waitForDeltas(first.events, 1)
+    await first.runtime.close()
+    await running.catch(() => undefined)
+
+    // The same workspace as well as the same sessions root: a session is found by both, and a
+    // fresh workspace would leave this opening a new session that has nothing to edit.
+    const second = await open({ workspace: first.workspace, sessionsRoot, replies: ['The corrected answer.'] })
+    const resent = await second.runtime.resend(0, 'a better question')
+    const transcript = await second.runtime.transcript()
+    await second.runtime.close()
+
+    expect(resent).toBe(true)
+    expect(userTexts(transcript)).toEqual(['a better question'])
   })
 
   it('refuses to regenerate a conversation with nothing to re-run', async () => {

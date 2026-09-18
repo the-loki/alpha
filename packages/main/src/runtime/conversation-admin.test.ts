@@ -20,7 +20,7 @@ const testCipher: SecretCipher = {
  * grouping, deleting a transcript from disk, and reading a conversation back after the runtime
  * compacted it.
  */
-const freshManager = (env: NodeJS.ProcessEnv = {}) => {
+const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
   const store = new StateStore(dataDirectory)
@@ -31,10 +31,10 @@ const freshManager = (env: NodeJS.ProcessEnv = {}) => {
     providers: new ProviderStore(dataDirectory, vault),
     store,
     env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
-    emit: () => undefined,
+    emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
-  return { manager, store, workspace, dataDirectory }
+  return { manager, store, workspace, dataDirectory, events }
 }
 
 describe('[runtime] naming a conversation', () => {
@@ -269,6 +269,83 @@ describe('[runtime] reading a conversation back', () => {
     expect(texts(opened.messages)).toEqual(texts(live))
   })
 })
+
+/**
+ * The rule an edit and a regenerate share: the tip moved, so what the window is showing is no
+ * longer the conversation, and it has to be handed the transcript that is on the branch.
+ */
+describe('[runtime] telling the window the transcript changed', () => {
+  it('replaces it after an edit that continued from the edit', async () => {
+    const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const created = await manager.create(workspace)
+    await manager.prompt(created.conversation.id, 'a question')
+    await manager.prompt(created.conversation.id, 'a second question')
+    events.length = 0
+
+    // No settling: the call resolving is the promise that the window has been told.
+    await manager.editMessage(created.conversation.id, 0, 'a better question', 'replace')
+
+    const replaced = events.filter((event) => event.type === 'transcript_replaced')
+    expect(replaced).toHaveLength(1)
+    const handed = replaced[0].type === 'transcript_replaced' ? replaced[0].messages : []
+    expect(texts(handed)).toEqual(['a better question', 'THE SECOND ANSWER'])
+  })
+
+  it('leaves it alone when the edit forked instead, because this conversation did not change', async () => {
+    const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const created = await manager.create(workspace)
+    await manager.prompt(created.conversation.id, 'a question')
+    events.length = 0
+
+    const forked = await manager.editMessage(created.conversation.id, 0, 'a better question', 'fork')
+    await settle()
+
+    expect(forked.conversation.id).not.toBe(created.conversation.id)
+    expect(events.filter((event) => event.type === 'transcript_replaced')).toEqual([])
+  })
+
+  it('says nothing when a regenerate had nothing to run again', async () => {
+    const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const created = await manager.create(workspace)
+    events.length = 0
+
+    await manager.regenerate(created.conversation.id)
+    await settle()
+
+    expect(events.filter((event) => event.type === 'transcript_replaced')).toEqual([])
+  })
+
+  it('takes an edit after a relaunch that followed a kill mid-turn', async () => {
+    // Closing the window mid-turn leaves the index saying "running", and nothing will ever
+    // finish that turn. The window's idea of it is a projection; the lane's is the fact.
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
+    const slow = {
+      ALPHA_FAUX_REPLIES: JSON.stringify(['An answer long enough that the app is still writing it out.']),
+      ALPHA_FAUX_TOKENS_PER_SECOND: '20',
+      ALPHA_FAUX_TOKEN_SIZE: '4',
+    }
+    const first = freshManagerAt(dataDirectory, workspace, slow)
+    const created = await first.create(workspace)
+    const running = first.prompt(created.conversation.id, 'a long task')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    await first.closeAll()
+    await running.catch(() => undefined)
+
+    const second = freshManagerAt(dataDirectory, workspace, {
+      ALPHA_FAUX_REPLIES: JSON.stringify(['The corrected answer.']),
+    })
+    const opened = await second.editMessage(created.conversation.id, 0, 'a better question', 'replace')
+    await second.closeAll()
+
+    expect(texts(opened.messages)).toEqual(['a better question', 'The corrected answer.'])
+  })
+})
+
+/** A negative assertion needs the chance to have passed, so it waits for anything in flight. */
+const settle = async (): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 50))
+}
 
 describe('[runtime] compaction', () => {
   it('marks where the history was summarised and keeps the summary readable', async () => {

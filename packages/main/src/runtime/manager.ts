@@ -29,21 +29,13 @@ import { ApprovalBroker } from './approvals.ts'
 import { ConversationBookkeeper, DEFAULT_TITLE, NO_MODEL, newConversation } from './bookkeeping.ts'
 import { ConversationRuntime, type PermissionPorts } from './conversation-runtime.ts'
 import { DecisionLog } from './decisions.ts'
+import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
 import { createPermissionPorts, rememberWorkspaceLevel, revokeRule, withLevel } from './permissions.ts'
 import { readSessionTranscript, sessionLocation, usageFor, writeSessionMarkdown } from './session-files.ts'
 import { deleteSession } from './session-reader.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
-import {
-  cancelQueued,
-  compactConversation,
-  editMessage,
-  queueMessage,
-  regenerate,
-  steerConversation,
-  type TurnPorts,
-} from './turn-ops.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string
@@ -153,31 +145,30 @@ export class RuntimeManager {
   }
 
   async steer(id: string, text: string): Promise<void> {
-    await steerConversation(this.#turnPorts(), id, text)
+    await (await this.#openFor(id)).steer(text)
   }
 
   async queueMessage(id: string, text: string): Promise<void> {
-    await queueMessage(this.#turnPorts(), id, text)
+    await (await this.#openFor(id)).followUp(text)
   }
 
   async cancelQueued(id: string, entryId: string): Promise<void> {
-    await cancelQueued(this.#turnPorts(), id, entryId)
+    await (await this.#openFor(id)).cancelQueued(entryId)
   }
 
+  /** Both of these move the branch tip, and the editing module replaces the window's copy. */
   async regenerate(id: string): Promise<void> {
-    await regenerate(this.#turnPorts(), id)
-    this.#emittedTranscript(id)
+    await regenerate(this.#editPorts(), id)
   }
 
   async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
-    const opened = await editMessage(this.#turnPorts(), id, index, text, effect)
+    const opened = await editMessage(this.#editPorts(), id, index, text, effect)
     this.#options.store.rememberConversation(opened.conversation.id)
-    if (effect === 'replace') this.#emittedTranscript(id)
     return opened
   }
 
   async compactConversation(id: string): Promise<boolean> {
-    return compactConversation(this.#turnPorts(), id)
+    return (await this.#openFor(id)).compact()
   }
 
   async abort(id: string): Promise<void> {
@@ -223,7 +214,7 @@ export class RuntimeManager {
     return readSessionTranscript(sessionLocation(this.#options.sessionsRoot, conversation), this.#decisions.opened(id))
   }
 
-  #turnPorts(): TurnPorts {
+  #editPorts(): EditingPorts {
     return {
       conversation: (id) => this.#requireConversation(id),
       runtime: (id) => this.#openFor(id),
@@ -233,14 +224,9 @@ export class RuntimeManager {
       },
       openConversation: (id) => this.open(id),
       sessionsRoot: this.#options.sessionsRoot,
+      replaceTranscript: (id, messages) =>
+        this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages }),
     }
-  }
-
-  /** The window is shown the path as it is now, because an answer it was showing is off it. */
-  #emittedTranscript(id: string): void {
-    void this.transcriptFor(id).then((messages) =>
-      this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages }),
-    )
   }
 
   /** The level in force for one conversation; the gate reads this at the moment of each call. */
