@@ -3,7 +3,7 @@
  * two moments the store has to be written — a new rule, and a rule taken back. What the gate
  * decides with them is core's business; this is only how it reaches them.
  */
-import type { ApprovalAsk, ConversationSummary, PermissionLevel, PermissionRule } from '@alpha/core'
+import type { ApprovalAsk, PermissionLevel, PermissionRule } from '@alpha/core'
 import type { StateStore } from '../state-store.ts'
 import type { PermissionPorts } from './conversation-runtime.ts'
 import type { ApprovalAnswer } from './gate.ts'
@@ -36,11 +36,6 @@ export function revokeRule(store: StateStore, ruleId: string): PermissionRule[] 
 function writeRules(store: StateStore, rules: PermissionRule[]): PermissionRule[] {
   store.write({ ...store.read(), permissionRules: rules })
   return rules
-}
-
-/** A conversation that has been given a level of its own: the gate reads it before the next call. */
-export function withLevel(conversation: ConversationSummary, level: PermissionLevel): ConversationSummary {
-  return { ...conversation, permissionLevel: level, updatedAt: Date.now() }
 }
 
 /** The default for new conversations in one workspace, which is the settings page's other half. */

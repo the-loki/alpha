@@ -32,7 +32,7 @@ import { DecisionLog } from './decisions.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
-import { createPermissionPorts, rememberWorkspaceLevel, revokeRule, withLevel } from './permissions.ts'
+import { createPermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
 import { readSessionTranscript, sessionLocation, usageFor, writeSessionMarkdown } from './session-files.ts'
 import { deleteSession } from './session-reader.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
@@ -231,7 +231,8 @@ export class RuntimeManager {
 
   /** The level in force for one conversation; the gate reads this at the moment of each call. */
   setConversationLevel(id: string, level: PermissionLevel): ConversationSummary {
-    return this.#books.upsert(withLevel(this.#requireConversation(id), level))
+    this.#requireConversation(id)
+    return this.#books.update(id, { permissionLevel: level, updatedAt: Date.now() })
   }
 
   /** The level new conversations in a workspace start at. */
@@ -244,13 +245,13 @@ export class RuntimeManager {
     const model = this.#modelRuntime().models.getModel(providerId, modelId)
     if (model === undefined) throw new Error(`${providerId} does not serve ${modelId}`)
     await this.#open.get(id)?.setModel(model)
-    return this.#books.upsert({ ...conversation, model: { providerId, modelId }, updatedAt: Date.now() })
+    return this.#books.update(conversation.id, { model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
   async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {
     const conversation = this.#requireConversation(id)
     await this.#open.get(id)?.setThinkingLevel(level)
-    return this.#books.upsert({ ...conversation, thinkingLevel: level, updatedAt: Date.now() })
+    return this.#books.update(conversation.id, { thinkingLevel: level, updatedAt: Date.now() })
   }
 
   async closeAll(): Promise<void> {

@@ -111,6 +111,17 @@ export class ConversationBookkeeper {
     this.#emit(event)
   }
 
+  /**
+   * The one road a summary change takes: written to the index, and told to the window. Every
+   * field — the title, the level, the model, the thinking effort, the status — goes through here,
+   * so the window's copy is never a partial answer and never has to be assembled by its caller.
+   */
+  update(id: string, changes: Partial<ConversationSummary>): ConversationSummary {
+    const conversation = this.#store.find(id)
+    if (conversation === undefined) throw new Error(`No conversation ${id}`)
+    return this.#update(conversation, changes)
+  }
+
   #update(conversation: ConversationSummary, changes: Partial<ConversationSummary>): ConversationSummary {
     const updated = summarize(conversation, changes)
     this.#store.upsert(updated)

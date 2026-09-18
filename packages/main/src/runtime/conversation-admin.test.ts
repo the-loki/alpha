@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { type ChatMessage, groupByWorkspace, type RuntimeEvent } from '@alpha/core'
+import { type ChatMessage, type ConversationSummary, groupByWorkspace, type RuntimeEvent } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'
 import { ProviderStore } from '../providers/store.ts'
@@ -346,6 +346,50 @@ describe('[runtime] telling the window the transcript changed', () => {
 const settle = async (): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, 50))
 }
+
+/**
+ * The window keeps one copy of a conversation's summary, and the sidebar and the header both read
+ * it. Every change to it takes the same road — an event — so no caller has to remember to say so.
+ */
+describe('[runtime] a change to a conversation', () => {
+  const lastUpdate = (events: RuntimeEvent[], id: string): ConversationSummary | undefined => {
+    const updates = events.filter((event) => event.type === 'conversation_updated' && event.conversationId === id)
+    const last = updates.at(-1)
+    return last?.type === 'conversation_updated' ? last.conversation : undefined
+  }
+
+  it('reaches the window whichever field changed', async () => {
+    const { manager, workspace, events } = freshManager()
+    const created = await manager.create(workspace)
+    const id = created.conversation.id
+    events.length = 0
+
+    manager.rename(id, 'The parser rewrite')
+    expect(lastUpdate(events, id)?.title).toBe('The parser rewrite')
+
+    await manager.setThinkingLevel(id, 'high')
+    expect(lastUpdate(events, id)?.thinkingLevel).toBe('high')
+
+    manager.setConversationLevel(id, 'plan')
+    expect(lastUpdate(events, id)?.permissionLevel).toBe('plan')
+
+    await manager.setConversationModel(id, 'faux', 'scripted')
+    expect(lastUpdate(events, id)?.model).toEqual({ providerId: 'faux', modelId: 'scripted' })
+  })
+
+  it('carries the whole conversation, not the field that changed', async () => {
+    const { manager, workspace, events } = freshManager()
+    const created = await manager.create(workspace)
+    const id = created.conversation.id
+    manager.rename(id, 'The parser rewrite')
+    events.length = 0
+
+    manager.setConversationLevel(id, 'plan')
+
+    // The window replaces its copy with this one, so a field left out would be lost there.
+    expect(lastUpdate(events, id)).toEqual(manager.list().find((conversation) => conversation.id === id))
+  })
+})
 
 describe('[runtime] compaction', () => {
   it('marks where the history was summarised and keeps the summary readable', async () => {

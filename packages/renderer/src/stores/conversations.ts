@@ -110,32 +110,16 @@ export const useConversations = create<ConversationStore>((set, get) => ({
     return id
   },
 
+  // Changing a conversation is asked for here and reported back as an event, like every other
+  // change to one: the store has a single road for a new summary and no caller has to remember it.
   setModel: async (providerId: string, modelId: string) => {
     const id = get().activeId
-    if (id === '') return
-    const conversation = await bridge().setConversationModel(id, providerId, modelId)
-    set({
-      list: listWithUpdated(get().list, conversation),
-      transcript: reduceTranscript(get().transcript, {
-        conversationId: id,
-        type: 'conversation_updated',
-        conversation,
-      }),
-    })
+    if (id !== '') await bridge().setConversationModel(id, providerId, modelId)
   },
 
   setThinkingLevel: async (level: ThinkingLevel) => {
     const id = get().activeId
-    if (id === '') return
-    const conversation = await bridge().setThinkingLevel(id, level)
-    set({
-      list: listWithUpdated(get().list, conversation),
-      transcript: reduceTranscript(get().transcript, {
-        conversationId: id,
-        type: 'conversation_updated',
-        conversation,
-      }),
-    })
+    if (id !== '') await bridge().setThinkingLevel(id, level)
   },
 
   steer: async (text) => {
@@ -175,15 +159,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
   },
 
   rename: async (id, title) => {
-    const updated = await bridge().renameConversation(id, title)
-    set({
-      list: listWithUpdated(get().list, updated),
-      transcript: reduceTranscript(get().transcript, {
-        conversationId: get().transcript.conversationId,
-        type: 'conversation_updated',
-        conversation: updated,
-      }),
-    })
+    await bridge().renameConversation(id, title)
   },
 
   remove: async (id) => {
@@ -195,16 +171,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
 
   setLevel: async (level) => {
     const id = get().activeId
-    if (id === '') return
-    const conversation = await bridge().setConversationLevel(id, level)
-    set({
-      list: listWithUpdated(get().list, conversation),
-      transcript: reduceTranscript(get().transcript, {
-        conversationId: id,
-        type: 'conversation_updated',
-        conversation,
-      }),
-    })
+    if (id !== '') await bridge().setConversationLevel(id, level)
   },
 
   answerApproval: async (answer) => {
