@@ -210,7 +210,10 @@ export class RuntimeManager {
     }
 
     if (event.type === 'user_message' && !this.#named.has(event.conversationId)) {
-      const text = event.message.blocks.map((block) => block.text).join(' ')
+      const text = event.message.blocks
+        .filter((block) => block.kind !== 'tool')
+        .map((block) => block.text)
+        .join(' ')
       this.#named.add(event.conversationId)
       this.#update(conversation, { title: titleFromMessage(text) })
     }

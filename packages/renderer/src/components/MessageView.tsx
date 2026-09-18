@@ -1,6 +1,7 @@
 import type { ChatMessage } from '@alpha/core'
 import { memo } from 'react'
 import { Markdown } from './Markdown.tsx'
+import { ToolRow } from './ToolRow.tsx'
 
 function ThinkingBlock({ text }: { text: string }) {
   return (
@@ -32,7 +33,10 @@ export const MessageView = memo(function MessageView({ message }: { message: Cha
     return (
       <article className="flex justify-end" data-role="user">
         <div className="max-w-[75%] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
-          {message.blocks.map((block) => block.text).join('\n')}
+          {message.blocks
+            .filter((block) => block.kind !== 'tool')
+            .map((block) => block.text)
+            .join('\n')}
         </div>
       </article>
     )
@@ -47,6 +51,7 @@ export const MessageView = memo(function MessageView({ message }: { message: Cha
         // blocks with the same text are still two blocks.
         const key = `${message.id}-${index}`
         if (block.kind === 'thinking') return <ThinkingBlock key={key} text={block.text} />
+        if (block.kind === 'tool') return <ToolRow key={block.callId} block={block} />
         return (
           <div key={key} className="relative">
             <Markdown text={block.text} />

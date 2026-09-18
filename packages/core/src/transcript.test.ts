@@ -178,3 +178,124 @@ describe('visibleMessages', () => {
     expect(visibleMessages(state)[1].status).toBe('streaming')
   })
 })
+
+describe('the tool ledger', () => {
+  const callId = 'call-1'
+
+  const started = event({
+    type: 'tool_started',
+    callId,
+    name: 'read',
+    risk: 'read',
+    summary: 'src/index.ts',
+    raw: '{"path":"src/index.ts"}',
+    startedAt: 30,
+  })
+
+  const withCall = () =>
+    reduce([
+      event({ type: 'user_message', message: userMessage }),
+      event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Reading it.' }),
+      event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
+      started,
+    ])
+
+  it('attaches the row to the assistant message that asked for the call', () => {
+    const state = withCall()
+    const assistant = state.messages.find((message) => message.role === 'assistant')
+    expect(assistant?.blocks.at(-1)).toMatchObject({
+      kind: 'tool',
+      callId,
+      name: 'read',
+      risk: 'read',
+      summary: 'src/index.ts',
+      status: 'running',
+      output: '',
+    })
+  })
+
+  it('does not add a message of its own for the call', () => {
+    expect(withCall().messages).toHaveLength(2)
+  })
+
+  it('carries the risk class the runtime decided, not one the UI invents', () => {
+    const state = reduce([
+      event({ type: 'user_message', message: userMessage }),
+      event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
+      started,
+    ])
+    const block = state.streaming?.blocks.at(-1)
+    expect(block).toMatchObject({ kind: 'tool', risk: 'read' })
+  })
+
+  it('shows output as it arrives', () => {
+    const state = reduce([
+      ...[],
+      ...withCallEvents(5),
+      event({ type: 'tool_output', callId, output: 'partial output' }),
+    ])
+    expect(toolBlock(state)?.output).toBe('partial output')
+  })
+
+  it('records the end of the call with its details', () => {
+    const state = reduce([
+      ...withCallEvents(5),
+      event({
+        type: 'tool_finished',
+        callId,
+        status: 'failed',
+        output: 'command not found',
+        details: { exitCode: 127, truncated: true, fullOutputPath: '/tmp/full.log' },
+        endedAt: 99,
+      }),
+    ])
+    expect(toolBlock(state)).toMatchObject({
+      status: 'failed',
+      output: 'command not found',
+      endedAt: 99,
+      details: { exitCode: 127, truncated: true, fullOutputPath: '/tmp/full.log' },
+    })
+  })
+
+  it('ignores output for a call it never saw start', () => {
+    const state = reduce([event({ type: 'tool_output', callId: 'stranger', output: 'noise' })])
+    expect(state.messages).toEqual([])
+  })
+
+  it('keeps two calls in the order they started', () => {
+    const state = reduce([
+      ...withCallEvents(5),
+      event({
+        type: 'tool_started',
+        callId: 'call-2',
+        name: 'bash',
+        risk: 'execute',
+        summary: 'ls',
+        raw: '{}',
+        startedAt: 40,
+      }),
+    ])
+    const assistant = state.messages.find((message) => message.role === 'assistant')
+    expect(assistant?.blocks.filter((block) => block.kind === 'tool').map((block) => block.callId)).toEqual([
+      'call-1',
+      'call-2',
+    ])
+  })
+
+  function withCallEvents(createAt: number) {
+    return [
+      event({ type: 'user_message', message: userMessage }),
+      event({ type: 'assistant_message_started', messageId: 'a1', createdAt: createAt }),
+      event({ type: 'assistant_text_delta', messageId: 'a1', delta: 'Reading it.' }),
+      event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
+      started,
+    ]
+  }
+
+  function toolBlock(state: ReturnType<typeof reduce>) {
+    const assistant = state.messages.find((message) => message.role === 'assistant')
+    const block = assistant?.blocks.find((candidate) => candidate.kind === 'tool')
+    return block?.kind === 'tool' ? block : undefined
+  }
+})

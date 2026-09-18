@@ -13,6 +13,8 @@ import {
   createProvider,
   fauxAssistantMessage,
   fauxProvider,
+  fauxText,
+  fauxToolCall,
   type Model,
   type MutableModels,
 } from '@earendil-works/pi-ai'
@@ -26,7 +28,16 @@ export interface ModelRuntime {
   kind: 'faux' | 'configured'
 }
 
-const DEFAULT_FAUX_REPLIES = ['Scripted reply.']
+/**
+ * What a scripted reply can be: text, a tool call, or both. The tool call is what makes the
+ * integration and end-to-end suites able to exercise the real tools without a real model.
+ */
+export interface ScriptedReply {
+  text?: string
+  tool?: { name: string; args: Record<string, unknown> }
+}
+
+const DEFAULT_FAUX_REPLIES: ScriptedReply[] = [{ text: 'Scripted reply.' }]
 
 /** What the window should say about the model, without dialling anything. */
 export function describeRuntime(runtime: ModelRuntime): { configured: boolean; description: string } {
@@ -58,7 +69,7 @@ export function resolveModelRuntime(
       faux.setResponses([
         () => {
           arm(index + 1)
-          return fauxAssistantMessage(replies[Math.min(index, replies.length - 1)] ?? DEFAULT_FAUX_REPLIES[0])
+          return scriptedMessage(replies[Math.min(index, replies.length - 1)] ?? DEFAULT_FAUX_REPLIES[0])
         },
       ])
     }
@@ -110,13 +121,38 @@ function readApi(requested: string | undefined): 'openai-completions' | 'anthrop
   return requested === 'anthropic-messages' ? 'anthropic-messages' : 'openai-completions'
 }
 
-function readScriptedReplies(raw: string | undefined): string[] {
+function scriptedMessage(reply: ScriptedReply): ReturnType<typeof fauxAssistantMessage> {
+  const content = [
+    ...(reply.text === undefined ? [] : [fauxText(reply.text)]),
+    ...(reply.tool === undefined ? [] : [fauxToolCall(reply.tool.name, reply.tool.args)]),
+  ]
+  return fauxAssistantMessage(content.length === 0 ? '' : content)
+}
+
+/** Accepts a bare string (text) or an object carrying text, a tool call, or both. */
+function readScriptedReplies(raw: string | undefined): ScriptedReply[] {
   if (raw === undefined || raw === '') return DEFAULT_FAUX_REPLIES
   try {
     const parsed: unknown = JSON.parse(raw)
-    if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) return parsed
+    if (!Array.isArray(parsed)) return DEFAULT_FAUX_REPLIES
+    const replies = parsed.flatMap((item): ScriptedReply[] => {
+      if (typeof item === 'string') return [{ text: item }]
+      if (isScriptedReply(item)) return [item]
+      return []
+    })
+    return replies.length === 0 ? DEFAULT_FAUX_REPLIES : replies
   } catch {
     return DEFAULT_FAUX_REPLIES
   }
-  return DEFAULT_FAUX_REPLIES
+}
+
+function isScriptedReply(item: unknown): item is ScriptedReply {
+  if (typeof item !== 'object' || item === null) return false
+  const record = item as Record<string, unknown>
+  const hasTool =
+    typeof record.tool === 'object' &&
+    record.tool !== null &&
+    typeof (record.tool as { name?: unknown }).name === 'string' &&
+    typeof (record.tool as { args?: unknown }).args === 'object'
+  return typeof record.text === 'string' || hasTool
 }

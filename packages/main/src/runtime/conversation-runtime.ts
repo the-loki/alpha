@@ -19,6 +19,7 @@ import {
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
 import type { Api, Model } from '@earendil-works/pi-ai'
 import type { ModelRuntime } from './models.ts'
+import { createWorkspaceTools, workspaceToolNames } from './tools.ts'
 import { entriesToMessages } from './transcript-entries.ts'
 import { createEventTranslator } from './translate.ts'
 
@@ -49,6 +50,9 @@ const SUBSCRIBED_EVENTS: HarnessEventType[] = [
   'message_start',
   'message_update',
   'message_end',
+  'tool_start',
+  'tool_update',
+  'tool_end',
   'run_end',
   'fault',
 ]
@@ -90,8 +94,8 @@ export class ConversationRuntime {
         models: options.modelRuntime.models,
         model,
         systemPrompt: options.systemPrompt,
-        tools: options.tools ?? [],
-        activeToolNames: options.toolNames ?? [],
+        tools: options.tools ?? createWorkspaceTools(),
+        activeToolNames: options.toolNames ?? workspaceToolNames(),
         toolContext: { env },
       },
       BACKGROUND_CONTEXT,

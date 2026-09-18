@@ -4,8 +4,9 @@
  * for live events.
  */
 
-import type { ChatBlock, ChatMessage } from '@alpha/core'
+import { type ChatBlock, type ChatBlockTool, type ChatMessage, toolRiskOf } from '@alpha/core'
 import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
+import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 const textOf = (content: string | unknown[]): string => {
   if (typeof content === 'string') return content
@@ -21,15 +22,60 @@ const textOf = (content: string | unknown[]): string => {
     .join('\n')
 }
 
-const blocksOf = (content: unknown[]): ChatBlock[] => {
+const blocksOf = (content: unknown[], timestamp: number): ChatBlock[] => {
   const blocks: ChatBlock[] = []
   for (const part of content) {
     if (typeof part !== 'object' || part === null || !('type' in part)) continue
     const typed = part as { type: string; text?: unknown }
     if (typed.type === 'text' && typeof typed.text === 'string') blocks.push({ kind: 'text', text: typed.text })
     if (typed.type === 'thinking' && typeof typed.text === 'string') blocks.push({ kind: 'thinking', text: typed.text })
+    if (typed.type === 'toolCall') blocks.push(toolBlockOf(part, timestamp))
   }
   return blocks
+}
+
+/** A call that was persisted starts as running; its result entry, later in the log, finishes it. */
+function toolBlockOf(part: unknown, timestamp: number): ChatBlockTool {
+  const call = part as { id?: unknown; name?: unknown; arguments?: unknown }
+  const name = typeof call.name === 'string' ? call.name : 'tool'
+  const args = call.arguments ?? {}
+  return {
+    kind: 'tool',
+    callId: typeof call.id === 'string' ? call.id : `${name}-${timestamp}`,
+    name,
+    risk: toolRiskOf(name),
+    summary: summarizeToolCall(name, args),
+    raw: JSON.stringify(args),
+    status: 'running',
+    output: '',
+    startedAt: timestamp,
+  }
+}
+
+/** The result of a call lands on the row the call created, wherever that row is. */
+function finishTool(messages: ChatMessage[], result: ToolResultContent): void {
+  for (const message of messages) {
+    const index = message.blocks.findIndex((block) => block.kind === 'tool' && block.callId === result.toolCallId)
+    if (index === -1) continue
+    const block = message.blocks[index] as ChatBlockTool
+    const output = outputTextOf(result)
+    message.blocks[index] = {
+      ...block,
+      status: result.isError === true ? 'failed' : 'ok',
+      output,
+      details: toolDetails(block.name, result.details, output),
+      endedAt: result.timestamp,
+    }
+    return
+  }
+}
+
+interface ToolResultContent {
+  toolCallId: string
+  isError?: boolean
+  content?: unknown
+  details?: unknown
+  timestamp: number
 }
 
 export function entriesToMessages(entries: Entry[]): ChatMessage[] {
@@ -55,9 +101,18 @@ export function entriesToMessages(entries: Entry[]): ChatMessage[] {
       messages.push({
         id: entry.id,
         role: 'assistant',
-        blocks: blocksOf(message.content),
+        blocks: blocksOf(message.content, entry.timestamp),
         createdAt: entry.timestamp,
         status: failed ? 'failed' : interrupted ? 'interrupted' : 'complete',
+      })
+    }
+    if (message.role === 'toolResult') {
+      finishTool(messages, {
+        toolCallId: message.toolCallId,
+        isError: message.isError,
+        content: message.content,
+        details: message.details,
+        timestamp: entry.timestamp,
       })
     }
   }

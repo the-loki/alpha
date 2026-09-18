@@ -7,7 +7,7 @@
  * the user's message and once when the assistant's finishes — so two hundred text deltas cost
  * two hundred small objects, not two hundred copies of the conversation.
  */
-import type { ChatBlock, ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
+import type { ChatBlock, ChatBlockTool, ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 
 export interface TranscriptState {
   conversationId: string
@@ -79,8 +79,75 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return failRun(state, event.message)
 
     default:
+      return reduceToolEvent(state, event)
+  }
+}
+
+/**
+ * Tool events get their own reducer because they are the only ones that write to a message that may
+ * still be streaming or may already have landed in the transcript.
+ */
+function reduceToolEvent(state: TranscriptState, event: RuntimeEvent): TranscriptState {
+  switch (event.type) {
+    case 'tool_started':
+      return appendToolCall(state, event)
+
+    case 'tool_output':
+      return mapToolBlocks(state, event.callId, (block) => ({ ...block, output: event.output }))
+
+    case 'tool_finished':
+      return mapToolBlocks(state, event.callId, (block) => ({
+        ...block,
+        status: event.status,
+        output: event.output,
+        details: event.details ?? block.details,
+        endedAt: event.endedAt,
+      }))
+
+    default:
       return state
   }
+}
+
+/**
+ * A tool call arrives after the assistant message that requested it has been written, so the row
+ * is attached to that message: the ledger reads as one entry per request, with its result.
+ */
+function appendToolCall(
+  state: TranscriptState,
+  event: Extract<RuntimeEvent, { type: 'tool_started' }>,
+): TranscriptState {
+  const tool: ChatBlockTool = {
+    kind: 'tool',
+    callId: event.callId,
+    name: event.name,
+    risk: event.risk,
+    summary: event.summary,
+    raw: event.raw,
+    status: 'running',
+    output: '',
+    startedAt: event.startedAt,
+  }
+
+  const streaming = state.streaming
+  if (streaming !== undefined) return { ...state, streaming: { ...streaming, blocks: [...streaming.blocks, tool] } }
+
+  const lastAssistant = [...state.messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && message.status !== 'failed')
+  if (lastAssistant === undefined) {
+    return { ...state, messages: [...state.messages, assistantWith(tool)] }
+  }
+  return {
+    ...state,
+    messages: state.messages.map((message) =>
+      message.id === lastAssistant.id ? { ...message, blocks: [...message.blocks, tool] } : message,
+    ),
+  }
+}
+
+function assistantWith(tool: ChatBlockTool): ChatMessage {
+  return { id: `tool-${tool.callId}`, role: 'assistant', blocks: [tool], createdAt: tool.startedAt, status: 'complete' }
 }
 
 /** A failure keeps whatever was streamed: the half-written answer is evidence, not debris. */
@@ -96,10 +163,38 @@ function failRun(state: TranscriptState, message: string): TranscriptState {
   }
 }
 
+/**
+ * A tool row belongs to the assistant message that asked for the call. That message may still be
+ * streaming or may already have moved into the transcript, so the search covers both.
+ */
+function mapToolBlocks(
+  state: TranscriptState,
+  callId: string,
+  change: (block: ChatBlockTool) => ChatBlockTool,
+): TranscriptState {
+  const isTool = (block: ChatBlock) => block.kind === 'tool' && block.callId === callId
+  const holdsRow = (message: ChatMessage): boolean => message.blocks.some(isTool)
+  const patch = (message: ChatMessage): ChatMessage => {
+    const index = message.blocks.findIndex(isTool)
+    const block = index === -1 ? undefined : message.blocks[index]
+    if (block === undefined || block.kind !== 'tool') return message
+    const blocks = [...message.blocks]
+    blocks[index] = change(block)
+    return { ...message, blocks }
+  }
+
+  const streaming = state.streaming
+  if (streaming !== undefined && holdsRow(streaming)) {
+    return { ...state, streaming: patch(streaming) }
+  }
+  if (!state.messages.some(holdsRow)) return state
+  return { ...state, messages: state.messages.map((message) => patch(message)) }
+}
+
 function appendDelta(
   state: TranscriptState,
   messageId: string,
-  kind: ChatBlock['kind'],
+  kind: 'text' | 'thinking',
   delta: string,
 ): TranscriptState {
   const streaming = state.streaming

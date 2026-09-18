@@ -9,8 +9,9 @@
  * and reused for every delta and for the finish.
  */
 
-import type { RuntimeEvent } from '@alpha/core'
+import { type RuntimeEvent, toolRiskOf } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
+import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 export interface EventTranslator {
   translate(event: HarnessEvent): RuntimeEvent[]
@@ -57,6 +58,40 @@ function translateEvent(state: TranslatorState, conversationId: string, event: H
     case 'message_update':
     case 'message_end':
       return translateMessageEvent(state, conversationId, event)
+
+    case 'tool_start':
+      return [
+        {
+          conversationId,
+          type: 'tool_started',
+          callId: event.toolCallId,
+          name: event.toolName,
+          risk: toolRiskOf(event.toolName),
+          summary: summarizeToolCall(event.toolName, event.args),
+          raw: JSON.stringify(event.args ?? {}),
+          startedAt: Date.now(),
+        },
+      ]
+
+    case 'tool_update':
+      return [
+        { conversationId, type: 'tool_output', callId: event.toolCallId, output: outputTextOf(event.partialResult) },
+      ]
+
+    case 'tool_end': {
+      const output = outputTextOf(event.result)
+      return [
+        {
+          conversationId,
+          type: 'tool_finished',
+          callId: event.toolCallId,
+          status: event.isError ? 'failed' : 'ok',
+          output,
+          details: toolDetails(event.toolName, event.result?.details, output),
+          endedAt: Date.now(),
+        },
+      ]
+    }
 
     default:
       return []
