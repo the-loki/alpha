@@ -10,7 +10,7 @@ function UsageReadout() {
   if (totals.totalTokens === 0) return null
 
   return (
-    <span className="shrink-0 font-mono text-[11px] text-parchment-faint" title="Tokens and cost for this conversation">
+    <span className="shrink-0 font-mono text-micro text-parchment-faint" title="Tokens and cost for this conversation">
       {formatTokens(totals.totalTokens)} tokens
       {formatCost(totals.cost) === '' ? '' : ` · ${formatCost(totals.cost)}`}
     </span>
@@ -26,18 +26,18 @@ function ConversationActions() {
 
   return (
     <span className="flex shrink-0 items-center gap-2">
-      {written !== '' && <span className="font-mono text-[11px] text-jade">Exported to {written}</span>}
+      {written !== '' && <span className="font-mono text-micro text-jade">Exported to {written}</span>}
       <button
         type="button"
         onClick={() => void exportMarkdown(activeId).then(setWritten)}
-        className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
+        className="font-mono text-micro text-parchment-faint transition-colors hover:text-parchment"
       >
         Export
       </button>
       <button
         type="button"
         onClick={() => void remove(activeId)}
-        className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-danger"
+        className="font-mono text-micro text-parchment-faint transition-colors hover:text-danger"
       >
         Delete
       </button>
@@ -67,8 +67,8 @@ export function ConversationHeader() {
   const chosen = `${summary.model.providerId}::${summary.model.modelId}`
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-6 py-2">
-      <h1 className="min-w-0 truncate text-[13px] font-medium text-parchment">{summary.title}</h1>
+    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-8 py-2">
+      <h1 className="min-w-0 truncate text-ui font-medium text-parchment">{summary.title}</h1>
       <div className="flex items-center gap-2">
         <UsageReadout />
         <ConversationActions />
@@ -79,7 +79,7 @@ export function ConversationHeader() {
             const [providerId, modelId] = event.target.value.split('::')
             void setModel(providerId, modelId)
           }}
-          className="max-w-[22rem] rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-[11.5px] text-parchment-dim focus:border-line-strong focus:outline-none"
+          className="max-w-[22rem] rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment-dim focus:border-line-strong focus:outline-none"
         >
           {snapshot.providers.length === 0 && <option value="">No provider configured</option>}
           {snapshot.providers.map((provider) => (
@@ -97,7 +97,7 @@ export function ConversationHeader() {
           aria-label="Thinking effort"
           value={summary.thinkingLevel}
           onChange={(event) => void setThinkingLevel(event.target.value as ThinkingLevel)}
-          className="rounded-control border border-line bg-ink-700 px-2 py-1 text-[11.5px] text-parchment-dim focus:border-line-strong focus:outline-none"
+          className="rounded-control border border-line bg-ink-700 px-2 py-1 text-xs text-parchment-dim focus:border-line-strong focus:outline-none"
         >
           {THINKING_LEVELS.map((level) => (
             <option key={level} value={level}>

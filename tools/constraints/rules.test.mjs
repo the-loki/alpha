@@ -23,6 +23,34 @@ describe('the rule set', () => {
   })
 })
 
+describe('05-design:no-px-lengths', () => {
+  const rule = '05-design:no-px-lengths'
+
+  it('flags a px length in a class, and in a stylesheet', () => {
+    const inClass = violationsFor(rule, file('packages/renderer/src/a.tsx', '<p className="text-[13px] gap-2">x</p>'))
+    expect(inClass).toHaveLength(1)
+    expect(inClass[0].message).toContain('13px')
+
+    const inCss = violationsFor(rule, file('packages/renderer/src/styles/a.css', '  padding: 6px;'))
+    expect(inCss).toHaveLength(1)
+  })
+
+  it('allows hairlines, rem, and prose about px', () => {
+    const hairline = violationsFor(rule, file('packages/renderer/src/a.css', '  border: 1px solid var(--color-line);'))
+    expect(hairline).toEqual([])
+
+    const rem = violationsFor(rule, file('packages/renderer/src/a.tsx', '<p className="text-ui rounded-card">x</p>'))
+    expect(rem).toEqual([])
+
+    const comment = violationsFor(rule, file('packages/renderer/src/a.css', '   * rem, not px, so scaling works'))
+    expect(comment).toEqual([])
+  })
+
+  it('says nothing about files outside the renderer', () => {
+    expect(violationsFor(rule, file('packages/main/src/a.ts', 'const pad = "6px"'))).toEqual([])
+  })
+})
+
 describe('01-typescript:no-null-union', () => {
   const rule = '01-typescript:no-null-union'
 

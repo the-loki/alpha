@@ -38,7 +38,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
             setRenaming(false)
             if (next !== '' && next !== conversation.title) void rename(conversation.id, next)
           }}
-          className="w-full rounded-control border border-line-strong bg-ink-900 px-2 py-1 text-[12.5px] text-parchment focus:outline-none"
+          className="w-full rounded-control border border-line-strong bg-ink-900 px-2 py-1 text-code text-parchment focus:outline-none"
         />
       </li>
     )
@@ -55,14 +55,14 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
         }`}
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${state.dot}`} aria-hidden="true" />
-        <span className="truncate text-[12.5px]">{conversation.title}</span>
+        <span className="truncate text-code">{conversation.title}</span>
         <span className="sr-only">{state.word}</span>
       </button>
       <button
         type="button"
         aria-label={`Rename ${conversation.title}`}
         onClick={() => setRenaming(true)}
-        className="shrink-0 px-1 font-mono text-[11px] text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+        className="shrink-0 px-1 font-mono text-micro text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
       >
         rename
       </button>
@@ -70,7 +70,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
         type="button"
         aria-label={`Delete ${conversation.title}`}
         onClick={() => void remove(conversation.id)}
-        className="shrink-0 px-1 font-mono text-[11px] text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus:opacity-100"
+        className="shrink-0 px-1 font-mono text-micro text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus:opacity-100"
       >
         delete
       </button>
@@ -81,7 +81,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
 function Group({ group }: { group: WorkspaceGroup }) {
   return (
     <section className="mt-3" data-workspace={group.path}>
-      <h3 className="flex items-baseline justify-between px-1 text-[11px] text-parchment-faint">
+      <h3 className="flex items-baseline justify-between px-1 text-micro text-parchment-faint">
         <span className="truncate font-mono">{group.name}</span>
         <span className="shrink-0">{group.count}</span>
       </h3>
@@ -108,17 +108,17 @@ export function Sidebar() {
 
       <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-[11px] font-medium uppercase tracking-wider text-parchment-faint">Conversations</h2>
+          <h2 className="text-micro font-medium uppercase tracking-wider text-parchment-faint">Conversations</h2>
           <Link
             to="/"
-            className="rounded-control px-1.5 py-0.5 text-[11px] text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
+            className="rounded-control px-1.5 py-0.5 text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
           >
             New
           </Link>
         </div>
 
         {conversations.length === 0 ? (
-          <p className="mt-2 px-1 text-[12px] leading-relaxed text-parchment-faint">
+          <p className="mt-2 px-1 text-xs leading-relaxed text-parchment-faint">
             Nothing here yet. Your first conversation appears the moment you ask the agent something.
           </p>
         ) : (
@@ -127,7 +127,7 @@ export function Sidebar() {
               <Group key={group.path} group={group} />
             ))}
             {elsewhere.length > 0 && (
-              <h2 className="mt-4 px-1 text-[11px] font-medium uppercase tracking-wider text-parchment-faint">
+              <h2 className="mt-4 px-1 text-micro font-medium uppercase tracking-wider text-parchment-faint">
                 Other workspaces
               </h2>
             )}

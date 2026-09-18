@@ -45,12 +45,12 @@ export const providerInput = (draft: DraftProvider) => ({
 })
 
 const FIELD =
-  'w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-[12px] text-parchment focus:border-line-strong focus:outline-none'
+  'w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none'
 
 function TextField(props: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] text-parchment-faint">{props.label}</span>
+      <span className="mb-1 block text-micro text-parchment-faint">{props.label}</span>
       <input
         aria-label={props.label}
         value={props.value}
@@ -101,7 +101,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
             />
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <label className="flex items-center gap-2 text-[12px] text-parchment-dim">
+            <label className="flex items-center gap-2 text-xs text-parchment-dim">
               <input
                 type="checkbox"
                 aria-label={`Reasoning ${index + 1}`}
@@ -116,7 +116,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                 type="button"
                 aria-label={`Remove model ${index + 1}`}
                 onClick={() => onChange(models.filter((_, at) => at !== index))}
-                className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-danger"
+                className="font-mono text-micro text-parchment-faint transition-colors hover:text-danger"
               >
                 remove
               </button>
@@ -127,7 +127,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
       <button
         type="button"
         onClick={() => onChange([...models, emptyModel()])}
-        className="rounded-control border border-line px-2.5 py-1 text-[12px] text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment"
+        className="rounded-control border border-line px-2.5 py-1 text-xs text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment"
       >
         Add model
       </button>
@@ -139,7 +139,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
 export function ApiField({ api, onChange }: { api: ProviderApi; onChange: (api: ProviderApi) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] text-parchment-faint">Wire protocol</span>
+      <span className="mb-1 block text-micro text-parchment-faint">Wire protocol</span>
       <select
         aria-label="Wire protocol"
         value={api}

@@ -11,8 +11,8 @@ function PermissionSection() {
 
   return (
     <section className="mt-8">
-      <h2 className="text-[15px] font-medium text-parchment">Default permission level</h2>
-      <p className="mt-1 text-[12px] text-parchment-dim">
+      <h2 className="text-body font-medium text-parchment">Default permission level</h2>
+      <p className="mt-1 text-xs text-parchment-dim">
         New conversations in this workspace start here. An open conversation keeps its own level — change that from the
         chip in the header.
       </p>
@@ -27,8 +27,8 @@ function PermissionSection() {
                 candidate === level ? TONE_CLASS[levelTone(candidate)] : 'border-line text-parchment-dim'
               }`}
             >
-              <span className="block text-[13px] font-medium">{levelLabel(candidate)}</span>
-              <span className="mt-0.5 block text-[12px] text-parchment-faint">{levelDescription(candidate)}</span>
+              <span className="block text-ui font-medium">{levelLabel(candidate)}</span>
+              <span className="mt-0.5 block text-xs text-parchment-faint">{levelDescription(candidate)}</span>
             </button>
           </li>
         ))}
@@ -45,8 +45,8 @@ function ThemeSection() {
 
   return (
     <section className="mt-8">
-      <h2 className="text-[15px] font-medium text-parchment">Theme</h2>
-      <p className="mt-1 text-[12px] text-parchment-dim">
+      <h2 className="text-body font-medium text-parchment">Theme</h2>
+      <p className="mt-1 text-xs text-parchment-dim">
         Alpha follows the system by default. The light theme is its own palette, not a filter over the dark one.
       </p>
       <div className="mt-3 flex gap-1.5">
@@ -56,7 +56,7 @@ function ThemeSection() {
             type="button"
             aria-pressed={candidate === theme}
             onClick={() => void setTheme(candidate)}
-            className={`rounded-control border px-3 py-1.5 text-[12px] transition-colors ${
+            className={`rounded-control border px-3 py-1.5 text-xs transition-colors ${
               candidate === theme
                 ? 'border-ember/50 bg-ember/10 text-ember'
                 : 'border-line text-parchment-dim hover:bg-ink-700'
@@ -74,7 +74,7 @@ function Settings() {
   return (
     <div className="h-full overflow-y-auto px-8 py-8">
       <div className="mx-auto max-w-2xl">
-        <h1 className="text-[20px] font-medium text-parchment">Settings</h1>
+        <h1 className="text-xl font-medium text-parchment">Settings</h1>
         <ProvidersSection />
         <PermissionSection />
         <ThemeSection />

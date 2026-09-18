@@ -66,7 +66,7 @@ export function LevelChip() {
         aria-expanded={open}
         title={inConversation ? `This conversation: ${levelDescription(level)}` : levelDescription(level)}
         onClick={() => setOpen((value) => !value)}
-        className={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-[12px] font-medium transition-colors ${TONE_CLASS[tone]}`}
+        className={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-xs font-medium transition-colors ${TONE_CLASS[tone]}`}
       >
         <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone]}`} aria-hidden="true" />
         {levelLabel(level)}
@@ -90,11 +90,11 @@ export function LevelChip() {
               }}
               className="block w-full px-3 py-2 text-left transition-colors hover:bg-ink-600"
             >
-              <span className="flex items-center gap-2 text-[13px] text-parchment">
+              <span className="flex items-center gap-2 text-ui text-parchment">
                 <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[levelTone(candidate)]}`} aria-hidden="true" />
                 {levelLabel(candidate)}
               </span>
-              <span className="mt-0.5 block text-[12px] leading-snug text-parchment-faint">
+              <span className="mt-0.5 block text-xs leading-snug text-parchment-faint">
                 {levelDescription(candidate)}
               </span>
             </button>

@@ -51,10 +51,10 @@ export function TitleBar() {
   return (
     <header className="drag-region flex h-11 shrink-0 items-center justify-between border-b border-line bg-ink-800 pl-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="text-[13px] font-semibold tracking-wide text-parchment">Alpha</span>
+        <span className="text-ui font-semibold tracking-wide text-parchment">Alpha</span>
         <span className="h-4 w-px bg-line" aria-hidden="true" />
         <span
-          className="truncate text-[12px] text-parchment-dim"
+          className="truncate text-xs text-parchment-dim"
           title={workspace.kind === 'selected' ? workspace.workspace.path : ''}
         >
           {name}
@@ -64,7 +64,7 @@ export function TitleBar() {
       <div className="flex items-center gap-2">
         <Link
           to="/settings"
-          className="no-drag rounded-control px-2 py-1 text-[12px] text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          className="no-drag rounded-control px-2 py-1 text-xs text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           Settings
         </Link>

@@ -28,10 +28,10 @@ export function DiffView({ diff }: { diff: string }) {
 
   return (
     <div className="mt-1.5">
-      <p className="mb-1 font-mono text-[11px] text-parchment-faint">
+      <p className="mb-1 font-mono text-micro text-parchment-faint">
         <span className="text-jade">+{added}</span> <span className="text-danger">−{removed}</span>
       </p>
-      <pre className="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-[12px] leading-[1.5]">
+      <pre className="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-xs leading-[1.5]">
         {keyedLines(lines).map(({ key, line }) => (
           <span key={key} className={`block ${LINE_CLASS(line)}`}>
             {line === '' ? ' ' : line}

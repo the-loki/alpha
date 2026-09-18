@@ -269,6 +269,33 @@ export const RULES = [
   },
 
   {
+    id: '05-design:no-px-lengths',
+    constraint: '05-design.md',
+    description: 'lengths are rem, so the window scale applies',
+    check({ path, text }) {
+      if (!path.startsWith('packages/renderer/')) return []
+      if (!/\.(ts|tsx|css)$/.test(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        const trimmed = line.trim()
+        // A comment may talk about px; only lengths count.
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+        // 1px hairlines are the one length that has to stay a device pixel to stay crisp.
+        const lengths = line.match(/(?<![\d.])[\d.]+px\b/g) ?? []
+        for (const length of lengths) {
+          if (length === '1px') continue
+          found.push({
+            line: index + 1,
+            message: `${length} is a length in px; use the named tokens or Tailwind's scale (rem)`,
+            text: trimmed,
+          })
+        }
+      })
+      return found
+    },
+  },
+
+  {
     id: '03-product-scope:no-hardcoded-hosts',
     constraint: '03-product-scope.md',
     description: 'the only hosts are configured providers',

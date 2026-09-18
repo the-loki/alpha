@@ -12,7 +12,7 @@ export const Markdown = memo(function Markdown({ text, caret = false }: { text: 
   const endsHere = (end: number | undefined): boolean => caret && end !== undefined && end >= text.trimEnd().length
 
   return (
-    <div className="max-w-[68ch] text-[15px] leading-[1.65] text-parchment">
+    <div className="max-w-measure text-body text-parchment">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -24,9 +24,9 @@ export const Markdown = memo(function Markdown({ text, caret = false }: { text: 
               )}
             </p>
           ),
-          h1: (props) => <h1 className="mb-2 mt-4 text-[17px] font-semibold" {...props} />,
-          h2: (props) => <h2 className="mb-2 mt-4 text-[16px] font-semibold" {...props} />,
-          h3: (props) => <h3 className="mb-1.5 mt-3 text-[15px] font-semibold" {...props} />,
+          h1: (props) => <h1 className="mb-2 mt-4 text-lg font-semibold" {...props} />,
+          h2: (props) => <h2 className="mb-2 mt-4 text-base font-semibold" {...props} />,
+          h3: (props) => <h3 className="mb-1.5 mt-3 text-body font-semibold" {...props} />,
           ul: (props) => <ul className="mb-3 list-disc space-y-1 pl-5" {...props} />,
           ol: (props) => <ol className="mb-3 list-decimal space-y-1 pl-5" {...props} />,
           li: (props) => <li className="leading-[1.6]" {...props} />,
@@ -35,17 +35,17 @@ export const Markdown = memo(function Markdown({ text, caret = false }: { text: 
             <blockquote className="mb-3 border-l-2 border-line-strong pl-3 text-parchment-dim" {...props} />
           ),
           code: (props) => (
-            <code className="rounded bg-ink-600 px-1 py-0.5 font-mono text-[12.5px] text-parchment" {...props} />
+            <code className="rounded bg-ink-600 px-1 py-0.5 font-mono text-code text-parchment" {...props} />
           ),
           pre: (props) => (
             <pre
-              className="mb-3 overflow-x-auto rounded-card border border-line bg-ink-800 p-3 font-mono text-[12.5px] leading-[1.55]"
+              className="mb-3 overflow-x-auto rounded-card border border-line bg-ink-800 p-3 font-mono text-code"
               {...props}
             />
           ),
           table: (props) => (
             <div className="mb-3 overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]" {...props} />
+              <table className="w-full border-collapse text-ui" {...props} />
             </div>
           ),
           th: (props) => <th className="border border-line px-2 py-1 text-left font-medium" {...props} />,

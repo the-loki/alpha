@@ -45,17 +45,17 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
       className="overflow-hidden rounded-card border border-line border-l-2 border-l-amber bg-ink-800/80"
     >
       <header className="flex items-baseline gap-2 px-3.5 pb-1 pt-2.5">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-amber">
+        <span className="font-mono text-micro uppercase tracking-wider text-amber">
           {request.risk === 'execute' ? 'Wants to run a command' : 'Wants to change a file'}
         </span>
-        <span className="text-[11px] text-parchment-faint">· {levelLabel(request.level)}</span>
+        <span className="text-micro text-parchment-faint">· {levelLabel(request.level)}</span>
       </header>
 
       <div className="px-3.5 pb-1">
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-parchment">
+        <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-ui leading-relaxed text-parchment">
           {request.detail === '' ? riskLabel(request.risk) : request.detail}
         </pre>
-        <p className="mt-0.5 font-mono text-[11px] text-parchment-faint">in {request.cwd}</p>
+        <p className="mt-0.5 font-mono text-micro text-parchment-faint">in {request.cwd}</p>
         {request.diff !== undefined && <DiffView diff={request.diff} />}
       </div>
 
@@ -64,7 +64,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           type="button"
           onClick={allowOnce}
           disabled={busy}
-          className="rounded-control bg-ember px-3 py-1 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:opacity-60"
+          className="rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:opacity-60"
         >
           Allow once
         </button>
@@ -74,7 +74,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
             type="button"
             onClick={allowAlways}
             disabled={busy}
-            className="px-3 py-1 text-[12px] text-parchment transition-colors hover:text-parchment disabled:opacity-60"
+            className="px-3 py-1 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
           >
             Always allow
           </button>
@@ -82,7 +82,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
             aria-label="Remember this for"
             value={scope}
             onChange={(event) => setScope(event.target.value as RuleScope)}
-            className="border-l border-line bg-transparent px-1.5 py-1 text-[11px] text-parchment-dim focus:outline-none"
+            className="border-l border-line bg-transparent px-1.5 py-1 text-micro text-parchment-dim focus:outline-none"
           >
             <option value="conversation">this conversation</option>
             <option value="workspace">this workspace</option>
@@ -95,14 +95,14 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           onChange={(event) => setReason(event.target.value)}
           aria-label="Reason for denying"
           placeholder="Reason (optional)"
-          className="min-w-40 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 font-mono text-[12px] text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          className="min-w-40 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 font-mono text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
         <button
           type="button"
           onClick={deny}
           disabled={busy}
-          className="rounded-control border border-danger/40 px-3 py-1 text-[12px] text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
+          className="rounded-control border border-danger/40 px-3 py-1 text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
         >
           Deny
         </button>

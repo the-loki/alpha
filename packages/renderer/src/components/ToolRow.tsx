@@ -56,20 +56,20 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
         aria-expanded={open}
         className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left"
       >
-        <span className={`font-mono text-[11px] ${TONE[block.status]}`} title={riskLabel(block.risk)}>
+        <span className={`font-mono text-micro ${TONE[block.status]}`} title={riskLabel(block.risk)}>
           {GLYPH[block.risk]}
         </span>
-        <span className="shrink-0 font-mono text-[12px] text-parchment">{block.name}</span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-parchment-dim">{block.summary}</span>
+        <span className="shrink-0 font-mono text-xs text-parchment">{block.name}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-parchment-dim">{block.summary}</span>
         {block.approval !== undefined && MARK[block.approval.kind] !== '' && (
           <span
-            className={`shrink-0 rounded-control border px-1.5 text-[10px] font-mono tracking-wide ${MARK_TONE[block.approval.kind]}`}
+            className={`shrink-0 rounded-control border px-1.5 text-micro font-mono tracking-wide ${MARK_TONE[block.approval.kind]}`}
           >
             {MARK[block.approval.kind]}
           </span>
         )}
-        <span className={`shrink-0 font-mono text-[11px] ${TONE[block.status]}`}>{STATUS_WORD[block.status]}</span>
-        <span className="w-14 shrink-0 text-right font-mono text-[11px] text-parchment-faint">
+        <span className={`shrink-0 font-mono text-micro ${TONE[block.status]}`}>{STATUS_WORD[block.status]}</span>
+        <span className="w-14 shrink-0 text-right font-mono text-micro text-parchment-faint">
           {formatDuration(block.startedAt, block.endedAt)}
         </span>
       </button>
@@ -77,31 +77,31 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
       {open && (
         <div className="border-t border-line px-3 py-2">
           {block.approval !== undefined && (
-            <p className="mb-1 font-mono text-[11px] text-parchment-faint">
+            <p className="mb-1 font-mono text-micro text-parchment-faint">
               {approvalNote(block.approval)}
               {block.approval.reason === undefined ? '' : ` Reason: ${block.approval.reason}`}
             </p>
           )}
-          <p className="font-mono text-[11px] uppercase tracking-wider text-parchment-faint">Arguments</p>
-          <pre className="mt-1 overflow-x-auto font-mono text-[12px] leading-[1.5] text-parchment-dim">{block.raw}</pre>
+          <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">Arguments</p>
+          <pre className="mt-1 overflow-x-auto font-mono text-xs leading-[1.5] text-parchment-dim">{block.raw}</pre>
           {block.details?.diff !== undefined && <DiffView diff={block.details.diff} />}
           {block.output !== '' && (
             <>
               {/* The button sits on the heading it belongs to: two rows on screen can each have
                   an output, and "copy" alone would not say which one it takes. */}
               <div className="mt-2 flex items-center justify-between">
-                <p className="font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
+                <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">
                   Output{block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
                 </p>
                 <CopyButton what={`the output of ${block.name}`} text={block.output} label="copy output" />
               </div>
-              <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-[12px] leading-[1.55] text-parchment-dim">
+              <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-xs leading-[1.55] text-parchment-dim">
                 {block.output}
               </pre>
             </>
           )}
           {block.details?.fullOutputPath !== undefined && (
-            <p className="mt-1 font-mono text-[11px] text-parchment-faint">
+            <p className="mt-1 font-mono text-micro text-parchment-faint">
               Truncated. Full output: {block.details.fullOutputPath}
             </p>
           )}

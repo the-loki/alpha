@@ -28,7 +28,7 @@ export function AddProvider() {
           aria-label="Add a provider from the catalog"
           value={selected}
           onChange={(event) => setSelected(event.target.value)}
-          className="min-w-0 flex-1 rounded-control border border-line bg-ink-700 px-2 py-1.5 text-[12.5px] text-parchment focus:border-line-strong focus:outline-none"
+          className="min-w-0 flex-1 rounded-control border border-line bg-ink-700 px-2 py-1.5 text-code text-parchment focus:border-line-strong focus:outline-none"
         >
           <option value="">Add a known provider…</option>
           {catalog.map((entry) => (
@@ -41,14 +41,14 @@ export function AddProvider() {
           type="button"
           disabled={selected === ''}
           onClick={() => void addFromCatalog(selected).then(() => setSelected(''))}
-          className="rounded-control border border-line px-3 py-1.5 text-[12px] text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
+          className="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
         >
           Add
         </button>
       </div>
 
       <fieldset className="rounded-card border border-line p-3">
-        <legend className="px-1 text-[11px] uppercase tracking-wider text-parchment-faint">Custom endpoint</legend>
+        <legend className="px-1 text-micro uppercase tracking-wider text-parchment-faint">Custom endpoint</legend>
         <div className="grid grid-cols-2 gap-2">
           <Field
             label="Id"
@@ -74,11 +74,11 @@ export function AddProvider() {
         <button
           type="button"
           onClick={() => void add()}
-          className="mt-3 rounded-control bg-ember px-3 py-1.5 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+          className="mt-3 rounded-control bg-ember px-3 py-1.5 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright"
         >
           Add custom provider
         </button>
-        {error !== '' && <p className="mt-2 text-[12px] text-danger">{error}</p>}
+        {error !== '' && <p className="mt-2 text-xs text-danger">{error}</p>}
       </fieldset>
     </div>
   )
@@ -87,13 +87,13 @@ export function AddProvider() {
 function Field(props: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] text-parchment-faint">{props.label}</span>
+      <span className="mb-1 block text-micro text-parchment-faint">{props.label}</span>
       <input
         aria-label={props.label}
         value={props.value}
         placeholder={props.placeholder}
         onChange={(event) => props.onChange(event.target.value)}
-        className="w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-[12px] text-parchment focus:border-line-strong focus:outline-none"
+        className="w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none"
       />
     </label>
   )

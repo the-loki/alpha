@@ -9,10 +9,10 @@ function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
   const elapsed = formatDuration(block.startedAt, block.endedAt)
   return (
     <details className="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
-      <summary className="cursor-pointer list-none font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
+      <summary className="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
         Thinking{elapsed === '' ? '' : ` · ${elapsed}`}
       </summary>
-      <p className="mt-2 whitespace-pre-wrap font-mono text-[12.5px] leading-[1.6] text-parchment-dim">{block.text}</p>
+      <p className="mt-2 whitespace-pre-wrap font-mono text-code leading-[1.6] text-parchment-dim">{block.text}</p>
     </details>
   )
 }
@@ -21,11 +21,11 @@ function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
 function CompactionMarker({ block }: { block: ChatBlockCompaction }) {
   return (
     <details className="mb-3 rounded-card border border-dashed border-line bg-ink-800/50 px-3 py-2">
-      <summary className="cursor-pointer list-none font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
+      <summary className="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
         History summarised here
         {block.replaced === undefined ? '' : ` · ${block.replaced} messages`}
       </summary>
-      <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-[1.6] text-parchment-dim">{block.summary}</p>
+      <p className="mt-2 whitespace-pre-wrap text-code leading-[1.6] text-parchment-dim">{block.summary}</p>
     </details>
   )
 }
@@ -39,31 +39,31 @@ function EditBox({ message, index }: { message: ChatMessage; index: number }) {
   const [text, setText] = useState(message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n'))
 
   return (
-    <div className="w-[75%] rounded-card border border-amber/40 bg-ink-800 p-3">
+    <div className="w-3/4 rounded-card border border-amber/40 bg-ink-800 p-3">
       <textarea
         rows={3}
         value={text}
         aria-label="Edit the message"
         onChange={(event) => setText(event.target.value)}
-        className="block w-full resize-none rounded-control border border-line bg-ink-900 px-2.5 py-2 text-[14px] leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
+        className="block w-full resize-none rounded-control border border-line bg-ink-900 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void editMessage(index, text, 'replace')}
-          className="rounded-control bg-ember px-3 py-1 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+          className="rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright"
         >
           Resend, replacing what followed
         </button>
         <button
           type="button"
           onClick={() => void editMessage(index, text, 'fork')}
-          className="rounded-control border border-line px-3 py-1 text-[12px] text-parchment transition-colors hover:bg-ink-700"
+          className="rounded-control border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
         >
           Fork into a new conversation
         </button>
       </div>
-      <p className="mt-1.5 text-[11px] text-parchment-faint">
+      <p className="mt-1.5 text-micro text-parchment-faint">
         Replacing drops the messages after this one. Forking copies them to a new conversation and leaves this one
         alone.
       </p>
@@ -74,14 +74,14 @@ function EditBox({ message, index }: { message: ChatMessage; index: number }) {
 function StatusNote({ message }: { message: ChatMessage }) {
   if (message.status === 'interrupted') {
     return (
-      <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-amber">
+      <p className="mt-2 font-mono text-micro uppercase tracking-wider text-amber">
         Stopped — what arrived before the stop is kept
       </p>
     )
   }
   if (message.status === 'failed') {
     return (
-      <p className="mt-2 rounded-card border border-danger/40 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">
+      <p className="mt-2 rounded-card border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
         {message.error ?? 'The turn failed.'}
       </p>
     )
@@ -109,7 +109,7 @@ export const MessageView = memo(function MessageView({
         {editing ? (
           <EditBox message={message} index={index} />
         ) : (
-          <div className="max-w-[68ch] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
+          <div className="max-w-measure rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-body leading-[1.6] whitespace-pre-wrap text-parchment">
             {message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')}
           </div>
         )}
@@ -120,7 +120,7 @@ export const MessageView = memo(function MessageView({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="font-mono text-[11px] text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+            className="font-mono text-micro text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
           >
             Edit
           </button>
@@ -160,7 +160,7 @@ export const MessageView = memo(function MessageView({
             <button
               type="button"
               onClick={() => void regenerate()}
-              className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
+              className="font-mono text-micro text-parchment-faint transition-colors hover:text-parchment"
             >
               Regenerate
             </button>
@@ -193,7 +193,7 @@ export function CopyButton({
       onClick={() => {
         void copyText(text).then((ok) => setState(ok ? 'done' : 'failed'))
       }}
-      className={`font-mono text-[11px] text-parchment-faint transition-opacity transition-colors hover:text-parchment ${
+      className={`font-mono text-micro text-parchment-faint transition-opacity transition-colors hover:text-parchment ${
         state === 'done' ? 'text-jade' : ''
       } ${state === 'failed' ? 'text-danger' : ''} ${className}`}
     >

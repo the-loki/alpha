@@ -27,8 +27,8 @@ export function RememberedRules() {
 
   return (
     <section className="mt-8">
-      <h2 className="text-[15px] font-medium text-parchment">Remembered approvals</h2>
-      <p className="mt-1 text-[12px] text-parchment-dim">
+      <h2 className="text-body font-medium text-parchment">Remembered approvals</h2>
+      <p className="mt-1 text-xs text-parchment-dim">
         {rules.length === 0
           ? 'Nothing is remembered yet. "Always allow" on a card adds a rule here.'
           : 'These calls run without asking. Revoking one makes the next matching call ask again.'}
@@ -41,11 +41,11 @@ export function RememberedRules() {
               key={rule.id}
               className="flex items-center gap-3 rounded-card border border-line bg-ink-800/60 px-3 py-2"
             >
-              <span className="shrink-0 font-mono text-[12px] text-parchment">{rule.toolName}</span>
-              <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-parchment-dim" title={rule.pattern}>
+              <span className="shrink-0 font-mono text-xs text-parchment">{rule.toolName}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-xs text-parchment-dim" title={rule.pattern}>
                 {rule.pattern === '' ? '(anything)' : rule.pattern}
               </span>
-              <span className="shrink-0 font-mono text-[11px] text-parchment-faint">
+              <span className="shrink-0 font-mono text-micro text-parchment-faint">
                 {ruleScopeLabel(rule.scope)} · {toolRiskOf(rule.toolName)}
               </span>
               <button
@@ -53,7 +53,7 @@ export function RememberedRules() {
                 aria-label={`Revoke the ${rule.toolName} rule for ${rule.pattern}`}
                 onClick={() => void revoke(rule.id)}
                 disabled={busy === rule.id}
-                className="shrink-0 rounded-control border border-line px-2 py-0.5 text-[11px] text-parchment-dim transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
+                className="shrink-0 rounded-control border border-line px-2 py-0.5 text-micro text-parchment-dim transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
               >
                 Revoke
               </button>

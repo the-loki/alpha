@@ -24,7 +24,7 @@ function TurnUsageNote({ turn }: { turn: TurnUsage | undefined }) {
   const cost = formatCost(turn.usage.cost)
 
   return (
-    <p className="mt-1 font-mono text-[11px] text-parchment-faint">
+    <p className="mt-1 font-mono text-micro text-parchment-faint">
       {turn.earlier === true ? 'Earlier turns · ' : 'Turn · '}
       {formatTokens(turn.usage.totalTokens)} tokens{cost === '' ? '' : ` · ${cost}`}
     </p>
@@ -61,7 +61,9 @@ export function MessageList({ transcript }: { transcript: TranscriptState }) {
       }}
       className="min-h-0 flex-1 overflow-y-auto"
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-8 py-6">
+      {/* Full pane width: tool rows, diffs and code get the room, and prose carries its own
+          reading measure (C5.3) rather than the column being centred and narrow. */}
+      <div className="flex w-full flex-col gap-6 px-8 py-6">
         {messages.map((message, index) => (
           <Fragment key={message.id}>
             <MessageView message={message} index={userIndex(messages, index)} last={index === messages.length - 1} />

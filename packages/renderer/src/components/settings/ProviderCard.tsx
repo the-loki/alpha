@@ -24,10 +24,10 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
     <li className="rounded-card border border-line bg-ink-800 p-3">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium text-parchment">{provider.name}</p>
-          <p className="truncate font-mono text-[11px] text-parchment-faint">{provider.baseUrl}</p>
+          <p className="truncate text-ui font-medium text-parchment">{provider.name}</p>
+          <p className="truncate font-mono text-micro text-parchment-faint">{provider.baseUrl}</p>
         </div>
-        <span className={`shrink-0 text-[11px] ${provider.hasCredential ? 'text-jade' : 'text-amber'}`}>
+        <span className={`shrink-0 text-micro ${provider.hasCredential ? 'text-jade' : 'text-amber'}`}>
           {provider.hasCredential ? 'key stored' : 'no key'}
         </span>
       </div>
@@ -36,7 +36,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           line is the answer to "did my key work?", not a picker. */}
       {models.length > 0 && (
         <p
-          className="mt-1.5 truncate font-mono text-[11px] text-parchment-faint"
+          className="mt-1.5 truncate font-mono text-micro text-parchment-faint"
           title={models.map((m) => m.id).join(', ')}
         >
           {models.length} model{models.length === 1 ? '' : 's'} · {models.map((m) => m.id).join(', ')}
@@ -50,7 +50,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           aria-label={`API key for ${provider.name}`}
           placeholder="Paste the key"
           onChange={(event) => setSecret(event.target.value)}
-          className="min-w-0 flex-1 rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-[12px] text-parchment focus:border-line-strong focus:outline-none"
+          className="min-w-0 flex-1 rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none"
         />
         <button
           type="button"
@@ -58,7 +58,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           onClick={() => {
             void setCredential(provider.id, secret).then(() => setSecret(''))
           }}
-          className="rounded-control bg-ember px-3 py-1 text-[12px] font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:bg-ember/25 disabled:text-ember-ink/60"
+          className="rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:bg-ember/25 disabled:text-ember-ink/60"
         >
           Save key
         </button>
@@ -69,19 +69,19 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           type="button"
           disabled={!provider.hasCredential || firstModel === ''}
           onClick={() => void test(provider.id, firstModel).then(setOutcome)}
-          className="rounded-control border border-line px-2.5 py-1 text-[12px] text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment disabled:opacity-40"
+          className="rounded-control border border-line px-2.5 py-1 text-xs text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment disabled:opacity-40"
         >
           Test
         </button>
         <button
           type="button"
           onClick={() => void remove(provider.id)}
-          className="rounded-control px-2 py-1 text-[12px] text-parchment-faint transition-colors hover:text-danger"
+          className="rounded-control px-2 py-1 text-xs text-parchment-faint transition-colors hover:text-danger"
         >
           Delete
         </button>
         {outcome !== undefined && (
-          <span className={`min-w-0 flex-1 truncate text-[12px] ${outcome.ok ? 'text-jade' : 'text-danger'}`}>
+          <span className={`min-w-0 flex-1 truncate text-xs ${outcome.ok ? 'text-jade' : 'text-danger'}`}>
             {outcome.message}
           </span>
         )}

@@ -49,10 +49,10 @@ export function WorkspaceButton() {
         onClick={() => setOpen((value) => !value)}
         className="w-full rounded-card border border-line bg-ink-700 px-3 py-2.5 text-left transition-colors hover:border-line-strong hover:bg-ink-600"
       >
-        <span className="block truncate text-[13px] font-medium text-parchment">
+        <span className="block truncate text-ui font-medium text-parchment">
           {selected ? workspace.workspace.name : 'Open a folder'}
         </span>
-        <span className="mt-0.5 block truncate font-mono text-[11px] text-parchment-faint">
+        <span className="mt-0.5 block truncate font-mono text-micro text-parchment-faint">
           {selected ? workspace.workspace.path : 'No workspace yet'}
         </span>
       </button>
@@ -71,8 +71,8 @@ export function WorkspaceButton() {
               onClick={() => choose(recent.path)}
               className="block w-full px-3 py-1.5 text-left transition-colors hover:bg-ink-600"
             >
-              <span className="block truncate text-[12.5px] text-parchment">{recent.name}</span>
-              <span className="block truncate font-mono text-[11px] text-parchment-faint">{recent.path}</span>
+              <span className="block truncate text-code text-parchment">{recent.name}</span>
+              <span className="block truncate font-mono text-micro text-parchment-faint">{recent.path}</span>
             </button>
           ))}
           <button
@@ -82,7 +82,7 @@ export function WorkspaceButton() {
               setOpen(false)
               void pickWorkspace()
             }}
-            className="mt-1 block w-full border-t border-line px-3 pt-2 pb-1.5 text-left text-[12px] text-parchment-dim transition-colors hover:text-parchment"
+            className="mt-1 block w-full border-t border-line px-3 pt-2 pb-1.5 text-left text-xs text-parchment-dim transition-colors hover:text-parchment"
           >
             Open another folder…
           </button>
