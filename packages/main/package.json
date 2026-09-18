@@ -1,0 +1,12 @@
+{
+  "name": "@alpha/main",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@alpha/core": "workspace:*",
+    "@earendil-works/pi-agent-core": "0.85.1",
+    "@earendil-works/pi-ai": "0.85.1"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "alpha",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local-first desktop workbench for a pi agent",
+  "license": "MIT",
+  "type": "module",
+  "main": "out/main/index.js",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit --pretty",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm build && playwright test",
+    "check:constraints": "node tools/constraints/check.mjs",
+    "check": "pnpm check:constraints && pnpm typecheck && pnpm lint && pnpm test",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/router-plugin": "1.168.40",
+    "@types/node": "^22.19.19",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "44.4.1",
+    "electron-vite": "^5.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "5.9.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "@tailwindcss/oxide"
+    ]
+  }
+}

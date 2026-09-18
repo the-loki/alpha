@@ -1,0 +1,19 @@
+node_modules/
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# test output
+test-results/
+playwright-report/
+coverage/
+
+# local app data used by dev runs
+.alpha-data/
+
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
