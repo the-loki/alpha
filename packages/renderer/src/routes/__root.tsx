@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { ConversationPalette, useShortcuts } from '../components/ConversationPalette.tsx'
 import { Sidebar } from '../components/Sidebar.tsx'
 import { TitleBar } from '../components/TitleBar.tsx'
 import { useConversations } from '../stores/conversations.ts'
@@ -10,6 +11,9 @@ function RootLayout() {
   const setWindowMaximized = useShell((state) => state.setWindowMaximized)
   const loadList = useConversations((state) => state.loadList)
   const applyEvent = useConversations((state) => state.applyEvent)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const openPalette = useCallback(() => setPaletteOpen(true), [])
+  useShortcuts({ onPalette: openPalette })
 
   useEffect(() => {
     void load()
@@ -31,6 +35,7 @@ function RootLayout() {
           <Outlet />
         </main>
       </div>
+      <ConversationPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   )
 }

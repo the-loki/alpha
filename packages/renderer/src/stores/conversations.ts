@@ -43,6 +43,8 @@ export interface ConversationStore {
   exportMarkdown: (id: string) => Promise<string>
   /** Bumped when a card is answered, so the composer can take the focus back. */
   composerFocus: number
+  /** The pane with nothing in it: the next message starts a conversation of its own. */
+  startNew: () => void
 }
 
 const listWithUpdated = (list: ConversationSummary[], updated: ConversationSummary): ConversationSummary[] =>
@@ -57,6 +59,10 @@ export const useConversations = create<ConversationStore>((set, get) => ({
   composerFocus: 0,
 
   loadList: async () => set({ list: await bridge().listConversations() }),
+
+  // Forgetting the open conversation is what makes the next message a new one: without it the
+  // pane kept the old transcript and the composer went on talking to the old conversation.
+  startNew: () => set({ activeId: '', transcript: emptyTranscript('') }),
 
   create: async (workspacePath: string) => {
     const opened = await bridge().createConversation(workspacePath)

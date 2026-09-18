@@ -30,6 +30,8 @@ export interface ShellStore {
   setPermissionLevel: (level: PermissionLevel) => Promise<void>
   setTheme: (theme: Theme) => Promise<void>
   setWindowMaximized: (maximized: boolean) => void
+  /** Spends the memory of the last conversation: it is for one launch, not for every visit to / */
+  clearResume: () => void
 }
 
 const applyLaunchState = (state: LaunchState) => ({
@@ -92,4 +94,6 @@ export const useShell = create<ShellStore>((set, get) => ({
   },
 
   setWindowMaximized: (maximized: boolean) => set({ windowMaximized: maximized }),
+
+  clearResume: () => set({ lastConversationId: '' }),
 }))
