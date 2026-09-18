@@ -4,8 +4,9 @@
  * stay, because replacing those on that platform is a worse experience than keeping them.
  */
 
-import { IPC, type WindowState } from '@alpha/core'
+import type { WindowState } from '@alpha/core'
 import { BrowserWindow, shell } from 'electron'
+import type { Broadcast } from './broadcast.ts'
 
 const isMac = process.platform === 'darwin'
 
@@ -13,6 +14,8 @@ export function createMainWindow(options: {
   preloadPath: string
   rendererUrl: string
   rendererFile: string
+  /** Where the window's own state goes; the window is one client among however many. */
+  broadcast: Broadcast
 }): BrowserWindow {
   const window = new BrowserWindow({
     width: 1440,
@@ -42,7 +45,7 @@ export function createMainWindow(options: {
     return { action: 'deny' }
   })
 
-  const publish = () => window.webContents.send(IPC.windowStateChanged, currentWindowState(window))
+  const publish = () => options.broadcast.send('windowStateChanged', currentWindowState(window))
   window.on('maximize', publish)
   window.on('unmaximize', publish)
   window.on('enter-full-screen', publish)

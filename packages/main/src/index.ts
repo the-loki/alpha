@@ -1,7 +1,8 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, safeStorage } from 'electron'
+import { Broadcast } from './broadcast.ts'
 import { desktopWindowPort } from './desktop-window.ts'
-import { permissionRulesSender, registerIpcHandlers, runtimeEventSender } from './ipc.ts'
+import { registerIpcHandlers, windowSubscriber } from './ipc.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
 import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
@@ -32,15 +33,20 @@ app.whenReady().then(() => {
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, osCipher())
   const providers = new ProviderStore(dataDirectory, vault)
-  const window = createMainWindow(windowPaths)
+  // Every push goes through the broadcast: the window subscribes like any other client, which is
+  // what lets a browser be one too.
+  const broadcast = new Broadcast()
+  const window = createMainWindow({ ...windowPaths, broadcast })
+  broadcast.subscribe(windowSubscriber(() => BrowserWindow.getAllWindows()[0]))
+
   const runtime = new RuntimeManager({
     dataDirectory,
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers,
     store,
     env: process.env,
-    emit: runtimeEventSender(() => BrowserWindow.getAllWindows()[0]),
-    emitRules: permissionRulesSender(() => BrowserWindow.getAllWindows()[0]),
+    emit: (event) => broadcast.send('runtimeEvent', event),
+    emitRules: (rules) => broadcast.send('permissionRulesChanged', rules),
   })
 
   registerIpcHandlers({
@@ -52,7 +58,7 @@ app.whenReady().then(() => {
   })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow(windowPaths)
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow({ ...windowPaths, broadcast })
   })
 
   app.on('before-quit', () => {

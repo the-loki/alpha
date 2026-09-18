@@ -7,8 +7,9 @@
  * The renderer is our own code, but it is also the process that could be compromised, so every
  * handler treats its arguments as arriving from outside.
  */
-import { IPC, type PermissionRule, type RuntimeEvent, type WindowState } from '@alpha/core'
+import { IPC } from '@alpha/core'
 import { type BrowserWindow, ipcMain } from 'electron'
+import type { Subscriber } from './broadcast.ts'
 import { CHANNELS, type ChannelPorts } from './channels.ts'
 import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
@@ -36,26 +37,15 @@ export function registerIpcHandlers(context: IpcContext): void {
   }
 }
 
-/** Pushes one runtime event to the window, if there is one listening. */
-export function runtimeEventSender(getWindow: () => BrowserWindow): (event: RuntimeEvent) => void {
-  return (event) => {
+/**
+ * The window as a subscriber to the broadcast: every push channel, forwarded under the contract's
+ * own name for it. One function rather than one per channel, so a channel added to the contract is
+ * delivered by the same road as the rest.
+ */
+export function windowSubscriber(getWindow: () => BrowserWindow): Subscriber {
+  return ({ channel, payload }) => {
     const window = getWindow()
-    if (window && !window.isDestroyed()) window.webContents.send(IPC.runtimeEvent, event)
-  }
-}
-
-/** Pushes the remembered rules, so a settings page that is open sees them change. */
-export function permissionRulesSender(getWindow: () => BrowserWindow): (rules: PermissionRule[]) => void {
-  return (rules) => {
-    const window = getWindow()
-    if (window && !window.isDestroyed()) window.webContents.send(IPC.permissionRulesChanged, rules)
-  }
-}
-
-/** The window's own state, which decides whether its maximize control shows a restore glyph. */
-export function windowStateSender(getWindow: () => BrowserWindow): (state: WindowState) => void {
-  return (state) => {
-    const window = getWindow()
-    if (window && !window.isDestroyed()) window.webContents.send(IPC.windowStateChanged, state)
+    if (window === undefined || window.isDestroyed()) return
+    window.webContents.send(IPC[channel], payload)
   }
 }

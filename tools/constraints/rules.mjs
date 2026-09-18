@@ -156,6 +156,12 @@ const contractChannels = (text) => {
   return channels
 }
 
+/** The channels main pushes rather than answers, as the table declares them. */
+const pushedNamesOf = (text, contract) => {
+  const body = text.split(/export const PUSHED_CHANNELS = \[/)[1]?.split(']')[0] ?? ''
+  return [...body.matchAll(/'([^']+)'/g)].map((match) => match[1]).filter((name) => contract.has(name))
+}
+
 /** The keys of the `CHANNELS` table, mapped to the channel strings the contract gives them. */
 const handledNamesOf = (text, contract) => {
   const body = text.split(/export const CHANNELS[^=]*= \{/)[1]?.split('\n}')[0] ?? ''
@@ -383,13 +389,13 @@ export const RULES = [
       const contract = files.find((candidate) => candidate.path === 'packages/core/src/contract.ts')
       if (contract === undefined) return []
       const channels = contractChannels(contract.text)
-      const named = (used) => used.filter((one) => channels.has(one.name)).map((one) => channels.get(one.name))
       // The handlers are a table now, so what is handled is read from its keys rather than from
       // the registrations: both transports dispatch that one table.
       const table = files.find((candidate) => candidate.path === 'packages/main/src/channels.ts')
-      const handledNames = table === undefined ? [] : handledNamesOf(table.text, channels)
-      const handled = handledNames.map((name) => channels.get(name))
-      const sent = named(channelsUsedWith(files, isMainSource, /\.send\(\s*IPC\.([A-Za-z_$][\w$]*)/))
+      const handled = table === undefined ? [] : handledNamesOf(table.text, channels).map((name) => channels.get(name))
+      // Pushes are declared rather than spelled out at the call site — the window's subscriber
+      // forwards every push channel by name — so what is sent is the declaration, not a `.send(`.
+      const sent = table === undefined ? [] : pushedNamesOf(table.text, channels).map((name) => channels.get(name))
       const invoked = channelsUsedWith(files, isPreloadSource, /ipcRenderer\.invoke\(\s*IPC\.([A-Za-z_$][\w$]*)/)
       const listened = channelsUsedWith(files, isPreloadSource, /ipcRenderer\.on\(\s*IPC\.([A-Za-z_$][\w$]*)/)
 
@@ -410,7 +416,7 @@ export const RULES = [
         found.push({
           path: waiting.path,
           line: waiting.line,
-          message: `the window listens for ${channels.get(waiting.name)}, and nothing in main sends it`,
+          message: `the window listens for ${channels.get(waiting.name)}, which main does not push`,
           text: waiting.text,
         })
       }

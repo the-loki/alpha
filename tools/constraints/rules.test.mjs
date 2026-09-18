@@ -303,37 +303,35 @@ describe('02-architecture:contract-channels', () => {
     'packages/core/src/contract.ts',
     ['export const IPC = {', "  ping: 'alpha:ping',", "  pong: 'alpha:pong',", '} as const'].join('\n'),
   )
-  /** The handlers main answers with: the table's keys, which is what both transports dispatch. */
-  const mainHandling = (names) =>
+  /** The table main declares: the handlers it answers with, and the channels it pushes. */
+  const mainWith = (names, pushed = []) =>
     file(
       'packages/main/src/channels.ts',
-      ['export const CHANNELS = {', ...names.map((name) => `  ${name}: handler,`), '}'].join('\n'),
+      [
+        `export const PUSHED_CHANNELS = [${pushed.map((name) => `'${name}'`).join(', ')}] as const`,
+        'export const CHANNELS = {',
+        ...names.map((name) => `  ${name}: handler,`),
+        '}',
+      ].join('\n'),
     )
   const preloadUsing = (body) => file('packages/preload/src/index.ts', body)
-  const sends = (body) => file('packages/main/src/ipc.ts', body)
-  const handlesPing = mainHandling(['ping'])
-  const sendsPong = sends('window.webContents.send(IPC.pong, 1)')
 
   it('flags a channel the window asks for that nothing answers', () => {
-    const found = crossViolations([contract, handlesPing, preloadUsing('ipcRenderer.invoke(IPC.pong)')])
+    const found = crossViolations([contract, mainWith(['ping']), preloadUsing('ipcRenderer.invoke(IPC.pong)')])
     expect(found).toHaveLength(1)
     expect(found[0].message).toContain('alpha:pong')
   })
 
-  it('flags an event the window waits for that nothing sends', () => {
-    const found = crossViolations([contract, handlesPing, sendsPong, preloadUsing('ipcRenderer.on(IPC.ping, h)')])
-    expect(found).toHaveLength(1)
-    expect(found[0].message).toContain('alpha:ping')
+  it('flags an event the window waits for that main does not push', () => {
+    const waiting = preloadUsing('ipcRenderer.on(IPC.pong, handler)')
+
+    expect(crossViolations([contract, mainWith(['ping']), waiting])).toHaveLength(1)
+    expect(crossViolations([contract, mainWith(['ping'], ['pong']), waiting])).toEqual([])
   })
 
-  it('passes the bridge and the handlers that agree', () => {
-    const found = crossViolations([
-      contract,
-      handlesPing,
-      sendsPong,
-      preloadUsing('ipcRenderer.invoke(IPC.ping)\nipcRenderer.on(IPC.pong, h)'),
-    ])
-    expect(found).toEqual([])
+  it('passes the bridge and the table that agree', () => {
+    const bridge = preloadUsing('ipcRenderer.invoke(IPC.ping)\nipcRenderer.on(IPC.pong, h)')
+    expect(crossViolations([contract, mainWith(['ping'], ['pong']), bridge])).toEqual([])
   })
 
   it('flags a channel string written out instead of taken from the contract', () => {
@@ -351,7 +349,7 @@ describe('02-architecture:contract-channels', () => {
 
   it('lets a line opt out with a marker, like every other rule', () => {
     const marked = preloadUsing('ipcRenderer.invoke(IPC.pong) // constraints-ignore 02-architecture')
-    expect(crossViolations([contract, mainHandling(['ping']), marked])).toEqual([])
+    expect(crossViolations([contract, mainWith(['ping']), marked])).toEqual([])
   })
 
   it('says nothing about files that do not touch the seam', () => {
