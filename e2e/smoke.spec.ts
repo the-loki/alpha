@@ -76,6 +76,32 @@ test('the permission level is changeable and survives a relaunch', async () => {
   await app.close()
 })
 
+test('the remembered workspaces are one click away', async () => {
+  const alpha = mkdtempSync(join(tmpdir(), 'alpha-e2e-alpha-'))
+  const beta = mkdtempSync(join(tmpdir(), 'alpha-e2e-beta-'))
+  const { app, window } = await launchApp({
+    state: {
+      workspace: {
+        selection: { kind: 'selected', workspace: { path: beta, name: 'beta', lastOpenedAt: 2 } },
+        recents: [
+          { path: beta, name: 'beta', lastOpenedAt: 2 },
+          { path: alpha, name: 'alpha', lastOpenedAt: 1 },
+        ],
+      },
+      permissionLevel: 'ask',
+    },
+  })
+
+  // The button shows where the agent is pointed, and the list is what it remembers.
+  await expect(window.getByRole('button', { name: /beta/ })).toBeVisible()
+  await window.getByRole('button', { name: /beta/ }).click()
+  await window.getByRole('menuitem', { name: /alpha/ }).click()
+
+  await expect(window.getByRole('button', { name: /alpha/ })).toBeVisible()
+  await expect(window.getByRole('button', { name: new RegExp(alpha) })).toBeVisible()
+  await app.close()
+})
+
 test('the settings route is addressable', async () => {
   const { app, window } = await launchApp()
 

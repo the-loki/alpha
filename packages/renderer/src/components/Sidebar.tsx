@@ -3,27 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
-
-function WorkspaceButton() {
-  const workspace = useShell((state) => state.workspace)
-  const pickWorkspace = useShell((state) => state.pickWorkspace)
-  const selected = workspace.kind === 'selected'
-
-  return (
-    <button
-      type="button"
-      onClick={() => void pickWorkspace()}
-      className="w-full rounded-card border border-line bg-ink-700 px-3 py-2.5 text-left transition-colors hover:border-line-strong hover:bg-ink-600"
-    >
-      <span className="block truncate text-[13px] font-medium text-parchment">
-        {selected ? workspace.workspace.name : 'Open a folder'}
-      </span>
-      <span className="mt-0.5 block truncate font-mono text-[11px] text-parchment-faint">
-        {selected ? workspace.workspace.path : 'No workspace yet'}
-      </span>
-    </button>
-  )
-}
+import { WorkspaceButton } from './WorkspaceMenu.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
 const STATE = {
