@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ChatBlockTool, RuntimeEvent } from '@alpha/core'
+import { type ChatBlockTool, emptyTranscript, type RuntimeEvent, reduceTranscript, visibleMessages } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import { resolveModelRuntime } from './models.ts'
@@ -44,10 +44,14 @@ const ledgerRow = (messages: { blocks: unknown[] }[], index = 0): ChatBlockTool 
 const isToolBlock = (block: unknown): block is ChatBlockTool =>
   typeof block === 'object' && block !== null && (block as { kind?: string }).kind === 'tool'
 
+/** The row as the window ends up with it: the runtime's events, reduced. */
+const liveRow = (events: RuntimeEvent[], conversationId: string, index = 0): ChatBlockTool =>
+  ledgerRow(visibleMessages(events.reduce(reduceTranscript, emptyTranscript(conversationId))), index)
+
 describe('[runtime] a scripted tool call', () => {
   it('reads a file and reports the row the window renders', async () => {
     const workspace = workspaceWith({ 'notes.txt': 'hello from the ledger' })
-    const { runtime, events } = await open({
+    const { runtime, events, conversationId } = await open({
       workspace,
       replies: [{ tool: { name: 'read', args: { path: 'notes.txt' } } }, 'It says hello.'],
     })
@@ -55,16 +59,13 @@ describe('[runtime] a scripted tool call', () => {
     await runtime.prompt('read notes.txt')
     await runtime.close()
 
-    const started = events.find((event) => event.type === 'tool_started')
-    const finished = events.find((event) => event.type === 'tool_finished')
-    expect(started?.type === 'tool_started' && started.name).toBe('read')
-    expect(started?.type === 'tool_started' && started.risk).toBe('read')
-    expect(started?.type === 'tool_started' && started.summary).toBe('notes.txt')
-    expect(finished?.type === 'tool_finished' && finished.status).toBe('ok')
-    expect(finished?.type === 'tool_finished' && finished.output).toContain('hello from the ledger')
-    expect(finished?.type === 'tool_finished' && finished.endedAt).toBeGreaterThanOrEqual(
-      finished?.type === 'tool_finished' ? finished.endedAt - 1 : 0,
-    )
+    const row = liveRow(events, conversationId)
+    expect(row.name).toBe('read')
+    expect(row.risk).toBe('read')
+    expect(row.summary).toBe('notes.txt')
+    expect(row.status).toBe('ok')
+    expect(row.output).toContain('hello from the ledger')
+    expect(row.endedAt).toBeGreaterThanOrEqual(row.startedAt)
   })
 
   it('runs the model again after the tool so the turn ends with its answer', async () => {
@@ -84,7 +85,7 @@ describe('[runtime] a scripted tool call', () => {
 
   it('carries the arguments through so the row can show them raw', async () => {
     const workspace = workspaceWith({ 'notes.txt': 'hello' })
-    const { runtime, events } = await open({
+    const { runtime, events, conversationId } = await open({
       workspace,
       replies: [{ tool: { name: 'read', args: { path: 'notes.txt' } } }, 'done'],
     })
@@ -92,8 +93,7 @@ describe('[runtime] a scripted tool call', () => {
     await runtime.prompt('read it')
     await runtime.close()
 
-    const started = events.find((event) => event.type === 'tool_started')
-    expect(started?.type === 'tool_started' && JSON.parse(started.raw)).toEqual({ path: 'notes.txt' })
+    expect(JSON.parse(liveRow(events, conversationId).raw)).toEqual({ path: 'notes.txt' })
   })
 
   it('marks a tool that fails, and keeps what it printed', async () => {
@@ -174,6 +174,37 @@ describe('[runtime] a ledger row that was persisted', () => {
     expect(row.startedAt).toBeGreaterThan(0)
     expect(row.endedAt).toBeGreaterThanOrEqual(row.startedAt)
     await reopened.runtime.close()
+  })
+
+  it('is the same row live and restored, because one function builds both', async () => {
+    const workspace = workspaceWith({})
+    const first = await open({
+      workspace,
+      replies: [{ tool: { name: 'bash', args: { command: 'echo nope >&2; exit 3' } } }, 'It failed.'],
+    })
+    await first.runtime.prompt('run it')
+    const live = liveRow(first.events, first.conversationId)
+    await first.runtime.close()
+
+    const reopened = await ConversationRuntime.open({
+      conversationId: first.conversationId,
+      workspacePath: workspace,
+      sessionsRoot: first.sessionsRoot,
+      modelRuntime: resolveModelRuntime({ ALPHA_FAUX: '1' }),
+      systemPrompt: 'You are Alpha.',
+      emit: () => undefined,
+    })
+    const restored = ledgerRow(reopened.messages)
+    await reopened.runtime.close()
+
+    // Timestamps are the only thing that can differ: live reads the clock, restored reads the log.
+    const { startedAt, endedAt, ...liveRest } = live
+    const { startedAt: restoredStart, endedAt: restoredEnd, ...restoredRest } = restored
+    expect(liveRest).toEqual(restoredRest)
+    expect(startedAt).toBeGreaterThan(0)
+    expect(restoredStart).toBeGreaterThan(0)
+    expect(endedAt).toBeGreaterThanOrEqual(startedAt)
+    expect(restoredEnd).toBeGreaterThanOrEqual(restoredStart)
   })
 
   it('is attached to the assistant message that asked for it', async () => {

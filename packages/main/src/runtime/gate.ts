@@ -13,9 +13,9 @@ import {
   type PermissionRule,
   patternOf,
   type RuleScope,
+  summarizeToolCall,
   toolRiskOf,
 } from '@alpha/core'
-import { summarizeToolCall } from './tool-call.ts'
 
 /** What the user answered when the card was put in front of them. */
 export interface ApprovalAnswer {

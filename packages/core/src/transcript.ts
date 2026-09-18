@@ -16,6 +16,7 @@ import type {
   QueuedMessage,
   RuntimeEvent,
 } from './runtime-events.ts'
+import { toolRowOf } from './tool-row.ts'
 import { addUsage, EMPTY_USAGE, type UsageTotals } from './usage.ts'
 
 /** One turn's spending, in the order the turns happened. */
@@ -206,18 +207,7 @@ function appendToolCall(
   state: TranscriptState,
   event: Extract<RuntimeEvent, { type: 'tool_started' }>,
 ): TranscriptState {
-  const tool: ChatBlockTool = {
-    kind: 'tool',
-    callId: event.callId,
-    name: event.name,
-    risk: event.risk,
-    summary: event.summary,
-    raw: event.raw,
-    status: 'running',
-    output: '',
-    approval: event.approval,
-    startedAt: event.startedAt,
-  }
+  const tool = toolRowOf(event, event.startedAt)
 
   const streaming = state.streaming
   if (streaming !== undefined) return { ...state, streaming: { ...streaming, blocks: [...streaming.blocks, tool] } }

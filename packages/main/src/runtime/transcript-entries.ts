@@ -4,10 +4,16 @@
  * for live events.
  */
 
-import { type ChatBlock, type ChatBlockTool, type ChatMessage, textOfContent, toolRiskOf } from '@alpha/core'
+import {
+  type ChatBlock,
+  type ChatBlockTool,
+  type ChatMessage,
+  textOfContent,
+  toolOutcomeOf,
+  toolRowOf,
+} from '@alpha/core'
 import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
 import type { DecisionLookup } from './decisions.ts'
-import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 const blocksOf = (content: unknown[], timestamp: number, decisions: DecisionLookup): ChatBlock[] => {
   const blocks: ChatBlock[] = []
@@ -25,20 +31,8 @@ const blocksOf = (content: unknown[], timestamp: number, decisions: DecisionLook
 function toolBlockOf(part: unknown, timestamp: number, decisions: DecisionLookup): ChatBlockTool {
   const call = part as { id?: unknown; name?: unknown; arguments?: unknown }
   const name = typeof call.name === 'string' ? call.name : 'tool'
-  const args = call.arguments ?? {}
   const callId = typeof call.id === 'string' ? call.id : `${name}-${timestamp}`
-  return {
-    kind: 'tool',
-    callId,
-    name,
-    risk: toolRiskOf(name),
-    summary: summarizeToolCall(name, args),
-    raw: JSON.stringify(args),
-    status: 'running',
-    output: '',
-    approval: decisions.get(callId),
-    startedAt: timestamp,
-  }
+  return toolRowOf({ callId, name, args: call.arguments ?? {}, approval: decisions.get(callId) }, timestamp)
 }
 
 /** The result of a call lands on the row the call created, wherever that row is. */
@@ -47,12 +41,9 @@ function finishTool(messages: ChatMessage[], result: ToolResultContent): void {
     const index = message.blocks.findIndex((block) => block.kind === 'tool' && block.callId === result.toolCallId)
     if (index === -1) continue
     const block = message.blocks[index] as ChatBlockTool
-    const output = outputTextOf(result)
     message.blocks[index] = {
       ...block,
-      status: result.isError === true ? 'failed' : 'ok',
-      output,
-      details: toolDetails(block.name, result.details, output),
+      ...toolOutcomeOf(block.name, { ...result, isError: result.isError === true }),
       endedAt: result.timestamp,
     }
     return

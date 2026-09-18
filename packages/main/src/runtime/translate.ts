@@ -11,15 +11,15 @@
 
 import {
   type ApprovalRecord,
+  outputTextOf,
   type QueuedMessage,
   type RuntimeEvent,
   textOfContent,
-  toolRiskOf,
+  toolOutcomeOf,
   type UsageTotals,
 } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
 import { usageOf } from './session-reader.ts'
-import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 export interface EventTranslator {
   translate(event: HarnessEvent): RuntimeEvent[]
@@ -130,7 +130,10 @@ function messageText(message: unknown): string {
   return textOfContent(content)
 }
 
-/** A row is stamped with the gate's decision here, so the ledger can say why the call was allowed. */
+/**
+ * The call's facts travel; the row they make is built once, by the reducer that receives them, so
+ * the live row and a restored one cannot be two different readings of the same call.
+ */
 function toolStarted(
   conversationId: string,
   event: Extract<HarnessEvent, { type: 'tool_start' }>,
@@ -141,23 +144,19 @@ function toolStarted(
     type: 'tool_started',
     callId: event.toolCallId,
     name: event.toolName,
-    risk: toolRiskOf(event.toolName),
-    summary: summarizeToolCall(event.toolName, event.args),
-    raw: JSON.stringify(event.args ?? {}),
+    args: event.args,
     approval: approvalOf(event.toolCallId),
     startedAt: Date.now(),
   }
 }
 
 function toolFinished(conversationId: string, event: Extract<HarnessEvent, { type: 'tool_end' }>): RuntimeEvent {
-  const output = outputTextOf(event.result)
+  const outcome = toolOutcomeOf(event.toolName, { ...event.result, isError: event.isError })
   return {
     conversationId,
     type: 'tool_finished',
     callId: event.toolCallId,
-    status: event.isError ? 'failed' : 'ok',
-    output,
-    details: toolDetails(event.toolName, event.result?.details, output),
+    ...outcome,
     endedAt: Date.now(),
   }
 }

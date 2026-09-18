@@ -1,8 +1,13 @@
 /**
- * How a tool call reads in the ledger. Pure: the row's one-line summary, the details worth
- * keeping, and the exit status the shell reported. The renderer gets strings, not pi's shapes.
+ * How a tool call reads in the ledger: the one-line summary, the details worth keeping, the exit
+ * status the shell reported, and the row all of that lands in.
+ *
+ * One module because there is one row. The window's copy of a call is assembled in three places —
+ * the live event, the stored session entry, and the reducer that replays either — and the only
+ * thing keeping those three honest is that they ask these functions for the parts.
  */
-import type { ToolDetails } from '@alpha/core'
+import type { ApprovalRecord, ChatBlockTool, ToolDetails } from './runtime-events.ts'
+import { toolRiskOf } from './tools.ts'
 
 const SUMMARY_LIMIT = 80
 
@@ -63,4 +68,54 @@ export function outputTextOf(result: unknown): string {
     )
     .filter((text) => text !== '')
     .join('\n')
+}
+
+/** What is known about a call the moment it starts: from a live event, or from a stored entry. */
+export interface ToolCallFacts {
+  callId: string
+  name: string
+  args: unknown
+  /** How it got past the gate, when the ledger has it. */
+  approval?: ApprovalRecord
+}
+
+/** The state a row is in before its result arrives, and the only state a stored call is read in. */
+export const TOOL_RUNNING: Pick<ChatBlockTool, 'status' | 'output'> = { status: 'running', output: '' }
+
+/**
+ * The row: what a call looks like before anything has come back. Live, stored and replayed calls
+ * all start here, so a field added to one is a field added to all three.
+ */
+export function toolRowOf(call: ToolCallFacts, startedAt: number): ChatBlockTool {
+  return {
+    kind: 'tool',
+    callId: call.callId,
+    name: call.name,
+    risk: toolRiskOf(call.name),
+    summary: summarizeToolCall(call.name, call.args),
+    raw: JSON.stringify(call.args ?? {}),
+    ...TOOL_RUNNING,
+    approval: call.approval,
+    startedAt,
+  }
+}
+
+/** What a result adds to a row: how the call ended, what it printed, and the details worth keeping. */
+export interface ToolOutcome {
+  status: 'ok' | 'failed'
+  output: string
+  details?: ToolDetails
+}
+
+/** pi's tool result, read as the row's own end state. */
+export function toolOutcomeOf(
+  name: string,
+  result: { content?: unknown; details?: unknown; isError?: boolean } = {},
+): ToolOutcome {
+  const output = outputTextOf(result)
+  return {
+    status: result.isError === true ? 'failed' : 'ok',
+    output,
+    details: toolDetails(name, result.details, output),
+  }
 }

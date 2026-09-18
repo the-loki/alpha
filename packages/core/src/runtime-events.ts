@@ -162,9 +162,8 @@ export type RuntimeEvent =
       type: 'tool_started'
       callId: string
       name: string
-      risk: ToolRisk
-      summary: string
-      raw: string
+      /** What the call was asked to do. The row's reading of it is the row module's business. */
+      args: unknown
       /** How it got here: the ladder, a remembered rule, or a person's answer. */
       approval?: ApprovalRecord
       startedAt: number
