@@ -29,15 +29,16 @@ const openRuntime = async (options: { id?: string; replies?: string[]; reopen?: 
     emit: (event) => events.push(event),
   })
   if (options.reopen !== undefined) {
+    // Reopening is naming the conversation: the session it is stored in is found by the reader.
+    const conversationId = opened.conversationId
     await opened.runtime.close()
     return {
       ...(await ConversationRuntime.open({
-        conversationId: id,
+        conversationId,
         workspacePath: workspace,
         sessionsRoot,
         modelRuntime,
         systemPrompt: 'You are Alpha.',
-        sessionMetadata: options.reopen as never,
         emit: (event) => events.push(event),
       })),
       events,
@@ -120,16 +121,15 @@ describe('[runtime] the transcript on disk', () => {
   it('reports the turns that already happened when the conversation is reopened', async () => {
     const first = await openRuntime({ replies: ['Noted.'] })
     await first.runtime.prompt('remember this')
+    const conversationId = first.conversationId
     await first.runtime.close()
-    const metadata = await readMetadata(first.sessionsRoot)
 
     const reopened = await ConversationRuntime.open({
-      conversationId: 'c1',
+      conversationId,
       workspacePath: first.workspace,
       sessionsRoot: first.sessionsRoot,
       modelRuntime: resolveModelRuntime({ ALPHA_FAUX: '1' }),
       systemPrompt: 'You are Alpha.',
-      sessionMetadata: metadata,
       emit: () => undefined,
     })
 
@@ -139,11 +139,3 @@ describe('[runtime] the transcript on disk', () => {
     await reopened.runtime.close()
   })
 })
-
-const readMetadata = async (sessionsRoot: string) => {
-  const { JsonlSessionRepo, BACKGROUND_CONTEXT } = await import('@earendil-works/pi-agent-core')
-  const { NodeExecutionEnv } = await import('@earendil-works/pi-agent-core/node')
-  const repo = new JsonlSessionRepo({ fileSystem: new NodeExecutionEnv({ cwd: sessionsRoot }), sessionsRoot })
-  const [metadata] = await repo.list(undefined, BACKGROUND_CONTEXT)
-  return metadata
-}

@@ -18,7 +18,7 @@ import {
   type UsageTotals,
 } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
-import { usageOf } from './conversation-runtime.ts'
+import { usageOf } from './session-reader.ts'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 export interface EventTranslator {

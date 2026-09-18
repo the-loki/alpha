@@ -25,6 +25,11 @@ summaries, branch summaries, bash executions, custom entries).
 
 ## Consequences
 
+A transcript is the path from the branch tip back to its root, not the session's entry list. The
+list keeps answers a later edit or regenerate replaced; those are history, and the module that
+reads sessions is the only place that knows the difference — reading the list instead is how a
+discarded answer comes back after a relaunch (#60).
+
 Alpha follows the harness's format version, including a migration if it changes. Session
 directories are plain files a user can copy, inspect, or delete by hand — which is consistent
 with the local-first stance in the scope constraints. Alpha never hand-edits an entry: it reads

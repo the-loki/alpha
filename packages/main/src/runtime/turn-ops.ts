@@ -6,8 +6,8 @@
  */
 import type { ConversationSummary, EditEffect, OpenedConversation } from '@alpha/core'
 import type { ConversationRuntime } from './conversation-runtime.ts'
-import { findSessionMetadata } from './conversation-runtime.ts'
 import { forkConversation } from './fork.ts'
+import { findSessionMetadata } from './session-reader.ts'
 
 export interface TurnPorts {
   /** Throws when there is no such conversation. */

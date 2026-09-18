@@ -28,18 +28,13 @@ import type { ProviderStore } from '../providers/store.ts'
 import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
 import { ConversationBookkeeper, DEFAULT_TITLE, NO_MODEL, newConversation } from './bookkeeping.ts'
-import { ConversationRuntime, findSessionMetadata, type PermissionPorts } from './conversation-runtime.ts'
+import { ConversationRuntime, type PermissionPorts } from './conversation-runtime.ts'
 import { DecisionLog } from './decisions.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
 import { createPermissionPorts, rememberWorkspaceLevel, revokeRule, withLevel } from './permissions.ts'
-import {
-  deleteSession,
-  readSessionTranscript,
-  sessionLocation,
-  usageFor,
-  writeSessionMarkdown,
-} from './session-files.ts'
+import { readSessionTranscript, sessionLocation, usageFor, writeSessionMarkdown } from './session-files.ts'
+import { deleteSession } from './session-reader.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
 import {
   cancelQueued,
@@ -136,11 +131,6 @@ export class RuntimeManager {
       workspacePath: conversation.workspacePath,
       model: modelFor(this.#modelRuntime(), conversation),
       thinkingLevel: conversation.thinkingLevel,
-      sessionMetadata: await findSessionMetadata({
-        sessionsRoot: this.#options.sessionsRoot,
-        workspacePath: conversation.workspacePath,
-        conversationId: id,
-      }),
       emit: (event: RuntimeEvent) => this.#books.observe(event),
     })
     if (opened.runtime !== undefined) this.#open.set(id, opened.runtime)
@@ -308,7 +298,6 @@ export class RuntimeManager {
     workspacePath: string
     model?: Model<Api>
     thinkingLevel: ThinkingLevel
-    sessionMetadata?: Awaited<ReturnType<typeof findSessionMetadata>>
     emit: (event: RuntimeEvent) => void
   }): Promise<{ runtime?: ConversationRuntime; conversationId: string; messages: OpenedConversation['messages'] }> {
     const modelRuntime = this.#modelRuntime()
@@ -344,7 +333,6 @@ export class RuntimeManager {
       modelRuntime,
       model,
       systemPrompt: buildSystemPrompt({ workspacePath: options.workspacePath }),
-      sessionMetadata: options.sessionMetadata,
       permissions: this.#permissionPorts(),
       decisions,
       onDecision: () => this.#decisions.write(savedAs, decisions),

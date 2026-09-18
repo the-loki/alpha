@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { groupByWorkspace, type RuntimeEvent } from '@alpha/core'
+import { type ChatMessage, groupByWorkspace, type RuntimeEvent } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'
 import { ProviderStore } from '../providers/store.ts'
@@ -203,7 +203,7 @@ describe('[runtime] exporting a conversation', () => {
   })
 })
 
-const freshManagerAt = (dataDirectory: string, workspace: string) => {
+const freshManagerAt = (dataDirectory: string, workspace: string, env: NodeJS.ProcessEnv = {}) => {
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, testCipher)
   const manager = new RuntimeManager({
@@ -211,13 +211,19 @@ const freshManagerAt = (dataDirectory: string, workspace: string) => {
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers: new ProviderStore(dataDirectory, vault),
     store,
-    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
     emit: () => undefined,
     emitRules: () => undefined,
   })
   void workspace
   return manager
 }
+
+/** Every text block of a transcript, in order, which is what a reader would see. */
+const texts = (messages: ChatMessage[]): string[] =>
+  messages.flatMap((message) => message.blocks.filter((block) => block.kind === 'text').map((block) => block.text))
+
+const REPLIES = JSON.stringify(['THE FIRST ANSWER', 'THE SECOND ANSWER'])
 
 function readdirDeep(directory: string): string[] {
   if (!existsSync(directory)) return []
@@ -227,6 +233,42 @@ function readdirDeep(directory: string): string[] {
     return statSync(path).isDirectory() ? readdirDeep(path) : [path]
   })
 }
+
+describe('[runtime] reading a conversation back', () => {
+  // The branch tip is what the window shows, and answering again moves it. A reader that walks
+  // the whole log instead brings back the answer that was replaced, and the question with it.
+  it('shows the answer that is on the branch, not the one regenerate replaced', async () => {
+    const { manager, workspace, dataDirectory } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const created = await manager.create(workspace)
+    await manager.prompt(created.conversation.id, 'a question')
+    await manager.regenerate(created.conversation.id)
+    const live = await manager.transcriptFor(created.conversation.id)
+    await manager.closeAll()
+
+    const reopened = freshManagerAt(dataDirectory, workspace, { ALPHA_FAUX_REPLIES: REPLIES })
+    const opened = await reopened.open(created.conversation.id)
+    await reopened.closeAll()
+
+    expect(texts(live)).toEqual(['a question', 'THE SECOND ANSWER'])
+    expect(texts(opened.messages)).toEqual(texts(live))
+  })
+
+  it('shows the branch after an edit replaced what followed', async () => {
+    const { manager, workspace, dataDirectory } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const created = await manager.create(workspace)
+    await manager.prompt(created.conversation.id, 'a question')
+    await manager.editMessage(created.conversation.id, 0, 'a better question', 'replace')
+    const live = await manager.transcriptFor(created.conversation.id)
+    await manager.closeAll()
+
+    const reopened = freshManagerAt(dataDirectory, workspace, { ALPHA_FAUX_REPLIES: REPLIES })
+    const opened = await reopened.open(created.conversation.id)
+    await reopened.closeAll()
+
+    expect(texts(live)).toEqual(['a better question', 'THE SECOND ANSWER'])
+    expect(texts(opened.messages)).toEqual(texts(live))
+  })
+})
 
 describe('[runtime] compaction', () => {
   it('marks where the history was summarised and keeps the summary readable', async () => {

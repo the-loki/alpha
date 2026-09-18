@@ -22,7 +22,6 @@ import {
   type Entry,
   type HarnessEventType,
   type JsonlSessionMetadata,
-  JsonlSessionRepo,
   type Session,
   type ThinkingLevel,
 } from '@earendil-works/pi-agent-core'
@@ -31,8 +30,9 @@ import type { Api, Model } from '@earendil-works/pi-ai'
 import type { ApprovalAnswer } from './gate.ts'
 import { createToolGate } from './gate.ts'
 import type { ModelRuntime } from './models.ts'
+import { openSession, type SessionReader, tipPathOf } from './session-reader.ts'
 import { createWorkspaceTools, workspaceToolNames } from './tools.ts'
-import { type DecisionLookup, entriesToMessages } from './transcript-entries.ts'
+import type { DecisionLookup } from './transcript-entries.ts'
 import { createEventTranslator } from './translate.ts'
 
 /** How the gate reaches the policy and the person: all four are read at the moment of a call. */
@@ -90,30 +90,37 @@ export class ConversationRuntime {
   readonly #harness: AgentHarness<object>
   readonly #lane: AgentLane
   readonly #session: Session<JsonlSessionMetadata>
+  readonly #reader: SessionReader
   readonly #emit: (event: RuntimeEvent) => void
-  readonly #decisions: DecisionLookup
 
   private constructor(
     harness: AgentHarness<object>,
     lane: AgentLane,
-    session: Session<JsonlSessionMetadata>,
+    reader: SessionReader,
     emit: (event: RuntimeEvent) => void,
-    decisions: DecisionLookup,
   ) {
     this.#harness = harness
     this.#lane = lane
-    this.#session = session
+    this.#session = reader.session
+    this.#reader = reader
     this.#emit = emit
-    this.#decisions = decisions
   }
 
   static async open(options: OpenConversationOptions): Promise<OpenedRuntime> {
     const env = new NodeExecutionEnv({ cwd: options.workspacePath })
-    const repo = new JsonlSessionRepo({ fileSystem: env, sessionsRoot: options.sessionsRoot })
-    const session =
-      options.sessionMetadata === undefined
-        ? await repo.create({ cwd: options.workspacePath }, BACKGROUND_CONTEXT)
-        : await repo.open(options.sessionMetadata, BACKGROUND_CONTEXT)
+    // The decisions are handed to the reader, not just to the runtime: the transcript it opens
+    // with is the same one the window sees a second later.
+    const decisions: DecisionLookup = options.decisions ?? new Map<string, ApprovalRecord>()
+    const reader = await openSession(
+      {
+        sessionsRoot: options.sessionsRoot,
+        workspacePath: options.workspacePath,
+        conversationId: options.conversationId ?? '',
+      },
+      { create: true, decisions },
+    )
+    if (reader === undefined) throw new Error('could not open a session for this conversation')
+    const session = reader.session
 
     const model = options.model ?? options.modelRuntime.defaultModel
     if (model === undefined) {
@@ -136,8 +143,7 @@ export class ConversationRuntime {
     // `lane()` is async: acquiring a lane is an admission step, not a lookup.
     const lane = await harness.lane('main', BACKGROUND_CONTEXT)
     const conversationId = session.metadata.id
-    const decisions: DecisionLookup = options.decisions ?? new Map<string, ApprovalRecord>()
-    const runtime = new ConversationRuntime(harness, lane, session, options.emit, decisions)
+    const runtime = new ConversationRuntime(harness, lane, reader, options.emit)
     const translator = createEventTranslator(conversationId, (callId) => decisions.get(callId))
     for (const type of SUBSCRIBED_EVENTS) {
       harness.events.on(type, (event) => {
@@ -170,8 +176,7 @@ export class ConversationRuntime {
       harness.hooks.on('before_tool', (event) => gate(event))
     }
 
-    const entries = await session.findEntries(undefined, BACKGROUND_CONTEXT)
-    return { runtime, conversationId, messages: entriesToMessages(entries, decisions) }
+    return { runtime, conversationId, messages: await reader.transcript() }
   }
 
   async prompt(text: string): Promise<void> {
@@ -249,8 +254,7 @@ export class ConversationRuntime {
 
   /** What the session has spent so far, which is what a window opening it has to show. */
   async usage(): Promise<UsageTotals> {
-    const stats = await this.#session.getStats(BACKGROUND_CONTEXT)
-    return usageOf(stats.usage)
+    return this.#reader.usage()
   }
 
   /** Moves the tip to the entry before the given one, or to the root when it is the first. */
@@ -288,44 +292,12 @@ export class ConversationRuntime {
    * left behind are then history rather than transcript.
    */
   async transcript(): Promise<ChatMessage[]> {
-    return entriesToMessages(await tipPathOf(this.#session), this.#decisions)
+    return this.#reader.transcript()
   }
 
   #emitFailure(error: unknown): void {
     const message = error instanceof Error ? error.message : String(error)
     this.#emit({ conversationId: this.#session.metadata.id, type: 'run_failed', message })
-  }
-}
-
-/**
- * The conversation's path: from the branch's tip back to its root, in order. The session's entry
- * list is the whole log, including answers that a later edit replaced — those are history, not
- * transcript, and this is the difference the transcript is built from.
- */
-async function tipPathOf(session: Session<JsonlSessionMetadata>): Promise<Entry[]> {
-  const branch = await session.branch('main', BACKGROUND_CONTEXT)
-  if (branch === undefined) return []
-  const tip = await branch.getTipId(BACKGROUND_CONTEXT)
-  if (tip === null) return []
-  return branch.findEntries({ start: tip, order: 'oldestFirst' }, BACKGROUND_CONTEXT)
-}
-
-/** pi's usage in the workbench's terms: the totals module owns the shape, this owns the mapping. */
-export function usageOf(usage: {
-  input: number
-  output: number
-  cacheRead: number
-  cacheWrite: number
-  totalTokens: number
-  cost: { total: number }
-}): UsageTotals {
-  return {
-    input: usage.input,
-    output: usage.output,
-    cacheRead: usage.cacheRead,
-    cacheWrite: usage.cacheWrite,
-    totalTokens: usage.totalTokens,
-    cost: usage.cost.total,
   }
 }
 
@@ -343,38 +315,4 @@ async function compactionSummary(
   if (entry.type === 'compaction') return { summary: entry.summary, replaced: undefined }
   if (entry.type === 'branch_summary') return { summary: entry.summary, replaced: undefined }
   return { summary: '', replaced: undefined }
-}
-
-/** The transcript of a conversation that is not open, read straight from its session. */
-export async function readTranscript(options: {
-  sessionsRoot: string
-  workspacePath: string
-  conversationId: string
-  decisions?: DecisionLookup
-}): Promise<ChatMessage[]> {
-  if (options.conversationId === '') return []
-  const metadata = await findSessionMetadata(options)
-  if (metadata === undefined) return []
-  const repo = new JsonlSessionRepo({
-    fileSystem: new NodeExecutionEnv({ cwd: options.workspacePath }),
-    sessionsRoot: options.sessionsRoot,
-  })
-  const session = await repo.open(metadata, BACKGROUND_CONTEXT)
-  const entries = await tipPathOf(session)
-  await session.close(BACKGROUND_CONTEXT)
-  return entriesToMessages(entries, options.decisions)
-}
-
-/** Finds the session a conversation is stored in, so it can be reopened after a restart. */
-export async function findSessionMetadata(options: {
-  sessionsRoot: string
-  workspacePath: string
-  conversationId: string
-}): Promise<JsonlSessionMetadata | undefined> {
-  const repo = new JsonlSessionRepo({
-    fileSystem: new NodeExecutionEnv({ cwd: options.sessionsRoot }),
-    sessionsRoot: options.sessionsRoot,
-  })
-  const sessions = await repo.list({ cwd: options.workspacePath }, BACKGROUND_CONTEXT)
-  return sessions.find((metadata) => metadata.id === options.conversationId)
 }

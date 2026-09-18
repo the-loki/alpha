@@ -152,14 +152,12 @@ describe('[runtime] a ledger row that was persisted', () => {
     await first.runtime.prompt('run it')
     await first.runtime.close()
 
-    const metadata = await readMetadata(first.sessionsRoot)
     const reopened = await ConversationRuntime.open({
-      conversationId: 'ledger',
+      conversationId: first.conversationId,
       workspacePath: workspace,
       sessionsRoot: first.sessionsRoot,
       modelRuntime: resolveModelRuntime({ ALPHA_FAUX: '1' }),
       systemPrompt: 'You are Alpha.',
-      sessionMetadata: metadata as never,
       emit: () => undefined,
     })
 
@@ -188,12 +186,11 @@ describe('[runtime] a ledger row that was persisted', () => {
     await first.runtime.close()
 
     const reopened = await ConversationRuntime.open({
-      conversationId: 'ledger',
+      conversationId: first.conversationId,
       workspacePath: workspace,
       sessionsRoot: first.sessionsRoot,
       modelRuntime: resolveModelRuntime({ ALPHA_FAUX: '1' }),
       systemPrompt: 'You are Alpha.',
-      sessionMetadata: (await readMetadata(first.sessionsRoot)) as never,
       emit: () => undefined,
     })
 
@@ -203,11 +200,3 @@ describe('[runtime] a ledger row that was persisted', () => {
     await reopened.runtime.close()
   })
 })
-
-const readMetadata = async (sessionsRoot: string) => {
-  const { JsonlSessionRepo, BACKGROUND_CONTEXT } = await import('@earendil-works/pi-agent-core')
-  const { NodeExecutionEnv } = await import('@earendil-works/pi-agent-core/node')
-  const repo = new JsonlSessionRepo({ fileSystem: new NodeExecutionEnv({ cwd: sessionsRoot }), sessionsRoot })
-  const [metadata] = await repo.list(undefined, BACKGROUND_CONTEXT)
-  return metadata
-}
