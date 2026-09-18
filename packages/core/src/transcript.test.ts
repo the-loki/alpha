@@ -11,6 +11,8 @@ const summary: ConversationSummary = {
   createdAt: 1,
   updatedAt: 1,
   status: 'running',
+  model: { providerId: 'faux', modelId: 'scripted' },
+  thinkingLevel: 'medium',
 }
 
 /** Builds an event for the conversation under test, so each case reads as its payload only. */

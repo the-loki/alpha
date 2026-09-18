@@ -4,6 +4,7 @@ import {
   emptyTranscript,
   type RuntimeEvent,
   reduceTranscript,
+  type ThinkingLevel,
   type TranscriptState,
 } from '@alpha/core'
 import { create } from 'zustand'
@@ -21,6 +22,8 @@ export interface ConversationStore {
   sendOrCreate: (workspacePath: string, text: string) => Promise<string>
   /** Every runtime event the window receives passes through here. */
   applyEvent: (event: RuntimeEvent) => void
+  setModel: (providerId: string, modelId: string) => Promise<void>
+  setThinkingLevel: (level: ThinkingLevel) => Promise<void>
 }
 
 const listWithUpdated = (list: ConversationSummary[], updated: ConversationSummary): ConversationSummary[] =>
@@ -89,6 +92,34 @@ export const useConversations = create<ConversationStore>((set, get) => ({
       })
     }
     return id
+  },
+
+  setModel: async (providerId: string, modelId: string) => {
+    const id = get().activeId
+    if (id === '') return
+    const conversation = await bridge().setConversationModel(id, providerId, modelId)
+    set({
+      list: listWithUpdated(get().list, conversation),
+      transcript: reduceTranscript(get().transcript, {
+        conversationId: id,
+        type: 'conversation_updated',
+        conversation,
+      }),
+    })
+  },
+
+  setThinkingLevel: async (level: ThinkingLevel) => {
+    const id = get().activeId
+    if (id === '') return
+    const conversation = await bridge().setThinkingLevel(id, level)
+    set({
+      list: listWithUpdated(get().list, conversation),
+      transcript: reduceTranscript(get().transcript, {
+        conversationId: id,
+        type: 'conversation_updated',
+        conversation,
+      }),
+    })
   },
 
   applyEvent: (event: RuntimeEvent) => {

@@ -1,5 +1,6 @@
 import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS } from '@alpha/core'
 import { createFileRoute } from '@tanstack/react-router'
+import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { useShell } from '../stores/shell.ts'
 
 const TONE_CLASS: Record<string, string> = {
@@ -43,13 +44,8 @@ function Settings() {
     <div className="h-full overflow-y-auto px-8 py-8">
       <div className="mx-auto max-w-2xl">
         <h1 className="text-[20px] font-medium text-parchment">Settings</h1>
+        <ProvidersSection />
         <PermissionSection />
-        <section className="mt-8">
-          <h2 className="text-[15px] font-medium text-parchment">Model providers</h2>
-          <p className="mt-1 text-[12px] text-parchment-dim">
-            Bring your own key. Providers, credentials and model selection arrive in the next slice.
-          </p>
-        </section>
       </div>
     </div>
   )

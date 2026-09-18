@@ -16,6 +16,8 @@ const conversation = (id: string, workspacePath: string, updatedAt: number): Con
   createdAt: updatedAt - 10,
   updatedAt,
   status: 'idle',
+  model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
+  thinkingLevel: 'medium',
 })
 
 const index = {

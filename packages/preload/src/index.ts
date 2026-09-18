@@ -5,12 +5,17 @@
 
 import {
   type AlphaBridge,
+  type ConversationSummary,
+  type CustomProviderInput,
   IPC,
   type LaunchState,
   type OpenedConversation,
   type PermissionLevel,
   type PickWorkspaceResult,
+  type ProviderModelDefinition,
+  type ProvidersSnapshotMessage,
   type RuntimeEvent,
+  type ThinkingLevel,
   WINDOW_COMMAND_CHANNELS,
   type WindowCommand,
   type WindowState,
@@ -42,6 +47,20 @@ const bridge: AlphaBridge = {
     ipcRenderer.on(IPC.runtimeEvent, handler)
     return () => ipcRenderer.removeListener(IPC.runtimeEvent, handler)
   },
+
+  providers: () => ipcRenderer.invoke(IPC.providersSnapshot) as Promise<ProvidersSnapshotMessage>,
+  saveCatalogProvider: (id: string) => ipcRenderer.invoke(IPC.saveCatalogProvider, id),
+  saveCustomProvider: (input: CustomProviderInput) => ipcRenderer.invoke(IPC.saveCustomProvider, input),
+  removeProvider: (id: string) => ipcRenderer.invoke(IPC.removeProvider, id) as Promise<ProvidersSnapshotMessage>,
+  setCredential: (id: string, secret: string) =>
+    ipcRenderer.invoke(IPC.setCredential, id, secret) as Promise<ProvidersSnapshotMessage>,
+  providerModels: (id: string) => ipcRenderer.invoke(IPC.providerModels, id) as Promise<ProviderModelDefinition[]>,
+  testProvider: (id: string, modelId: string) =>
+    ipcRenderer.invoke(IPC.testProvider, id, modelId) as Promise<{ ok: boolean; message: string }>,
+  setConversationModel: (id: string, providerId: string, modelId: string) =>
+    ipcRenderer.invoke(IPC.setConversationModel, id, providerId, modelId) as Promise<ConversationSummary>,
+  setThinkingLevel: (id: string, level: ThinkingLevel) =>
+    ipcRenderer.invoke(IPC.setThinkingLevel, id, level) as Promise<ConversationSummary>,
 }
 
 contextBridge.exposeInMainWorld('alpha', bridge)

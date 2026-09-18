@@ -21,26 +21,30 @@ import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completio
 
 export interface ModelRuntime {
   models: MutableModels
-  model: Model<Api>
+  /** The model a new conversation starts on. Absent when nothing is configured yet. */
+  defaultModel?: Model<Api>
   kind: 'faux' | 'configured'
 }
 
 const DEFAULT_FAUX_REPLIES = ['Scripted reply.']
 
 /** What the window should say about the model, without dialling anything. */
-export function describeModel(env: NodeJS.ProcessEnv): { configured: boolean; description: string } {
-  try {
-    const runtime = resolveModelRuntime(env)
-    return {
-      configured: true,
-      description: runtime.kind === 'faux' ? 'Scripted model (test mode)' : runtime.model.id,
-    }
-  } catch (error) {
-    return { configured: false, description: error instanceof Error ? error.message : String(error) }
+export function describeRuntime(runtime: ModelRuntime): { configured: boolean; description: string } {
+  if (runtime.kind === 'faux') return { configured: true, description: 'Scripted model (test mode)' }
+  if (runtime.defaultModel === undefined) {
+    return { configured: false, description: 'No provider with a model is configured yet.' }
   }
+  return { configured: true, description: `${runtime.defaultModel.provider} · ${runtime.defaultModel.id}` }
 }
 
-export function resolveModelRuntime(env: NodeJS.ProcessEnv): ModelRuntime {
+/**
+ * The model runtime for this process: scripted in test mode, built from the environment when one
+ * is configured that way (the live test), and otherwise assembled from the provider store.
+ */
+export function resolveModelRuntime(
+  env: NodeJS.ProcessEnv,
+  fromProviders: () => { models: MutableModels; defaultModel?: Model<Api> } = () => ({ models: createModels() }),
+): ModelRuntime {
   const models = createModels()
 
   if (env.ALPHA_FAUX === '1') {
@@ -60,14 +64,15 @@ export function resolveModelRuntime(env: NodeJS.ProcessEnv): ModelRuntime {
     }
     arm(0)
     models.setProvider(faux.provider)
-    return { models, model: faux.getModel('scripted') ?? faux.getModel(), kind: 'faux' }
+    return { models, defaultModel: faux.getModel('scripted') ?? faux.getModel(), kind: 'faux' }
   }
 
   const baseUrl = env.ALPHA_BASE_URL ?? ''
   const apiKey = env.ALPHA_API_KEY ?? ''
   const modelId = env.ALPHA_MODEL ?? ''
   if (baseUrl === '' || modelId === '') {
-    throw new Error('No model configured. Set ALPHA_BASE_URL and ALPHA_MODEL, or set ALPHA_FAUX=1.')
+    const fromStore = fromProviders()
+    return { models: fromStore.models, defaultModel: fromStore.defaultModel, kind: 'configured' }
   }
 
   const api = readApi(env.ALPHA_API)
@@ -97,7 +102,7 @@ export function resolveModelRuntime(env: NodeJS.ProcessEnv): ModelRuntime {
     }),
   )
 
-  return { models, model, kind: 'configured' }
+  return { models, defaultModel: model, kind: 'configured' }
 }
 
 /** Which wire protocol the configured endpoint speaks. */

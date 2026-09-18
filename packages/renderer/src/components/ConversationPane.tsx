@@ -1,5 +1,6 @@
 import { useConversations } from '../stores/conversations.ts'
 import { Composer } from './Composer.tsx'
+import { ConversationHeader } from './ConversationHeader.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MessageList } from './MessageList.tsx'
 
@@ -10,6 +11,7 @@ export function ConversationPane() {
 
   return (
     <div className="flex h-full flex-col">
+      <ConversationHeader />
       <div className="min-h-0 flex-1">{hasMessages ? <MessageList transcript={transcript} /> : <EmptyState />}</div>
       <Composer />
     </div>

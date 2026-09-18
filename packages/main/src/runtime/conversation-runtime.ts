@@ -14,8 +14,10 @@ import {
   type JsonlSessionMetadata,
   JsonlSessionRepo,
   type Session,
+  type ThinkingLevel,
 } from '@earendil-works/pi-agent-core'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
+import type { Api, Model } from '@earendil-works/pi-ai'
 import type { ModelRuntime } from './models.ts'
 import { entriesToMessages } from './transcript-entries.ts'
 import { createEventTranslator } from './translate.ts'
@@ -26,6 +28,8 @@ export interface OpenConversationOptions {
   workspacePath: string
   sessionsRoot: string
   modelRuntime: ModelRuntime
+  /** Which model this conversation runs on; falls back to the runtime's default. */
+  model?: Model<Api>
   systemPrompt: string
   /** Present when reopening a conversation that is already on disk. */
   sessionMetadata?: JsonlSessionMetadata
@@ -75,11 +79,16 @@ export class ConversationRuntime {
         ? await repo.create({ cwd: options.workspacePath }, BACKGROUND_CONTEXT)
         : await repo.open(options.sessionMetadata, BACKGROUND_CONTEXT)
 
+    const model = options.model ?? options.modelRuntime.defaultModel
+    if (model === undefined) {
+      throw new Error('No model is configured. Add a provider and a model in Settings first.')
+    }
+
     const { harness } = await AgentHarness.create(
       {
         session,
         models: options.modelRuntime.models,
-        model: options.modelRuntime.model,
+        model,
         systemPrompt: options.systemPrompt,
         tools: options.tools ?? [],
         activeToolNames: options.toolNames ?? [],
@@ -117,6 +126,15 @@ export class ConversationRuntime {
     await this.#harness.close(BACKGROUND_CONTEXT)
   }
 
+  /** Switches the model this conversation runs on; takes effect on the next turn. */
+  async setModel(model: Model<Api>): Promise<void> {
+    await this.#lane.setModel({ provider: model.provider, modelId: model.id }, BACKGROUND_CONTEXT)
+  }
+
+  async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+    await this.#lane.setThinkingLevel(level, BACKGROUND_CONTEXT)
+  }
+
   /** The conversation as it stands on disk, for a window that just opened it. */
   async transcript(): Promise<ChatMessage[]> {
     return entriesToMessages(await this.#session.findEntries(undefined, BACKGROUND_CONTEXT))
@@ -126,6 +144,25 @@ export class ConversationRuntime {
     const message = error instanceof Error ? error.message : String(error)
     this.#emit({ conversationId: this.#session.metadata.id, type: 'run_failed', message })
   }
+}
+
+/** The transcript of a conversation that is not open, read straight from its session. */
+export async function readTranscript(options: {
+  sessionsRoot: string
+  workspacePath: string
+  conversationId: string
+}): Promise<ChatMessage[]> {
+  if (options.conversationId === '') return []
+  const metadata = await findSessionMetadata(options)
+  if (metadata === undefined) return []
+  const repo = new JsonlSessionRepo({
+    fileSystem: new NodeExecutionEnv({ cwd: options.workspacePath }),
+    sessionsRoot: options.sessionsRoot,
+  })
+  const session = await repo.open(metadata, BACKGROUND_CONTEXT)
+  const messages = entriesToMessages(await session.findEntries(undefined, BACKGROUND_CONTEXT))
+  await session.close(BACKGROUND_CONTEXT)
+  return messages
 }
 
 /** Finds the session a conversation is stored in, so it can be reopened after a restart. */

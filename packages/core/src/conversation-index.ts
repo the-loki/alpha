@@ -7,6 +7,7 @@
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
 import type { ConversationSummary } from './runtime-events.ts'
+import { THINKING_LEVELS } from './thinking.ts'
 
 const ConversationSummarySchema = Type.Object({
   id: Type.String(),
@@ -15,6 +16,8 @@ const ConversationSummarySchema = Type.Object({
   createdAt: Type.Number(),
   updatedAt: Type.Number(),
   status: Type.Union([Type.Literal('idle'), Type.Literal('running')]),
+  model: Type.Object({ providerId: Type.String(), modelId: Type.String() }),
+  thinkingLevel: Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level))),
 })
 
 const ConversationIndexSchema = Type.Object({

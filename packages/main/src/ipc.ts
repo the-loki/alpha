@@ -9,6 +9,7 @@
 import {
   IPC,
   isPermissionLevel,
+  isThinkingLevel,
   type LaunchState,
   type OpenedConversation,
   type PickWorkspaceResult,
@@ -20,30 +21,32 @@ import {
   workspaceFromPath,
 } from '@alpha/core'
 import { type BrowserWindow, dialog, ipcMain } from 'electron'
+import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
-import { describeModel } from './runtime/models.ts'
 import type { StateStore } from './state-store.ts'
 
 export interface IpcContext {
   store: StateStore
   runtime: RuntimeManager
+  providers: ProviderService
   getWindow: () => BrowserWindow
 }
 
 export function registerIpcHandlers(context: IpcContext): void {
   registerWorkspaceHandlers(context)
   registerConversationHandlers(context)
+  registerProviderHandlers(context)
   registerWindowHandlers(context)
 }
 
-function registerWorkspaceHandlers({ store, getWindow }: IpcContext): void {
+function registerWorkspaceHandlers({ store, runtime, getWindow }: IpcContext): void {
   const launchState = (): LaunchState => ({
     appVersion: process.env.npm_package_version ?? '0.1.0',
     platform: process.platform,
     workspace: store.read().workspace.selection,
     recents: store.read().workspace.recents,
     permissionLevel: store.read().permissionLevel,
-    model: describeModel(process.env),
+    model: runtime.modelStatus(),
   })
 
   const selectWorkspace = (path: string): WorkspaceSelection => {
@@ -95,6 +98,45 @@ function registerConversationHandlers({ runtime }: IpcContext): void {
   ipcMain.handle(IPC.abortRun, async (_event, id: unknown) => {
     await runtime.abort(requireString(id, 'conversationId'))
   })
+
+  ipcMain.handle(IPC.setConversationModel, async (_event, id: unknown, providerId: unknown, modelId: unknown) =>
+    runtime.setConversationModel(
+      requireString(id, 'conversationId'),
+      requireString(providerId, 'providerId'),
+      requireString(modelId, 'modelId'),
+    ),
+  )
+
+  ipcMain.handle(IPC.setThinkingLevel, async (_event, id: unknown, level: unknown) => {
+    const conversationId = requireString(id, 'conversationId')
+    if (!isThinkingLevel(level)) throw new Error('level must be a thinking level')
+    return runtime.setThinkingLevel(conversationId, level)
+  })
+}
+
+function registerProviderHandlers({ providers }: IpcContext): void {
+  ipcMain.handle(IPC.providersSnapshot, () => providers.snapshot())
+
+  ipcMain.handle(IPC.saveCatalogProvider, (_event, id: unknown) =>
+    providers.saveFromCatalog(requireString(id, 'providerId'), []),
+  )
+
+  ipcMain.handle(IPC.saveCustomProvider, (_event, input: unknown) => providers.saveCustom(input))
+
+  ipcMain.handle(IPC.removeProvider, (_event, id: unknown) => {
+    providers.remove(requireString(id, 'providerId'))
+    return providers.snapshot()
+  })
+
+  ipcMain.handle(IPC.setCredential, (_event, id: unknown, secret: unknown) =>
+    providers.setCredential(requireString(id, 'providerId'), requireString(secret, 'secret')),
+  )
+
+  ipcMain.handle(IPC.providerModels, (_event, id: unknown) => providers.models(requireString(id, 'providerId')))
+
+  ipcMain.handle(IPC.testProvider, (_event, id: unknown, modelId: unknown) =>
+    providers.test(requireString(id, 'providerId'), requireString(modelId, 'modelId')),
+  )
 }
 
 function registerWindowHandlers({ getWindow }: IpcContext): void {

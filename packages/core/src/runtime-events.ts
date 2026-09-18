@@ -8,6 +8,8 @@
  * up in the list.
  */
 
+import type { ThinkingLevel } from './thinking.ts'
+
 export interface ChatBlockText {
   kind: 'text'
   text: string
@@ -31,6 +33,11 @@ export interface ChatMessage {
   error?: string
 }
 
+export interface ConversationModel {
+  providerId: string
+  modelId: string
+}
+
 export interface ConversationSummary {
   id: string
   workspacePath: string
@@ -38,6 +45,9 @@ export interface ConversationSummary {
   createdAt: number
   updatedAt: number
   status: 'idle' | 'running'
+  /** Empty strings mean no model has been chosen yet, which the composer reports. */
+  model: ConversationModel
+  thinkingLevel: ThinkingLevel
 }
 
 export type RuntimeEvent =

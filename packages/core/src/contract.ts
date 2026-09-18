@@ -5,7 +5,18 @@
  */
 
 import type { PermissionLevel } from './permission.ts'
+import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
+import type { ThinkingLevel } from './thinking.ts'
+
+export interface CustomProviderInput {
+  id: string
+  name: string
+  api: string
+  baseUrl: string
+  models: ProviderModelDefinition[]
+}
+
 import type { WorkspaceRef, WorkspaceSelection } from './workspace.ts'
 
 export const IPC = {
@@ -23,6 +34,15 @@ export const IPC = {
   sendPrompt: 'alpha:send-prompt',
   abortRun: 'alpha:abort-run',
   runtimeEvent: 'alpha:runtime-event',
+  providersSnapshot: 'alpha:providers-snapshot',
+  saveCatalogProvider: 'alpha:save-catalog-provider',
+  saveCustomProvider: 'alpha:save-custom-provider',
+  removeProvider: 'alpha:remove-provider',
+  setCredential: 'alpha:set-credential',
+  providerModels: 'alpha:provider-models',
+  testProvider: 'alpha:test-provider',
+  setConversationModel: 'alpha:set-conversation-model',
+  setThinkingLevel: 'alpha:set-thinking-level',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -65,6 +85,12 @@ export interface OpenedConversation {
   messages: ChatMessage[]
 }
 
+export interface ProvidersSnapshotMessage {
+  providers: ProviderView[]
+  protection: 'os' | 'plaintext'
+  catalog: { id: string; name: string; api: string; baseUrl: string; keyHint: string }[]
+}
+
 /** The surface the preload puts on `window.alpha`, and the only way the renderer acts. */
 export interface AlphaBridge {
   launchState(): Promise<LaunchState>
@@ -81,4 +107,15 @@ export interface AlphaBridge {
   abortRun(conversationId: string): Promise<void>
   /** Events arrive as they happen; the returned function stops listening. */
   onRuntimeEvent(listener: (event: RuntimeEvent) => void): () => void
+
+  providers(): Promise<ProvidersSnapshotMessage>
+  saveCatalogProvider(id: string): Promise<unknown>
+  saveCustomProvider(input: CustomProviderInput): Promise<unknown>
+  removeProvider(id: string): Promise<ProvidersSnapshotMessage>
+  /** The one direction a credential travels: towards the main process. */
+  setCredential(id: string, secret: string): Promise<ProvidersSnapshotMessage>
+  providerModels(id: string): Promise<ProviderModelDefinition[]>
+  testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
+  setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary>
+  setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary>
 }
