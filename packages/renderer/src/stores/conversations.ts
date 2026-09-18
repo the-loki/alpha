@@ -4,11 +4,12 @@ import {
   type ConversationSummary,
   type EditEffect,
   emptyTranscript,
+  openingTranscript,
+  type PermissionLevel,
   type RuntimeEvent,
   reduceTranscript,
   type ThinkingLevel,
   type TranscriptState,
-  transcriptWithUsage,
 } from '@alpha/core'
 import { create } from 'zustand'
 import { bridge } from '../lib/bridge.ts'
@@ -27,6 +28,7 @@ export interface ConversationStore {
   applyEvent: (event: RuntimeEvent) => void
   setModel: (providerId: string, modelId: string) => Promise<void>
   setThinkingLevel: (level: ThinkingLevel) => Promise<void>
+  setLevel: (level: PermissionLevel) => Promise<void>
   /** The answer a card was clicked with, on its way to the gate that is waiting for it. */
   answerApproval: (answer: Omit<ApprovalAnswerInput, 'conversationId'>) => Promise<void>
   /** A message for the running turn, or one queued behind it. */
@@ -61,12 +63,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
     set({
       list: listWithUpdated(get().list, opened.conversation),
       activeId: opened.conversation.id,
-      transcript: reduceTranscript(emptyTranscript(opened.conversation.id), {
-        conversationId: opened.conversation.id,
-        type: 'conversation_opened',
-        conversation: opened.conversation,
-        messages: opened.messages,
-      }),
+      transcript: openingTranscript(opened.conversation.id, opened.conversation, opened.messages, opened.usage),
     })
     return opened.conversation.id
   },
@@ -76,12 +73,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
     set({
       list: listWithUpdated(get().list, opened.conversation),
       activeId: id,
-      transcript: reduceTranscript(transcriptWithUsage(id, opened.usage), {
-        conversationId: id,
-        type: 'conversation_opened',
-        conversation: opened.conversation,
-        messages: opened.messages,
-      }),
+      transcript: openingTranscript(id, opened.conversation, opened.messages, opened.usage),
     })
   },
 
@@ -172,12 +164,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
     set({
       list: listWithUpdated(get().list, opened.conversation),
       activeId: opened.conversation.id,
-      transcript: reduceTranscript(emptyTranscript(opened.conversation.id), {
-        conversationId: opened.conversation.id,
-        type: 'conversation_opened',
-        conversation: opened.conversation,
-        messages: opened.messages,
-      }),
+      transcript: openingTranscript(opened.conversation.id, opened.conversation, opened.messages, opened.usage),
     })
   },
 
@@ -199,6 +186,20 @@ export const useConversations = create<ConversationStore>((set, get) => ({
   },
 
   exportMarkdown: async (id) => (await bridge().exportConversation(id)).path,
+
+  setLevel: async (level) => {
+    const id = get().activeId
+    if (id === '') return
+    const conversation = await bridge().setConversationLevel(id, level)
+    set({
+      list: listWithUpdated(get().list, conversation),
+      transcript: reduceTranscript(get().transcript, {
+        conversationId: id,
+        type: 'conversation_updated',
+        conversation,
+      }),
+    })
+  },
 
   answerApproval: async (answer) => {
     const id = get().activeId

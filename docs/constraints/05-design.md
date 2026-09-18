@@ -51,12 +51,16 @@ still clears 3:1. Contrast is asserted numerically in a test, not eyeballed.
 | Role | Family | Size / line-height |
 | --- | --- | --- |
 | Body, message text | IBM Plex Sans | 15 / 1.65 |
-| UI labels, buttons | IBM Plex Sans | 13 / 1.4 |
+| Markdown headings inside a message | IBM Plex Sans | 17, 16, 15 / 1.4 |
+| UI labels, buttons, panel headings, sidebar rows | IBM Plex Sans | 13 / 1.4 |
 | Metadata, chips | IBM Plex Sans | 12 / 1.35 |
-| Code, tool output, paths | JetBrains Mono | 12.5 / 1.55 |
+| Code, tool output, diffs, inline code | JetBrains Mono | 12.5 / 1.55 |
+| Mono metadata: paths, counts, editable fields | JetBrains Mono | 12 / 1.4 |
+| Micro-labels: block markers, status words, action links | JetBrains Mono | 11 / 1.3, uppercase, tracking wider |
 
 Both families are bundled with the app; there is no runtime font fetch. Message text is capped at
-68 characters of measure; tool output and diffs may use the full pane width in mono.
+68 characters of measure (`max-w-[68ch]` on the prose container — the assistant's markdown root
+and the user's bubble); tool output and diffs may use the full pane width in mono.
 
 ## C5.4 — Space and shape
 

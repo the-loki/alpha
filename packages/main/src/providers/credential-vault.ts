@@ -7,6 +7,8 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { Type } from 'typebox'
+import { Value } from 'typebox/value'
 
 export interface SecretCipher {
   /** False when the OS offers no keychain, in which case secrets are stored in plaintext. */
@@ -23,10 +25,17 @@ interface VaultEntry {
   payload: string
 }
 
-interface VaultFile {
-  version: 1
-  entries: VaultEntry[]
-}
+/** The file's shape, checked with the same tool every other boundary uses (C1.4). */
+const VaultSchema = Type.Object({
+  version: Type.Literal(1),
+  entries: Type.Array(
+    Type.Object({
+      providerId: Type.String(),
+      protection: Type.Union([Type.Literal('os'), Type.Literal('plaintext')]),
+      payload: Type.String(),
+    }),
+  ),
+})
 
 export class CredentialVault {
   readonly #path: string
@@ -74,22 +83,16 @@ export class CredentialVault {
   }
 
   #flush(): void {
-    const file: VaultFile = { version: 1, entries: this.#entries }
+    const file = { version: 1 as const, entries: this.#entries }
     writeFileSync(this.#path, JSON.stringify(file, null, 2), 'utf-8')
   }
 
+  /** A file that does not match is treated as empty, for the same reason the workbench state is. */
   #read(): VaultEntry[] {
     try {
       const parsed: unknown = JSON.parse(readFileSync(this.#path, 'utf-8'))
-      if (typeof parsed !== 'object' || parsed === null) return []
-      const file = parsed as VaultFile
-      if (file.version !== 1 || !Array.isArray(file.entries)) return []
-      return file.entries.filter(
-        (entry) =>
-          typeof entry?.providerId === 'string' &&
-          typeof entry?.payload === 'string' &&
-          typeof entry?.protection === 'string',
-      )
+      if (!Value.Check(VaultSchema, parsed)) return []
+      return Value.Decode(VaultSchema, parsed).entries
     } catch {
       return []
     }

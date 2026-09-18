@@ -37,8 +37,3 @@ export function rememberWorkspace(state: WorkspaceState, workspace: WorkspaceRef
     recents: [workspace, ...others].slice(0, RECENTS_LIMIT),
   }
 }
-
-export function resolveSelection(state: WorkspaceState): WorkspaceSelection {
-  if (state.selection.kind === 'none') return { kind: 'none' }
-  return { kind: 'selected', workspace: state.selection.workspace }
-}

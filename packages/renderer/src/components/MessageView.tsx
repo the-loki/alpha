@@ -1,18 +1,12 @@
-import type { ChatBlockCompaction, ChatBlockThinking, ChatMessage } from '@alpha/core'
+import { type ChatBlockCompaction, type ChatBlockThinking, type ChatMessage, formatDuration } from '@alpha/core'
 import { memo, useState } from 'react'
+import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { useConversations } from '../stores/conversations.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
-/** How long thinking took, from the first of its deltas to the last. */
-export function thinkingDuration(block: ChatBlockThinking): string {
-  if (block.startedAt === undefined || block.endedAt === undefined) return ''
-  const seconds = Math.max(0, (block.endedAt - block.startedAt) / 1000)
-  return seconds < 1 ? `${Math.round(seconds * 1000)}ms` : `${seconds.toFixed(1)}s`
-}
-
 function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
-  const elapsed = thinkingDuration(block)
+  const elapsed = formatDuration(block.startedAt, block.endedAt)
   return (
     <details className="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
       <summary className="cursor-pointer list-none font-mono text-[11px] uppercase tracking-wider text-parchment-faint">
@@ -95,7 +89,16 @@ function StatusNote({ message }: { message: ChatMessage }) {
   return null
 }
 
-export const MessageView = memo(function MessageView({ message, index }: { message: ChatMessage; index: number }) {
+export const MessageView = memo(function MessageView({
+  message,
+  index,
+  last = false,
+}: {
+  message: ChatMessage
+  index: number
+  /** The last message in the transcript, which is the only one with anything to regenerate. */
+  last?: boolean
+}) {
   const regenerate = useConversations((state) => state.regenerate)
   const running = useConversations((state) => state.transcript.status === 'running')
   const [editing, setEditing] = useState(false)
@@ -106,9 +109,12 @@ export const MessageView = memo(function MessageView({ message, index }: { messa
         {editing ? (
           <EditBox message={message} index={index} />
         ) : (
-          <div className="max-w-[75%] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
+          <div className="max-w-[68ch] rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-[15px] leading-[1.6] whitespace-pre-wrap text-parchment">
             {message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')}
           </div>
+        )}
+        {!editing && (
+          <CopyButton what="message" text={markdownOf(message.blocks)} className="group-hover:opacity-100" />
         )}
         {!editing && !running && (
           <button
@@ -143,15 +149,40 @@ export const MessageView = memo(function MessageView({ message, index }: { messa
       })}
       {streaming && message.blocks.length === 0 && <span className="ember-cursor" aria-hidden="true" />}
       <StatusNote message={message} />
-      {!streaming && !running && (
-        <button
-          type="button"
-          onClick={() => void regenerate()}
-          className="mt-1.5 self-start font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
-        >
-          Regenerate
-        </button>
-      )}
+      <div className="mt-1.5 flex items-center gap-3">
+        <CopyButton what="answer" text={markdownOf(message.blocks)} />
+        {/* Only the last answer can be regenerated: it re-runs the last question, so offering it
+            under every answer would replace a different one than the reader is pointing at. */}
+        {last && !streaming && !running && (
+          <button
+            type="button"
+            onClick={() => void regenerate()}
+            className="font-mono text-[11px] text-parchment-faint transition-colors hover:text-parchment"
+          >
+            Regenerate
+          </button>
+        )}
+      </div>
     </article>
   )
 })
+
+/** Copies what is on screen: a message as markdown, a tool row as its output. */
+export function CopyButton({ what, text, className = '' }: { what: string; text: string; className?: string }) {
+  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+
+  return (
+    <button
+      type="button"
+      aria-label={`Copy ${what}`}
+      onClick={() => {
+        void copyText(text).then((ok) => setState(ok ? 'done' : 'failed'))
+      }}
+      className={`font-mono text-[11px] text-parchment-faint transition-opacity transition-colors hover:text-parchment ${
+        state === 'done' ? 'text-jade' : ''
+      } ${state === 'failed' ? 'text-danger' : ''} ${className}`}
+    >
+      {state === 'done' ? 'copied' : state === 'failed' ? 'copy failed' : 'copy'}
+    </button>
+  )
+}

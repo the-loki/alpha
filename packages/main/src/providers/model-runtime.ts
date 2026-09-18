@@ -95,9 +95,3 @@ export function createProviderModelRuntime(store: ProviderStore): ProviderModelR
     first === undefined || firstModel === undefined ? undefined : models.getModel(first.id, firstModel.id)
   return defaultModel === undefined ? { models } : { models, defaultModel }
 }
-
-export function resolveModel(store: ProviderStore, providerId: string, modelId: string): Model<Api> | undefined {
-  const providers = store.list()
-  if (!providers.some((provider) => provider.id === providerId)) return undefined
-  return createProviderModelRuntime(store).models.getModel(providerId, modelId)
-}

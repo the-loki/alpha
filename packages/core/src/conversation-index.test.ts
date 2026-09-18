@@ -17,6 +17,7 @@ const conversation = (id: string, workspacePath: string, updatedAt: number): Con
   createdAt: updatedAt - 10,
   updatedAt,
   status: 'idle',
+  permissionLevel: 'ask',
   model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
   thinkingLevel: 'medium',
 })
@@ -26,7 +27,7 @@ const index = {
   conversations: [conversation('a', '/dev/alpha', 10), conversation('b', '/dev/beta', 30)],
 }
 
-describe('parseConversationIndex', () => {
+describe('[core] parseConversationIndex', () => {
   it('round-trips an index', () => {
     expect(parseConversationIndex(JSON.parse(JSON.stringify(index)))).toEqual(index)
   })
@@ -43,7 +44,7 @@ describe('parseConversationIndex', () => {
   })
 })
 
-describe('listForWorkspace', () => {
+describe('[core] listForWorkspace', () => {
   it('returns only that workspace, most recently used first', () => {
     const withMore = {
       version: 1 as const,
@@ -61,7 +62,7 @@ describe('listForWorkspace', () => {
   })
 })
 
-describe('upsertConversation', () => {
+describe('[core] upsertConversation', () => {
   it('adds a conversation to the front', () => {
     const updated = upsertConversation(emptyConversationIndex(), conversation('a', '/dev/alpha', 1))
     expect(updated.conversations.map((entry) => entry.id)).toEqual(['a'])
@@ -74,7 +75,7 @@ describe('upsertConversation', () => {
   })
 })
 
-describe('removeConversation', () => {
+describe('[core] removeConversation', () => {
   it('drops the conversation', () => {
     expect(removeConversation(index, 'a').conversations.map((entry) => entry.id)).toEqual(['b'])
   })
@@ -84,7 +85,7 @@ describe('removeConversation', () => {
   })
 })
 
-describe('findConversation', () => {
+describe('[core] findConversation', () => {
   it('finds by id', () => {
     expect(findConversation(index, 'b')?.workspacePath).toBe('/dev/beta')
   })
@@ -94,7 +95,7 @@ describe('findConversation', () => {
   })
 })
 
-describe('groupByWorkspace', () => {
+describe('[core] groupByWorkspace', () => {
   it('groups conversations under the folder they belong to', () => {
     const groups = groupByWorkspace([
       conversation('a', '/dev/alpha', 10),

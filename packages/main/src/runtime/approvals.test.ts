@@ -7,6 +7,7 @@ const ask: ApprovalAsk = {
   toolName: 'bash',
   risk: 'execute',
   summary: 'rm -rf build',
+  detail: 'rm -rf build',
   raw: '{"command":"rm -rf build"}',
   cwd: '/dev/alpha',
   level: 'ask',
@@ -20,7 +21,7 @@ const broker = () => {
 
 const requested = (events: RuntimeEvent[]) => events.filter((event) => event.type === 'approval_requested')
 
-describe('the approval broker', () => {
+describe('[runtime] the approval broker', () => {
   it('emits a request with an identity the window can answer with', () => {
     const { instance, events } = broker()
 

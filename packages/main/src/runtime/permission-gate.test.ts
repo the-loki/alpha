@@ -84,7 +84,7 @@ const callIdOf = (events: RuntimeEvent[]): string => {
 
 const writeCall = { tool: { name: 'write', args: { path: 'made.txt', content: 'written' } } }
 
-describe('a call the gate allows', () => {
+describe('[runtime] a call the gate allows', () => {
   it('runs it, and the row says a person allowed it', async () => {
     const workspacePath = workspace()
     const { runtime, events, asked } = await open({
@@ -172,7 +172,7 @@ describe('a call the gate allows', () => {
   })
 })
 
-describe('a call the gate refuses', () => {
+describe('[runtime] a call the gate refuses', () => {
   it('blocks a write in plan without asking anyone, and says why', async () => {
     const workspacePath = workspace()
     const { runtime, events, asked } = await open({
@@ -231,7 +231,7 @@ describe('a call the gate refuses', () => {
   })
 })
 
-describe('revoking a remembered rule', () => {
+describe('[runtime] revoking a remembered rule', () => {
   it('makes the next matching call ask again', async () => {
     const workspacePath = workspace()
     const edit = { tool: { name: 'write', args: { path: 'src/main.ts', content: 'x' } } }
@@ -253,7 +253,7 @@ describe('revoking a remembered rule', () => {
   })
 })
 
-describe('changing the level', () => {
+describe('[runtime] changing the level', () => {
   it('applies to the next call without restarting the conversation', async () => {
     const workspacePath = workspace()
     const { runtime, events, state } = await open({

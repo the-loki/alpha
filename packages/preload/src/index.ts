@@ -33,6 +33,8 @@ const bridge: AlphaBridge = {
   setPermissionLevel: (level: PermissionLevel) =>
     ipcRenderer.invoke(IPC.setPermissionLevel, level) as Promise<LaunchState>,
   setTheme: (theme: Theme) => ipcRenderer.invoke(IPC.setTheme, theme) as Promise<LaunchState>,
+  setConversationLevel: (id: string, level: PermissionLevel) =>
+    ipcRenderer.invoke(IPC.setConversationLevel, id, level) as Promise<ConversationSummary>,
   sendWindowCommand: (command: WindowCommand) => ipcRenderer.invoke(WINDOW_COMMAND_CHANNELS[command]) as Promise<void>,
   onWindowState: (listener: (state: WindowState) => void) => {
     const handler = (_event: unknown, state: WindowState) => listener(state)

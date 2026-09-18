@@ -7,6 +7,7 @@ import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
 import {
   DEFAULT_LEVEL,
+  isPermissionLevel,
   PERMISSION_LEVELS,
   type PermissionLevel,
   type PermissionRule,
@@ -36,6 +37,7 @@ const RuleSchema = Type.Object({
   id: Type.String(),
   scope: Type.Union(RULE_SCOPES.map((scope) => Type.Literal(scope))),
   conversationId: Type.String(),
+  workspacePath: Type.String(),
   toolName: Type.String(),
   pattern: Type.String(),
   createdAt: Type.Number(),
@@ -58,21 +60,44 @@ export function isTheme(value: unknown): value is Theme {
 const PersistedStateSchema = Type.Object({
   workspace: WorkspaceStateSchema,
   permissionLevel: PermissionLevelSchema,
+  /**
+   * The default for new conversations, per workspace. Read entry by entry rather than all at once,
+   * so one unreadable default costs that entry and not the remembered workspace with it.
+   */
+  workspaceLevels: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   theme: Type.Optional(ThemeSchema),
+  /** The conversation that was open when the window closed, so the next launch can bring it back. */
+  lastConversationId: Type.Optional(Type.String()),
 })
 
 type PersistedStateShape = Static<typeof PersistedStateSchema>
 
 export interface PersistedState {
   workspace: WorkspaceState
+  /** The level for a workspace that has never been given one of its own. */
   permissionLevel: PermissionLevel
+  workspaceLevels: Record<string, PermissionLevel>
   permissionRules: PermissionRule[]
   /** System by default: the app follows the room it is in unless told otherwise. */
   theme: Theme
+  /** Empty when nothing was open, which is also what a launch with no history gets. */
+  lastConversationId: string
 }
 
 export function emptyPersistedState(): PersistedState {
-  return { workspace: emptyWorkspaceState(), permissionLevel: DEFAULT_LEVEL, permissionRules: [], theme: 'system' }
+  return {
+    workspace: emptyWorkspaceState(),
+    permissionLevel: DEFAULT_LEVEL,
+    workspaceLevels: {},
+    permissionRules: [],
+    theme: 'system',
+    lastConversationId: '',
+  }
+}
+
+/** The level a new conversation in this workspace starts at. */
+export function defaultLevelFor(state: PersistedState, workspacePath: string): PermissionLevel {
+  return state.workspaceLevels[workspacePath] ?? state.permissionLevel
 }
 
 /**
@@ -87,9 +112,27 @@ export function parsePersistedState(raw: unknown): PersistedState {
   return {
     workspace: state.workspace,
     permissionLevel: state.permissionLevel,
+    workspaceLevels: readLevels(readLevelsField(candidate)),
     permissionRules: readRules(readRulesField(candidate)),
     theme: state.theme ?? 'system',
+    lastConversationId: state.lastConversationId ?? '',
   }
+}
+
+function readLevelsField(candidate: unknown): unknown {
+  return typeof candidate === 'object' && candidate !== null
+    ? (candidate as { workspaceLevels?: unknown }).workspaceLevels
+    : undefined
+}
+
+/** A default per workspace, dropping any entry that is not a level rather than the whole map. */
+function readLevels(value: unknown): Record<string, PermissionLevel> {
+  if (typeof value !== 'object' || value === null) return {}
+  const levels: Record<string, PermissionLevel> = {}
+  for (const [path, level] of Object.entries(value)) {
+    if (typeof path === 'string' && isPermissionLevel(level)) levels[path] = level
+  }
+  return levels
 }
 
 function readRulesField(candidate: unknown): unknown {

@@ -52,9 +52,9 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
       </header>
 
       <div className="px-3.5 pb-1">
-        <p className="font-mono text-[13px] leading-relaxed break-words text-parchment">
-          {request.summary === '' ? riskLabel(request.risk) : request.summary}
-        </p>
+        <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-parchment">
+          {request.detail === '' ? riskLabel(request.risk) : request.detail}
+        </pre>
         <p className="mt-0.5 font-mono text-[11px] text-parchment-faint">in {request.cwd}</p>
         {request.diff !== undefined && <DiffView diff={request.diff} />}
       </div>
@@ -74,7 +74,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
             type="button"
             onClick={allowAlways}
             disabled={busy}
-            className="px-3 py-1 text-[12px] text-parchment transition-colors hover:text-parchment-bright disabled:opacity-60"
+            className="px-3 py-1 text-[12px] text-parchment transition-colors hover:text-parchment disabled:opacity-60"
           >
             Always allow
           </button>

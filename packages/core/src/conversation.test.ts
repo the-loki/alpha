@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { TITLE_LIMIT, titleFromMessage, titleFromPath } from './conversation.ts'
 
-describe('titleFromMessage', () => {
+describe('[core] titleFromMessage', () => {
   it('uses the message itself when it is short', () => {
     expect(titleFromMessage('Fix the failing test')).toBe('Fix the failing test')
   })
@@ -29,7 +29,7 @@ describe('titleFromMessage', () => {
   })
 })
 
-describe('titleFromPath', () => {
+describe('[core] titleFromPath', () => {
   it('names a conversation after its folder when there is no message yet', () => {
     expect(titleFromPath('/home/dev/alpha', 'New conversation')).toBe('alpha')
   })

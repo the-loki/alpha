@@ -6,6 +6,7 @@
  */
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
+import { PERMISSION_LEVELS } from './permission.ts'
 import type { ConversationSummary } from './runtime-events.ts'
 import { THINKING_LEVELS } from './thinking.ts'
 
@@ -16,6 +17,7 @@ const ConversationSummarySchema = Type.Object({
   createdAt: Type.Number(),
   updatedAt: Type.Number(),
   status: Type.Union([Type.Literal('idle'), Type.Literal('running'), Type.Literal('waiting')]),
+  permissionLevel: Type.Union(PERMISSION_LEVELS.map((level) => Type.Literal(level))),
   model: Type.Object({ providerId: Type.String(), modelId: Type.String() }),
   thinkingLevel: Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level))),
 })

@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import type { RuntimeEvent } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
 import { ConversationRuntime } from './conversation-runtime.ts'
+import type { LiveEnv } from './live-env.ts'
+import { requireLiveEnv } from './live-env.ts'
 import { resolveModelRuntime } from './models.ts'
 
 /**
@@ -15,28 +17,22 @@ import { resolveModelRuntime } from './models.ts'
  * environment, so no credential is ever committed and a normal test run makes no request
  * (docs/constraints/04-testing.md C4.4).
  */
-const enabled = process.env.ALPHA_LIVE_TEST === '1'
+const live = requireLiveEnv(process.env, (message) => console.log(message))
 
-if (!enabled) {
-  console.log(
-    '[live] skipped: set ALPHA_LIVE_TEST=1, plus ALPHA_LIVE_BASE_URL, ALPHA_LIVE_API_KEY and ALPHA_LIVE_MODEL, to run it.',
-  )
+/** The narrowed environment: the body of a test only runs when `requireLiveEnv` returned one. */
+function liveEnv(): LiveEnv {
+  if (live === undefined) throw new Error('the live environment is not configured')
+  return live
 }
 
-const required = (name: string): string => {
-  const value = process.env[name]
-  if (value === undefined || value === '') throw new Error(`${name} is required for the live test`)
-  return value
-}
-
-describe.skipIf(!enabled)('a real provider', () => {
+describe.skipIf(live === undefined)('[runtime] a real provider', () => {
   it('streams a reply and reports it as a finished message', async () => {
     const events: RuntimeEvent[] = []
     const modelRuntime = resolveModelRuntime({
-      ALPHA_BASE_URL: required('ALPHA_LIVE_BASE_URL'),
-      ALPHA_API_KEY: required('ALPHA_LIVE_API_KEY'),
-      ALPHA_MODEL: required('ALPHA_LIVE_MODEL'),
-      ALPHA_API: process.env.ALPHA_LIVE_API,
+      ALPHA_BASE_URL: liveEnv().baseUrl,
+      ALPHA_API_KEY: liveEnv().apiKey,
+      ALPHA_MODEL: liveEnv().model,
+      ALPHA_API: liveEnv().api,
     })
 
     const { runtime } = await ConversationRuntime.open({

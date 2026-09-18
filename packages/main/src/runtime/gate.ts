@@ -25,7 +25,7 @@ export interface ApprovalAnswer {
 }
 
 export interface GatePorts {
-  level: () => PermissionLevel
+  level: (conversationId: string) => PermissionLevel
   rules: () => PermissionRule[]
   conversationId: string
   workspacePath: string
@@ -48,29 +48,42 @@ export type GateVerdict = undefined | { block: { reason: string } }
 
 const DENIED_FALLBACK = 'The user denied this call.'
 
+/** What is about to run, in full: a card that truncates the command is asking about something else. */
+function toolDetail(toolName: string, args: Record<string, unknown>): string {
+  const command = typeof args.command === 'string' ? args.command : undefined
+  const path = typeof args.path === 'string' ? args.path : undefined
+  if (toolName === 'bash' && command !== undefined) return command
+  if (path !== undefined) return path
+  return summarizeToolCall(toolName, args)
+}
+
 export function createToolGate(ports: GatePorts): (event: ToolCallEvent) => Promise<GateVerdict> {
   return async (event) => {
     const risk = toolRiskOf(event.toolName)
     const decision = evaluateCall({
-      level: ports.level(),
+      level: ports.level(ports.conversationId),
       risk,
       toolName: event.toolName,
       args: event.args,
       conversationId: ports.conversationId,
+      workspacePath: ports.workspacePath,
       rules: ports.rules(),
     })
 
     if (decision.outcome === 'allow') {
+      const level = ports.level(ports.conversationId)
       const record: ApprovalRecord =
-        decision.by === 'rule'
-          ? { kind: 'rule', level: ports.level(), ruleId: decision.ruleId }
-          : { kind: 'auto', level: ports.level() }
+        decision.by === 'rule' ? { kind: 'rule', level, ruleId: decision.ruleId } : { kind: 'auto', level }
       ports.note(event.toolCallId, record)
       return undefined
     }
 
     if (decision.outcome === 'block') {
-      ports.note(event.toolCallId, { kind: 'blocked', level: ports.level(), reason: decision.reason })
+      ports.note(event.toolCallId, {
+        kind: 'blocked',
+        level: ports.level(ports.conversationId),
+        reason: decision.reason,
+      })
       return { block: { reason: decision.reason } }
     }
 
@@ -83,12 +96,13 @@ async function askForApproval(
   event: ToolCallEvent,
   risk: ReturnType<typeof toolRiskOf>,
 ): Promise<GateVerdict> {
-  const level = ports.level()
+  const level = ports.level(ports.conversationId)
   const answer = await ports.ask(ports.conversationId, {
     callId: event.toolCallId,
     toolName: event.toolName,
     risk,
     summary: summarizeToolCall(event.toolName, event.args),
+    detail: toolDetail(event.toolName, event.args),
     raw: JSON.stringify(event.args ?? {}),
     diff: changePreview(event.toolName, event.args),
     cwd: ports.workspacePath,
@@ -107,6 +121,7 @@ async function askForApproval(
       id: crypto.randomUUID(),
       scope,
       conversationId: scope === 'conversation' ? ports.conversationId : '',
+      workspacePath: ports.workspacePath,
       toolName: event.toolName,
       pattern: patternOf(event.toolName, event.args) ?? '',
       createdAt: Date.now(),

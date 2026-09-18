@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { emptyPersistedState, type PersistedState, parsePersistedState } from './persisted-state.ts'
+import { defaultLevelFor, emptyPersistedState, type PersistedState, parsePersistedState } from './persisted-state.ts'
 
 const rule = {
   id: 'r1',
   scope: 'workspace',
   conversationId: '',
+  workspacePath: '/dev/alpha',
   toolName: 'bash',
   pattern: 'pnpm test',
   createdAt: 12,
@@ -12,15 +13,17 @@ const rule = {
 
 const valid = {
   theme: 'system',
+  workspaceLevels: {},
   workspace: {
     selection: { kind: 'selected', workspace: { path: '/dev/alpha', name: 'alpha', lastOpenedAt: 12 } },
     recents: [{ path: '/dev/alpha', name: 'alpha', lastOpenedAt: 12 }],
   },
   permissionLevel: 'accept-edits',
   permissionRules: [rule],
+  lastConversationId: 'c1',
 }
 
-describe('emptyPersistedState', () => {
+describe('[core] emptyPersistedState', () => {
   it('has nothing selected, the default level, no remembered rules, and follows the system', () => {
     const state = emptyPersistedState()
     expect(state.workspace.selection.kind).toBe('none')
@@ -31,9 +34,15 @@ describe('emptyPersistedState', () => {
   })
 })
 
-describe('parsePersistedState', () => {
+describe('[core] parsePersistedState', () => {
   it('round-trips a valid state', () => {
     expect(parsePersistedState(JSON.parse(JSON.stringify(valid)))).toEqual(valid)
+  })
+
+  it('remembers which conversation was open, and nothing when none was', () => {
+    expect(parsePersistedState(JSON.parse(JSON.stringify(valid))).lastConversationId).toBe('c1')
+    const { lastConversationId: _dropped, ...without } = valid
+    expect(parsePersistedState(without).lastConversationId).toBe('')
   })
 
   it('falls back to empty for a non-object', () => {
@@ -63,8 +72,10 @@ describe('parsePersistedState', () => {
     const fresh: PersistedState = {
       workspace: { selection: { kind: 'none' }, recents: [] },
       permissionLevel: 'plan',
+      workspaceLevels: { '/dev/alpha': 'full-access' },
       permissionRules: [],
       theme: 'light',
+      lastConversationId: '',
     }
     expect(parsePersistedState(fresh)).toEqual(fresh)
   })
@@ -87,6 +98,17 @@ describe('parsePersistedState', () => {
 
   it('has no rules when the rules are not a list', () => {
     expect(parsePersistedState({ ...valid, permissionRules: 'all of them' }).permissionRules).toEqual([])
+  })
+
+  it('gives a workspace its own default level, and the general one where it has none', () => {
+    const state = parsePersistedState({ ...valid, permissionLevel: 'ask', workspaceLevels: { '/dev/beta': 'plan' } })
+    expect(defaultLevelFor(state, '/dev/beta')).toBe('plan')
+    expect(defaultLevelFor(state, '/dev/gamma')).toBe('ask')
+  })
+
+  it('drops a default that is not a level, and keeps the rest', () => {
+    const state = parsePersistedState({ ...valid, workspaceLevels: { '/dev/beta': 'yolo', '/dev/good': 'plan' } })
+    expect(state.workspaceLevels).toEqual({ '/dev/good': 'plan' })
   })
 
   it('follows the system when the file predates the theme choice', () => {

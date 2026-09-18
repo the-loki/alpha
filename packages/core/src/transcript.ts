@@ -58,14 +58,25 @@ export function emptyTranscript(conversationId: string): TranscriptState {
 }
 
 /**
- * Opens a transcript that already has a history of spending, which is what a relaunch is. The
- * history is one row of its own rather than being spread over turns nobody can see any more: the
- * header's total is the sum of the rows, and that has to stay true across a relaunch.
+ * A conversation that already has spending behind it opens with one row for it. The history is a
+ * row of its own rather than being spread over turns nobody can see any more: the header's total
+ * is the sum of the rows, and that has to stay true across a relaunch.
  */
-export function transcriptWithUsage(conversationId: string, usage: UsageTotals): TranscriptState {
+export function openingTranscript(
+  conversationId: string,
+  conversation: ConversationSummary,
+  messages: ChatMessage[],
+  usage: UsageTotals,
+): TranscriptState {
   const empty = emptyTranscript(conversationId)
-  if (usage.totalTokens === 0) return empty
-  return { ...empty, usage, turns: [{ usage, earlier: true }] }
+  return {
+    ...empty,
+    summary: conversation,
+    messages,
+    usage,
+    turns: usage.totalTokens === 0 ? [] : [{ usage, earlier: true }],
+    turnUsage: usage,
+  }
 }
 
 /** The total is the sum of the rows, so the two can never drift apart. */
@@ -86,11 +97,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
 
   switch (event.type) {
     case 'conversation_opened':
-      return {
-        ...emptyTranscript(state.conversationId),
-        summary: event.conversation,
-        messages: event.messages,
-      }
+      return openingTranscript(state.conversationId, event.conversation, event.messages, event.usage)
 
     case 'conversation_updated':
       return { ...state, summary: event.conversation }
@@ -175,7 +182,7 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
             id: `compaction-${state.messages.length}`,
             role: 'assistant',
             blocks: [{ kind: 'compaction', summary: event.summary, replaced: event.replaced }],
-            createdAt: Date.now(),
+            createdAt: event.at,
             status: 'complete',
           },
         ],

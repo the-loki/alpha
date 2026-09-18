@@ -60,7 +60,7 @@ const harnessState = (options: { level?: PermissionLevel; rules?: PermissionRule
 
 const call = (toolName: string, args: Record<string, unknown>) => ({ toolCallId: `${toolName}-1`, toolName, args })
 
-describe('the gate', () => {
+describe('[runtime] the gate', () => {
   it('runs a read without asking and records that the level allowed it', async () => {
     const h = harness({ level: 'ask' })
 
@@ -128,6 +128,7 @@ describe('the gate', () => {
     expect(h.remembered[0]).toMatchObject({
       scope: 'workspace',
       conversationId: '',
+      workspacePath: '/dev/alpha',
       toolName: 'bash',
       pattern: 'pnpm test',
     })
@@ -178,6 +179,7 @@ describe('the gate', () => {
       id: 'r1',
       scope: 'workspace',
       conversationId: '',
+      workspacePath: '/dev/alpha',
       toolName: 'bash',
       pattern: 'pnpm test',
       createdAt: 1,

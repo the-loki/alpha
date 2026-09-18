@@ -9,8 +9,16 @@
  * and reused for every delta and for the finish.
  */
 
-import { type ApprovalRecord, type QueuedMessage, type RuntimeEvent, toolRiskOf, type UsageTotals } from '@alpha/core'
+import {
+  type ApprovalRecord,
+  type QueuedMessage,
+  type RuntimeEvent,
+  textOfContent,
+  toolRiskOf,
+  type UsageTotals,
+} from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
+import { usageOf } from './conversation-runtime.ts'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 export interface EventTranslator {
@@ -26,14 +34,14 @@ function usageTotals(usage: {
   totalTokens?: number
   cost?: { total?: number }
 }): UsageTotals {
-  return {
+  return usageOf({
     input: usage.input ?? 0,
     output: usage.output ?? 0,
     cacheRead: usage.cacheRead ?? 0,
     cacheWrite: usage.cacheWrite ?? 0,
     totalTokens: usage.totalTokens ?? 0,
-    cost: usage.cost?.total ?? 0,
-  }
+    cost: { total: usage.cost?.total ?? 0 },
+  })
 }
 
 /** How a row learns why its call got past the gate. */
@@ -46,14 +54,6 @@ interface TranslatorState {
 
 /** A user message's content is either a string or parts; the parts that are text are the message. */
 type MessageContent = string | Array<{ type: string; text?: string }>
-
-const textOf = (content: MessageContent): string => {
-  if (typeof content === 'string') return content
-  return content
-    .map((part) => (part.type === 'text' ? (part.text ?? '') : ''))
-    .filter((text) => text !== '')
-    .join('\n')
-}
 
 export function createEventTranslator(
   conversationId: string,
@@ -127,16 +127,7 @@ function queuedItems(queues: readonly { entryId: string; kind: string; message?:
 function messageText(message: unknown): string {
   const content =
     typeof message === 'object' && message !== null ? (message as { content?: unknown }).content : undefined
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part) =>
-      typeof part === 'object' && part !== null && (part as { type?: string }).type === 'text'
-        ? String((part as { text?: unknown }).text ?? '')
-        : '',
-    )
-    .filter((text) => text !== '')
-    .join('\n')
+  return textOfContent(content)
 }
 
 /** A row is stamped with the gate's decision here, so the ledger can say why the call was allowed. */
@@ -195,7 +186,7 @@ function startMessage(state: TranslatorState, conversationId: string, message: S
 
   if (message.role === 'user') {
     const content = 'content' in message ? message.content : ''
-    const text = textOf(content)
+    const text = textOfContent(content)
     return [
       {
         conversationId,

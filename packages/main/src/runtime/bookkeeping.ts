@@ -3,10 +3,44 @@
  * from the user's first message, its status follows the run, and a rename is the user having the
  * last word. Everything the window sees in the sidebar comes from here.
  */
-import { type ConversationSummary, type RuntimeEvent, summarize, titleFromMessage } from '@alpha/core'
+import {
+  type ConversationSummary,
+  DEFAULT_THINKING_LEVEL,
+  type PermissionLevel,
+  type RuntimeEvent,
+  summarize,
+  titleFromMessage,
+  titleFromPath,
+} from '@alpha/core'
 import { ConversationIndexStore } from '../conversations/index-store.ts'
 
 const DEFAULT_TITLE = 'New conversation'
+
+/** What a conversation is called while its model is still unconfigured. */
+export const NO_MODEL: ConversationSummary['model'] = { providerId: '', modelId: '' }
+
+export interface NewConversation {
+  id: string
+  workspacePath: string
+  now: number
+  permissionLevel: PermissionLevel
+  model: ConversationSummary['model']
+}
+
+/** A conversation as it exists before anything has been said in it. */
+export function newConversation(summary: NewConversation): ConversationSummary {
+  return {
+    id: summary.id,
+    workspacePath: summary.workspacePath,
+    title: titleFromPath(summary.workspacePath, DEFAULT_TITLE),
+    createdAt: summary.now,
+    updatedAt: summary.now,
+    status: 'idle',
+    permissionLevel: summary.permissionLevel,
+    model: summary.model,
+    thinkingLevel: DEFAULT_THINKING_LEVEL,
+  }
+}
 
 export interface BookkeeperOptions {
   dataDirectory: string

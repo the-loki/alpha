@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm'
  */
 export const Markdown = memo(function Markdown({ text }: { text: string }) {
   return (
-    <div className="text-[15px] leading-[1.65] text-parchment">
+    <div className="max-w-[68ch] text-[15px] leading-[1.65] text-parchment">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

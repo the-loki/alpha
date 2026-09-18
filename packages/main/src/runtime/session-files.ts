@@ -15,7 +15,7 @@ import {
 } from '@alpha/core'
 import { BACKGROUND_CONTEXT, JsonlSessionRepo } from '@earendil-works/pi-agent-core'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
-import { findSessionMetadata, readTranscript } from './conversation-runtime.ts'
+import { findSessionMetadata, readTranscript, usageOf } from './conversation-runtime.ts'
 
 export interface SessionLocation {
   sessionsRoot: string
@@ -39,14 +39,7 @@ export async function readSessionUsage(location: SessionLocation): Promise<Usage
   const session = await repo.open(metadata, BACKGROUND_CONTEXT)
   const stats = await session.getStats(BACKGROUND_CONTEXT)
   await session.close(BACKGROUND_CONTEXT)
-  return {
-    input: stats.usage.input,
-    output: stats.usage.output,
-    cacheRead: stats.usage.cacheRead,
-    cacheWrite: stats.usage.cacheWrite,
-    totalTokens: stats.usage.totalTokens,
-    cost: stats.usage.cost.total,
-  }
+  return usageOf(stats.usage)
 }
 
 /** Takes the transcript off the disk. A conversation that is deleted is deleted, not hidden. */

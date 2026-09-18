@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { exitCodeFromText, summarizeToolCall, toolDetails } from './tool-call.ts'
 
-describe('summarizeToolCall', () => {
+describe('[runtime] summarizeToolCall', () => {
   it('names the file a read is about', () => {
     expect(summarizeToolCall('read', { path: 'src/index.ts' })).toBe('src/index.ts')
   })
@@ -38,7 +38,7 @@ describe('summarizeToolCall', () => {
   })
 })
 
-describe('exitCodeFromText', () => {
+describe('[runtime] exitCodeFromText', () => {
   it('finds the exit code the shell reported', () => {
     expect(exitCodeFromText('boom\n\nCommand exited with code 127')).toBe(127)
   })
@@ -48,7 +48,7 @@ describe('exitCodeFromText', () => {
   })
 })
 
-describe('toolDetails', () => {
+describe('[runtime] toolDetails', () => {
   it('carries the edit diff through untouched', () => {
     expect(toolDetails('edit', { diff: '@@ -1 +1 @@', patch: 'p' })).toEqual({ diff: '@@ -1 +1 @@' })
   })

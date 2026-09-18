@@ -22,7 +22,7 @@ const vaultIn = (cipher: SecretCipher) => {
   return { vault: new CredentialVault(directory, cipher), file: join(directory, 'credentials.json') }
 }
 
-describe('with the OS keychain available', () => {
+describe('[main] with the OS keychain available', () => {
   it('reports a stored credential', () => {
     const { vault } = vaultIn(reversibleCipher)
     expect(vault.has('anthropic')).toBe(false)
@@ -78,7 +78,7 @@ describe('with the OS keychain available', () => {
   })
 })
 
-describe('with no keychain available', () => {
+describe('[main] with no keychain available', () => {
   it('says so, so the UI can warn', () => {
     expect(vaultIn(plaintextCipher).vault.protection()).toBe('plaintext')
   })

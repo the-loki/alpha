@@ -58,8 +58,10 @@ export interface ApprovalRequest {
   callId: string
   toolName: string
   risk: ToolRisk
-  /** The command, or the path being changed. */
+  /** One line for the card's heading. */
   summary: string
+  /** The whole thing: the command as written, or the path, untruncated. */
+  detail: string
   /** The arguments as the model sent them. */
   raw: string
   /** The change being proposed, rendered as a diff, when the call is one that changes a file. */
@@ -131,13 +133,22 @@ export interface ConversationSummary {
   updatedAt: number
   /** `waiting` is a run that is stopped on a person: it is neither idle nor getting on with it. */
   status: 'idle' | 'running' | 'waiting'
+  /** How much this conversation may do without asking. Chosen per conversation (ADR-0002). */
+  permissionLevel: PermissionLevel
   /** Empty strings mean no model has been chosen yet, which the composer reports. */
   model: ConversationModel
   thinkingLevel: ThinkingLevel
 }
 
 export type RuntimeEvent =
-  | { conversationId: string; type: 'conversation_opened'; conversation: ConversationSummary; messages: ChatMessage[] }
+  | {
+      conversationId: string
+      type: 'conversation_opened'
+      conversation: ConversationSummary
+      messages: ChatMessage[]
+      /** What it had already spent, so a reopened conversation shows the same totals as before. */
+      usage: UsageTotals
+    }
   | { conversationId: string; type: 'conversation_updated'; conversation: ConversationSummary }
   | { conversationId: string; type: 'turn_started' }
   | { conversationId: string; type: 'user_message'; message: ChatMessage }
@@ -180,7 +191,7 @@ export type RuntimeEvent =
     }
   | { conversationId: string; type: 'queue_updated'; queued: QueuedMessage[] }
   | { conversationId: string; type: 'usage_recorded'; usage: UsageTotals }
-  | { conversationId: string; type: 'history_compacted'; summary: string; replaced?: number }
+  | { conversationId: string; type: 'history_compacted'; summary: string; replaced?: number; at: number }
   /** The conversation's path changed under it: an answer was replaced, so the list is replaced too. */
   | { conversationId: string; type: 'transcript_replaced'; messages: ChatMessage[] }
   | { conversationId: string; type: 'run_failed'; message: string }

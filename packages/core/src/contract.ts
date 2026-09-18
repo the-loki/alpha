@@ -27,6 +27,7 @@ export const IPC = {
   pickWorkspace: 'alpha:pick-workspace',
   selectWorkspace: 'alpha:select-workspace',
   setPermissionLevel: 'alpha:set-permission-level',
+  setConversationLevel: 'alpha:set-conversation-level',
   setTheme: 'alpha:set-theme',
   windowMinimize: 'alpha:window-minimize',
   windowToggleMaximize: 'alpha:window-toggle-maximize',
@@ -61,8 +62,6 @@ export const IPC = {
   permissionRulesChanged: 'alpha:permission-rules-changed',
 } as const
 
-export type IpcChannel = (typeof IPC)[keyof typeof IPC]
-
 export interface ModelStatus {
   configured: boolean
   /** What the runtime will talk to, or why it cannot talk to anything yet. */
@@ -75,8 +74,12 @@ export interface LaunchState {
   workspace: WorkspaceSelection
   recents: WorkspaceRef[]
   permissionLevel: PermissionLevel
+  /** What this workspace's new conversations start at, which may differ from the general default. */
+  workspaceLevel: PermissionLevel
   theme: Theme
   model: ModelStatus
+  /** The conversation that was open when the window last closed, or empty. */
+  lastConversationId: string
 }
 
 export interface PickWorkspaceResult {
@@ -127,7 +130,10 @@ export interface AlphaBridge {
   launchState(): Promise<LaunchState>
   pickWorkspace(): Promise<PickWorkspaceResult>
   selectWorkspace(path: string): Promise<LaunchState>
+  /** The level new conversations in this workspace start at. */
   setPermissionLevel(level: PermissionLevel): Promise<LaunchState>
+  /** The level in force for one conversation. */
+  setConversationLevel(id: string, level: PermissionLevel): Promise<ConversationSummary>
   setTheme(theme: Theme): Promise<LaunchState>
   sendWindowCommand(command: WindowCommand): Promise<void>
   onWindowState(listener: (state: WindowState) => void): () => void

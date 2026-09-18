@@ -4,14 +4,15 @@
  * harness returns as values rather than throws (ADR-0001).
  */
 
-import type {
-  ApprovalAsk,
-  ApprovalRecord,
-  ChatMessage,
-  PermissionLevel,
-  PermissionRule,
-  RuntimeEvent,
-  UsageTotals,
+import {
+  type ApprovalAsk,
+  type ApprovalRecord,
+  type ChatMessage,
+  type PermissionLevel,
+  type PermissionRule,
+  type RuntimeEvent,
+  textOfContent,
+  type UsageTotals,
 } from '@alpha/core'
 import {
   AgentHarness,
@@ -36,7 +37,7 @@ import { createEventTranslator } from './translate.ts'
 
 /** How the gate reaches the policy and the person: all four are read at the moment of a call. */
 export interface PermissionPorts {
-  level: () => PermissionLevel
+  level: (conversationId: string) => PermissionLevel
   rules: () => PermissionRule[]
   remember: (rule: PermissionRule) => void
   ask: (conversationId: string, ask: ApprovalAsk) => Promise<ApprovalAnswer>
@@ -141,7 +142,12 @@ export class ConversationRuntime {
     harness.events.on('compaction_end', (event) => {
       if (event.status !== 'completed') return
       void compactionSummary(session, event.entryId).then((summary) =>
-        runtime.#emit({ conversationId, type: 'history_compacted', ...summary }),
+        runtime.#emit({
+          conversationId,
+          type: 'history_compacted',
+          ...summary,
+          at: event.endedAt,
+        }),
       )
     })
     if (options.permissions !== undefined) {
@@ -234,14 +240,7 @@ export class ConversationRuntime {
   /** What the session has spent so far, which is what a window opening it has to show. */
   async usage(): Promise<UsageTotals> {
     const stats = await this.#session.getStats(BACKGROUND_CONTEXT)
-    return {
-      input: stats.usage.input,
-      output: stats.usage.output,
-      cacheRead: stats.usage.cacheRead,
-      cacheWrite: stats.usage.cacheWrite,
-      totalTokens: stats.usage.totalTokens,
-      cost: stats.usage.cost.total,
-    }
+    return usageOf(stats.usage)
   }
 
   /** Moves the tip to the entry before the given one, or to the root when it is the first. */
@@ -305,6 +304,25 @@ async function tipPathOf(session: Session<JsonlSessionMetadata>): Promise<Entry[
   return branch.findEntries({ start: tip, order: 'oldestFirst' }, BACKGROUND_CONTEXT)
 }
 
+/** pi's usage in the workbench's terms: the totals module owns the shape, this owns the mapping. */
+export function usageOf(usage: {
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite: number
+  totalTokens: number
+  cost: { total: number }
+}): UsageTotals {
+  return {
+    input: usage.input,
+    output: usage.output,
+    cacheRead: usage.cacheRead,
+    cacheWrite: usage.cacheWrite,
+    totalTokens: usage.totalTokens,
+    cost: usage.cost.total,
+  }
+}
+
 /** The summary a compaction wrote, read from the entry it was written to. */
 async function compactionSummary(
   session: Session<JsonlSessionMetadata>,
@@ -319,17 +337,7 @@ async function compactionSummary(
 
 /** The text of a user message entry, which is what a resend or a fork has to carry. */
 export function textOfMessage(message: { content: unknown }): string {
-  const content = message.content
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part) =>
-      typeof part === 'object' && part !== null && (part as { type?: string }).type === 'text'
-        ? String((part as { text?: unknown }).text ?? '')
-        : '',
-    )
-    .filter((text) => text !== '')
-    .join('\n')
+  return textOfContent(message.content)
 }
 
 /** The transcript of a conversation that is not open, read straight from its session. */

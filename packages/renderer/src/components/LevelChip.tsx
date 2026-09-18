@@ -1,8 +1,10 @@
 import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS, type PermissionLevel } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
+import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
 
-const TONE_CLASS: Record<string, string> = {
+/** How each tone of the permission level reads: the settings page uses the same map. */
+export const TONE_CLASS: Record<string, string> = {
   info: 'text-info border-info/40 bg-info/10',
   amber: 'text-amber border-amber/40 bg-amber/10',
   jade: 'text-jade border-jade/40 bg-jade/10',
@@ -19,10 +21,23 @@ const DOT_CLASS: Record<string, string> = {
 /**
  * The permission level, always visible. Colour distinguishes the levels, but the label is what
  * carries the meaning, so the chip still reads for someone who cannot tell ember from jade.
+ *
+ * With a conversation open the chip changes *that conversation's* level, and it shows that
+ * conversation's level — a transcript and the level it ran under belong together. With no
+ * conversation open it changes the workspace's default for new ones.
  */
 export function LevelChip() {
-  const level = useShell((state) => state.permissionLevel)
-  const setPermissionLevel = useShell((state) => state.setPermissionLevel)
+  const fallback = useShell((state) => state.workspaceLevel)
+  const setWorkspaceLevel = useShell((state) => state.setPermissionLevel)
+  const activeId = useConversations((state) => state.activeId)
+  const summary = useConversations((state) => state.transcript.summary)
+  const setLevel = useConversations((state) => state.setLevel)
+  const inConversation = activeId !== '' && summary !== undefined
+  const level = inConversation ? summary.permissionLevel : fallback
+  const setPermissionLevel = async (next: PermissionLevel) => {
+    if (inConversation) await setLevel(next)
+    else await setWorkspaceLevel(next)
+  }
   const [open, setOpen] = useState(false)
   const container = useRef<HTMLDivElement>(null)
 
@@ -49,7 +64,7 @@ export function LevelChip() {
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={levelDescription(level)}
+        title={inConversation ? `This conversation: ${levelDescription(level)}` : levelDescription(level)}
         onClick={() => setOpen((value) => !value)}
         className={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-[12px] font-medium transition-colors ${TONE_CLASS[tone]}`}
       >

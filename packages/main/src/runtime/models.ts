@@ -7,6 +7,8 @@
  * the E2E suite run through: the runtime, the permission gate, the session store and the IPC
  * transport are all real, and only the model's replies are decided in advance.
  */
+
+import type { ConversationModel } from '@alpha/core'
 import {
   type Api,
   createModels,
@@ -178,4 +180,15 @@ function isScriptedReply(item: unknown): item is ScriptedReply {
     typeof (record.tool as { name?: unknown }).name === 'string' &&
     typeof (record.tool as { args?: unknown }).args === 'object'
   return typeof record.text === 'string' || typeof record.thinking === 'string' || hasTool
+}
+
+/**
+ * Which model a conversation runs on: the one it chose, when that provider still serves it, and
+ * the runtime's default otherwise — a provider that was deleted must not leave a conversation
+ * unusable.
+ */
+export function modelFor(runtime: ModelRuntime, conversation: { model: ConversationModel }): Model<Api> | undefined {
+  const chosen = conversation.model
+  if (chosen.providerId === '' || chosen.modelId === '') return runtime.defaultModel
+  return runtime.models.getModel(chosen.providerId, chosen.modelId) ?? runtime.defaultModel
 }

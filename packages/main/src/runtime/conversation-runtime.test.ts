@@ -56,7 +56,7 @@ const deltasOf = (events: RuntimeEvent[]) =>
     .map((event) => event.delta)
     .join('')
 
-describe('a conversation turn', () => {
+describe('[runtime] a conversation turn', () => {
   it('reports the user message, the assistant message, and the end of the turn', async () => {
     const { runtime, events } = await openRuntime({ replies: ['Hello there.'] })
 
@@ -110,7 +110,7 @@ describe('a conversation turn', () => {
   })
 })
 
-describe('the transcript on disk', () => {
+describe('[runtime] the transcript on disk', () => {
   it('is empty for a conversation that has not been used', async () => {
     const { runtime, messages } = await openRuntime()
     expect(messages).toEqual([])

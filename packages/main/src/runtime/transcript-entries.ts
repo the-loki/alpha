@@ -4,23 +4,9 @@
  * for live events.
  */
 
-import { type ChatBlock, type ChatBlockTool, type ChatMessage, toolRiskOf } from '@alpha/core'
+import { type ChatBlock, type ChatBlockTool, type ChatMessage, textOfContent, toolRiskOf } from '@alpha/core'
 import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
-
-const textOf = (content: string | unknown[]): string => {
-  if (typeof content === 'string') return content
-  return content
-    .map((part) => {
-      if (typeof part === 'object' && part !== null && 'type' in part && part.type === 'text') {
-        const text = (part as { text?: unknown }).text
-        return typeof text === 'string' ? text : ''
-      }
-      return ''
-    })
-    .filter((text) => text !== '')
-    .join('\n')
-}
 
 const blocksOf = (content: unknown[], timestamp: number): ChatBlock[] => {
   const blocks: ChatBlock[] = []
@@ -99,7 +85,7 @@ export function entriesToMessages(entries: Entry[]): ChatMessage[] {
       messages.push({
         id: entry.id,
         role: 'user',
-        blocks: [{ kind: 'text', text: textOf(message.content) }],
+        blocks: [{ kind: 'text', text: textOfContent(message.content) }],
         createdAt: entry.timestamp,
         status: 'complete',
       })

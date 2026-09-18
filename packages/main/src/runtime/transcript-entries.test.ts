@@ -24,7 +24,7 @@ const assistantEntry = (seq: number, content: unknown[]) =>
     message: { role: 'assistant', content, timestamp: seq, stopReason: 'stop' },
   })
 
-describe('entriesToMessages', () => {
+describe('[runtime] entriesToMessages', () => {
   it('renders a user message and an assistant message in that order', () => {
     const messages = entriesToMessages([
       userEntry(1, 'fix the parser'),

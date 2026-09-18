@@ -37,7 +37,7 @@ const freshManager = (env: NodeJS.ProcessEnv = {}) => {
   return { manager, store, workspace, dataDirectory }
 }
 
-describe('naming a conversation', () => {
+describe('[runtime] naming a conversation', () => {
   it('renames it, and the new name survives a restart', async () => {
     const { manager, workspace, dataDirectory } = freshManager()
     const created = await manager.create(workspace)
@@ -56,7 +56,7 @@ describe('naming a conversation', () => {
   })
 })
 
-describe('the conversation list', () => {
+describe('[runtime] the conversation list', () => {
   it('groups by workspace, most recently used first', async () => {
     const { manager, workspace } = freshManager()
     const second = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
@@ -81,7 +81,7 @@ describe('the conversation list', () => {
   })
 })
 
-describe('deleting a conversation', () => {
+describe('[runtime] deleting a conversation', () => {
   it('takes the transcript off the disk, not just off the list', async () => {
     const { manager, workspace, dataDirectory } = freshManager()
     const created = await manager.create(workspace)
@@ -107,7 +107,36 @@ describe('deleting a conversation', () => {
   })
 })
 
-describe('exporting a conversation', () => {
+describe('[runtime] the conversation that was open', () => {
+  it('is remembered when it opens, and forgotten when it is deleted', async () => {
+    const { manager, store, workspace } = freshManager()
+    const first = await manager.create(workspace)
+    expect(store.read().lastConversationId).toBe(first.conversation.id)
+
+    const second = await manager.create(workspace)
+    await manager.open(first.conversation.id)
+    expect(store.read().lastConversationId).toBe(first.conversation.id)
+
+    // Deleting a conversation that was not the remembered one leaves the memory alone.
+    await manager.remove(second.conversation.id)
+    expect(store.read().lastConversationId).toBe(first.conversation.id)
+
+    await manager.remove(first.conversation.id)
+    expect(store.read().lastConversationId).toBe('')
+    await manager.closeAll()
+  })
+
+  it('survives a restart, because the next launch reads it off disk', async () => {
+    const { manager, workspace, dataDirectory } = freshManager()
+    const created = await manager.create(workspace)
+    await manager.closeAll()
+
+    // A second StateStore over the same directory is what the next launch reads.
+    expect(new StateStore(dataDirectory).read().lastConversationId).toBe(created.conversation.id)
+  })
+})
+
+describe('[runtime] exporting a conversation', () => {
   it('writes the markdown beside the workspace and reports where it went', async () => {
     const { manager, workspace } = freshManager({ ALPHA_FAUX_REPLIES: JSON.stringify(['The answer is 42.']) })
     const created = await manager.create(workspace)
@@ -149,7 +178,7 @@ function readdirDeep(directory: string): string[] {
   })
 }
 
-describe('compaction', () => {
+describe('[runtime] compaction', () => {
   it('marks where the history was summarised and keeps the summary readable', async () => {
     const { manager, workspace } = freshManager({
       ALPHA_FAUX_REPLIES: JSON.stringify(['The first answer.', 'Earlier turns were about naming things.']),

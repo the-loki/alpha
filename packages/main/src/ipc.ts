@@ -8,6 +8,8 @@
  */
 import {
   type ApprovalAnswerInput,
+  type ConversationSummary,
+  defaultLevelFor,
   IPC,
   isPermissionLevel,
   isRuleScope,
@@ -15,6 +17,7 @@ import {
   isThinkingLevel,
   type LaunchState,
   type OpenedConversation,
+  type PermissionLevel,
   type PermissionRule,
   type PickWorkspaceResult,
   type RuntimeEvent,
@@ -51,8 +54,10 @@ function registerWorkspaceHandlers({ store, runtime, getWindow }: IpcContext): v
     workspace: store.read().workspace.selection,
     recents: store.read().workspace.recents,
     permissionLevel: store.read().permissionLevel,
+    workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
     theme: store.read().theme,
     model: runtime.modelStatus(),
+    lastConversationId: store.read().lastConversationId,
   })
 
   const selectWorkspace = (path: string): WorkspaceSelection => {
@@ -80,8 +85,19 @@ function registerWorkspaceHandlers({ store, runtime, getWindow }: IpcContext): v
     return launchState()
   })
 
+  registerLevelHandlers(store, runtime, launchState)
+}
+
+/** The level: the workspace's default, and the one in force for a conversation already open. */
+function registerLevelHandlers(store: StateStore, runtime: RuntimeManager, launchState: () => LaunchState): void {
+  ipcMain.handle(IPC.setConversationLevel, (_event, id: unknown, level: unknown): ConversationSummary => {
+    const conversationId = requireString(id, 'conversationId')
+    if (!isPermissionLevel(level)) throw new Error('level must be a permission level')
+    return runtime.setConversationLevel(conversationId, level)
+  })
+
   ipcMain.handle(IPC.setPermissionLevel, (_event, level: unknown): LaunchState => {
-    if (isPermissionLevel(level)) store.write({ ...store.read(), permissionLevel: level })
+    if (isPermissionLevel(level)) setWorkspaceLevel(store, runtime, level)
     return launchState()
   })
 
@@ -239,6 +255,24 @@ function registerWindowHandlers({ getWindow }: IpcContext): void {
   for (const [command, channel] of Object.entries(WINDOW_COMMAND_CHANNELS)) {
     ipcMain.handle(channel, () => commands[command as WindowCommand]())
   }
+}
+
+/** The workspace default is what the settings page writes; a conversation keeps its own. */
+function setWorkspaceLevel(store: StateStore, runtime: RuntimeManager, level: PermissionLevel): void {
+  const path = currentWorkspace(store)
+  if (path === undefined) store.write({ ...store.read(), permissionLevel: level })
+  else runtime.setWorkspaceLevel(path, level)
+}
+
+/** The folder this window is working in, when one has been chosen. */
+function currentWorkspace(store: StateStore): string | undefined {
+  const selection = store.read().workspace.selection
+  return selection.kind === 'selected' ? selection.workspace.path : undefined
+}
+
+function defaultLevel(store: StateStore): PermissionLevel {
+  const path = currentWorkspace(store)
+  return path === undefined ? store.read().permissionLevel : defaultLevelFor(store.read(), path)
 }
 
 function requireString(value: unknown, field: string): string {

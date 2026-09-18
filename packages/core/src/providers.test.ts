@@ -11,7 +11,7 @@ import {
   providerLabel,
 } from './providers.ts'
 
-describe('the catalog', () => {
+describe('[core] the catalog', () => {
   it('offers the providers a developer is most likely to already have a key for', () => {
     expect(PROVIDER_CATALOG.map((entry) => entry.id)).toEqual([
       'anthropic',
@@ -38,7 +38,7 @@ describe('the catalog', () => {
   })
 })
 
-describe('providerFromCatalog', () => {
+describe('[core] providerFromCatalog', () => {
   const models = [{ id: 'some-model', name: 'Some model', contextWindow: 128_000, maxTokens: 8_192, reasoning: false }]
 
   it('copies the catalog connection facts and the models it was given', () => {
@@ -60,7 +60,7 @@ describe('providerFromCatalog', () => {
   })
 })
 
-describe('customProvider', () => {
+describe('[core] customProvider', () => {
   const input = {
     id: 'my-endpoint',
     name: 'My endpoint',
@@ -102,7 +102,7 @@ describe('customProvider', () => {
   })
 })
 
-describe('credentialRequirement', () => {
+describe('[core] credentialRequirement', () => {
   it('asks for a key when the provider has none stored', () => {
     expect(credentialRequirement({ hasCredential: false }).kind).toBe('missing')
   })
@@ -112,7 +112,7 @@ describe('credentialRequirement', () => {
   })
 })
 
-describe('providerLabel', () => {
+describe('[core] providerLabel', () => {
   const model = { id: 'm', name: 'M', contextWindow: 1000, maxTokens: 100, reasoning: false }
 
   it('names the provider and its model count for the settings list', () => {
@@ -124,7 +124,7 @@ describe('providerLabel', () => {
   })
 })
 
-describe('parseProviders', () => {
+describe('[core] parseProviders', () => {
   const stored = {
     id: 'openai',
     name: 'OpenAI',

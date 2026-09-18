@@ -1,24 +1,21 @@
 import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS, THEMES, type Theme } from '@alpha/core'
 import { createFileRoute } from '@tanstack/react-router'
+import { TONE_CLASS } from '../components/LevelChip.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
 import { useShell } from '../stores/shell.ts'
 
-const TONE_CLASS: Record<string, string> = {
-  info: 'border-info/40 bg-info/10 text-info',
-  amber: 'border-amber/40 bg-amber/10 text-amber',
-  jade: 'border-jade/40 bg-jade/10 text-jade',
-  ember: 'border-ember/40 bg-ember/10 text-ember',
-}
-
 function PermissionSection() {
-  const level = useShell((state) => state.permissionLevel)
+  const level = useShell((state) => state.workspaceLevel)
   const setPermissionLevel = useShell((state) => state.setPermissionLevel)
 
   return (
     <section className="mt-8">
       <h2 className="text-[15px] font-medium text-parchment">Default permission level</h2>
-      <p className="mt-1 text-[12px] text-parchment-dim">New conversations in this workspace start at this level.</p>
+      <p className="mt-1 text-[12px] text-parchment-dim">
+        New conversations in this workspace start here. An open conversation keeps its own level — change that from the
+        chip in the header.
+      </p>
       <ul className="mt-3 space-y-1.5">
         {PERMISSION_LEVELS.map((candidate) => (
           <li key={candidate}>

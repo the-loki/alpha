@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import {
   emptyTranscript,
+  openingTranscript,
   reduceTranscript,
   streamingMessage,
   totalUsage,
-  transcriptWithUsage,
   visibleMessages,
 } from './transcript.ts'
+import { EMPTY_USAGE } from './usage.ts'
 
 const CONVERSATION = 'c1'
 
@@ -18,6 +19,7 @@ const summary: ConversationSummary = {
   createdAt: 1,
   updatedAt: 1,
   status: 'running',
+  permissionLevel: 'ask',
   model: { providerId: 'faux', modelId: 'scripted' },
   thinkingLevel: 'medium',
 }
@@ -38,7 +40,7 @@ const userMessage: ChatMessage = {
   status: 'complete',
 }
 
-describe('emptyTranscript', () => {
+describe('[core] emptyTranscript', () => {
   it('starts idle, empty, with nothing streaming', () => {
     const state = emptyTranscript(CONVERSATION)
     expect(state.messages).toEqual([])
@@ -47,7 +49,7 @@ describe('emptyTranscript', () => {
   })
 })
 
-describe('reduceTranscript', () => {
+describe('[core] reduceTranscript', () => {
   it('appends the user message to the transcript', () => {
     const state = reduce([event({ type: 'user_message', message: userMessage })])
     expect(visibleMessages(state)).toEqual([userMessage])
@@ -142,7 +144,7 @@ describe('reduceTranscript', () => {
   it('replaces everything when the conversation is opened', () => {
     const opened = reduce([
       event({ type: 'assistant_message_started', messageId: 'stale', createdAt: 5 }),
-      event({ type: 'conversation_opened', conversation: summary, messages: [userMessage] }),
+      event({ type: 'conversation_opened', conversation: summary, messages: [userMessage], usage: EMPTY_USAGE }),
     ])
     expect(opened.messages).toEqual([userMessage])
     expect(opened.streaming).toBeUndefined()
@@ -150,7 +152,9 @@ describe('reduceTranscript', () => {
   })
 
   it('carries the summary that arrived with the opened conversation', () => {
-    const opened = reduce([event({ type: 'conversation_opened', conversation: summary, messages: [] })])
+    const opened = reduce([
+      event({ type: 'conversation_opened', conversation: summary, messages: [], usage: EMPTY_USAGE }),
+    ])
     expect(opened.summary).toEqual(summary)
   })
 
@@ -160,7 +164,7 @@ describe('reduceTranscript', () => {
   })
 })
 
-describe('streaming discipline', () => {
+describe('[core] streaming discipline', () => {
   const deltas = (count: number): RuntimeEvent[] => [
     event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
     ...Array.from({ length: count }, (_, index) =>
@@ -185,7 +189,7 @@ describe('streaming discipline', () => {
   })
 })
 
-describe('visibleMessages', () => {
+describe('[core] visibleMessages', () => {
   it('shows the streaming message after the completed ones', () => {
     const state = reduce([
       event({ type: 'user_message', message: userMessage }),
@@ -197,7 +201,7 @@ describe('visibleMessages', () => {
   })
 })
 
-describe('the tool ledger', () => {
+describe('[core] the tool ledger', () => {
   const callId = 'call-1'
 
   const started = event({
@@ -318,13 +322,14 @@ describe('the tool ledger', () => {
   }
 })
 
-describe('the approval gate', () => {
+describe('[core] the approval gate', () => {
   const request = {
     requestId: 'req-1',
     callId: 'call-9',
     toolName: 'bash',
     risk: 'execute' as const,
     summary: 'rm -rf build',
+    detail: 'rm -rf build',
     raw: '{"command":"rm -rf build"}',
     cwd: '/dev/alpha',
     level: 'ask' as const,
@@ -414,7 +419,7 @@ describe('the approval gate', () => {
   }
 })
 
-describe('usage', () => {
+describe('[core] usage', () => {
   const spending = (totalTokens: number, cost = 0) => ({
     input: totalTokens - 100,
     output: 100,
@@ -483,21 +488,35 @@ describe('usage', () => {
   })
 
   it('carries the spending of earlier sessions in one row, so the sum still adds up', () => {
-    const state = transcriptWithUsage(CONVERSATION, spending(4000, 0.04))
+    const state = openingTranscript(CONVERSATION, summary, [], spending(4000, 0.04))
     expect(state.turns).toEqual([{ usage: spending(4000, 0.04), earlier: true }])
     expect(totalUsage(state)).toEqual(state.usage)
   })
 
   it('has nothing to carry when the conversation has never spent anything', () => {
-    expect(transcriptWithUsage(CONVERSATION, spending(0)).turns).toEqual([])
+    expect(openingTranscript(CONVERSATION, summary, [], spending(0)).turns).toEqual([])
+  })
+
+  it('survives being opened: the seeded spending is not wiped by the event that opens it', () => {
+    const state = reduce([
+      event({
+        type: 'conversation_opened',
+        conversation: summary,
+        messages: [userMessage],
+        usage: spending(2500, 0.02),
+      }),
+    ])
+
+    expect(state.usage.totalTokens).toBe(2500)
+    expect(totalUsage(state)).toEqual(state.usage)
   })
 })
 
-describe('compaction', () => {
+describe('[core] compaction', () => {
   it('marks where the history was summarised, and keeps the summary readable', () => {
     const state = reduce([
       event({ type: 'user_message', message: userMessage }),
-      event({ type: 'history_compacted', summary: 'Earlier turns were about the parser.', replaced: 12 }),
+      event({ type: 'history_compacted', summary: 'Earlier turns were about the parser.', replaced: 12, at: 60 }),
     ])
 
     const marker = state.messages.at(-1)
@@ -507,7 +526,7 @@ describe('compaction', () => {
   })
 
   it('says nothing about a count the runtime did not give', () => {
-    const state = reduce([event({ type: 'history_compacted', summary: 'Summarised.' })])
+    const state = reduce([event({ type: 'history_compacted', summary: 'Summarised.', at: 60 })])
     expect(state.messages.at(-1)?.blocks).toEqual([{ kind: 'compaction', summary: 'Summarised.', replaced: undefined }])
   })
 })

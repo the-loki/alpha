@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { changePreview } from './preview.ts'
 
-describe('changePreview', () => {
+describe('[core] changePreview', () => {
   it('shows a write as the lines it would add', () => {
     const preview = changePreview('write', { path: 'notes.txt', content: 'one\ntwo' })
     expect(preview).toBe(['--- notes.txt', '+++ notes.txt', '+one', '+two'].join('\n'))

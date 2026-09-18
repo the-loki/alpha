@@ -4,7 +4,6 @@
  * app — tool calls show their arguments and their output rather than pointing at the ledger.
  */
 import type { ChatBlock, ChatMessage, ConversationSummary } from './runtime-events.ts'
-import { formatTokens } from './usage.ts'
 
 const NAME_LIMIT = 60
 
@@ -61,10 +60,4 @@ function toolLines(block: Extract<ChatBlock, { kind: 'tool' }>): string[] {
     lines.push(`*Output was truncated; the full text is at ${block.details.fullOutputPath}.*`, '')
   }
   return lines
-}
-
-/** One line for a header: what the session has spent, in the vocabulary of the usage module. */
-export function usageSummary(totals: { totalTokens: number; cost: number }): string {
-  const cost = totals.cost > 0 ? ` · $${totals.cost.toFixed(4)}` : ''
-  return `${formatTokens(totals.totalTokens)} tokens${cost}`
 }

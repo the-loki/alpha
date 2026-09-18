@@ -9,6 +9,7 @@ const conversation: ConversationSummary = {
   createdAt: 1,
   updatedAt: 2,
   status: 'idle',
+  permissionLevel: 'ask',
   model: { providerId: 'faux', modelId: 'scripted' },
   thinkingLevel: 'medium',
 }
@@ -29,7 +30,7 @@ const assistant = (blocks: ChatMessage['blocks']): ChatMessage => ({
   status: 'complete',
 })
 
-describe('exportMarkdown', () => {
+describe('[core] exportMarkdown', () => {
   it('names the conversation and the workspace it belongs to', () => {
     const markdown = exportMarkdown(conversation, [])
     expect(markdown).toContain('# Rename the parser')
@@ -123,7 +124,7 @@ describe('exportMarkdown', () => {
   })
 })
 
-describe('exportFileName', () => {
+describe('[core] exportFileName', () => {
   it('makes a readable file name out of the title', () => {
     expect(exportFileName('Rename the parser')).toBe('rename-the-parser.md')
   })

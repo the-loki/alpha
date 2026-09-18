@@ -1,6 +1,7 @@
-import { type ApprovalRecord, type ChatBlockTool, levelLabel, riskLabel } from '@alpha/core'
+import { type ApprovalRecord, type ChatBlockTool, formatDuration, levelLabel, riskLabel } from '@alpha/core'
 import { useState } from 'react'
 import { DiffView } from './DiffView.tsx'
+import { CopyButton } from './MessageView.tsx'
 
 const GLYPH: Record<ChatBlockTool['risk'], string> = { read: '◇', write: '◆', execute: '▶' }
 
@@ -40,12 +41,6 @@ function approvalNote(approval: ApprovalRecord): string {
 const TONE: Record<ChatBlockTool['status'], string> = { running: 'text-amber', ok: 'text-jade', failed: 'text-danger' }
 const STATUS_WORD: Record<ChatBlockTool['status'], string> = { running: 'running', ok: 'done', failed: 'failed' }
 
-const duration = (block: ChatBlockTool): string => {
-  if (block.endedAt === undefined) return ''
-  const seconds = Math.max(0, (block.endedAt - block.startedAt) / 1000)
-  return seconds < 1 ? `${Math.round(seconds * 1000)}ms` : `${seconds.toFixed(1)}s`
-}
-
 /**
  * One line per tool call: what ran, on what, for how long. Expanding shows the arguments the
  * model sent and the output the tool produced, because a ledger you cannot audit is decoration.
@@ -74,7 +69,9 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
           </span>
         )}
         <span className={`shrink-0 font-mono text-[11px] ${TONE[block.status]}`}>{STATUS_WORD[block.status]}</span>
-        <span className="w-14 shrink-0 text-right font-mono text-[11px] text-parchment-faint">{duration(block)}</span>
+        <span className="w-14 shrink-0 text-right font-mono text-[11px] text-parchment-faint">
+          {formatDuration(block.startedAt, block.endedAt)}
+        </span>
       </button>
 
       {open && (
@@ -88,6 +85,7 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
           <p className="font-mono text-[11px] uppercase tracking-wider text-parchment-faint">Arguments</p>
           <pre className="mt-1 overflow-x-auto font-mono text-[12px] leading-[1.5] text-parchment-dim">{block.raw}</pre>
           {block.details?.diff !== undefined && <DiffView diff={block.details.diff} />}
+          {block.output !== '' && <CopyButton what={`the output of ${block.name}`} text={block.output} />}
           {block.output !== '' && (
             <>
               <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-parchment-faint">

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_THINKING_LEVEL, isThinkingLevel, THINKING_LEVELS, thinkingLabel } from './thinking.ts'
 
-describe('the thinking ladder', () => {
+describe('[core] the thinking ladder', () => {
   it('runs from off to max, cheapest first', () => {
     expect(THINKING_LEVELS).toEqual(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
   })

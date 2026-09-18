@@ -3,9 +3,7 @@ import {
   emptyWorkspaceState,
   RECENTS_LIMIT,
   rememberWorkspace,
-  resolveSelection,
   type WorkspaceRef,
-  type WorkspaceState,
   workspaceFromPath,
 } from './workspace.ts'
 
@@ -15,7 +13,7 @@ const at = (path: string, lastOpenedAt = 0): WorkspaceRef => ({
   lastOpenedAt,
 })
 
-describe('workspaceFromPath', () => {
+describe('[core] workspaceFromPath', () => {
   it('names a workspace after its folder', () => {
     expect(workspaceFromPath('/home/dev/alpha', 100).name).toBe('alpha')
   })
@@ -29,7 +27,7 @@ describe('workspaceFromPath', () => {
   })
 })
 
-describe('rememberWorkspace', () => {
+describe('[core] rememberWorkspace', () => {
   it('starts from an empty state with nothing selected', () => {
     expect(emptyWorkspaceState().selection.kind).toBe('none')
   })
@@ -65,21 +63,5 @@ describe('rememberWorkspace', () => {
     }
     expect(state.recents).toHaveLength(RECENTS_LIMIT)
     expect(state.recents.map((w) => w.name)).toEqual(['w7', 'w6', 'w5', 'w4', 'w3'])
-  })
-})
-
-describe('resolveSelection', () => {
-  it('reports nothing selected on a fresh install', () => {
-    expect(resolveSelection(emptyWorkspaceState()).kind).toBe('none')
-  })
-
-  it('reports the remembered selection', () => {
-    const state = rememberWorkspace(emptyWorkspaceState(), at('/dev/alpha', 1))
-    expect(resolveSelection(state)).toEqual({ kind: 'selected', workspace: at('/dev/alpha', 1) })
-  })
-
-  it('falls back to nothing when the selection was cleared', () => {
-    const state: WorkspaceState = { selection: { kind: 'none' }, recents: [at('/dev/alpha', 1)] }
-    expect(resolveSelection(state).kind).toBe('none')
   })
 })

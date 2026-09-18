@@ -64,7 +64,7 @@ export function MessageList({ transcript }: { transcript: TranscriptState }) {
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-8 py-6">
         {messages.map((message, index) => (
           <Fragment key={message.id}>
-            <MessageView message={message} index={userIndex(messages, index)} />
+            <MessageView message={message} index={userIndex(messages, index)} last={index === messages.length - 1} />
             <TurnUsageNote turn={turnFor(messages, index, transcript.turns)} />
           </Fragment>
         ))}

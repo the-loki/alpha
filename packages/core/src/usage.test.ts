@@ -11,7 +11,7 @@ const usage = (over: Partial<UsageTotals> = {}): UsageTotals => ({
   ...over,
 })
 
-describe('addUsage', () => {
+describe('[core] addUsage', () => {
   it('adds every field, including the cost', () => {
     const sum = addUsage(usage(), usage({ input: 800, output: 60, totalTokens: 860, cost: 0.02 }))
     expect(sum).toEqual({
@@ -34,14 +34,14 @@ describe('addUsage', () => {
   })
 })
 
-describe('hasCost', () => {
+describe('[core] hasCost', () => {
   it('is true only when the model reported a cost', () => {
     expect(hasCost(usage())).toBe(false)
     expect(hasCost(usage({ cost: 0.0001 }))).toBe(true)
   })
 })
 
-describe('formatTokens', () => {
+describe('[core] formatTokens', () => {
   it('shows small counts as they are', () => {
     expect(formatTokens(0)).toBe('0')
     expect(formatTokens(940)).toBe('940')
@@ -54,7 +54,7 @@ describe('formatTokens', () => {
   })
 })
 
-describe('formatCost', () => {
+describe('[core] formatCost', () => {
   it('keeps four decimals, because a turn often costs less than a cent', () => {
     expect(formatCost(0.0042)).toBe('$0.0042')
     expect(formatCost(1.5)).toBe('$1.5000')

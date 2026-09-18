@@ -17,8 +17,12 @@ export interface ShellStore {
   workspace: WorkspaceSelection
   recents: WorkspaceRef[]
   permissionLevel: PermissionLevel
+  /** What this workspace's new conversations start at. */
+  workspaceLevel: PermissionLevel
   theme: Theme
   model: LaunchState['model']
+  /** The conversation to come back to on launch, empty when there is none. */
+  lastConversationId: string
   windowMaximized: boolean
   load: () => Promise<void>
   pickWorkspace: () => Promise<void>
@@ -35,8 +39,10 @@ const applyLaunchState = (state: LaunchState) => ({
   workspace: state.workspace,
   recents: state.recents,
   permissionLevel: state.permissionLevel,
+  workspaceLevel: state.workspaceLevel,
   theme: state.theme,
   model: state.model,
+  lastConversationId: state.lastConversationId,
 })
 
 /** System is the absence of the attribute: the stylesheet's `prefers-color-scheme` decides. */
@@ -53,8 +59,10 @@ export const useShell = create<ShellStore>((set, get) => ({
   workspace: emptyWorkspaceState().selection,
   recents: [],
   permissionLevel: DEFAULT_LEVEL,
+  workspaceLevel: DEFAULT_LEVEL,
   theme: 'system',
   model: { configured: false, description: '' },
+  lastConversationId: '',
   windowMaximized: false,
 
   load: async () => {

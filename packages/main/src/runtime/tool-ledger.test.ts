@@ -44,7 +44,7 @@ const ledgerRow = (messages: { blocks: unknown[] }[], index = 0): ChatBlockTool 
 const isToolBlock = (block: unknown): block is ChatBlockTool =>
   typeof block === 'object' && block !== null && (block as { kind?: string }).kind === 'tool'
 
-describe('a scripted tool call', () => {
+describe('[runtime] a scripted tool call', () => {
   it('reads a file and reports the row the window renders', async () => {
     const workspace = workspaceWith({ 'notes.txt': 'hello from the ledger' })
     const { runtime, events } = await open({
@@ -142,7 +142,7 @@ describe('a scripted tool call', () => {
   })
 })
 
-describe('a ledger row that was persisted', () => {
+describe('[runtime] a ledger row that was persisted', () => {
   it('comes back identical, status, duration and details included', async () => {
     const workspace = workspaceWith({ 'notes.txt': 'hello from the ledger' })
     const first = await open({

@@ -17,13 +17,14 @@ const rule = (over: Partial<PermissionRule> = {}): PermissionRule => ({
   id: 'r1',
   scope: 'workspace',
   conversationId: '',
+  workspacePath: '/dev/alpha',
   toolName: 'bash',
   pattern: 'pnpm test',
   createdAt: 1,
   ...over,
 })
 
-describe('the ladder', () => {
+describe('[core] the ladder', () => {
   it('is exactly the four documented levels, in order of increasing trust', () => {
     expect(PERMISSION_LEVELS).toEqual(['plan', 'ask', 'accept-edits', 'full-access'])
   })
@@ -33,7 +34,7 @@ describe('the ladder', () => {
   })
 })
 
-describe('isPermissionLevel', () => {
+describe('[core] isPermissionLevel', () => {
   it('accepts every level', () => {
     for (const level of PERMISSION_LEVELS) expect(isPermissionLevel(level)).toBe(true)
   })
@@ -45,13 +46,13 @@ describe('isPermissionLevel', () => {
   })
 })
 
-describe('levelLabel', () => {
+describe('[core] levelLabel', () => {
   it('gives each level the words the UI shows', () => {
     expect(PERMISSION_LEVELS.map(levelLabel)).toEqual(['Plan', 'Ask', 'Accept edits', 'Full access'])
   })
 })
 
-describe('levelTone', () => {
+describe('[core] levelTone', () => {
   it('maps each level to its design token name', () => {
     expect(PERMISSION_LEVELS.map(levelTone)).toEqual(['info', 'amber', 'jade', 'ember'])
   })
@@ -62,7 +63,7 @@ describe('levelTone', () => {
   })
 })
 
-describe('the decision table', () => {
+describe('[core] the decision table', () => {
   const levels: PermissionLevel[] = ['plan', 'ask', 'accept-edits', 'full-access']
   const risks: ToolRisk[] = ['read', 'write', 'execute']
 
@@ -85,8 +86,14 @@ describe('the decision table', () => {
   })
 })
 
-describe('deciding a call', () => {
-  const base = { toolName: 'bash', args: { command: 'ls -la' }, conversationId: 'c1', rules: [] as PermissionRule[] }
+describe('[core] deciding a call', () => {
+  const base = {
+    toolName: 'bash',
+    args: { command: 'ls -la' },
+    conversationId: 'c1',
+    workspacePath: '/dev/alpha',
+    rules: [] as PermissionRule[],
+  }
 
   it('allows a read the ladder allows', () => {
     expect(evaluateCall({ ...base, level: 'ask', risk: 'read' })).toEqual({ outcome: 'allow', by: 'level' })
@@ -153,7 +160,7 @@ describe('deciding a call', () => {
   })
 })
 
-describe('matching a rule', () => {
+describe('[core] matching a rule', () => {
   it('matches the command it was created from', () => {
     expect(ruleMatches(rule(), 'bash', { command: 'pnpm test' })).toBe(true)
   })

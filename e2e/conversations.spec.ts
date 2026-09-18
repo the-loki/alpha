@@ -7,9 +7,12 @@ const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 
 /** A window on a chosen workspace, sharing a data directory when the test wants continuity. */
-async function launch(options: { dataDirectory?: string; workspace?: string } = {}) {
+async function launch(options: { dataDirectory?: string; workspace?: string; keepState?: boolean } = {}) {
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
+  // keepState reuses the file the previous launch left behind, memory included.
+  if (options.keepState === true) return start({ dataDirectory, workspace })
+
   writeFileSync(
     join(dataDirectory, 'workbench-state.json'),
     JSON.stringify({
@@ -25,6 +28,10 @@ async function launch(options: { dataDirectory?: string; workspace?: string } = 
     'utf-8',
   )
 
+  return start({ dataDirectory, workspace })
+}
+
+async function start({ dataDirectory, workspace }: { dataDirectory: string; workspace: string }) {
   const app = await electron.launch({
     args: [REPO_ROOT],
     cwd: REPO_ROOT,
@@ -90,6 +97,20 @@ test('a renamed conversation keeps its name across a relaunch', async () => {
 
   const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
   await expect(second.window.getByRole('button', { name: 'The parser rewrite idle' })).toBeVisible()
+  await second.app.close()
+})
+
+test('a relaunch comes back to the conversation that was open', async () => {
+  const first = await launch()
+  await ask(first.window, 'what did we decide')
+  await expect(first.window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
+  await first.app.close()
+
+  const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace, keepState: true })
+  // Nothing is clicked: the transcript is read back from the session file on its own.
+  const main = second.window.getByRole('main')
+  await expect(main.locator('[data-role="user"]')).toContainText('what did we decide', { timeout: 20_000 })
+  await expect(main.locator('[data-role="assistant"]')).toContainText('The answer.')
   await second.app.close()
 })
 

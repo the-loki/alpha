@@ -72,6 +72,12 @@ export interface PermissionRule {
   scope: RuleScope
   /** Empty for a workspace rule, which is the only kind that outlives its conversation. */
   conversationId: string
+  /**
+   * The folder the rule was granted in. "Always allow" is a decision about the code in front of
+   * you, so it must never reach a different project — a rule granted in a trusted repo would
+   * otherwise silently cover a private one.
+   */
+  workspacePath: string
   toolName: string
   /** A command prefix for commands, a path prefix for file tools, exact arguments otherwise. */
   pattern: string
@@ -100,6 +106,7 @@ export interface CallContext {
   toolName: string
   args: Record<string, unknown>
   conversationId: string
+  workspacePath: string
   rules: PermissionRule[]
 }
 
@@ -120,6 +127,7 @@ export function evaluateCall(context: CallContext): CallEvaluation {
 
 function appliesTo(rule: PermissionRule, context: CallContext): boolean {
   if (rule.toolName !== context.toolName) return false
+  if (rule.workspacePath !== context.workspacePath) return false
   if (rule.scope === 'conversation' && rule.conversationId !== context.conversationId) return false
   return ruleMatches(rule, context.toolName, context.args)
 }

@@ -50,7 +50,7 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 4000): Promise<void
   }
 }
 
-describe('stopping a turn', () => {
+describe('[runtime] stopping a turn', () => {
   it('keeps the part of the answer that arrived, and marks it interrupted', async () => {
     const { runtime, events } = await open({
       slow: true,
@@ -102,7 +102,7 @@ describe('stopping a turn', () => {
   })
 })
 
-describe('steering and queueing', () => {
+describe('[runtime] steering and queueing', () => {
   it('delivers a steer while a tool is running, and it changes what happens next', async () => {
     const { runtime, events } = await open({
       replies: [{ tool: { name: 'bash', args: { command: 'sleep 0.6' } } }, 'Redirected answer.'],
@@ -182,7 +182,7 @@ describe('steering and queueing', () => {
   })
 })
 
-describe('answering a message again', () => {
+describe('[runtime] answering a message again', () => {
   it('replaces the previous answer with a new one from the same question', async () => {
     const { runtime, events } = await open({ replies: ['The first answer.', 'The second answer.'] })
 

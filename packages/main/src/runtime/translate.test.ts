@@ -64,7 +64,7 @@ const translateAll = (events: unknown[]) => {
 const pick = <TType extends RuntimeEvent['type']>(events: RuntimeEvent[], type: TType) =>
   events.find((event) => event.type === type) as Extract<RuntimeEvent, { type: TType }> | undefined
 
-describe('createEventTranslator', () => {
+describe('[runtime] createEventTranslator', () => {
   it('reports the start of a turn', () => {
     expect(translateAll([turnStart()])).toEqual([{ conversationId: 'c1', type: 'turn_started' }])
   })
