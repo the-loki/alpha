@@ -5,7 +5,13 @@
  */
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
-import { DEFAULT_LEVEL, PERMISSION_LEVELS, type PermissionLevel } from './permission.ts'
+import {
+  DEFAULT_LEVEL,
+  PERMISSION_LEVELS,
+  type PermissionLevel,
+  type PermissionRule,
+  RULE_SCOPES,
+} from './permission.ts'
 import { emptyWorkspaceState, type WorkspaceState } from './workspace.ts'
 
 const WorkspaceRefSchema = Type.Object({
@@ -26,6 +32,19 @@ const WorkspaceStateSchema = Type.Object({
 
 const PermissionLevelSchema = Type.Union(PERMISSION_LEVELS.map((level) => Type.Literal(level)))
 
+const RuleSchema = Type.Object({
+  id: Type.String(),
+  scope: Type.Union(RULE_SCOPES.map((scope) => Type.Literal(scope))),
+  conversationId: Type.String(),
+  toolName: Type.String(),
+  pattern: Type.String(),
+  createdAt: Type.Number(),
+})
+
+/**
+ * Rules are validated one by one rather than with the rest of the file: one unreadable rule should
+ * cost the user that rule, not the remembered workspace and the permission level with it.
+ */
 const PersistedStateSchema = Type.Object({
   workspace: WorkspaceStateSchema,
   permissionLevel: PermissionLevelSchema,
@@ -36,10 +55,11 @@ type PersistedStateShape = Static<typeof PersistedStateSchema>
 export interface PersistedState {
   workspace: WorkspaceState
   permissionLevel: PermissionLevel
+  permissionRules: PermissionRule[]
 }
 
 export function emptyPersistedState(): PersistedState {
-  return { workspace: emptyWorkspaceState(), permissionLevel: DEFAULT_LEVEL }
+  return { workspace: emptyWorkspaceState(), permissionLevel: DEFAULT_LEVEL, permissionRules: [] }
 }
 
 /**
@@ -51,7 +71,26 @@ export function parsePersistedState(raw: unknown): PersistedState {
   const candidate = typeof raw === 'string' ? parseJson(raw) : raw
   if (!Value.Check(PersistedStateSchema, candidate)) return emptyPersistedState()
   const state: PersistedStateShape = candidate
-  return { workspace: state.workspace, permissionLevel: state.permissionLevel }
+  return {
+    workspace: state.workspace,
+    permissionLevel: state.permissionLevel,
+    permissionRules: readRules(readRulesField(candidate)),
+  }
+}
+
+function readRulesField(candidate: unknown): unknown {
+  return typeof candidate === 'object' && candidate !== null
+    ? (candidate as { permissionRules?: unknown }).permissionRules
+    : undefined
+}
+
+function readRules(value: unknown): PermissionRule[] {
+  if (!Array.isArray(value)) return []
+  const rules: PermissionRule[] = []
+  for (const candidate of value) {
+    if (Value.Check(RuleSchema, candidate)) rules.push(Value.Decode(RuleSchema, candidate))
+  }
+  return rules
 }
 
 function parseJson(text: string): unknown {

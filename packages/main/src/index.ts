@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, safeStorage } from 'electron'
-import { registerIpcHandlers, runtimeEventSender } from './ipc.ts'
+import { permissionRulesSender, registerIpcHandlers, runtimeEventSender } from './ipc.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
 import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
@@ -36,8 +36,10 @@ app.whenReady().then(() => {
     dataDirectory,
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers,
+    store,
     env: process.env,
     emit: runtimeEventSender(() => BrowserWindow.getAllWindows()[0]),
+    emitRules: permissionRulesSender(() => BrowserWindow.getAllWindows()[0]),
   })
 
   registerIpcHandlers({

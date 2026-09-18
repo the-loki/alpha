@@ -155,6 +155,40 @@ describe('createEventTranslator', () => {
     ).toEqual([])
   })
 
+  it('stamps a row with the decision the gate made for that call', () => {
+    const translator = createEventTranslator('c1', (callId) =>
+      callId === 'call-1' ? { kind: 'once', level: 'ask' } : undefined,
+    )
+    const started = translator.translate(
+      asHarnessEvent({
+        type: 'tool_start',
+        runId: 'r1',
+        turnId: 't1',
+        toolCallId: 'call-1',
+        toolName: 'bash',
+        args: { command: 'ls' },
+      }),
+    )
+
+    expect(started[0]).toMatchObject({ type: 'tool_started', callId: 'call-1', approval: { kind: 'once' } })
+  })
+
+  it('leaves the row unstamped when the gate recorded nothing', () => {
+    const translator = createEventTranslator('c1')
+    const started = translator.translate(
+      asHarnessEvent({
+        type: 'tool_start',
+        runId: 'r1',
+        turnId: 't1',
+        toolCallId: 'call-2',
+        toolName: 'read',
+        args: { path: 'a' },
+      }),
+    )
+
+    expect(started[0]?.type === 'tool_started' && started[0].approval).toBeUndefined()
+  })
+
   it('gives consecutive assistant messages distinct names', () => {
     const translated = translateAll([assistantStart(), assistantEnd(), assistantStart(), assistantEnd()])
     const ids = translated.filter((event) => event.type === 'assistant_message_started').map((event) => event.messageId)

@@ -8,6 +8,7 @@
  * up in the list.
  */
 
+import type { PermissionLevel, RuleScope } from './permission.ts'
 import type { ThinkingLevel } from './thinking.ts'
 import type { ToolRisk } from './tools.ts'
 
@@ -32,6 +33,42 @@ export interface ToolDetails {
 
 export type ToolStatus = 'running' | 'ok' | 'failed'
 
+/**
+ * Why a call ran, or why it did not. It is recorded on the row so a later review can tell an
+ * auto-approved edit from one a person allowed, and a skipped one from a failed one.
+ */
+export type ApprovalKind = 'auto' | 'rule' | 'once' | 'always' | 'denied' | 'blocked'
+
+export interface ApprovalRecord {
+  kind: ApprovalKind
+  /** The level in force when the decision was made. */
+  level: PermissionLevel
+  /** The user's reason, for a denial, or why the ladder blocked it. */
+  reason?: string
+  ruleId?: string
+}
+
+/** A call waiting on a person: everything the card needs to show what is about to run. */
+export interface ApprovalRequest {
+  requestId: string
+  callId: string
+  toolName: string
+  risk: ToolRisk
+  /** The command, or the path being changed. */
+  summary: string
+  /** The arguments as the model sent them. */
+  raw: string
+  /** The change being proposed, rendered as a diff, when the call is one that changes a file. */
+  diff?: string
+  /** Where it will run, so the card can say which folder it is about to touch. */
+  cwd: string
+  level: PermissionLevel
+  requestedAt: number
+}
+
+/** What the gate knows when it asks: the broker adds the identity and the timestamp. */
+export type ApprovalAsk = Omit<ApprovalRequest, 'requestId' | 'requestedAt'>
+
 export interface ChatBlockTool {
   kind: 'tool'
   callId: string
@@ -44,6 +81,7 @@ export interface ChatBlockTool {
   status: ToolStatus
   output: string
   details?: ToolDetails
+  approval?: ApprovalRecord
   startedAt: number
   endedAt?: number
 }
@@ -96,6 +134,8 @@ export type RuntimeEvent =
       risk: ToolRisk
       summary: string
       raw: string
+      /** How it got here: the ladder, a remembered rule, or a person's answer. */
+      approval?: ApprovalRecord
       startedAt: number
     }
   | { conversationId: string; type: 'tool_output'; callId: string; output: string }
@@ -107,5 +147,15 @@ export type RuntimeEvent =
       output: string
       details?: ToolDetails
       endedAt: number
+    }
+  | { conversationId: string; type: 'approval_requested'; request: ApprovalRequest }
+  | {
+      conversationId: string
+      type: 'approval_decided'
+      requestId: string
+      callId: string
+      decision: 'once' | 'always' | 'deny'
+      scope?: RuleScope
+      reason?: string
     }
   | { conversationId: string; type: 'run_failed'; message: string }

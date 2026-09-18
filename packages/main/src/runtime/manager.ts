@@ -8,10 +8,12 @@
  */
 
 import {
+  type ApprovalAsk,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
   type ModelStatus,
   type OpenedConversation,
+  type PermissionRule,
   type RuntimeEvent,
   summarize,
   type ThinkingLevel,
@@ -22,7 +24,15 @@ import type { Api, Model } from '@earendil-works/pi-ai'
 import { ConversationIndexStore } from '../conversations/index-store.ts'
 import { createProviderModelRuntime } from '../providers/model-runtime.ts'
 import type { ProviderStore } from '../providers/store.ts'
-import { ConversationRuntime, findSessionMetadata, readTranscript } from './conversation-runtime.ts'
+import type { StateStore } from '../state-store.ts'
+import { ApprovalBroker } from './approvals.ts'
+import {
+  ConversationRuntime,
+  findSessionMetadata,
+  type PermissionPorts,
+  readTranscript,
+} from './conversation-runtime.ts'
+import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, resolveModelRuntime } from './models.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
 
@@ -30,8 +40,12 @@ export interface RuntimeManagerOptions {
   dataDirectory: string
   sessionsRoot: string
   providers: ProviderStore
+  /** The remembered level and the rules the user has stopped wanting to be asked about. */
+  store: StateStore
   env: NodeJS.ProcessEnv
   emit: (event: RuntimeEvent) => void
+  /** Told when the rules change, so a settings page that is open can follow along. */
+  emitRules: (rules: PermissionRule[]) => void
 }
 
 const DEFAULT_TITLE = 'New conversation'
@@ -42,10 +56,26 @@ export class RuntimeManager {
   readonly #index: ConversationIndexStore
   readonly #open = new Map<string, ConversationRuntime>()
   readonly #named = new Set<string>()
+  readonly #approvals: ApprovalBroker
 
   constructor(options: RuntimeManagerOptions) {
     this.#options = options
     this.#index = new ConversationIndexStore(options.dataDirectory)
+    this.#approvals = new ApprovalBroker({ emit: options.emit })
+  }
+
+  permissionRules(): PermissionRule[] {
+    return this.#options.store.read().permissionRules
+  }
+
+  revokeRule(ruleId: string): PermissionRule[] {
+    const rules = this.permissionRules().filter((rule) => rule.id !== ruleId)
+    this.#writeRules(rules)
+    return rules
+  }
+
+  answerApproval(conversationId: string, requestId: string, answer: ApprovalAnswer): void {
+    this.#approvals.answer(conversationId, requestId, answer)
   }
 
   list(): ConversationSummary[] {
@@ -121,6 +151,8 @@ export class RuntimeManager {
   }
 
   async abort(id: string): Promise<void> {
+    // An aborted run leaves nothing to decide, and a promise nobody will answer is a hang.
+    this.#approvals.abandon(id, 'The run was stopped before this call was answered.')
     await this.#open.get(id)?.abort()
   }
 
@@ -139,6 +171,7 @@ export class RuntimeManager {
   }
 
   async closeAll(): Promise<void> {
+    for (const id of this.#open.keys()) this.#approvals.abandon(id, 'The window closed before this call was answered.')
     for (const runtime of this.#open.values()) await runtime.close()
     this.#open.clear()
   }
@@ -191,10 +224,29 @@ export class RuntimeManager {
       model,
       systemPrompt: buildSystemPrompt({ workspacePath: options.workspacePath }),
       sessionMetadata: options.sessionMetadata,
+      permissions: this.#permissionPorts(),
       emit: options.emit,
     })
     await opened.runtime.setThinkingLevel(options.thinkingLevel)
     return { runtime: opened.runtime, conversationId: opened.conversationId, messages: opened.messages }
+  }
+
+  /**
+   * The gate reads the level and the rules at the moment of every call, so a change in the header
+   * applies to the next call rather than the next conversation.
+   */
+  #permissionPorts(): PermissionPorts {
+    return {
+      level: () => this.#options.store.read().permissionLevel,
+      rules: () => this.#options.store.read().permissionRules,
+      remember: (rule) => this.#writeRules([...this.permissionRules(), rule]),
+      ask: (conversationId, ask: ApprovalAsk) => this.#approvals.ask(conversationId, ask),
+    }
+  }
+
+  #writeRules(rules: PermissionRule[]): void {
+    this.#options.store.write({ ...this.#options.store.read(), permissionRules: rules })
+    this.#options.emitRules(rules)
   }
 
   #modelRuntime(): ModelRuntime {

@@ -7,11 +7,14 @@
  * conversations — because each has its own reason to change.
  */
 import {
+  type ApprovalAnswerInput,
   IPC,
   isPermissionLevel,
+  isRuleScope,
   isThinkingLevel,
   type LaunchState,
   type OpenedConversation,
+  type PermissionRule,
   type PickWorkspaceResult,
   type RuntimeEvent,
   rememberWorkspace,
@@ -35,6 +38,7 @@ export interface IpcContext {
 export function registerIpcHandlers(context: IpcContext): void {
   registerWorkspaceHandlers(context)
   registerConversationHandlers(context)
+  registerPermissionHandlers(context)
   registerProviderHandlers(context)
   registerWindowHandlers(context)
 }
@@ -78,6 +82,41 @@ function registerWorkspaceHandlers({ store, runtime, getWindow }: IpcContext): v
     if (isPermissionLevel(level)) store.write({ ...store.read(), permissionLevel: level })
     return launchState()
   })
+}
+
+function registerPermissionHandlers({ runtime }: IpcContext): void {
+  ipcMain.handle(IPC.permissionRules, (): PermissionRule[] => runtime.permissionRules())
+
+  ipcMain.handle(IPC.revokePermissionRule, (_event, ruleId: unknown): PermissionRule[] =>
+    runtime.revokeRule(requireString(ruleId, 'ruleId')),
+  )
+
+  ipcMain.handle(IPC.answerApproval, (_event, input: unknown): void => {
+    const answer = readApprovalAnswer(input)
+    runtime.answerApproval(answer.conversationId, answer.requestId, {
+      decision: answer.decision,
+      scope: answer.scope,
+      reason: answer.reason,
+    })
+  })
+}
+
+/** The renderer is the process that could be compromised, so its answer is read defensively. */
+function readApprovalAnswer(input: unknown): ApprovalAnswerInput {
+  if (typeof input !== 'object' || input === null) throw new Error('an approval answer is required')
+  const record = input as Record<string, unknown>
+  const decision = record.decision
+  if (decision !== 'once' && decision !== 'always' && decision !== 'deny') {
+    throw new Error('decision must be once, always, or deny')
+  }
+  if (record.scope !== undefined && !isRuleScope(record.scope)) throw new Error('scope must be a rule scope')
+  return {
+    conversationId: requireString(record.conversationId, 'conversationId'),
+    requestId: requireString(record.requestId, 'requestId'),
+    decision,
+    scope: isRuleScope(record.scope) ? record.scope : undefined,
+    reason: typeof record.reason === 'string' ? record.reason : undefined,
+  }
 }
 
 function registerConversationHandlers({ runtime }: IpcContext): void {
@@ -166,5 +205,13 @@ export function runtimeEventSender(getWindow: () => BrowserWindow): (event: Runt
   return (event) => {
     const window = getWindow()
     if (window && !window.isDestroyed()) window.webContents.send(IPC.runtimeEvent, event)
+  }
+}
+
+/** Pushes the remembered rules, so a settings page that is open sees them change. */
+export function permissionRulesSender(getWindow: () => BrowserWindow): (rules: PermissionRule[]) => void {
+  return (rules) => {
+    const window = getWindow()
+    if (window && !window.isDestroyed()) window.webContents.send(IPC.permissionRulesChanged, rules)
   }
 }

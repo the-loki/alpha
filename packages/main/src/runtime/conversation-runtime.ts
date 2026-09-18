@@ -4,7 +4,14 @@
  * harness returns as values rather than throws (ADR-0001).
  */
 
-import type { ChatMessage, RuntimeEvent } from '@alpha/core'
+import type {
+  ApprovalAsk,
+  ApprovalRecord,
+  ChatMessage,
+  PermissionLevel,
+  PermissionRule,
+  RuntimeEvent,
+} from '@alpha/core'
 import {
   AgentHarness,
   type AgentHarnessTool,
@@ -18,10 +25,20 @@ import {
 } from '@earendil-works/pi-agent-core'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
 import type { Api, Model } from '@earendil-works/pi-ai'
+import type { ApprovalAnswer } from './gate.ts'
+import { createToolGate } from './gate.ts'
 import type { ModelRuntime } from './models.ts'
 import { createWorkspaceTools, workspaceToolNames } from './tools.ts'
 import { entriesToMessages } from './transcript-entries.ts'
 import { createEventTranslator } from './translate.ts'
+
+/** How the gate reaches the policy and the person: all four are read at the moment of a call. */
+export interface PermissionPorts {
+  level: () => PermissionLevel
+  rules: () => PermissionRule[]
+  remember: (rule: PermissionRule) => void
+  ask: (conversationId: string, ask: ApprovalAsk) => Promise<ApprovalAnswer>
+}
 
 export interface OpenConversationOptions {
   /** Absent when the conversation is new; the session mints the id and it is adopted. */
@@ -36,6 +53,8 @@ export interface OpenConversationOptions {
   sessionMetadata?: JsonlSessionMetadata
   tools?: AgentHarnessTool<object>[]
   toolNames?: string[]
+  /** Absent only in tests that want the gate out of the way; every real conversation has one. */
+  permissions?: PermissionPorts
   emit: (event: RuntimeEvent) => void
 }
 
@@ -105,11 +124,21 @@ export class ConversationRuntime {
     const lane = await harness.lane('main', BACKGROUND_CONTEXT)
     const conversationId = session.metadata.id
     const runtime = new ConversationRuntime(harness, lane, session, options.emit)
-    const translator = createEventTranslator(conversationId)
+    const decisions = new Map<string, ApprovalRecord>()
+    const translator = createEventTranslator(conversationId, (callId) => decisions.get(callId))
     for (const type of SUBSCRIBED_EVENTS) {
       harness.events.on(type, (event) => {
         for (const translated of translator.translate(event)) runtime.#emit(translated)
       })
+    }
+    if (options.permissions !== undefined) {
+      const gate = createToolGate({
+        ...options.permissions,
+        conversationId,
+        workspacePath: options.workspacePath,
+        note: (callId, record) => decisions.set(callId, record),
+      })
+      harness.hooks.on('before_tool', (event) => gate(event))
     }
 
     const entries = await session.findEntries(undefined, BACKGROUND_CONTEXT)

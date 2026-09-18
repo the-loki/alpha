@@ -4,7 +4,7 @@
  * handler for each. `pnpm check:constraints` is what keeps the three in step.
  */
 
-import type { PermissionLevel } from './permission.ts'
+import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ThinkingLevel } from './thinking.ts'
@@ -17,6 +17,7 @@ export interface CustomProviderInput {
   models: ProviderModelDefinition[]
 }
 
+import type { RuleScope } from './permission.ts'
 import type { WorkspaceRef, WorkspaceSelection } from './workspace.ts'
 
 export const IPC = {
@@ -43,6 +44,10 @@ export const IPC = {
   testProvider: 'alpha:test-provider',
   setConversationModel: 'alpha:set-conversation-model',
   setThinkingLevel: 'alpha:set-thinking-level',
+  permissionRules: 'alpha:permission-rules',
+  revokePermissionRule: 'alpha:revoke-permission-rule',
+  answerApproval: 'alpha:answer-approval',
+  permissionRulesChanged: 'alpha:permission-rules-changed',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -91,6 +96,15 @@ export interface ProvidersSnapshotMessage {
   catalog: { id: string; name: string; api: string; baseUrl: string; keyHint: string }[]
 }
 
+/** What the window answers a card with: allow this once, remember it, or refuse it. */
+export interface ApprovalAnswerInput {
+  conversationId: string
+  requestId: string
+  decision: 'once' | 'always' | 'deny'
+  scope?: RuleScope
+  reason?: string
+}
+
 /** The surface the preload puts on `window.alpha`, and the only way the renderer acts. */
 export interface AlphaBridge {
   launchState(): Promise<LaunchState>
@@ -118,4 +132,9 @@ export interface AlphaBridge {
   testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
   setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary>
   setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary>
+  permissionRules(): Promise<PermissionRule[]>
+  revokePermissionRule(ruleId: string): Promise<PermissionRule[]>
+  /** The one thing the renderer says about a card: the answer, and its scope when it is remembered. */
+  answerApproval(answer: ApprovalAnswerInput): Promise<void>
+  onPermissionRules(listener: (rules: PermissionRule[]) => void): () => void
 }

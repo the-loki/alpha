@@ -25,7 +25,8 @@ async function launch(options: { dataDirectory?: string; workspace?: string } = 
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      permissionLevel: 'ask',
+      // Full access on purpose: this spec is about the ledger, not the gate, so no card intervenes.
+      permissionLevel: 'full-access',
     }),
     'utf-8',
   )
@@ -53,8 +54,9 @@ async function ask(window: Page, text: string) {
   await composer.press('Enter')
 }
 
+/** The ledger row for one tool, which the transcript shows instead of prose. */
 const row = (window: Page, name: string) =>
-  window.getByRole('main').locator('article').filter({ hasText: name }).first()
+  window.getByRole('main').locator(`[data-role="tool"][data-tool="${name}"]`).first()
 
 test('a tool call becomes a ledger row in the transcript', async () => {
   const { app, window } = await launch()

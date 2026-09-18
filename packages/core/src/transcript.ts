@@ -7,19 +7,28 @@
  * the user's message and once when the assistant's finishes — so two hundred text deltas cost
  * two hundred small objects, not two hundred copies of the conversation.
  */
-import type { ChatBlock, ChatBlockTool, ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
+import type {
+  ApprovalRequest,
+  ChatBlock,
+  ChatBlockTool,
+  ChatMessage,
+  ConversationSummary,
+  RuntimeEvent,
+} from './runtime-events.ts'
 
 export interface TranscriptState {
   conversationId: string
   summary?: ConversationSummary
   messages: ChatMessage[]
   streaming?: ChatMessage
+  /** Calls waiting on the user, oldest first. */
+  approvals: ApprovalRequest[]
   status: 'idle' | 'running' | 'failed'
   error?: string
 }
 
 export function emptyTranscript(conversationId: string): TranscriptState {
-  return { conversationId, messages: [], status: 'idle' }
+  return { conversationId, messages: [], approvals: [], status: 'idle' }
 }
 
 export function streamingMessage(state: TranscriptState): ChatMessage | undefined {
@@ -39,6 +48,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
         conversationId: state.conversationId,
         summary: event.conversation,
         messages: event.messages,
+        approvals: [],
         status: 'idle',
       }
 
@@ -73,21 +83,18 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return finishStreaming(state, event.interrupted)
 
     case 'turn_finished':
-      return { ...state, status: 'idle' }
+      return { ...state, status: 'idle', approvals: [] }
 
     case 'run_failed':
       return failRun(state, event.message)
 
     default:
-      return reduceToolEvent(state, event)
+      return reduceGateEvent(state, event)
   }
 }
 
-/**
- * Tool events get their own reducer because they are the only ones that write to a message that may
- * still be streaming or may already have landed in the transcript.
- */
-function reduceToolEvent(state: TranscriptState, event: RuntimeEvent): TranscriptState {
+/** The gate's own events: a call waiting on the user, and the answer that releases it. */
+function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): TranscriptState {
   switch (event.type) {
     case 'tool_started':
       return appendToolCall(state, event)
@@ -103,6 +110,12 @@ function reduceToolEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
         details: event.details ?? block.details,
         endedAt: event.endedAt,
       }))
+
+    case 'approval_requested':
+      return { ...state, approvals: [...state.approvals, event.request] }
+
+    case 'approval_decided':
+      return { ...state, approvals: state.approvals.filter((request) => request.requestId !== event.requestId) }
 
     default:
       return state
@@ -126,6 +139,7 @@ function appendToolCall(
     raw: event.raw,
     status: 'running',
     output: '',
+    approval: event.approval,
     startedAt: event.startedAt,
   }
 
@@ -158,6 +172,7 @@ function failRun(state: TranscriptState, message: string): TranscriptState {
     ...state,
     messages: failed === undefined ? state.messages : [...state.messages, failed],
     streaming: undefined,
+    approvals: [],
     status: 'failed',
     error: message,
   }

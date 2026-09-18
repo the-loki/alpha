@@ -5,12 +5,14 @@
 
 import {
   type AlphaBridge,
+  type ApprovalAnswerInput,
   type ConversationSummary,
   type CustomProviderInput,
   IPC,
   type LaunchState,
   type OpenedConversation,
   type PermissionLevel,
+  type PermissionRule,
   type PickWorkspaceResult,
   type ProviderModelDefinition,
   type ProvidersSnapshotMessage,
@@ -61,6 +63,15 @@ const bridge: AlphaBridge = {
     ipcRenderer.invoke(IPC.setConversationModel, id, providerId, modelId) as Promise<ConversationSummary>,
   setThinkingLevel: (id: string, level: ThinkingLevel) =>
     ipcRenderer.invoke(IPC.setThinkingLevel, id, level) as Promise<ConversationSummary>,
+  permissionRules: () => ipcRenderer.invoke(IPC.permissionRules) as Promise<PermissionRule[]>,
+  revokePermissionRule: (ruleId: string) =>
+    ipcRenderer.invoke(IPC.revokePermissionRule, ruleId) as Promise<PermissionRule[]>,
+  answerApproval: (answer: ApprovalAnswerInput) => ipcRenderer.invoke(IPC.answerApproval, answer) as Promise<void>,
+  onPermissionRules: (listener: (rules: PermissionRule[]) => void) => {
+    const handler = (_event: unknown, rules: PermissionRule[]) => listener(rules)
+    ipcRenderer.on(IPC.permissionRulesChanged, handler)
+    return () => ipcRenderer.removeListener(IPC.permissionRulesChanged, handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('alpha', bridge)

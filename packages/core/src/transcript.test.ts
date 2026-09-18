@@ -299,3 +299,99 @@ describe('the tool ledger', () => {
     return block?.kind === 'tool' ? block : undefined
   }
 })
+
+describe('the approval gate', () => {
+  const request = {
+    requestId: 'req-1',
+    callId: 'call-9',
+    toolName: 'bash',
+    risk: 'execute' as const,
+    summary: 'rm -rf build',
+    raw: '{"command":"rm -rf build"}',
+    cwd: '/dev/alpha',
+    level: 'ask' as const,
+    requestedAt: 50,
+  }
+
+  it('holds a pending request until it is answered', () => {
+    const state = reduce([event({ type: 'approval_requested', request })])
+    expect(state.approvals).toEqual([request])
+  })
+
+  it('drops the request once the user answers', () => {
+    const state = reduce([
+      event({ type: 'approval_requested', request }),
+      event({ type: 'approval_decided', requestId: 'req-1', callId: 'call-9', decision: 'once' }),
+    ])
+    expect(state.approvals).toEqual([])
+  })
+
+  it('ignores an answer for a request it is not showing', () => {
+    const state = reduce([event({ type: 'approval_decided', requestId: 'stranger', callId: 'x', decision: 'deny' })])
+    expect(state.approvals).toEqual([])
+  })
+
+  it('records on the row how the call got past the gate', () => {
+    const state = reduce([
+      ...withAssistant(),
+      event({
+        type: 'tool_started',
+        callId: 'call-9',
+        name: 'bash',
+        risk: 'execute',
+        summary: 'rm -rf build',
+        raw: '{}',
+        approval: { kind: 'once', level: 'ask' },
+        startedAt: 51,
+      }),
+    ])
+    expect(rowOf(state)).toMatchObject({ approval: { kind: 'once', level: 'ask' } })
+  })
+
+  it('records a denial on the row, with the reason the user gave', () => {
+    const state = reduce([
+      ...withAssistant(),
+      event({
+        type: 'tool_started',
+        callId: 'call-9',
+        name: 'bash',
+        risk: 'execute',
+        summary: 'rm -rf build',
+        raw: '{}',
+        approval: { kind: 'denied', level: 'ask', reason: 'that deletes the build cache' },
+        startedAt: 51,
+      }),
+      event({ type: 'tool_finished', callId: 'call-9', status: 'failed', output: 'Denied.', endedAt: 52 }),
+    ])
+    expect(rowOf(state)).toMatchObject({
+      status: 'failed',
+      approval: { kind: 'denied', reason: 'that deletes the build cache' },
+    })
+  })
+
+  it('does not leave a request behind when the run fails', () => {
+    const state = reduce([
+      event({ type: 'approval_requested', request }),
+      event({ type: 'run_failed', message: 'the provider hung up' }),
+    ])
+    expect(state.approvals).toEqual([])
+  })
+
+  it('does not leave a request behind when the turn ends', () => {
+    const state = reduce([event({ type: 'approval_requested', request }), event({ type: 'turn_finished' })])
+    expect(state.approvals).toEqual([])
+  })
+
+  function withAssistant() {
+    return [
+      event({ type: 'user_message', message: userMessage }),
+      event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
+      event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
+    ]
+  }
+
+  function rowOf(state: ReturnType<typeof reduce>) {
+    const block = state.messages.flatMap((message) => message.blocks).find((candidate) => candidate.kind === 'tool')
+    return block?.kind === 'tool' ? block : undefined
+  }
+})

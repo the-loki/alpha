@@ -1,4 +1,5 @@
 import {
+  type ApprovalAnswerInput,
   type ChatMessage,
   type ConversationSummary,
   emptyTranscript,
@@ -24,6 +25,10 @@ export interface ConversationStore {
   applyEvent: (event: RuntimeEvent) => void
   setModel: (providerId: string, modelId: string) => Promise<void>
   setThinkingLevel: (level: ThinkingLevel) => Promise<void>
+  /** The answer a card was clicked with, on its way to the gate that is waiting for it. */
+  answerApproval: (answer: Omit<ApprovalAnswerInput, 'conversationId'>) => Promise<void>
+  /** Bumped when a card is answered, so the composer can take the focus back. */
+  composerFocus: number
 }
 
 const listWithUpdated = (list: ConversationSummary[], updated: ConversationSummary): ConversationSummary[] =>
@@ -35,6 +40,7 @@ export const useConversations = create<ConversationStore>((set, get) => ({
   list: [],
   activeId: '',
   transcript: emptyTranscript(''),
+  composerFocus: 0,
 
   loadList: async () => set({ list: await bridge().listConversations() }),
 
@@ -120,6 +126,13 @@ export const useConversations = create<ConversationStore>((set, get) => ({
         conversation,
       }),
     })
+  },
+
+  answerApproval: async (answer) => {
+    const id = get().activeId
+    if (id === '') return
+    await bridge().answerApproval({ ...answer, conversationId: id })
+    set({ composerFocus: get().composerFocus + 1 })
   },
 
   applyEvent: (event: RuntimeEvent) => {

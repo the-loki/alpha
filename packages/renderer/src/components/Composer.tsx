@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
 
@@ -13,7 +13,14 @@ export function Composer() {
   const model = useShell((state) => state.model)
   const status = useConversations((state) => state.transcript.status)
   const sendOrCreate = useConversations((state) => state.sendOrCreate)
+  const focusSignal = useConversations((state) => state.composerFocus)
   const navigate = useNavigate()
+  const field = useRef<HTMLTextAreaElement>(null)
+
+  // Answering a card hands the keyboard back: the next thing typed is the next message.
+  useEffect(() => {
+    if (focusSignal > 0) field.current?.focus()
+  }, [focusSignal])
 
   const hasWorkspace = workspace.kind === 'selected'
   const running = status === 'running'
@@ -39,6 +46,7 @@ export function Composer() {
       <div className="mx-auto max-w-3xl">
         <div className="rounded-card border border-line bg-ink-700 px-3 py-2.5 focus-within:border-line-strong">
           <textarea
+            ref={field}
             rows={2}
             aria-label="Message the agent"
             value={text}

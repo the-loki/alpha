@@ -9,13 +9,16 @@
  * and reused for every delta and for the finish.
  */
 
-import { type RuntimeEvent, toolRiskOf } from '@alpha/core'
+import { type ApprovalRecord, type RuntimeEvent, toolRiskOf } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
 import { outputTextOf, summarizeToolCall, toolDetails } from './tool-call.ts'
 
 export interface EventTranslator {
   translate(event: HarnessEvent): RuntimeEvent[]
 }
+
+/** How a row learns why its call got past the gate. */
+export type ApprovalLookup = (callId: string) => ApprovalRecord | undefined
 
 interface TranslatorState {
   counter: number
@@ -33,12 +36,20 @@ const textOf = (content: MessageContent): string => {
     .join('\n')
 }
 
-export function createEventTranslator(conversationId: string): EventTranslator {
+export function createEventTranslator(
+  conversationId: string,
+  approvalOf: ApprovalLookup = () => undefined,
+): EventTranslator {
   const state: TranslatorState = { counter: 0 }
-  return { translate: (event) => translateEvent(state, conversationId, event) }
+  return { translate: (event) => translateEvent(state, conversationId, event, approvalOf) }
 }
 
-function translateEvent(state: TranslatorState, conversationId: string, event: HarnessEvent): RuntimeEvent[] {
+function translateEvent(
+  state: TranslatorState,
+  conversationId: string,
+  event: HarnessEvent,
+  approvalOf: ApprovalLookup,
+): RuntimeEvent[] {
   switch (event.type) {
     case 'turn_start':
       return [{ conversationId, type: 'turn_started' }]
@@ -60,41 +71,50 @@ function translateEvent(state: TranslatorState, conversationId: string, event: H
       return translateMessageEvent(state, conversationId, event)
 
     case 'tool_start':
-      return [
-        {
-          conversationId,
-          type: 'tool_started',
-          callId: event.toolCallId,
-          name: event.toolName,
-          risk: toolRiskOf(event.toolName),
-          summary: summarizeToolCall(event.toolName, event.args),
-          raw: JSON.stringify(event.args ?? {}),
-          startedAt: Date.now(),
-        },
-      ]
+      return [toolStarted(conversationId, event, approvalOf)]
 
     case 'tool_update':
       return [
         { conversationId, type: 'tool_output', callId: event.toolCallId, output: outputTextOf(event.partialResult) },
       ]
 
-    case 'tool_end': {
-      const output = outputTextOf(event.result)
-      return [
-        {
-          conversationId,
-          type: 'tool_finished',
-          callId: event.toolCallId,
-          status: event.isError ? 'failed' : 'ok',
-          output,
-          details: toolDetails(event.toolName, event.result?.details, output),
-          endedAt: Date.now(),
-        },
-      ]
-    }
+    case 'tool_end':
+      return [toolFinished(conversationId, event)]
 
     default:
       return []
+  }
+}
+
+/** A row is stamped with the gate's decision here, so the ledger can say why the call was allowed. */
+function toolStarted(
+  conversationId: string,
+  event: Extract<HarnessEvent, { type: 'tool_start' }>,
+  approvalOf: ApprovalLookup,
+): RuntimeEvent {
+  return {
+    conversationId,
+    type: 'tool_started',
+    callId: event.toolCallId,
+    name: event.toolName,
+    risk: toolRiskOf(event.toolName),
+    summary: summarizeToolCall(event.toolName, event.args),
+    raw: JSON.stringify(event.args ?? {}),
+    approval: approvalOf(event.toolCallId),
+    startedAt: Date.now(),
+  }
+}
+
+function toolFinished(conversationId: string, event: Extract<HarnessEvent, { type: 'tool_end' }>): RuntimeEvent {
+  const output = outputTextOf(event.result)
+  return {
+    conversationId,
+    type: 'tool_finished',
+    callId: event.toolCallId,
+    status: event.isError ? 'failed' : 'ok',
+    output,
+    details: toolDetails(event.toolName, event.result?.details, output),
+    endedAt: Date.now(),
   }
 }
 

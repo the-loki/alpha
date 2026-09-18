@@ -57,13 +57,14 @@ so it names nothing), *sandbox* (Alpha does not sandbox; it gates).
 ### Approval
 
 A single decision the user makes about one pending tool call: allow once, allow for the rest of
-the conversation, or deny. An approval is not a permission level: the level decides whether an
-approval is needed at all.
+the conversation, allow everywhere in this workspace, or deny. An approval is not a permission
+level: the level decides whether an approval is needed at all.
 
 ### Permission Rule
 
-A remembered approval: a tool name plus an argument pattern, scoped to a conversation, a
-workspace, or the machine. Rules are what "don't ask again" writes.
+A remembered approval: a tool name plus an argument pattern, scoped to one conversation or to
+every conversation in the workspace. Rules are what "always allow" writes, and they outrank the
+level — including in Plan, where a rule approves what the level would block.
 
 ### Provider
 
