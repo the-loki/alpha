@@ -6,6 +6,7 @@ import {
   emptyProviderIndex,
   firstModelOf,
   isProviderApi,
+  modelIn,
   PROVIDER_APIS,
   parseProviders,
   readModels,
@@ -128,7 +129,7 @@ describe('[core] which model a new conversation starts on', () => {
 
   it('is the first model of the first provider that has one', () => {
     expect(firstModelOf(twoProviders)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
-    expect(firstModelOf({ version: 1, providers: [] })).toBeUndefined()
+    expect(firstModelOf({ providers: [] })).toBeUndefined()
   })
 
   it('is the chosen one when there is a choice', () => {
@@ -143,7 +144,42 @@ describe('[core] which model a new conversation starts on', () => {
   })
 
   it('is nothing at all when no provider serves anything', () => {
-    expect(effectiveModelOf({ version: 1, providers: [] })).toBeUndefined()
+    expect(effectiveModelOf({ providers: [] })).toBeUndefined()
+  })
+})
+
+describe('[core] modelIn', () => {
+  // Two models on the one connection, so "kept its own" cannot be confused with "took the first".
+  const served = {
+    ...stored,
+    providers: [
+      {
+        ...stored.providers[0],
+        models: [...stored.providers[0].models, { ...model, id: 'local-70b', name: 'Local 70B' }],
+      },
+    ],
+  }
+
+  it('keeps a conversation on its own model while a provider still serves it', () => {
+    expect(modelIn(served, { providerId: 'my-endpoint', modelId: 'local-70b' })).toEqual({
+      providerId: 'my-endpoint',
+      modelId: 'local-70b',
+    })
+  })
+
+  it('falls back to the effective default when the choice is gone', () => {
+    expect(modelIn(served, { providerId: 'my-endpoint', modelId: 'deleted' })).toEqual({
+      providerId: 'my-endpoint',
+      modelId: 'local-7b',
+    })
+    expect(modelIn(served, { providerId: 'gone', modelId: 'local-7b' })).toEqual({
+      providerId: 'my-endpoint',
+      modelId: 'local-7b',
+    })
+  })
+
+  it('answers with nothing when a conversation has no model and no provider serves anything', () => {
+    expect(modelIn({ providers: [] }, { providerId: 'gone', modelId: 'local-7b' })).toBeUndefined()
   })
 })
 

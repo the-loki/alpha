@@ -1,4 +1,4 @@
-import type { ConversationModel, Null, ProviderView, Undef } from '@alpha/core'
+import { type ConversationModel, modelIn, type Null, type ProviderView, type Undef } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useProviders } from '../stores/providers.ts'
@@ -48,10 +48,11 @@ export function ModelChip() {
   }, [open])
 
   const inConversation = activeId !== '' && summary !== undefined
-  // A conversation that never chose runs on the default, so that is the name it shows.
+  // A conversation that never chose runs on the default, and one whose choice is gone — the
+  // provider was deleted — runs on it too, which is the rule the runtime applies as well.
   const chosen: Undef<ConversationModel> =
     summary !== undefined && summary.model.providerId !== '' ? summary.model : undefined
-  const running = chosen ?? snapshot.defaultModel
+  const running = modelIn(snapshot, chosen)
   const name = nameOf(snapshot.providers, running)
   const choose = async (next: ConversationModel) => {
     setOpen(false)

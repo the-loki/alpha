@@ -169,20 +169,25 @@ export function credentialRequirement(input: { hasCredential: boolean }): Creden
 }
 
 /**
+ * The two facts every model rule reads. A window's snapshot carries them with more around them, so
+ * typing the rules on this rather than on the whole index is what lets the window ask the same
+ * questions the main process asks instead of keeping a second copy of the answers.
+ */
+export type ModelIndex = Pick<ProviderIndex, 'providers' | 'defaultModel'>
+
+/**
  * The stored default, when it still points at a model some provider actually serves. This is the
  * one guard: the choice is written down once and checked every time it is read, so removing a
  * model or a provider cannot leave the workbench pointing at nothing.
  */
-export function defaultModelOf(index: ProviderIndex): Undef<ConversationModel> {
+export function defaultModelOf(index: ModelIndex): Undef<ConversationModel> {
   const chosen = index.defaultModel
-  if (chosen === undefined) return undefined
-  const provider = index.providers.find((candidate) => candidate.id === chosen.providerId)
-  if (provider === undefined) return undefined
-  return provider.models.some((model) => model.id === chosen.modelId) ? chosen : undefined
+  if (chosen === undefined || !servesModel(index, chosen)) return undefined
+  return chosen
 }
 
 /** The first model there is, for a workbench that has never had one chosen for it. */
-export function firstModelOf(index: ProviderIndex): Undef<ConversationModel> {
+export function firstModelOf(index: ModelIndex): Undef<ConversationModel> {
   for (const provider of index.providers) {
     const model = provider.models[0]
     if (model !== undefined) return { providerId: provider.id, modelId: model.id }
@@ -195,8 +200,25 @@ export function firstModelOf(index: ProviderIndex): Undef<ConversationModel> {
  * otherwise. One rule with two callers — the runtime that builds the model collection, and the
  * composer's chip, which has to name a model before any conversation exists.
  */
-export function effectiveModelOf(index: ProviderIndex): Undef<ConversationModel> {
+export function effectiveModelOf(index: ModelIndex): Undef<ConversationModel> {
   return defaultModelOf(index) ?? firstModelOf(index)
+}
+
+/**
+ * What a conversation will actually run on: the model it chose while a provider still serves it,
+ * and the effective default otherwise — a provider that was deleted, or a model that was renamed,
+ * must not leave a conversation looking like it has nothing to run on. The main process reaches the
+ * same conclusion from its own registry (`modelFor`); this is the window's copy of the rule, and it
+ * exists because the window is the thing that has to name the model it is showing.
+ */
+export function modelIn(index: ModelIndex, chosen: Undef<ConversationModel>): Undef<ConversationModel> {
+  if (chosen !== undefined && servesModel(index, chosen)) return chosen
+  return effectiveModelOf(index)
+}
+
+function servesModel(index: ModelIndex, chosen: ConversationModel): boolean {
+  const provider = index.providers.find((candidate) => candidate.id === chosen.providerId)
+  return provider?.models.some((model) => model.id === chosen.modelId) === true
 }
 
 function parseJson(text: string): unknown {
