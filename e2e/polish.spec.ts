@@ -220,25 +220,25 @@ test('a fresh workbench opens light, and the dark palette is one click away', as
   await window.screenshot({ path: join(SHOT_DIR, 'theme-light.png') })
 
   await openAppearance(window)
-  const card = () =>
-    window.evaluate(() => {
-      const button = document.querySelector('aside button')
-      return button === null ? '' : getComputedStyle(button).backgroundColor
-    })
-  const paintedLight = await card()
+  // The page background is the surface every palette paints first, and it is the one that is on
+  // screen wherever the switch is made — the sidebar is not, since settings takes the window.
+  const page = () => window.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  const paintedLight = await page()
   await window.getByRole('button', { name: 'Dark' }).click()
   await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
-  // The palette repaints rather than switching instantly, so the capture waits for the sidebar
-  // to actually be ink-coloured instead of catching the switch halfway.
-  await expect.poll(card).not.toBe(paintedLight)
+  // The palette repaints rather than switching instantly, so the capture waits for the page to
+  // actually be ink-coloured instead of catching the switch halfway.
+  await expect.poll(page).not.toBe(paintedLight)
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark-settings.png') })
 
   // The workspace stays legible in the dark palette too: the transcript reads against it, and the
   // sidebar still names the folder it is pointed at rather than only its path.
-  const ink = await window.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  expect(ink).not.toBe(paintedLight)
-  await expect(window.getByRole('complementary').getByRole('button', { name: /sandbox/ })).toBeVisible()
+  expect(await page()).not.toBe(paintedLight)
 
+  // Back to the workbench: the sidebar comes back with it, and it still names the folder the
+  // agent is pointed at rather than only its path.
+  await window.getByRole('link', { name: /Back to the workbench/ }).click()
+  await expect(window.getByRole('complementary').getByRole('button', { name: /sandbox/ })).toBeVisible()
   await window.getByRole('button', { name: /^which theme is this/ }).click()
   await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible()
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })

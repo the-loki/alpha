@@ -1,8 +1,10 @@
 import { type ConversationSummary, groupByWorkspace, type WorkspaceGroup } from '@alpha/core'
 import { Link, useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
+import { GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
 import { WorkspaceButton } from './WorkspaceMenu.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
@@ -51,7 +53,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
         onClick={() => void navigate({ to: '/c/$conversationId', params: { conversationId: conversation.id } })}
         aria-current={conversation.id === activeId}
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-control px-2 py-1.5 text-left transition-colors ${
-          conversation.id === activeId ? 'bg-ink-600 text-parchment' : 'text-parchment-dim hover:bg-ink-700'
+          conversation.id === activeId ? 'bg-ink-600 text-parchment' : 'text-parchment-dim hover:bg-ink-600/60'
         }`}
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${state.dot}`} aria-hidden="true" />
@@ -81,7 +83,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
 function Group({ group }: { group: WorkspaceGroup }) {
   return (
     <section className="mt-3" data-workspace={group.path}>
-      <h3 className="flex items-baseline justify-between px-1 text-micro text-parchment-faint">
+      <h3 className="flex items-baseline justify-between px-2 text-micro text-parchment-faint">
         <span className="truncate font-mono">{group.name}</span>
         <span className="shrink-0">{group.count}</span>
       </h3>
@@ -94,8 +96,37 @@ function Group({ group }: { group: WorkspaceGroup }) {
   )
 }
 
-export function Sidebar() {
+/** A row that acts rather than navigates: the reference's sidebar is mostly these. */
+function ActionRow({
+  icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  hint?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2.5 rounded-control px-2 py-1.5 text-ui text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+    >
+      {icon}
+      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+      {hint !== undefined && <span className="shrink-0 font-mono text-micro text-parchment-faint">{hint}</span>}
+    </button>
+  )
+}
+
+export function Sidebar({ onSearch }: { onSearch: () => void }) {
   const workspace = useShell((state) => state.workspace)
+  const platform = useShell((state) => state.platform)
+  const version = useShell((state) => state.appVersion)
+  const modifier = platform === 'darwin' ? '⌘' : 'Ctrl+'
+  const navigate = useNavigate()
   const conversations = useConversations((state) => state.list)
   const workspacePath = workspace.kind === 'selected' ? workspace.workspace.path : ''
   const groups = groupByWorkspace(conversations)
@@ -103,22 +134,27 @@ export function Sidebar() {
   const elsewhere = groups.filter((group) => group.path !== workspacePath)
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-ink-800 p-3">
+    <aside className="flex w-64 shrink-0 flex-col px-2 pb-2">
+      <div className="pb-2">
+        <ActionRow
+          icon={<PlusIcon />}
+          label="New conversation"
+          hint={`${modifier}N`}
+          onClick={() => void navigate({ to: '/' })}
+        />
+        <ActionRow icon={<SearchIcon />} label="Search" hint={`${modifier}K`} onClick={onSearch} />
+      </div>
+
       <WorkspaceButton />
 
-      <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-micro font-medium uppercase tracking-wider text-parchment-faint">Conversations</h2>
-          <Link
-            to="/"
-            className="rounded-control px-1.5 py-0.5 text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
-          >
-            New
-          </Link>
+      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex items-center justify-between px-2 pb-1">
+          <h2 className="text-micro font-medium tracking-wide text-parchment-faint">Conversations</h2>
+          <span className="font-mono text-micro text-parchment-faint">{conversations.length}</span>
         </div>
 
         {conversations.length === 0 ? (
-          <p className="mt-2 px-1 text-xs leading-relaxed text-parchment-faint">
+          <p className="mt-2 px-2 text-xs leading-relaxed text-parchment-faint">
             Nothing here yet. Your first conversation appears the moment you ask the agent something.
           </p>
         ) : (
@@ -127,15 +163,27 @@ export function Sidebar() {
               <Group key={group.path} group={group} />
             ))}
             {elsewhere.length > 0 && (
-              <h2 className="mt-4 px-1 text-micro font-medium uppercase tracking-wider text-parchment-faint">
-                Other workspaces
-              </h2>
+              <h2 className="mt-4 px-2 text-micro font-medium tracking-wide text-parchment-faint">Other workspaces</h2>
             )}
             {elsewhere.map((group) => (
               <Group key={group.path} group={group} />
             ))}
           </>
         )}
+      </div>
+
+      {/* What this window is, at the bottom: the same place the reference puts the account row. */}
+      <div className="mt-1 flex items-center gap-2 border-t border-line/70 px-2 pt-2">
+        <span className="min-w-0 flex-1 truncate text-micro text-parchment-faint">
+          Alpha <span className="font-mono">{version}</span>
+        </span>
+        <Link
+          to="/settings"
+          aria-label="Settings"
+          className="rounded-control p-1 text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
+        >
+          <GearIcon />
+        </Link>
       </div>
     </aside>
   )

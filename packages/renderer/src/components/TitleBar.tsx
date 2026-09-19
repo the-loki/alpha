@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { bridge } from '../lib/bridge.ts'
 import { useShell } from '../stores/shell.ts'
 import { LevelChip } from './LevelChip.tsx'
@@ -65,12 +64,7 @@ export function TitleBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Link
-          to="/settings"
-          className="no-drag rounded-control px-2 py-1 text-xs text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
-        >
-          Settings
-        </Link>
+        {/* Settings is reached from the sidebar, where the reference puts it, and from Ctrl+,. */}
         <LevelChip />
         <WindowControls />
       </div>

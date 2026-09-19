@@ -16,16 +16,16 @@
  * redefines — components name the role, never the colour it happens to be.
  */
 @theme {
-  --color-ink-900: #faf5ed;
-  --color-ink-800: #f3ece0;
-  --color-ink-700: #fffdf9;
-  --color-ink-600: #ebe0cf;
-  --color-line: #ded2c0;
-  --color-line-strong: #b8a288;
+  --color-ink-900: #f3f3f5;
+  --color-ink-800: #f3f3f5;
+  --color-ink-700: #ffffff;
+  --color-ink-600: #e9e9ec;
+  --color-line: #e2e2e6;
+  --color-line-strong: #c7c7cf;
 
-  --color-parchment: #241c14;
-  --color-parchment-dim: #55483a;
-  --color-parchment-faint: #6b5946;
+  --color-parchment: #17171a;
+  --color-parchment-dim: #55555f;
+  --color-parchment-faint: #767680;
 
   --color-accent: #a8481a;
   --color-accent-bright: #8f3c13;
@@ -34,17 +34,17 @@
   /* The four level colours, fixed: a level is not the user's accent, or half of them would be
      green at once. `--color-warm` is what the full-access level is painted in. */
   --color-warm: #a8481a;
-  --color-jade: #26654c;
+  --color-jade: #1f6b4c;
   --color-amber: #7a520e;
-  --color-danger: #a8322c;
-  --color-info: #33549b;
+  --color-danger: #b02a25;
+  --color-info: #2f5399;
 
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   --radius-control: 0.375rem;
-  --radius-card: 0.625rem;
-  --radius-overlay: 0.875rem;
+  --radius-card: 0.75rem;
+  --radius-overlay: 1rem;
 
   /*
    * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
@@ -84,26 +84,26 @@
   :root[data-theme='dark'] {
     color-scheme: dark;
 
-    --color-ink-900: #14110e;
-    --color-ink-800: #1b1714;
-    --color-ink-700: #221d18;
-    --color-ink-600: #2b251f;
-    --color-line: #332c25;
-    --color-line-strong: #443a30;
+    --color-ink-900: #17171a;
+    --color-ink-800: #1d1d20;
+    --color-ink-700: #232327;
+    --color-ink-600: #2c2c32;
+    --color-line: #33333a;
+    --color-line-strong: #4a4a54;
 
-    --color-parchment: #f2ebe1;
-    --color-parchment-dim: #b3a794;
-    --color-parchment-faint: #837869;
+    --color-parchment: #f4f4f6;
+    --color-parchment-dim: #a4a4ae;
+    --color-parchment-faint: #7d7d87;
 
     --color-accent: #e2762f;
     --color-accent-bright: #f08a45;
     --color-accent-ink: #1a0f07;
 
     --color-warm: #e2762f;
-    --color-jade: #4fa98b;
-    --color-amber: #d9a23b;
-    --color-danger: #d9605a;
-    --color-info: #6d8fd1;
+    --color-jade: #56b394;
+    --color-amber: #dfa947;
+    --color-danger: #e46b64;
+    --color-info: #7b9ada;
   }
 
   /*

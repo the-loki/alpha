@@ -56,7 +56,7 @@ async function ask(window: Page, text: string) {
 /** Two conversations, so there is something to switch between. */
 async function twoConversations(window: Page) {
   await ask(window, 'the first question')
-  await window.getByRole('link', { name: 'New' }).click()
+  await window.getByRole('button', { name: /New conversation/ }).click()
   await ask(window, 'the second question')
 }
 

@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
+import { ArrowUpIcon } from './icons.tsx'
 
 /** The messages behind the running turn, each with the way to take it back. */
 function QueueStrip() {
@@ -32,9 +33,6 @@ function QueueStrip() {
     </ul>
   )
 }
-
-const PRIMARY =
-  'rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:cursor-not-allowed disabled:bg-accent/25 disabled:text-accent-ink/60'
 
 /**
  * The secondary actions are outlined, not filled: while a turn runs the accent belongs to the one
@@ -144,10 +142,10 @@ export function Composer() {
   }
 
   return (
-    <div className="shrink-0 border-t border-line bg-ink-900 px-8 pb-5 pt-4">
+    <div className="shrink-0 px-6 pt-2 pb-5">
       <div>
         <QueueStrip />
-        <div className="rounded-card border border-line bg-ink-700 px-3 py-2.5 focus-within:border-line-strong">
+        <div className="rounded-card border border-line bg-ink-800 px-3.5 py-2.5 transition-colors focus-within:border-line-strong">
           <textarea
             ref={field}
             rows={2}
@@ -168,8 +166,8 @@ export function Composer() {
             }}
             className="block w-full resize-none bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
           />
-          <div className="mt-1 flex items-center justify-between gap-4">
-            <span className="text-micro text-parchment-faint">{hint()}</span>
+          <div className="mt-1.5 flex items-center justify-between gap-4">
+            <span className="min-w-0 truncate text-micro text-parchment-faint">{hint()}</span>
             {running ? (
               <RunningActions
                 canRedirect={canRedirect}
@@ -177,8 +175,14 @@ export function Composer() {
                 onRedirect={(how) => void redirect(how)}
               />
             ) : (
-              <button type="button" onClick={() => void send()} disabled={!canSend} className={PRIMARY}>
-                Send
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={!canSend}
+                aria-label="Send"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-30"
+              >
+                <ArrowUpIcon />
               </button>
             )}
           </div>

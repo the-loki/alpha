@@ -22,20 +22,25 @@ third palette, and resolving it once keeps the stylesheet to plain selectors.
 
 | Token | Light (default) | Dark | Use |
 | --- | --- | --- | --- |
-| `--ink-900` | `#FAF5ED` | `#14110E` | Window background |
-| `--ink-800` | `#F3ECE0` | `#1B1714` | Sidebar, raised panels |
-| `--ink-700` | `#FFFDF9` | `#221D18` | Cards, composer |
-| `--ink-600` | `#EBE0CF` | `#2B251F` | Hover, selected row |
-| `--line` | `#DED2C0` | `#332C25` | Hairline borders, dividers |
-| `--line-strong` | `#B8A288` | `#443A30` | Focused input border |
-| `--parchment` | `#241C14` | `#F2EBE1` | Primary text |
-| `--parchment-dim` | `#55483A` | `#B3A794` | Secondary text, labels |
-| `--parchment-faint` | `#6B5946` | `#837869` | Metadata, timestamps |
+| `--ink-900` | `#F3F3F5` | `#17171A` | The page behind everything |
+| `--ink-800` | `#F3F3F5` | `#1D1D20` | The sidebar, and the composer's own surface |
+| `--ink-700` | `#FFFFFF` | `#232327` | Cards: the content pane and the settings panels |
+| `--ink-600` | `#E9E9EC` | `#2C2C32` | Hover, and the selected row |
+| `--line` | `#E2E2E6` | `#33333A` | Hairline borders, dividers |
+| `--line-strong` | `#C7C7CF` | `#4A4A54` | Focused input border |
+| `--parchment` | `#17171A` | `#F4F4F6` | Primary text |
+| `--parchment-dim` | `#55555F` | `#A4A4AE` | Secondary text, labels |
+| `--parchment-faint` | `#767680` | `#7D7D87` | Metadata, timestamps |
 | `--warm` | `#A8481A` | `#E2762F` | The `full-access` level, and nothing else |
-| `--jade` | `#26654C` | `#4FA98B` | Success, connected, auto-approved |
-| `--amber` | `#7A520E` | `#D9A23B` | Waiting on the user, warnings |
-| `--danger` | `#A8322C` | `#D9605A` | Denied, failed, destructive |
-| `--info` | `#33549B` | `#6D8FD1` | Neutral system notices |
+| `--jade` | `#1F6B4C` | `#56B394` | Success, connected, auto-approved |
+| `--amber` | `#7A520E` | `#DFA947` | Waiting on the user, warnings |
+| `--danger` | `#B02A25` | `#E46B64` | Denied, failed, destructive |
+| `--info` | `#2F5399` | `#7B9ADA` | Neutral system notices |
+
+The surfaces are neutral grey and the cards are white, so the page and the content separate without
+another border around the window: the content pane and each settings panel are a rounded card
+floating on `--ink-900`. **The accent is the only colour in the chrome** — everything else is the
+grey scale above plus the four semantic tokens.
 
 ### The accent is a slot, not a colour
 
