@@ -55,6 +55,17 @@ is one flag on the conversation's entry in the list, never a change to the trans
 conversation that is working, or waiting on an answer, is not archived: the card asking for that
 answer lives inside it. Avoid: *closed*, *deleted* (deleting is the other action, and it is final).
 
+### Task
+
+A prompt the workbench runs on its own, in one workspace, at a level chosen when the task is made
+and frozen with it: a schedule, a name, and the promise that it may act that far while nobody is
+watching. A task that is stopped keeps its prompt and its runs. Avoid: *job*, *cron* (that is one
+way of writing a schedule, and this workbench does not use it).
+
+*Run* is one execution of a task: a conversation of its own, titled with the task's name, started
+by the clock or by hand. A run that missed its moment while the workbench was closed is caught up
+once, and a run nobody is watching refuses a call that would ask rather than waiting.
+
 ### Queued Message
 
 What the user typed while the agent was working and meant to send *after* it: it waits in the
