@@ -11,6 +11,7 @@ import type { Undef } from './maybe.ts'
 import { PERMISSION_LEVELS } from './permission.ts'
 import type { ConversationSummary } from './runtime-events.ts'
 import { THINKING_LEVELS } from './thinking.ts'
+import { folderName, type WorkspaceRef } from './workspace.ts'
 
 const ConversationSummarySchema = Type.Object({
   id: Type.String(),
@@ -54,38 +55,52 @@ export function listForWorkspace(index: ConversationIndex, workspacePath: string
     .sort((left, right) => right.updatedAt - left.updatedAt)
 }
 
-/** One workspace's conversations, as the sidebar shows them. */
-export interface WorkspaceGroup {
+/** One folder in the sidebar, with the conversations that belong to it. */
+export interface FolderNode {
   path: string
   name: string
-  count: number
+  /** The newest thing that happened here: its newest conversation, or when it was last pointed at. */
+  lastActiveAt: number
   conversations: ConversationSummary[]
 }
 
 /**
- * The sidebar's shape: one group per workspace, the most recently used workspace first, each
- * group ordered by recency. Grouping is by path, not by name, because two folders can share a
- * name and merging them would be a lie.
+ * The sidebar's shape: every folder the workbench knows, each with its conversations, ordered by
+ * the most recent thing that happened in it. Folders come from what is remembered *and* from what
+ * has conversations, so a folder the workbench has forgotten — the recent list is short — does not
+ * take its conversations with it. Grouping is by path, not by name, because two folders can share
+ * a name and merging them would be a lie.
  */
-export function groupByWorkspace(conversations: ConversationSummary[]): WorkspaceGroup[] {
-  const groups = new Map<string, ConversationSummary[]>()
-  for (const conversation of conversations) {
-    const existing = groups.get(conversation.workspacePath)
-    if (existing === undefined) groups.set(conversation.workspacePath, [conversation])
-    else existing.push(conversation)
+export function folderTree(recents: WorkspaceRef[], conversations: ConversationSummary[]): FolderNode[] {
+  const folders = new Map<string, FolderNode>()
+  for (const recent of recents) {
+    folders.set(recent.path, {
+      path: recent.path,
+      name: recent.name,
+      lastActiveAt: recent.lastOpenedAt,
+      conversations: [],
+    })
   }
 
-  return [...groups.entries()]
-    .map(([path, items]) => {
-      const sorted = [...items].sort((left, right) => right.updatedAt - left.updatedAt)
-      return { path, name: nameOf(path), count: sorted.length, conversations: sorted }
-    })
-    .sort((left, right) => (right.conversations[0]?.updatedAt ?? 0) - (left.conversations[0]?.updatedAt ?? 0))
-}
+  for (const conversation of conversations) {
+    const existing = folders.get(conversation.workspacePath)
+    const folder: FolderNode = existing ?? {
+      path: conversation.workspacePath,
+      name: folderName(conversation.workspacePath),
+      lastActiveAt: 0,
+      conversations: [],
+    }
+    folder.conversations.push(conversation)
+    folder.lastActiveAt = Math.max(folder.lastActiveAt, conversation.updatedAt)
+    if (existing === undefined) folders.set(conversation.workspacePath, folder)
+  }
 
-function nameOf(path: string): string {
-  const segments = path.split(/[/\\]/).filter((segment) => segment !== '')
-  return segments[segments.length - 1] ?? path
+  return [...folders.values()]
+    .map((folder) => ({
+      ...folder,
+      conversations: [...folder.conversations].sort((left, right) => right.updatedAt - left.updatedAt),
+    }))
+    .sort((left, right) => right.lastActiveAt - left.lastActiveAt || left.name.localeCompare(right.name))
 }
 
 export function upsertConversation(index: ConversationIndex, conversation: ConversationSummary): ConversationIndex {

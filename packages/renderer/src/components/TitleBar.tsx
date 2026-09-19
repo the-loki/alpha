@@ -47,21 +47,11 @@ function WindowControls() {
 }
 
 export function TitleBar() {
-  const workspace = useShell((state) => state.workspace)
-  const name = workspace.kind === 'selected' ? workspace.workspace.name : 'No workspace'
-
   return (
     <header className="drag-region flex h-11 shrink-0 items-center justify-between border-b border-line bg-ink-800 pl-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="text-ui font-semibold tracking-wide text-parchment">Alpha</span>
-        <span className="h-4 w-px bg-line" aria-hidden="true" />
-        <span
-          className="truncate text-xs text-parchment-dim"
-          title={workspace.kind === 'selected' ? workspace.workspace.path : ''}
-        >
-          {name}
-        </span>
-      </div>
+      {/* No folder name here: the workbench works in as many as you have added, and the sidebar is
+          where they are. This strip names the app and holds the window controls. */}
+      <span className="text-ui font-semibold tracking-wide text-parchment">Alpha</span>
 
       <div className="flex items-center gap-2">
         {/* Settings is reached from the sidebar, where the reference puts it, and from Ctrl+,. */}

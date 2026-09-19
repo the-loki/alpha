@@ -34,9 +34,9 @@ async function launch() {
   })
   const window = await app.firstWindow()
   await window.waitForSelector('#root > *')
-  // The workspace arrives with the launch state; a shortcut pressed before it lands lands in a
+  // The folder arrives with the launch state; a shortcut pressed before it lands lands in a
   // workbench that does not know where it is yet.
-  await window.getByRole('button', { name: /sandbox/ }).waitFor()
+  await window.getByRole('complementary').getByRole('heading', { name: 'sandbox' }).waitFor()
   await window.setViewportSize({ width: 1440, height: 900 })
   return { app, window, workspace }
 }

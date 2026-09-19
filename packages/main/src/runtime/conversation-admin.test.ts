@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { type ChatMessage, type ConversationSummary, groupByWorkspace, type RuntimeEvent } from '@alpha/core'
+import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'
 import { ProviderStore } from '../providers/store.ts'
@@ -57,17 +57,19 @@ describe('[runtime] naming a conversation', () => {
 })
 
 describe('[runtime] the conversation list', () => {
-  it('groups by workspace, most recently used first', async () => {
+  it('shows each folder it has worked in, with what is in it', async () => {
     const { manager, workspace } = freshManager()
     const second = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
     await manager.create(workspace)
     await manager.create(second)
 
-    const groups = groupByWorkspace(manager.list())
+    // Nothing is remembered here — this is the manager's own list, with no recents behind it — so
+    // both folders are in the tree because both have conversations.
+    const folders = folderTree([], manager.list())
 
-    expect(groups).toHaveLength(2)
-    expect(groups.map((group) => group.path).sort()).toEqual([workspace, second].sort())
-    expect(groups.every((group) => group.count === 1)).toBe(true)
+    expect(folders).toHaveLength(2)
+    expect(folders.map((folder) => folder.path).sort()).toEqual([workspace, second].sort())
+    expect(folders.every((folder) => folder.conversations.length === 1)).toBe(true)
   })
 
   it('marks a conversation as running while a turn is in flight, and idle after it', async () => {

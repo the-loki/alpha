@@ -113,7 +113,7 @@ test('a browser on the machine opens the workbench and runs a turn', async () =>
     const page = await openInBrowser(browser, url, TOKEN)
 
     // The workbench itself, not a viewer: the same sidebar, the same composer, the same ledger.
-    await expect(page.getByRole('button', { name: /^sandbox/ })).toBeVisible()
+    await expect(page.getByRole('complementary').getByRole('heading', { name: 'sandbox' })).toBeVisible()
     await expect(page.getByRole('main')).toBeVisible()
     await ask(page, 'rename the parser module')
 
@@ -163,12 +163,14 @@ test('a browser is offered no folder picker, because it has none', async () => {
   try {
     const page = await openInBrowser(browser, url, TOKEN)
 
-    // The workspace menu: the folders we remember, and nothing that opens a dialog this browser
-    // cannot have. The refusal is real either way — the picker is refused in main — but a menu
-    // that offers it would only ever produce that refusal.
-    await page.getByRole('button', { name: /^sandbox/ }).click()
-    await expect(page.getByRole('menu', { name: 'Workspaces' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: 'Open another folder…' })).toHaveCount(0)
+    // The folders this workbench already works in are here, and the one thing that needs a dialog
+    // the browser cannot have is replaced by the sentence that says why. The refusal is real
+    // either way — the picker is refused in main — but a button that could only ever produce it
+    // would be an offer the browser cannot keep.
+    const sidebar = page.getByRole('complementary')
+    await expect(sidebar.getByRole('heading', { name: 'sandbox' })).toBeVisible()
+    await expect(sidebar.getByRole('button', { name: 'Add a folder' })).toHaveCount(0)
+    await expect(sidebar.getByText('A folder can only be added in the desktop app.')).toBeVisible()
   } finally {
     await browser.close()
     await app.close()

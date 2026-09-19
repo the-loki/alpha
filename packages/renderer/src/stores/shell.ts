@@ -1,12 +1,14 @@
 import {
   type Accent,
   type AppearancePatch,
+  composerFolder,
   DEFAULT_LEVEL,
   DEFAULT_THEME,
   emptyWorkspaceState,
   type LaunchState,
   type PermissionLevel,
   type Theme,
+  type Undef,
   type WorkspaceRef,
   type WorkspaceSelection,
 } from '@alpha/core'
@@ -37,13 +39,22 @@ export interface ShellStore {
   unlock: (token: string) => Promise<void>
   load: () => Promise<void>
   pickWorkspace: () => Promise<void>
-  openRecent: (path: string) => Promise<void>
+  /** Points the composer at a folder: what a new conversation in it means. */
+  selectWorkspace: (path: string) => Promise<void>
   setPermissionLevel: (level: PermissionLevel) => Promise<void>
   setAppearance: (patch: AppearancePatch) => Promise<void>
   setWindowMaximized: (maximized: boolean) => void
   /** Spends the memory of the last conversation: it is for one launch, not for every visit to / */
   clearResume: () => void
 }
+
+/**
+ * The folder the composer's next message belongs to, ready to select from the store. One folder is
+ * "current" at a time — the one the next conversation is created in — and the sidebar is what
+ * changes it.
+ */
+export const composerFolderOf = (state: ShellStore): Undef<WorkspaceRef> =>
+  composerFolder({ selection: state.workspace, recents: state.recents })
 
 const applyLaunchState = (state: LaunchState) => ({
   accent: state.accent,
@@ -78,7 +89,7 @@ function systemMode(): 'light' | 'dark' {
 }
 
 /** Where the desktop offers a native folder dialog, a browser has nothing to offer instead. */
-export const NO_FOLDER_PICKER = 'A folder can only be opened in the desktop app.'
+export const NO_FOLDER_PICKER = 'A folder can only be added in the desktop app.'
 
 export const useShell = create<ShellStore>((set, get) => ({
   ready: false,
@@ -120,7 +131,7 @@ export const useShell = create<ShellStore>((set, get) => ({
     await get().load()
   },
 
-  openRecent: async (path: string) => {
+  selectWorkspace: async (path: string) => {
     set(applyLaunchState(await bridge().selectWorkspace(path)))
   },
 

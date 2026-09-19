@@ -2,7 +2,7 @@ import type { Null } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { useShell } from '../stores/shell.ts'
+import { composerFolderOf, useShell } from '../stores/shell.ts'
 import { ArrowUpIcon } from './icons.tsx'
 
 /** The messages behind the running turn, each with the way to take it back. */
@@ -79,7 +79,7 @@ function RunningActions({
  */
 export function Composer() {
   const [text, setText] = useState('')
-  const workspace = useShell((state) => state.workspace)
+  const composerFolder = useShell(composerFolderOf)
   const model = useShell((state) => state.model)
   const status = useConversations((state) => state.transcript.status)
   const sendOrCreate = useConversations((state) => state.sendOrCreate)
@@ -95,7 +95,7 @@ export function Composer() {
     if (focusSignal > 0) field.current?.focus()
   }, [focusSignal])
 
-  const hasWorkspace = workspace.kind === 'selected'
+  const hasWorkspace = composerFolder !== undefined
   const running = status === 'running'
   const writable = hasWorkspace && model.configured && text.trim() !== ''
   const canSend = writable && !running
@@ -116,10 +116,10 @@ export function Composer() {
   }, [running, stop])
 
   const send = async () => {
-    if (!canSend || workspace.kind !== 'selected') return
+    if (!canSend || composerFolder === undefined) return
     const message = text
     setText('')
-    const id = await sendOrCreate(workspace.workspace.path, message)
+    const id = await sendOrCreate(composerFolder.path, message)
     void navigate({ to: '/c/$conversationId', params: { conversationId: id } })
   }
 
@@ -131,7 +131,7 @@ export function Composer() {
   }
 
   const hint = () => {
-    if (!hasWorkspace) return 'A workspace is the folder the agent works in.'
+    if (!hasWorkspace) return 'A folder is what the agent works in. Add one from the sidebar.'
     if (!model.configured) return `No model configured yet: ${model.description}`
     if (running) {
       return text.trim() === ''
@@ -151,7 +151,7 @@ export function Composer() {
             rows={2}
             aria-label="Message the agent"
             value={text}
-            placeholder={hasWorkspace ? 'Ask the agent to change something…' : 'Open a folder first'}
+            placeholder={hasWorkspace ? 'Ask the agent to change something…' : 'Add a folder first'}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {

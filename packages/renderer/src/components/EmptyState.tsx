@@ -1,21 +1,22 @@
-import { NO_FOLDER_PICKER, useShell } from '../stores/shell.ts'
+import { composerFolderOf, NO_FOLDER_PICKER, useShell } from '../stores/shell.ts'
 
 /**
- * One sentence and one action. Which sentence depends on how far the user has got: no folder,
- * or a folder with nothing asked of it yet.
+ * One sentence and one action. Which sentence depends on how far the user has got: no folder at
+ * all, or folders and nowhere in particular to be — in which case it names the one the next
+ * message lands in, because the sidebar is showing several at once.
  */
 export function EmptyState() {
-  const workspace = useShell((state) => state.workspace)
+  const composerFolder = useShell(composerFolderOf)
   const host = useShell((state) => state.host)
   const pickWorkspace = useShell((state) => state.pickWorkspace)
 
-  if (workspace.kind === 'none') {
+  if (composerFolder === undefined) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-        <h1 className="text-xl font-medium text-parchment">Open a folder to begin</h1>
+        <h1 className="text-xl font-medium text-parchment">Add a folder to begin</h1>
         <p className="mt-2 max-w-md text-ui leading-relaxed text-parchment-dim">
-          A workspace is the folder the agent reads and edits. Everything you ask for happens inside it, and nothing
-          happens outside it without your say-so.
+          A folder is what the agent reads and edits. Everything you ask for happens inside one, and nothing happens
+          outside it without your say-so.
         </p>
         {host === 'browser' ? (
           <p className="mt-5 text-ui text-parchment-dim">{NO_FOLDER_PICKER}</p>
@@ -25,7 +26,7 @@ export function EmptyState() {
             onClick={() => void pickWorkspace()}
             className="mt-5 rounded-control bg-accent px-4 py-2 text-ui font-medium text-accent-ink transition-colors hover:bg-accent-bright"
           >
-            Open folder
+            Choose a folder
           </button>
         )}
       </div>
@@ -34,11 +35,11 @@ export function EmptyState() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-      <h1 className="text-xl font-medium text-parchment">{workspace.workspace.name}</h1>
-      <p className="mt-2 max-w-md font-mono text-xs text-parchment-faint">{workspace.workspace.path}</p>
+      <h1 className="text-xl font-medium text-parchment">{composerFolder.name}</h1>
+      <p className="mt-2 max-w-md font-mono text-xs text-parchment-faint">{composerFolder.path}</p>
       <p className="mt-4 max-w-md text-ui leading-relaxed text-parchment-dim">
-        Ask for something to change in this folder. The agent reads before it writes, and every tool it reaches for is
-        gated by the permission level in the header.
+        Say what you want changed here and this becomes a conversation of its own. The other folders stay in the
+        sidebar, with what was asked in them.
       </p>
     </div>
   )

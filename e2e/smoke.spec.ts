@@ -27,8 +27,10 @@ test('a fresh install opens on the empty workbench', async () => {
   const { app, window } = await launchApp()
 
   await expect(window.locator('header')).toContainText('Alpha')
-  await expect(window.getByRole('heading', { name: 'Open a folder to begin' })).toBeVisible()
-  await expect(window.getByRole('button', { name: 'Open folder' })).toBeVisible()
+  await expect(window.getByRole('heading', { name: 'Add a folder to begin' })).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Choose a folder' })).toBeVisible()
+  // The sidebar's own way in, which stays there once the empty state is gone.
+  await expect(window.getByRole('button', { name: 'Add a folder' })).toBeVisible()
   await expect(window.getByRole('button', { name: 'Send' })).toBeVisible()
   await expect(window.getByRole('button', { name: /Ask/ })).toBeVisible()
 
@@ -57,8 +59,11 @@ test('the remembered workspace is restored on launch', async () => {
     },
   })
 
-  await expect(window.locator('header')).toContainText('alpha-e2e-workspace')
+  await expect(window.locator('header')).toContainText('Alpha')
   await expect(window.getByRole('button', { name: /Accept edits/ })).toBeVisible()
+  // The folder it remembers is in the sidebar; the pane says which folder the next message lands
+  // in, because several can be in play at once.
+  await expect(window.getByRole('complementary').getByRole('heading', { name: 'alpha-e2e-workspace' })).toBeVisible()
   await expect(window.getByRole('main').getByText('/tmp/alpha-e2e-workspace')).toBeVisible()
 
   await window.setViewportSize({ width: 1440, height: 900 })
@@ -76,7 +81,7 @@ test('the permission level is changeable and survives a relaunch', async () => {
   await app.close()
 })
 
-test('the remembered workspaces are one click away', async () => {
+test('every remembered folder is in the sidebar, and the next message lands in the one you pick', async () => {
   const alpha = mkdtempSync(join(tmpdir(), 'alpha-e2e-alpha-'))
   const beta = mkdtempSync(join(tmpdir(), 'alpha-e2e-beta-'))
   const { app, window } = await launchApp({
@@ -92,17 +97,20 @@ test('the remembered workspaces are one click away', async () => {
     },
   })
 
-  // The button shows where the agent is pointed, and the list is what it remembers.
-  await expect(window.getByRole('button', { name: /beta/ })).toBeVisible()
-  await window.getByRole('button', { name: /beta/ }).click()
-  await window.getByRole('menuitem', { name: /alpha/ }).click()
+  // Both folders are on screen at once: the workbench is not pointed at one of them, it is
+  // working in as many as you have added, and each keeps its own conversations.
+  const sidebar = window.getByRole('complementary')
+  await expect(sidebar.getByRole('heading', { name: 'beta' })).toBeVisible()
+  await expect(sidebar.getByRole('heading', { name: 'alpha' })).toBeVisible()
+  await expect(sidebar.getByText('No conversations yet')).toHaveCount(2)
+  await expect(window.getByRole('main').getByRole('heading', { name: 'beta' })).toBeVisible()
 
-  await expect(window.getByRole('button', { name: new RegExp(alpha) })).toBeVisible()
+  // Picking a folder moves the composer, which is the only thing "current" means here.
+  await sidebar.getByRole('button', { name: 'Start a conversation in alpha' }).click()
+  await expect(window.getByRole('main').getByRole('heading', { name: 'alpha' })).toBeVisible()
 
   await window.setViewportSize({ width: 1440, height: 900 })
-  await window.getByRole('button', { name: /alpha/ }).click()
-  await expect(window.getByRole('menu', { name: 'Workspaces' })).toBeVisible()
-  await window.screenshot({ path: join(SHOT_DIR, 'workspace-menu.png') })
+  await window.screenshot({ path: join(SHOT_DIR, 'sidebar-folders.png') })
   await app.close()
 })
 

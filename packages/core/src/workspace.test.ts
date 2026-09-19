@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  composerFolder,
   emptyWorkspaceState,
+  folderName,
   RECENTS_LIMIT,
   rememberWorkspace,
   type WorkspaceRef,
@@ -11,6 +13,36 @@ const at = (path: string, lastOpenedAt = 0): WorkspaceRef => ({
   path,
   name: path.split('/').pop() ?? path,
   lastOpenedAt,
+})
+
+describe('[core] folderName', () => {
+  it('names a folder after its last segment', () => {
+    expect(folderName('/home/dev/alpha')).toBe('alpha')
+  })
+
+  it('ignores a trailing separator', () => {
+    expect(folderName('/home/dev/alpha///')).toBe('alpha')
+  })
+
+  it('reads a Windows path', () => {
+    expect(folderName('C:\\dev\\alpha')).toBe('alpha')
+  })
+})
+
+describe('[core] composerFolder', () => {
+  it('points at the selected folder', () => {
+    const state = rememberWorkspace(emptyWorkspaceState(), at('/dev/beta', 1))
+    expect(composerFolder(state)?.path).toBe('/dev/beta')
+  })
+
+  it('falls back to the folder used most recently when nothing is selected', () => {
+    const state = { selection: { kind: 'none' } as const, recents: [at('/dev/beta', 2), at('/dev/alpha', 1)] }
+    expect(composerFolder(state)?.path).toBe('/dev/beta')
+  })
+
+  it('has nothing to point at when no folder is remembered', () => {
+    expect(composerFolder(emptyWorkspaceState())).toBeUndefined()
+  })
 })
 
 describe('[core] workspaceFromPath', () => {

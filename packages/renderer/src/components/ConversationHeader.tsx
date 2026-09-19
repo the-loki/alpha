@@ -1,4 +1,12 @@
-import { formatCost, formatTokens, THINKING_LEVELS, type ThinkingLevel, thinkingLabel, totalUsage } from '@alpha/core'
+import {
+  folderName,
+  formatCost,
+  formatTokens,
+  THINKING_LEVELS,
+  type ThinkingLevel,
+  thinkingLabel,
+  totalUsage,
+} from '@alpha/core'
 import { useEffect, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useProviders } from '../stores/providers.ts'
@@ -68,7 +76,14 @@ export function ConversationHeader() {
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-8 py-2">
-      <h1 className="min-w-0 truncate text-ui font-medium text-parchment">{summary.title}</h1>
+      {/* Which folder this conversation belongs to is part of what it is, now that several are in
+          play at once; the sidebar shows the same name. */}
+      <span className="flex min-w-0 items-baseline gap-2">
+        <h1 className="min-w-0 truncate text-ui font-medium text-parchment">{summary.title}</h1>
+        <span className="shrink-0 truncate font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
+          {folderName(summary.workspacePath)}
+        </span>
+      </span>
       <div className="flex items-center gap-2">
         <UsageReadout />
         <ConversationActions />

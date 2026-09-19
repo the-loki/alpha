@@ -236,9 +236,9 @@ test('a fresh workbench opens light, and the dark palette is one click away', as
   expect(await page()).not.toBe(paintedLight)
 
   // Back to the workbench: the sidebar comes back with it, and it still names the folder the
-  // agent is pointed at rather than only its path.
+  // composer is pointed at rather than only its path.
   await window.getByRole('link', { name: /Back to the workbench/ }).click()
-  await expect(window.getByRole('complementary').getByRole('button', { name: /sandbox/ })).toBeVisible()
+  await expect(window.getByRole('complementary').getByRole('heading', { name: 'sandbox' })).toBeVisible()
   await window.getByRole('button', { name: /^which theme is this/ }).click()
   await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible()
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })

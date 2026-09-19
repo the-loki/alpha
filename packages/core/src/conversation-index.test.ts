@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   emptyConversationIndex,
   findConversation,
-  groupByWorkspace,
+  folderTree,
   listForWorkspace,
   parseConversationIndex,
   removeConversation,
   upsertConversation,
 } from './conversation-index.ts'
 import type { ConversationSummary } from './runtime-events.ts'
+import type { WorkspaceRef } from './workspace.ts'
 
 const conversation = (id: string, workspacePath: string, updatedAt: number): ConversationSummary => ({
   id,
@@ -20,6 +21,12 @@ const conversation = (id: string, workspacePath: string, updatedAt: number): Con
   permissionLevel: 'ask',
   model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
   thinkingLevel: 'medium',
+})
+
+const folder = (path: string, lastOpenedAt: number, name = path.slice(path.lastIndexOf('/') + 1)): WorkspaceRef => ({
+  path,
+  name,
+  lastOpenedAt,
 })
 
 const index = {
@@ -95,40 +102,37 @@ describe('[core] findConversation', () => {
   })
 })
 
-describe('[core] groupByWorkspace', () => {
-  it('groups conversations under the folder they belong to', () => {
-    const groups = groupByWorkspace([
-      conversation('a', '/dev/alpha', 10),
-      conversation('b', '/dev/beta', 30),
-      conversation('c', '/dev/alpha', 20),
-    ])
-
-    expect(groups.map((group) => group.path)).toEqual(['/dev/beta', '/dev/alpha'])
-    expect(groups[1].name).toBe('alpha')
-    expect(groups[1].conversations.map((entry) => entry.id)).toEqual(['c', 'a'])
+describe('[core] folderTree', () => {
+  it('keeps a remembered folder that has no conversations yet', () => {
+    const tree = folderTree([folder('/dev/alpha', 10)], [])
+    expect(tree.map((node) => node.path)).toEqual(['/dev/alpha'])
+    expect(tree[0].conversations).toEqual([])
   })
 
-  it('orders each workspace by recency, newest first', () => {
-    const groups = groupByWorkspace([
-      conversation('old', '/dev/alpha', 1),
-      conversation('new', '/dev/alpha', 90),
-      conversation('other', '/dev/beta', 50),
-    ])
-
-    expect(groups.map((group) => group.name)).toEqual(['alpha', 'beta'])
-    expect(groups[0].conversations.map((entry) => entry.id)).toEqual(['new', 'old'])
+  it('adds a folder that has conversations but is not remembered, named from its path', () => {
+    const tree = folderTree([], [conversation('a', '/dev/beta', 10)])
+    expect(tree.map((node) => node.name)).toEqual(['beta'])
+    expect(tree[0].conversations.map((entry) => entry.id)).toEqual(['a'])
   })
 
-  it('carries the count of what is in each group', () => {
-    const groups = groupByWorkspace([conversation('a', '/dev/alpha', 1), conversation('b', '/dev/alpha', 2)])
-    expect(groups[0].count).toBe(2)
+  it('lists a folder once, with the name the workbench remembers', () => {
+    const tree = folderTree([folder('/dev/beta', 1, 'Beta (work)')], [conversation('a', '/dev/beta', 10)])
+    expect(tree).toHaveLength(1)
+    expect(tree[0].name).toBe('Beta (work)')
+    expect(tree[0].conversations.map((entry) => entry.id)).toEqual(['a'])
   })
 
-  it('has nothing to group when there are no conversations', () => {
-    expect(groupByWorkspace([])).toEqual([])
+  it('orders folders by the most recent thing that happened in them', () => {
+    const tree = folderTree([folder('/dev/alpha', 50), folder('/dev/beta', 20)], [conversation('a', '/dev/beta', 90)])
+    expect(tree.map((node) => node.path)).toEqual(['/dev/beta', '/dev/alpha'])
   })
 
-  it('names a workspace from its last segment, whatever the platform', () => {
-    expect(groupByWorkspace([conversation('a', 'C:\\dev\\alpha', 1)])[0].name).toBe('alpha')
+  it('orders the conversations inside a folder newest first', () => {
+    const tree = folderTree([], [conversation('old', '/dev/alpha', 1), conversation('new', '/dev/alpha', 90)])
+    expect(tree[0].conversations.map((entry) => entry.id)).toEqual(['new', 'old'])
+  })
+
+  it('has nothing to show when there are no folders and no conversations', () => {
+    expect(folderTree([], [])).toEqual([])
   })
 })

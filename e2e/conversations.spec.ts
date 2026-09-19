@@ -61,7 +61,7 @@ const sessionsHaveTranscripts = (dataDirectory: string): boolean => {
   return readdirSync(root, { recursive: true }).some((entry) => String(entry).endsWith('.jsonl'))
 }
 
-test('the sidebar groups conversations by workspace, with a count', async () => {
+test('the sidebar shows every folder it has worked in, each with its own conversations', async () => {
   const first = await launch()
   await ask(first.window, 'a question in the first folder')
   await expect(first.window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
@@ -71,11 +71,18 @@ test('the sidebar groups conversations by workspace, with a count', async () => 
   await ask(second.window, 'a question in the second folder')
   await expect(second.window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
 
+  // The second window remembers only its own folder, and the first one is still on screen with
+  // what was asked in it: a folder the workbench stopped remembering does not take its
+  // conversations away with it.
   const sidebar = second.window.getByRole('complementary')
-  await expect(sidebar.getByText('Other workspaces')).toBeVisible()
   const ours = sidebar.locator(`[data-workspace="${first.workspace}"]`)
   await expect(ours).toContainText('a question in the first folder')
-  await expect(ours.getByRole('heading')).toContainText('1')
+  await expect(ours.getByTitle('1 conversation')).toBeVisible()
+  const here = sidebar.locator(`[data-workspace="${second.workspace}"]`)
+  await expect(here).toContainText('a question in the second folder')
+  // Neither folder is "the open one": both are on screen, each with a way to start another.
+  await expect(ours.getByRole('button', { name: /^Start a conversation in / })).toHaveCount(1)
+  await expect(here.getByRole('button', { name: /^Start a conversation in / })).toHaveCount(1)
   await second.window.screenshot({ path: join(SHOT_DIR, 'sidebar-grouped.png') })
   await second.app.close()
 })
@@ -137,7 +144,9 @@ test('deleting a conversation takes its transcript off the disk', async () => {
   await window.getByRole('button', { name: 'Delete this will be deleted' }).click()
 
   await expect(window.getByRole('button', { name: /this will be deleted/ })).toHaveCount(0)
-  await expect(window.getByText(/Nothing here yet/)).toBeVisible()
+  // The folder stays where it was in the sidebar — it is still a folder the workbench works in —
+  // and says it holds nothing.
+  await expect(window.getByRole('complementary').getByText('No conversations yet')).toBeVisible()
   expect(sessionsHaveTranscripts(dataDirectory)).toBe(false)
 
   await app.close()
