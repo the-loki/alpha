@@ -7,8 +7,8 @@ import { DESTRUCTIVE_ACTION, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls
 
 const API_NAMES: Record<ProviderApi, TextKey> = {
   'openai-completions': 'settings.apiOpenai',
+  'openai-responses': 'settings.apiResponses',
   'anthropic-messages': 'settings.apiAnthropic',
-  'google-generative-ai': 'settings.apiGoogle',
 }
 
 /**

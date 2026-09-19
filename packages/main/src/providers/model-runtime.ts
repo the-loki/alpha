@@ -18,8 +18,8 @@ import {
   type ProviderStreams,
 } from '@earendil-works/pi-ai'
 import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messages.lazy'
-import { googleGenerativeAIApi } from '@earendil-works/pi-ai/api/google-generative-ai.lazy'
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy'
+import { openAIResponsesApi } from '@earendil-works/pi-ai/api/openai-responses.lazy'
 import type { ProviderStore } from './store.ts'
 
 export interface ProviderModelRuntime {
@@ -41,8 +41,8 @@ const authFor = (store: ProviderStore, providerId: string) => ({
 /** The three protocols Alpha speaks, in one table: the record's `api` picks the implementation. */
 const API_FACTORY: Record<ProviderApi, () => ProviderStreams> = {
   'openai-completions': openAICompletionsApi,
+  'openai-responses': openAIResponsesApi,
   'anthropic-messages': anthropicMessagesApi,
-  'google-generative-ai': googleGenerativeAIApi,
 }
 
 function toPiModel(provider: StoredProvider, model: ProviderModelDefinition): Model<Api> {

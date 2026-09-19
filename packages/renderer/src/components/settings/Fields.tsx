@@ -27,14 +27,14 @@ export function TextField(props: {
 /** Each protocol by the name people know it by, plus the line that says who speaks it. */
 const API_LABELS: Record<ProviderApi, TextKey> = {
   'openai-completions': 'settings.apiOpenai',
+  'openai-responses': 'settings.apiResponses',
   'anthropic-messages': 'settings.apiAnthropic',
-  'google-generative-ai': 'settings.apiGoogle',
 }
 
 const API_NOTES: Record<ProviderApi, TextKey> = {
   'openai-completions': 'settings.apiOpenaiNote',
+  'openai-responses': 'settings.apiResponsesNote',
   'anthropic-messages': 'settings.apiAnthropicNote',
-  'google-generative-ai': 'settings.apiGoogleNote',
 }
 
 /**

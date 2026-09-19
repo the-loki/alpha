@@ -65,14 +65,15 @@ components.
 
 ## C3.6 — Three wire protocols, and no catalog
 
-Alpha speaks exactly three protocols — `openai-completions`, `anthropic-messages`,
-`google-generative-ai` — and ships no catalog of providers. A person adds a connection by naming
+Alpha speaks exactly three protocols — `openai-completions`, `openai-responses`,
+`anthropic-messages` — and ships no catalog of providers. A person adds a connection by naming
 its base URL and picking one of the three; there is no "add Anthropic" button, because that button
 is a host, a logo and a key format that have to be maintained forever, and because the list of
 OpenAI-compatible endpoints is longer than any catalog can track.
 
-The three are the mainstream, and the first covers most of the rest: a gateway, a local server and
-a hosted provider that "speaks OpenAI" all take the same request.
+The three are the mainstream: OpenAI's original shape, OpenAI's newer one, and Anthropic's. The
+first covers most of the rest, since a gateway, a local server and a hosted provider that "speaks
+OpenAI" all take the same request.
 
 **Enforcement:** `PROVIDER_APIS` is a closed union in `core`, `pnpm check:constraints` scans for
 hosts, and no settings copy names a provider as a thing to add.

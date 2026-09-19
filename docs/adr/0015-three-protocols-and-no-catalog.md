@@ -1,7 +1,7 @@
 # Three protocols, no catalog, and a model list that belongs to the user
 
-Alpha speaks exactly three wire protocols — OpenAI chat completions, Anthropic messages, Google
-generative AI — and ships **no catalog of providers and no model ids**. A provider is a connection
+Alpha speaks exactly three wire protocols — OpenAI chat completions, OpenAI responses, Anthropic
+messages — and ships **no catalog of providers and no model ids**. A provider is a connection
 the user describes; the models it serves are a separate setting.
 
 ## Context
@@ -21,10 +21,10 @@ wanted.
 
 ## Decision
 
-**Three protocols, as a closed union in `core`.** `openai-completions`, `anthropic-messages`,
-`google-generative-ai`. The first is the de-facto standard that gateways and local servers copy;
-the second and third are the two hosted APIs with their own shape. Each is one API implementation
-from pi-ai, chosen by a table keyed on the record's `api`, so adding a fourth later is one row.
+**Three protocols, as a closed union in `core`.** `openai-completions`, `openai-responses`,
+`anthropic-messages`: the de-facto standard that gateways and local servers copy, OpenAI's newer
+shape, and Anthropic's own. Each is one API implementation from pi-ai, chosen by a table keyed on
+the record's `api`, so adding a fourth later is one row.
 
 **No catalog, and therefore no host in Alpha's source.** The user types a base URL or nothing
 works. That is a stronger version of C3.1 than the catalog was: the previous rule had to exempt

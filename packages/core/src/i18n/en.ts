@@ -244,11 +244,12 @@ export const EN = {
   'settings.addProvider': 'Add a provider',
   'settings.apiOpenai': 'OpenAI Chat Completions',
   'settings.apiAnthropic': 'Anthropic Messages',
-  'settings.apiGoogle': 'Google Generative AI',
+  'settings.apiResponses': 'OpenAI Responses',
   'settings.apiOpenaiNote':
     'OpenAI itself, and the many endpoints that copy it: most gateways, and anything running locally. This is the one to try first.',
   'settings.apiAnthropicNote': 'The Claude API, and the proxies that speak it.',
-  'settings.apiGoogleNote': "Gemini's own API: the base url is the gateway root, not a /v1 path.",
+  'settings.apiResponsesNote':
+    'The newer OpenAI shape: the request goes to /responses under the base url. Whoever copied that shape works here too.',
   'settings.noKeychain': 'This system offers no keychain, so keys are stored in plain text in the app data folder.',
   'settings.noProviders': 'No providers yet.',
   'settings.keyStored': 'key stored',

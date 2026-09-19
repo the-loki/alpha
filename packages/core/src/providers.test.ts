@@ -33,9 +33,10 @@ const stored = {
 }
 
 describe('[core] the wire protocols', () => {
-  it('ships the three a person is likely to have: OpenAI, Anthropic, Google', () => {
-    expect([...PROVIDER_APIS]).toEqual(['openai-completions', 'anthropic-messages', 'google-generative-ai'])
-    expect(isProviderApi('google-generative-ai')).toBe(true)
+  it('ships the three a person is likely to have: chat completions, responses, messages', () => {
+    expect([...PROVIDER_APIS]).toEqual(['openai-completions', 'openai-responses', 'anthropic-messages'])
+    expect(isProviderApi('openai-responses')).toBe(true)
+    expect(isProviderApi('google-generative-ai')).toBe(false)
     expect(isProviderApi('carrier-pigeon')).toBe(false)
   })
 })

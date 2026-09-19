@@ -145,20 +145,20 @@ test('the protocol is chosen from the three Alpha speaks, and it is what gets st
   // The three, by the names their own documentation uses, and the line that says who speaks it.
   await expect(window.getByLabel('Wire protocol').locator('option')).toHaveText([
     'OpenAI Chat Completions',
+    'OpenAI Responses',
     'Anthropic Messages',
-    'Google Generative AI',
   ])
-  await window.getByLabel('Wire protocol').selectOption('google-generative-ai')
-  await expect(window.getByText(/gateway root/)).toBeVisible()
+  await window.getByLabel('Wire protocol').selectOption('openai-responses')
+  await expect(window.getByText(/goes to \/responses/)).toBeVisible()
 
-  await describeProvider(window, { id: 'gemini', baseUrl: 'https://gemini.internal.example' })
+  await describeProvider(window, { id: 'gpt-endpoint', baseUrl: 'https://api.internal.example/v1' })
   const stored = JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8'))
   expect(stored.providers).toEqual([
     {
-      id: 'gemini',
-      name: 'gemini',
-      api: 'google-generative-ai',
-      baseUrl: 'https://gemini.internal.example',
+      id: 'gpt-endpoint',
+      name: 'gpt-endpoint',
+      api: 'openai-responses',
+      baseUrl: 'https://api.internal.example/v1',
       models: [],
     },
   ])

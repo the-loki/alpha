@@ -5,9 +5,9 @@
  *
  * There is no catalog. Alpha ships no host and no model id, so a provider is always something the
  * user described themselves; what it does ship is the three wire protocols that cover the
- * mainstream — OpenAI's chat completions (which most gateways also speak), Anthropic's messages,
- * and Google's generative AI (ADR-0015). A model list is not part of the connection either: which
- * models an endpoint serves is a model setting, not a fact about the endpoint.
+ * mainstream — OpenAI's chat completions (which most gateways also speak), OpenAI's responses, and
+ * Anthropic's messages (ADR-0015). A model list is not part of the connection either: which models
+ * an endpoint serves is a model setting, not a fact about the endpoint.
  */
 
 import { type Static, Type } from 'typebox'
@@ -15,7 +15,7 @@ import { Value } from 'typebox/value'
 import type { Undef } from './maybe.ts'
 import type { ConversationModel } from './runtime-events.ts'
 
-export const PROVIDER_APIS = ['openai-completions', 'anthropic-messages', 'google-generative-ai'] as const
+export const PROVIDER_APIS = ['openai-completions', 'openai-responses', 'anthropic-messages'] as const
 
 export type ProviderApi = (typeof PROVIDER_APIS)[number]
 

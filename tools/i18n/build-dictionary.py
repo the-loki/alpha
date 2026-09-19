@@ -411,7 +411,7 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.addProvider', 'Add a provider', '添加供应商'),
     ('settings.apiOpenai', 'OpenAI Chat Completions', 'OpenAI Chat Completions'),
     ('settings.apiAnthropic', 'Anthropic Messages', 'Anthropic Messages'),
-    ('settings.apiGoogle', 'Google Generative AI', 'Google Generative AI'),
+    ('settings.apiResponses', 'OpenAI Responses', 'OpenAI Responses'),
     (
         'settings.apiOpenaiNote',
         'OpenAI itself, and the many endpoints that copy it: most gateways, and anything running locally. This is the one to try first.',
@@ -423,9 +423,9 @@ ENTRIES: list[tuple[str, str, str]] = [
         'Claude 的 API，以及兼容它的代理。',
     ),
     (
-        'settings.apiGoogleNote',
-        "Gemini's own API: the base url is the gateway root, not a /v1 path.",
-        'Gemini 自己的 API：base url 填网关根地址，不是 /v1 路径。',
+        'settings.apiResponsesNote',
+        'The newer OpenAI shape: the request goes to /responses under the base url. Whoever copied that shape works here too.',
+        'OpenAI 较新的那套：请求发到 base url 下的 /responses。照抄这个形状的服务同样可用。',
     ),
     (
         'settings.noKeychain',
