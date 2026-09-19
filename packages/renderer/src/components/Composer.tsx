@@ -121,6 +121,12 @@ function useEscapeToStop(stop: () => Promise<void>, running: boolean): void {
   }, [running, stop])
 }
 
+/** The bar's own surface: glass at rest, and carrying a little of its own light while the agent works. */
+const BAR = (streaming: boolean) =>
+  `rounded-card border bg-ink-800/80 px-4 pt-3 pb-2.5 shadow-soft backdrop-blur-xl transition-all focus-within:border-line-strong ${
+    streaming ? 'border-accent/30 shadow-glow' : 'border-line'
+  }`
+
 /**
  * The keyboard on the line being typed: Enter sends it, Shift+Enter is a new line, and
  * Cmd/Ctrl+Enter queues it behind the turn that is already running — the one the user does not
@@ -172,7 +178,7 @@ export interface ComposerNote {
  * The composer sends; everything about whether it *may* send is stated in the note under it
  * rather than left to a disabled button with no explanation.
  */
-export function Composer() {
+export function Composer({ streaming = false }: { streaming?: boolean }) {
   const [value, setValue] = useState('')
   const [attached, setAttached] = useState<Attachment[]>([])
   const [refused, setRefused] = useState<Undef<Refusal>>(undefined)
@@ -253,7 +259,7 @@ export function Composer() {
       {/* One column in from the page's edge — the width of an entry's number and the gap after it —
           so the bar lines up with the words above it rather than with the numbers. */}
       <div className="ml-10">
-        <div className="rounded-card border border-line bg-ink-800 px-4 pt-3 pb-2.5 shadow-soft transition-colors focus-within:border-line-strong">
+        <div className={BAR(streaming)}>
           <PendingAttachments items={attached} onRemove={(index) => removeAt(index)} />
           <div className="flex items-start gap-2.5">
             <PromptMark />

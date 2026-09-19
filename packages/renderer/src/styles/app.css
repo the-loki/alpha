@@ -93,6 +93,15 @@
   --shadow-overlay: 0 2px 4px rgb(43 33 22 / 0.05), 0 18px 44px rgb(43 33 22 / 0.16);
 
   /*
+   * The glow is different in kind: the first three are light *falling on* a surface, this is light
+   * *coming from* one — the ember behind the streaming answer, the lamp inside the primary button.
+   * It is drawn with the accent's own colour so it follows whatever palette the user picked.
+   */
+  --shadow-glow:
+    0 0 0 1px color-mix(in oklab, var(--color-accent) 18%, transparent),
+    0 4px 20px -4px color-mix(in oklab, var(--color-accent) 45%, transparent);
+
+  /*
    * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
    * text-sm, text-base, text-xl); these four have no built-in, so they are named for the role
    * they play rather than for their size. rem, not px, so the window's scaling is respected.
@@ -281,8 +290,8 @@
   }
 
   ::-webkit-scrollbar {
-    width: 0.625rem;
-    height: 0.625rem;
+    width: 0.5rem;
+    height: 0.5rem;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -323,6 +332,8 @@
     height: 1em;
     vertical-align: text-bottom;
     background-color: var(--color-accent);
+    /* The cursor is a live ember, not a block: it carries a little of its own light. */
+    box-shadow: 0 0 0.75rem var(--color-accent);
     animation: accent-pulse 1.2s ease-in-out infinite;
   }
 

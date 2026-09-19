@@ -226,6 +226,14 @@ An entry's rule is the one exception that is not a separation: it closes what th
 the work hangs under it. A rule is `--line`, one step lighter than the text around it, and never a
 shadow.
 
+**Glass, and light.** Two materials complete the depth system, and both are earned by being used
+exactly where they are the only honest answer (ADR-0020). **Glass** — `backdrop-blur` under a
+translucent chrome fill — is for the two surfaces the page slides beneath: the head and the
+composer's bar, which float so the transcript passes visibly under them. **Light** is the glow: the
+accent casting its own light on what is lit by it — the primary button, the cursor, the hearth at
+the foot of the page that brightens while the agent works and settles when it is done. Nothing else
+blurs, nothing else glows, and depth is still, first and last, a change of surface.
+
 **A turn ends with a line.** The last answer of a turn is closed by a hairline the width of the
 text block with what the turn spent at its right end — mono, faint, one line. It is the one rule in
 the app that carries text, and it is what lets a long conversation be read as turns rather than as
@@ -289,7 +297,9 @@ removed:
 ## C5.6 — Motion
 
 150–220ms, `ease-out`, and only for: message arrival (6px rise, fade), tool row state change,
-overlay entry, and the ember cursor. On hover, only two things change: colour and border — plus the
+overlay entry, and the ember cursor. The one slow change is the hearth — the light at the foot of
+the page — which fades over a full second when a turn starts and settles over one when it ends, at
+the pace of a room, not of a control. On hover, only two things change: colour and border — plus the
 one deliberate exception, a row's own actions fading in over the row (`opacity`, and `focus-within`
 reveals them for the keyboard as well, so nothing is hover-only). Nothing moves on hover.
 `prefers-reduced-motion: reduce` collapses every transition to 0ms and freezes the ember cursor.

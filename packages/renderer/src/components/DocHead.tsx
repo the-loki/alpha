@@ -92,7 +92,7 @@ export function DocHead() {
   const t = useText()
   const setThinkingLevel = useConversations((state) => state.setThinkingLevel)
 
-  const band = `flex shrink-0 items-end justify-between gap-4 border-b border-line bg-ink-800 pt-2.5 pb-2 ${PAGE}`
+  const band = `flex h-14 items-center justify-between gap-4 border-b border-line/70 bg-ink-800/70 backdrop-blur-xl ${PAGE}`
 
   // A page that has not been asked anything yet has no head band: its name is set on the page
   // itself, large, where a title page puts it — and a document says its name once (ADR-0019).

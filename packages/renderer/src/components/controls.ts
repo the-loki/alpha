@@ -14,6 +14,10 @@ export const DESTRUCTIVE_ACTION = 'text-xs text-parchment-dim transition-colors 
 export const OUTLINED_ACTION =
   'rounded-control border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-40'
 
-/** The one primary action on a surface, wearing the accent. */
+/**
+ * The one primary action on a surface, wearing the accent as a lit thing: a gradient from the ember
+ * to its darker edge and a little of its own light, so the button reads as the lamp of the panel it
+ * is on (C5.4).
+ */
 export const PRIMARY_ACTION =
-  'rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-40'
+  'rounded-control bg-gradient-to-b from-accent to-accent-bright px-3 py-1.5 text-xs font-medium text-accent-ink shadow-glow transition-all hover:brightness-110 disabled:opacity-40 disabled:shadow-none'
