@@ -118,6 +118,13 @@ export const StopIcon = (props: IconProps) => (
   </Glyph>
 )
 
+export const ClockIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <circle cx="8" cy="8" r="5.5" />
+    <path d="M8 4.8V8l2.2 1.4" />
+  </Glyph>
+)
+
 export const MoreIcon = (props: IconProps) => (
   <Glyph {...props}>
     <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />

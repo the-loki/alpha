@@ -181,8 +181,9 @@ test('no state is carried by colour alone', async () => {
     ],
   })
 
-  // The permission level: a coloured chip that also names the level.
-  await expect(window.getByRole('button', { name: 'Ask' })).toBeVisible()
+  // The permission level: a coloured chip that also names the level. Exact, because the sidebar's
+  // own "Tasks" row matches "Ask" as a substring.
+  await expect(window.getByRole('button', { name: 'Ask', exact: true })).toBeVisible()
 
   await ask(window, 'write and run')
   const card = window.getByRole('region', { name: 'Waiting for your decision' })

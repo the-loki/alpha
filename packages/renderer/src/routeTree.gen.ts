@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CConversationIdRoute = CConversationIdRouteImport.update({
   id: '/c/$conversationId',
   path: '/c/$conversationId',
@@ -32,30 +38,34 @@ const CConversationIdRoute = CConversationIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
   '/c/$conversationId': typeof CConversationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
   '/c/$conversationId': typeof CConversationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
   '/c/$conversationId': typeof CConversationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/c/$conversationId'
+  fullPaths: '/' | '/settings' | '/tasks' | '/c/$conversationId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/c/$conversationId'
-  id: '__root__' | '/' | '/settings' | '/c/$conversationId'
+  to: '/' | '/settings' | '/tasks' | '/c/$conversationId'
+  id: '__root__' | '/' | '/settings' | '/tasks' | '/c/$conversationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
+  TasksRoute: typeof TasksRoute
   CConversationIdRoute: typeof CConversationIdRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/c/$conversationId': {
       id: '/c/$conversationId'
       path: '/c/$conversationId'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
+  TasksRoute: TasksRoute,
   CConversationIdRoute: CConversationIdRoute,
 }
 export const routeTree = rootRouteImport

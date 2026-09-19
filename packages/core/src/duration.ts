@@ -25,3 +25,17 @@ export function formatAge(at: number, now: number): string {
   if (hours < 24) return `${hours}h ago`
   return `${Math.round(hours / 24)}d ago`
 }
+
+/**
+ * How long until something happens, which is the same arithmetic read forwards. A moment that has
+ * arrived or passed is "now" rather than a negative age: a task that is due is due.
+ */
+export function formatUntil(at: number, now: number): string {
+  const seconds = Math.round((at - now) / 1000)
+  if (seconds < 45) return 'now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `in ${minutes}m`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `in ${hours}h`
+  return `in ${Math.round(hours / 24)}d`
+}

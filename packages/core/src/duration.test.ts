@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAge, formatDuration } from './duration.ts'
+import { formatAge, formatDuration, formatUntil } from './duration.ts'
 
 describe('[core] how long something took', () => {
   it('counts in milliseconds below a second, and seconds above it', () => {
@@ -30,5 +30,16 @@ describe('[core] how long ago something was', () => {
   it('never counts backwards, whatever the clock says', () => {
     // A file touched by a clock that is ahead of ours is "just now", not "-3m ago".
     expect(formatAge(now + 60_000, now)).toBe('just now')
+  })
+})
+
+describe('[core] how long until something', () => {
+  it('counts forward in the same units, and says now when it is due', () => {
+    const now = 1_000_000_000
+    expect(formatUntil(now + 20_000, now)).toBe('now')
+    expect(formatUntil(now + 5 * 60_000, now)).toBe('in 5m')
+    expect(formatUntil(now + 3 * 60 * 60_000, now)).toBe('in 3h')
+    expect(formatUntil(now + 2 * 24 * 60 * 60_000, now)).toBe('in 2d')
+    expect(formatUntil(now - 60_000, now)).toBe('now')
   })
 })

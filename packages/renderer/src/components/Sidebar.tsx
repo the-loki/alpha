@@ -12,7 +12,7 @@ import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
 import { ConversationRow } from './ConversationRow.tsx'
-import { ChevronDownIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
+import { ChevronDownIcon, ClockIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
 
 /**
  * How many rows a list shows before it offers the rest. A rail is for scanning, not for scrolling,
@@ -251,6 +251,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
           <ActionRow icon={<FolderIcon />} label={t('sidebar.addFolder')} onClick={() => void pickWorkspace()} />
         )}
         <ActionRow icon={<SearchIcon />} label={t('sidebar.search')} hint={`${modifier}K`} onClick={onSearch} />
+        <ActionRow icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => void navigate({ to: '/tasks' })} />
       </div>
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">

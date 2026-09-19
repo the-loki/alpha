@@ -7,6 +7,7 @@ import { UnlockScreen } from '../components/UnlockScreen.tsx'
 import { bridge } from '../lib/bridge.ts'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
+import { useTasks } from '../stores/tasks.ts'
 
 function RootLayout() {
   const load = useShell((state) => state.load)
@@ -14,6 +15,7 @@ function RootLayout() {
   const locked = useShell((state) => state.locked)
   const setWindowMaximized = useShell((state) => state.setWindowMaximized)
   const loadList = useConversations((state) => state.loadList)
+  const loadTasks = useTasks((state) => state.apply)
   const applyEvent = useConversations((state) => state.applyEvent)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const openPalette = useCallback(() => setPaletteOpen(true), [])
@@ -28,17 +30,24 @@ function RootLayout() {
     void load()
     const stopWindowState = client.onWindowState((state) => setWindowMaximized(state.maximized))
     const stopRuntimeEvents = client.onRuntimeEvent((event) => applyEvent(event))
+    // Tasks arrive the same way: main pushes the whole list when a task is edited, runs, or ends.
+    const stopTasks = client.onTasks((snapshot) => loadTasks(snapshot))
     return () => {
       stopWindowState()
       stopRuntimeEvents()
+      stopTasks()
     }
-  }, [load, applyEvent, setWindowMaximized])
+  }, [load, applyEvent, loadTasks, setWindowMaximized])
 
   // The list belongs to a session, not to a mount: a browser that was refused at mount has none
   // yet, and asking while locked would only be refused again.
   useEffect(() => {
-    if (ready && !locked) void loadList()
-  }, [ready, locked, loadList])
+    if (!ready || locked) return
+    void loadList()
+    void bridge()
+      .listTasks()
+      .then((snapshot) => loadTasks(snapshot))
+  }, [ready, locked, loadList, loadTasks])
 
   if (locked) return <UnlockScreen />
 
