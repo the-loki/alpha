@@ -24,6 +24,8 @@ import {
   type ProviderModelDefinition,
   type ProvidersSnapshotMessage,
   type RuntimeEvent,
+  type ScheduledTask,
+  type TasksSnapshot,
   type ThinkingLevel,
   type Undef,
   type WindowState,
@@ -213,6 +215,15 @@ function attach(channel: string): void {
   })
 }
 
+/** The task calls, kept out of the table above so that table stays a screen long. */
+const taskCalls = {
+  listTasks: () => invoke('listTasks', []) as Promise<TasksSnapshot>,
+  saveTask: (input: Partial<ScheduledTask>) => invoke('saveTask', [input]) as Promise<TasksSnapshot>,
+  deleteTask: (id: string) => invoke('deleteTask', [id]) as Promise<TasksSnapshot>,
+  runTaskNow: (id: string) => invoke('runTaskNow', [id]) as Promise<TasksSnapshot>,
+  onTasks: (listener: (snapshot: TasksSnapshot) => void) => listen('tasksChanged', listener),
+}
+
 export function networkBridge(): AlphaBridge {
   return {
     launchState: () => invoke('launchState', []) as Promise<LaunchState>,
@@ -271,6 +282,7 @@ export function networkBridge(): AlphaBridge {
     permissionRules: () => invoke('permissionRules', []) as Promise<PermissionRule[]>,
     revokePermissionRule: (ruleId: string) => invoke('revokePermissionRule', [ruleId]) as Promise<PermissionRule[]>,
     answerApproval: (answer: ApprovalAnswerInput) => invoke('answerApproval', [answer]) as Promise<void>,
+    ...taskCalls,
     onPermissionRules: (listener: (rules: PermissionRule[]) => void) => listen('permissionRulesChanged', listener),
   }
 }

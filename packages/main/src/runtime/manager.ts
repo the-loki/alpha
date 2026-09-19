@@ -8,6 +8,7 @@
  */
 
 import {
+  type ApprovalAsk,
   type ChatMessage,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
@@ -21,22 +22,22 @@ import {
   type RuntimeEvent,
   type ThinkingLevel,
 } from '@alpha/core'
-import type { Api, Model } from '@earendil-works/pi-ai'
 import { createProviderModelRuntime } from '../providers/model-runtime.ts'
 import type { ProviderStore } from '../providers/store.ts'
 import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
 import { ConversationBookkeeper, DEFAULT_TITLE, NO_MODEL, newConversation } from './bookkeeping.ts'
-import { ConversationRuntime, type PermissionPorts } from './conversation-runtime.ts'
+import type { ConversationRuntime, PermissionPorts } from './conversation-runtime.ts'
 import { DecisionLog } from './decisions.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
+import { type Opened, type OpeningRequest, tryOpen } from './opening.ts'
 import { createPermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
 import { QueueRunner } from './queue.ts'
 import { readSessionTranscript, sessionLocation, usageFor, writeSessionMarkdown } from './session-files.ts'
 import { deleteSession } from './session-reader.ts'
-import { buildSystemPrompt } from './system-prompt.ts'
+import { UnattendedRuns } from './unattended.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string
@@ -58,6 +59,8 @@ export class RuntimeManager {
   readonly #decisions: DecisionLog
   /** Messages waiting for a turn of their own, and what the lane is holding for this one. */
   readonly #queue: QueueRunner
+  /** Runs with nobody watching, and the refusals their gate had to hand out (ADR-0012). */
+  readonly #unattended = new UnattendedRuns()
 
   constructor(options: RuntimeManagerOptions) {
     this.#options = options
@@ -138,6 +141,20 @@ export class RuntimeManager {
       conversation,
       messages: opened.messages,
       usage: await usageFor(conversation, this.#options.sessionsRoot, opened.runtime),
+    }
+  }
+
+  /**
+   * Runs one turn with nobody watching (a scheduled task, ADR-0012) and answers with what the gate
+   * had to refuse. A run started by hand is attended: whoever pressed "run now" is right there.
+   */
+  async runUnattended(id: string, text: string): Promise<number> {
+    this.#unattended.start(id)
+    try {
+      await this.prompt(id, text)
+      return 0
+    } finally {
+      this.#unattended.finish(id)
     }
   }
 
@@ -331,58 +348,30 @@ export class RuntimeManager {
     return conversation
   }
 
-  /**
-   * A conversation without a usable model still exists: its transcript stays readable and the
-   * composer explains what is missing, rather than the window refusing to open it at all.
-   */
-  async #tryOpen(options: {
-    conversationId: string
-    workspacePath: string
-    model?: Model<Api>
-    thinkingLevel: ThinkingLevel
-  }): Promise<{ runtime?: ConversationRuntime; conversationId: string; messages: OpenedConversation['messages'] }> {
-    const modelRuntime = this.#modelRuntime()
-    const model = options.model ?? modelRuntime.defaultModel
-
-    if (model === undefined) {
-      const transcript = await readSessionTranscript(
-        {
-          sessionsRoot: this.#options.sessionsRoot,
-          workspacePath: options.workspacePath,
-          conversationId: options.conversationId,
-        },
-        this.#decisions.opened(options.conversationId),
-      )
-      return { conversationId: options.conversationId, messages: transcript }
-    }
-
-    // The id is the manager's to mint, and it is minted before the runtime exists, so the ledger
-    // that records how calls got past the gate can be opened for it first. The ledger is where a
-    // decision is written; nothing downstream needs to know which file that is.
-    const opened = await ConversationRuntime.open({
-      conversationId: options.conversationId,
-      workspacePath: options.workspacePath,
-      sessionsRoot: this.#options.sessionsRoot,
-      modelRuntime,
-      model,
-      emit: (event) => this.#observe(event),
-      systemPrompt: buildSystemPrompt({ workspacePath: options.workspacePath }),
-      permissions: this.#permissionPorts(),
-      decisions: this.#decisions.opened(options.conversationId),
-    })
-    await opened.runtime.setThinkingLevel(options.thinkingLevel)
-    return { runtime: opened.runtime, conversationId: opened.conversationId, messages: opened.messages }
+  /** A question nobody is there to answer becomes a refusal, or a card when somebody is. */
+  #askOrRefuse(id: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
+    const refusal = this.#unattended.refuse(id)
+    return refusal === undefined ? this.#approvals.ask(id, ask) : Promise.resolve(refusal)
   }
 
-  /**
-   * The gate reads the level and the rules at the moment of every call, so a change in the header
-   * applies to the next call rather than the next conversation.
-   */
+  #tryOpen(request: OpeningRequest): Promise<Opened> {
+    return tryOpen(
+      {
+        sessionsRoot: this.#options.sessionsRoot,
+        decisions: this.#decisions,
+        permissions: () => this.#permissionPorts(),
+        modelRuntime: () => this.#modelRuntime(),
+        emit: (event) => this.#observe(event),
+      },
+      request,
+    )
+  }
+
   #permissionPorts(): PermissionPorts {
     return createPermissionPorts({
       store: this.#options.store,
       levelOf: (id) => this.#books.find(id)?.permissionLevel ?? this.#options.store.read().permissionLevel,
-      ask: (id, ask) => this.#approvals.ask(id, ask),
+      ask: (id, ask) => this.#askOrRefuse(id, ask),
       changed: this.#options.emitRules,
     })
   }

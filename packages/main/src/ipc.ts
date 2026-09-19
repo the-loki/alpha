@@ -23,6 +23,8 @@ export interface IpcContext {
   window: ChannelPorts['window']
   /** Browser access, which the settings page reads and changes. */
   network: NetworkPort
+  /** The scheduled tasks, which every client may read and edit. */
+  tasks: ChannelPorts['tasks']
 }
 
 export function registerIpcHandlers(context: IpcContext): void {
@@ -32,6 +34,7 @@ export function registerIpcHandlers(context: IpcContext): void {
     providers: context.providers,
     window: context.window,
     network: context.network,
+    tasks: context.tasks,
   }
 
   for (const [name, handler] of Object.entries(CHANNELS)) {

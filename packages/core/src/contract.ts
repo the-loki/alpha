@@ -9,6 +9,8 @@ import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { Accent, NetworkBind, Theme } from './persisted-state.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
+import type { ScheduledTask } from './task.ts'
+import type { TasksSnapshot } from './tasks-snapshot.ts'
 import type { ThinkingLevel } from './thinking.ts'
 import type { UsageTotals } from './usage.ts'
 
@@ -61,10 +63,15 @@ export const IPC = {
   unarchiveConversation: 'alpha:unarchive-conversation',
   deleteConversation: 'alpha:delete-conversation',
   exportConversation: 'alpha:export-conversation',
+  listTasks: 'alpha:list-tasks',
+  saveTask: 'alpha:save-task',
+  deleteTask: 'alpha:delete-task',
+  runTaskNow: 'alpha:run-task-now',
   permissionRules: 'alpha:permission-rules',
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
   permissionRulesChanged: 'alpha:permission-rules-changed',
+  tasksChanged: 'alpha:tasks-changed',
   networkState: 'alpha:network-state',
   setNetworkAccess: 'alpha:set-network-access',
   regenerateNetworkToken: 'alpha:regenerate-network-token',
@@ -223,9 +230,17 @@ export interface AlphaBridge {
   deleteConversation(id: string): Promise<ConversationSummary[]>
   /** Writes a markdown file next to the workspace and answers with where it went. */
   exportConversation(id: string): Promise<{ path: string }>
+  /** The scheduled tasks and the runs they remember, which is everything the task pages draw. */
+  listTasks(): Promise<TasksSnapshot>
+  saveTask(input: Partial<ScheduledTask>): Promise<TasksSnapshot>
+  deleteTask(id: string): Promise<TasksSnapshot>
+  /** Runs one now, with the person pressing it watching, so the gate may ask (ADR-0012). */
+  runTaskNow(id: string): Promise<TasksSnapshot>
   permissionRules(): Promise<PermissionRule[]>
   revokePermissionRule(ruleId: string): Promise<PermissionRule[]>
   /** The one thing the renderer says about a card: the answer, and its scope when it is remembered. */
   answerApproval(answer: ApprovalAnswerInput): Promise<void>
   onPermissionRules(listener: (rules: PermissionRule[]) => void): () => void
+  /** A task was added, edited or ran: the window redraws from what it is handed. */
+  onTasks(listener: (snapshot: TasksSnapshot) => void): () => void
 }

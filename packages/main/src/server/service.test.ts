@@ -55,6 +55,12 @@ const serviceWith = (options: { bundle?: boolean } = {}) => {
         providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
         window: headlessWindowPort,
         network: stubNetwork,
+        tasks: {
+          snapshot: () => ({ tasks: [], runs: [] }),
+          save: () => ({ tasks: [], runs: [] }),
+          remove: () => ({ tasks: [], runs: [] }),
+          runNow: async () => ({ tasks: [], runs: [] }),
+        },
       }) satisfies ChannelPorts,
   })
   services.push(service)

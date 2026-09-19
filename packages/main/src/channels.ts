@@ -28,6 +28,8 @@ import {
   type PermissionLevel,
   type PickWorkspaceResult,
   rememberWorkspace,
+  type ScheduledTask,
+  type TasksSnapshot,
   type Undef,
   type WorkspaceSelection,
   workspaceFromPath,
@@ -68,9 +70,22 @@ export interface NetworkPort {
   regenerateToken(): Promise<NetworkState>
 }
 
+/**
+ * What a client may ask of the tasks. The service behind it owns the clock; this is only the
+ * window's half, which is why the seam can be handed a stub in a test.
+ */
+export interface TasksPort {
+  snapshot(): TasksSnapshot
+  save(input: Partial<ScheduledTask>): TasksSnapshot
+  remove(id: string): TasksSnapshot
+  runNow(id: string): Promise<TasksSnapshot>
+}
+
 export interface ChannelPorts {
   store: StateStore
   runtime: RuntimeManager
+  /** The scheduled tasks: their list, their runs, and the button that runs one now. */
+  tasks: TasksPort
   providers: ProviderService
   window: WindowPort
   network: NetworkPort
@@ -85,7 +100,7 @@ export type ChannelHandler = (ports: ChannelPorts, args: ChannelArgs) => unknown
  * The channels main pushes to a client rather than answers: the runtime's events, the window's own
  * state, and a change to the remembered rules. They have no handler, and a client cannot call them.
  */
-export const PUSHED_CHANNELS = ['runtimeEvent', 'windowStateChanged', 'permissionRulesChanged'] as const
+export const PUSHED_CHANNELS = ['runtimeEvent', 'windowStateChanged', 'permissionRulesChanged', 'tasksChanged'] as const
 
 type PushedChannel = (typeof PUSHED_CHANNELS)[number]
 type NamedChannel = Exclude<keyof typeof IPC, PushedChannel>
@@ -154,6 +169,15 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   archiveConversation: ({ runtime }, args) => runtime.archive(requireString(args[0], 'conversationId')),
   unarchiveConversation: ({ runtime }, args) => runtime.unarchive(requireString(args[0], 'conversationId')),
   deleteConversation: ({ runtime }, args) => runtime.remove(requireString(args[0], 'conversationId')),
+
+  listTasks: ({ tasks }) => tasks.snapshot(),
+
+  saveTask: ({ tasks }, args) =>
+    tasks.save((typeof args[0] === 'object' && args[0] !== null ? args[0] : {}) as Partial<ScheduledTask>),
+
+  deleteTask: ({ tasks }, args) => tasks.remove(requireString(args[0], 'taskId')),
+
+  runTaskNow: ({ tasks }, args) => tasks.runNow(requireString(args[0], 'taskId')),
 
   exportConversation: ({ runtime }, args) => runtime.exportMarkdown(requireString(args[0], 'conversationId')),
 

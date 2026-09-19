@@ -21,6 +21,8 @@ import {
   type ProviderModelDefinition,
   type ProvidersSnapshotMessage,
   type RuntimeEvent,
+  type ScheduledTask,
+  type TasksSnapshot,
   type ThinkingLevel,
   WINDOW_COMMAND_CHANNELS,
   type WindowCommand,
@@ -96,6 +98,15 @@ const bridge: AlphaBridge = {
   revokePermissionRule: (ruleId: string) =>
     ipcRenderer.invoke(IPC.revokePermissionRule, ruleId) as Promise<PermissionRule[]>,
   answerApproval: (answer: ApprovalAnswerInput) => ipcRenderer.invoke(IPC.answerApproval, answer) as Promise<void>,
+  listTasks: () => ipcRenderer.invoke(IPC.listTasks) as Promise<TasksSnapshot>,
+  saveTask: (input: Partial<ScheduledTask>) => ipcRenderer.invoke(IPC.saveTask, input) as Promise<TasksSnapshot>,
+  deleteTask: (id: string) => ipcRenderer.invoke(IPC.deleteTask, id) as Promise<TasksSnapshot>,
+  runTaskNow: (id: string) => ipcRenderer.invoke(IPC.runTaskNow, id) as Promise<TasksSnapshot>,
+  onTasks: (listener: (snapshot: TasksSnapshot) => void) => {
+    const handler = (_event: unknown, snapshot: TasksSnapshot) => listener(snapshot)
+    ipcRenderer.on(IPC.tasksChanged, handler)
+    return () => ipcRenderer.removeListener(IPC.tasksChanged, handler)
+  },
   onPermissionRules: (listener: (rules: PermissionRule[]) => void) => {
     const handler = (_event: unknown, rules: PermissionRule[]) => listener(rules)
     ipcRenderer.on(IPC.permissionRulesChanged, handler)

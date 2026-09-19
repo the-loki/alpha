@@ -9,6 +9,8 @@ import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
 import { RuntimeManager } from './runtime/manager.ts'
 import { StateStore } from './state-store.ts'
+import { TaskService } from './tasks/service.ts'
+import { TaskStore } from './tasks/store.ts'
 
 /**
  * The table every transport dispatches through, driven without Electron: a real runtime over a
@@ -38,19 +40,30 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
     toggleMaximize: () => undefined,
     close: () => undefined,
   }
+  const runtime = new RuntimeManager({
+    dataDirectory,
+    sessionsRoot: join(dataDirectory, 'sessions'),
+    providers: new ProviderStore(dataDirectory, vault),
+    store,
+    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+    emit: (event) => events.push(event),
+    emitRules: (rules: PermissionRule[]) => events.push(rules),
+  })
   return {
     store,
     window,
     providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
     network: stubNetwork,
-    runtime: new RuntimeManager({
-      dataDirectory,
-      sessionsRoot: join(dataDirectory, 'sessions'),
-      providers: new ProviderStore(dataDirectory, vault),
-      store,
-      env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
-      emit: (event) => events.push(event),
-      emitRules: (rules: PermissionRule[]) => events.push(rules),
+    runtime,
+    tasks: new TaskService({
+      tasks: new TaskStore(dataDirectory),
+      create: async (workspacePath) => (await runtime.create(workspacePath)).conversation.id,
+      rename: (conversationId, title) => void runtime.rename(conversationId, title),
+      prompt: (conversationId, text) => runtime.prompt(conversationId, text),
+      runUnattended: (conversationId, text) => runtime.runUnattended(conversationId, text),
+      workspaceExists: () => true,
+      changed: () => undefined,
+      now: () => new Date(),
     }),
     events,
   }

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, safeStorage } from 'electron'
 import { Broadcast } from './broadcast.ts'
@@ -10,6 +11,8 @@ import { ProviderStore } from './providers/store.ts'
 import { RuntimeManager } from './runtime/manager.ts'
 import { NetworkService } from './server/service.ts'
 import { StateStore } from './state-store.ts'
+import { TaskService } from './tasks/service.ts'
+import { TaskStore } from './tasks/store.ts'
 import { createMainWindow } from './window.ts'
 
 const windowPaths = {
@@ -51,6 +54,19 @@ app.whenReady().then(async () => {
     emitRules: (rules) => broadcast.send('permissionRulesChanged', rules),
   })
 
+  // The clock the workbench keeps: tasks live in their own file, and one timer watches for them.
+  const tasks = new TaskService({
+    tasks: new TaskStore(dataDirectory),
+    create: async (workspacePath) => (await runtime.create(workspacePath)).conversation.id,
+    rename: (conversationId, title) => void runtime.rename(conversationId, title),
+    prompt: (conversationId, text) => runtime.prompt(conversationId, text),
+    runUnattended: (conversationId, text) => runtime.runUnattended(conversationId, text),
+    workspaceExists: (path) => existsSync(path),
+    changed: () => broadcast.send('tasksChanged', tasks.snapshot()),
+    now: () => new Date(),
+  })
+  tasks.start()
+
   const providerService = new ProviderService(providers)
   const service = new NetworkService({
     store,
@@ -61,7 +77,7 @@ app.whenReady().then(async () => {
 
   // Two clients, two windows on the same workbench: the desktop window may open a native folder
   // dialog and move itself, and a browser may do neither. Everything else is one set of handlers.
-  const shared = { store, runtime, providers: providerService, network: service }
+  const shared = { store, runtime, providers: providerService, network: service, tasks }
   const serverPorts: ChannelPorts = { ...shared, window: headlessWindowPort }
   const desktopPorts: ChannelPorts = {
     ...shared,
@@ -76,6 +92,7 @@ app.whenReady().then(async () => {
   })
 
   app.on('before-quit', () => {
+    tasks.stop()
     void runtime.closeAll()
   })
 

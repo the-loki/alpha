@@ -70,6 +70,12 @@ const start = async (
     providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
     window: headlessWindowPort,
     network: stubNetwork,
+    tasks: {
+      snapshot: () => ({ tasks: [], runs: [] }),
+      save: () => ({ tasks: [], runs: [] }),
+      remove: () => ({ tasks: [], runs: [] }),
+      runNow: async () => ({ tasks: [], runs: [] }),
+    },
   }
   const broadcast = options.broadcast ?? new Broadcast()
   const server = await startServer({
