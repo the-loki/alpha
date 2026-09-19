@@ -7,7 +7,7 @@
  * the user's message and once when the assistant's finishes — so two hundred text deltas cost
  * two hundred small objects, not two hundred copies of the conversation.
  */
-import type { Absent } from './absence.ts'
+import type { Undef } from './maybe.ts'
 import type {
   ApprovalRequest,
   ChatBlock,
@@ -84,7 +84,7 @@ export function totalUsage(state: TranscriptState): UsageTotals {
   return state.turns.reduce((sum, turn) => addUsage(sum, turn.usage), EMPTY_USAGE)
 }
 
-export function streamingMessage(state: TranscriptState): Absent<ChatMessage> {
+export function streamingMessage(state: TranscriptState): Undef<ChatMessage> {
   return state.streaming
 }
 

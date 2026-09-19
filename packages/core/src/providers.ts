@@ -6,7 +6,7 @@
 
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
-import type { Absent } from './absence.ts'
+import type { Undef } from './maybe.ts'
 import { type CatalogEntry, PROVIDER_CATALOG } from './providers/templates.ts'
 
 export const PROVIDER_APIS = ['openai-completions', 'anthropic-messages'] as const
@@ -80,7 +80,7 @@ export function parseProviders(raw: unknown): ProviderIndex {
   return { version: 1, providers: index.providers }
 }
 
-export function findCatalogEntry(id: string): Absent<CatalogEntry> {
+export function findCatalogEntry(id: string): Undef<CatalogEntry> {
   return PROVIDER_CATALOG.find((entry) => entry.id === id)
 }
 

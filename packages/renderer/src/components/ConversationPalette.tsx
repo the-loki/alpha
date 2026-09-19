@@ -1,4 +1,4 @@
-import type { Absent, ConversationSummary } from '@alpha/core'
+import type { ConversationSummary, Null, Undef } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
@@ -23,7 +23,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState(0)
-  const field = useRef<HTMLInputElement>(null)
+  const field = useRef<Null<HTMLInputElement>>(null)
 
   useEffect(() => {
     if (!open) return
@@ -35,7 +35,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
   if (!open) return null
   const shown = matches(conversations, query)
 
-  const go = (conversation: Absent<ConversationSummary>) => {
+  const go = (conversation: Undef<ConversationSummary>) => {
     if (conversation === undefined) return
     onClose()
     void openConversation(conversation.id).then(() =>

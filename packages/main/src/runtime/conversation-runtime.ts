@@ -5,13 +5,13 @@
  */
 
 import {
-  type Absent,
   type ApprovalAsk,
   type ChatMessage,
   type PermissionLevel,
   type PermissionRule,
   type RuntimeEvent,
   textOfContent,
+  type Undef,
   type UsageTotals,
 } from '@alpha/core'
 import {
@@ -271,7 +271,7 @@ export class ConversationRuntime {
   }
 
   /** The id of the nth user message, so the manager can fork at it. */
-  async userEntryId(userMessageIndex: number): Promise<Absent<string>> {
+  async userEntryId(userMessageIndex: number): Promise<Undef<string>> {
     const entry = await this.#userEntry(userMessageIndex)
     return entry?.id
   }
@@ -296,7 +296,7 @@ export class ConversationRuntime {
     return result.ok
   }
 
-  async #userEntry(index: number): Promise<Absent<Entry>> {
+  async #userEntry(index: number): Promise<Undef<Entry>> {
     const users = userEntries(await tipPathOf(this.#session))
     return users[index]
   }
@@ -343,7 +343,7 @@ const userEntries = (entries: Entry[]): Entry[] =>
 async function compactionSummary(
   session: Session<JsonlSessionMetadata>,
   entryId: string,
-): Promise<{ summary: string; replaced: Absent<number> }> {
+): Promise<{ summary: string; replaced: Undef<number> }> {
   const entry = await session.getEntry(entryId, BACKGROUND_CONTEXT)
   if (entry === undefined) return { summary: '', replaced: undefined }
   if (entry.type === 'compaction') return { summary: entry.summary, replaced: undefined }

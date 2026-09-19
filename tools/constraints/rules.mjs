@@ -201,17 +201,18 @@ export const RULES = [
     description: 'undefined is the absence value, not null',
     applies: (path) => isTs(path) && !isDeclaration(path) && !isTest(path),
     pattern: /\|\s*null\b/,
-    message: 'a null union; express absence as undefined, or convert null at the boundary that produced it',
+    message:
+      'a null union; name it Null<T> where the foreign system speaks null, or convert it at the boundary that produced it (C1.2)',
   }),
 
   lineRule({
     id: '01-typescript:absence-is-named',
     constraint: '01-typescript.md',
-    description: 'absence is Absent<T>, not a union spelled out',
+    description: 'absence is Undef<T>, not a union spelled out',
     applies: (path) => isTs(path) && !isDeclaration(path) && !isTest(path),
     pattern: /\|\s*undefined\b/,
     message:
-      'a bare union with undefined; name it Absent<T> from core, or use ? on a property or an omittable parameter (C1.2)',
+      'a bare union with undefined; name it Undef<T> from core, or use ? on a property or an omittable parameter (C1.2)',
   }),
 
   lineRule({

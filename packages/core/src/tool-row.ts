@@ -6,7 +6,7 @@
  * the live event, the stored session entry, and the reducer that replays either — and the only
  * thing keeping those three honest is that they ask these functions for the parts.
  */
-import type { Absent } from './absence.ts'
+import type { Undef } from './maybe.ts'
 import type { ApprovalRecord, ChatBlockTool, ToolDetails } from './runtime-events.ts'
 import { toolRiskOf } from './tools.ts'
 
@@ -36,13 +36,13 @@ export function summarizeToolCall(name: string, args: unknown): string {
   return oneLine(JSON.stringify(record))
 }
 
-export function exitCodeFromText(text: string): Absent<number> {
+export function exitCodeFromText(text: string): Undef<number> {
   const match = text.match(/exited with code (\d+)/)
   return match === null ? undefined : Number(match[1])
 }
 
 /** Only the details the row renders, in the row's own vocabulary. */
-export function toolDetails(name: string, details: unknown, output = ''): Absent<ToolDetails> {
+export function toolDetails(name: string, details: unknown, output = ''): Undef<ToolDetails> {
   const record = typeof details === 'object' && details !== null ? (details as Record<string, unknown>) : {}
   const collected: ToolDetails = {}
 

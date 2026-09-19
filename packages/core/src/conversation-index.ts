@@ -7,7 +7,7 @@
 
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
-import type { Absent } from './absence.ts'
+import type { Undef } from './maybe.ts'
 import { PERMISSION_LEVELS } from './permission.ts'
 import type { ConversationSummary } from './runtime-events.ts'
 import { THINKING_LEVELS } from './thinking.ts'
@@ -97,7 +97,7 @@ export function removeConversation(index: ConversationIndex, id: string): Conver
   return { version: 1, conversations: index.conversations.filter((conversation) => conversation.id !== id) }
 }
 
-export function findConversation(index: ConversationIndex, id: string): Absent<ConversationSummary> {
+export function findConversation(index: ConversationIndex, id: string): Undef<ConversationSummary> {
   return index.conversations.find((conversation) => conversation.id === id)
 }
 

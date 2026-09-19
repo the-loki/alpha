@@ -7,7 +7,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Absent } from '@alpha/core'
+import type { Undef } from '@alpha/core'
 import { Type } from 'typebox'
 import { Value } from 'typebox/value'
 
@@ -58,7 +58,7 @@ export class CredentialVault {
   }
 
   /** Main-process only. Never expose this over IPC. */
-  credential(providerId: string): Absent<string> {
+  credential(providerId: string): Undef<string> {
     const entry = this.#entries.find((candidate) => candidate.providerId === providerId)
     if (entry === undefined) return undefined
     return entry.protection === 'os' ? this.#cipher.decrypt(entry.payload) : entry.payload

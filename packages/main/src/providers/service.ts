@@ -7,7 +7,6 @@
  */
 
 import {
-  type Absent,
   credentialRequirement,
   customProvider,
   findCatalogEntry,
@@ -16,6 +15,7 @@ import {
   type ProviderView,
   providerFromCatalog,
   type StoredProvider,
+  type Undef,
 } from '@alpha/core'
 import type { Api, Model } from '@earendil-works/pi-ai'
 import { createProviderModelRuntime, modelsFor } from './model-runtime.ts'
@@ -88,7 +88,7 @@ export class ProviderService {
       return { ok: false, message: credentialRequirement({ hasCredential: false }).reason }
 
     const runtime = createProviderModelRuntime(this.#store)
-    const model: Absent<Model<Api>> = runtime.models.getModel(providerId, modelId)
+    const model: Undef<Model<Api>> = runtime.models.getModel(providerId, modelId)
     if (model === undefined) return { ok: false, message: `${providerId} does not serve ${modelId}` }
 
     try {

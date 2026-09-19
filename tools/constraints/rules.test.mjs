@@ -81,9 +81,10 @@ describe('01-typescript:no-null-union', () => {
     expect(found[0].line).toBe(1)
   })
 
-  it('flags a null union in a return type', () => {
+  it('flags a null union in a return type, and names the alias that replaces it', () => {
     const found = violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | null {}'))
     expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('Null<T>')
   })
 
   it('flags the double union', () => {
@@ -129,7 +130,7 @@ describe('01-typescript:absence-is-named', () => {
   it('flags a union spelled out in a return type', () => {
     const found = violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | undefined {}'))
     expect(found).toHaveLength(1)
-    expect(found[0].message).toContain('Absent<T>')
+    expect(found[0].message).toContain('Undef<T>')
   })
 
   it('flags a union inside a generic argument', () => {
@@ -143,7 +144,7 @@ describe('01-typescript:absence-is-named', () => {
   })
 
   it('passes the named form, which is what the rule is for', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Absent<Thing> {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Undef<Thing> {}'))).toEqual([])
   })
 
   it('passes an optional property and an omittable parameter, which keep their question mark', () => {

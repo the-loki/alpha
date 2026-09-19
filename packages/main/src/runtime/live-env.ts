@@ -4,7 +4,7 @@
  * default test run makes no network request.
  */
 
-import type { Absent } from '@alpha/core'
+import type { Undef } from '@alpha/core'
 
 export interface LiveEnv {
   baseUrl: string
@@ -14,7 +14,7 @@ export interface LiveEnv {
 }
 
 /** Returns undefined, with the reason printed, when the live test is not configured. */
-export function requireLiveEnv(env: NodeJS.ProcessEnv, log: (message: string) => void): Absent<LiveEnv> {
+export function requireLiveEnv(env: NodeJS.ProcessEnv, log: (message: string) => void): Undef<LiveEnv> {
   if (env.ALPHA_LIVE_TEST !== '1') {
     log('[live] skipped: set ALPHA_LIVE_TEST=1 to run it against a real provider.')
     return undefined

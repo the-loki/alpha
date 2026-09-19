@@ -1,4 +1,4 @@
-import type { Absent } from '@alpha/core'
+import type { Undef } from '@alpha/core'
 import { memo, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -14,11 +14,11 @@ export const Markdown = memo(function Markdown({ text, caret = false }: { text: 
   // The caret goes inside whatever block the last character is in, at the end of it: as a sibling
   // after the block it would sit on a line of its own and read as a stray bar. A stream can stop
   // inside a paragraph, a list item or a code fence, so each of those carries it.
-  const endsHere = (node: Absent<Positioned>): boolean => {
+  const endsHere = (node: Undef<Positioned>): boolean => {
     const end = node?.position?.end?.offset
     return caret && end !== undefined && end >= text.trimEnd().length
   }
-  const tail = (node: Absent<Positioned>, children: ReactNode): ReactNode => (
+  const tail = (node: Undef<Positioned>, children: ReactNode): ReactNode => (
     <>
       {children}
       {endsHere(node) && <span className="ember-cursor ml-0.5" aria-hidden="true" />}

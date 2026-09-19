@@ -7,7 +7,7 @@
  * The renderer is our own code, but it is also the process that could be compromised, so every
  * handler treats its arguments as arriving from outside.
  */
-import { type Absent, IPC } from '@alpha/core'
+import { IPC, type Undef } from '@alpha/core'
 import { type BrowserWindow, ipcMain } from 'electron'
 import type { Subscriber } from './broadcast.ts'
 import { CHANNELS, type ChannelPorts, type NetworkPort } from './channels.ts'
@@ -47,7 +47,7 @@ export function registerIpcHandlers(context: IpcContext): void {
  * The window is asked for on every push rather than held, because it can be gone by then — which is
  * what the type says, so the check below is not a branch nothing can reach.
  */
-export function windowSubscriber(getWindow: () => Absent<BrowserWindow>): Subscriber {
+export function windowSubscriber(getWindow: () => Undef<BrowserWindow>): Subscriber {
   return ({ channel, payload }) => {
     const window = getWindow()
     if (window === undefined || window.isDestroyed()) return

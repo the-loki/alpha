@@ -6,12 +6,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  type Absent,
   emptyProviderIndex,
   type ProviderIndex,
   type ProviderView,
   parseProviders,
   type StoredProvider,
+  type Undef,
 } from '@alpha/core'
 import type { CredentialProtection, CredentialVault } from './credential-vault.ts'
 
@@ -35,7 +35,7 @@ export class ProviderStore {
     return this.#index.providers.map((provider) => ({ ...provider, hasCredential: this.#vault.has(provider.id) }))
   }
 
-  find(id: string): Absent<StoredProvider> {
+  find(id: string): Undef<StoredProvider> {
     return this.#index.providers.find((provider) => provider.id === id)
   }
 
@@ -60,7 +60,7 @@ export class ProviderStore {
   }
 
   /** Main-process only: the model runtime is the one caller. */
-  credential(id: string): Absent<string> {
+  credential(id: string): Undef<string> {
     return this.#vault.credential(id)
   }
 

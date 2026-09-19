@@ -10,7 +10,6 @@
  * check someone has to remember.
  */
 import {
-  type Absent,
   type ApprovalAnswerInput,
   defaultLevelFor,
   type IPC,
@@ -26,6 +25,7 @@ import {
   type PermissionLevel,
   type PickWorkspaceResult,
   rememberWorkspace,
+  type Undef,
   type WorkspaceSelection,
   workspaceFromPath,
 } from '@alpha/core'
@@ -291,7 +291,7 @@ export function setWorkspaceLevel(store: StateStore, runtime: RuntimeManager, le
 }
 
 /** The folder this window is working in, when one has been chosen. */
-export function currentWorkspace(store: StateStore): Absent<string> {
+export function currentWorkspace(store: StateStore): Undef<string> {
   const selection = store.read().workspace.selection
   return selection.kind === 'selected' ? selection.workspace.path : undefined
 }

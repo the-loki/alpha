@@ -8,7 +8,7 @@
  * for a token whose only job is to be known by the person at the keyboard.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import type { Absent } from '@alpha/core'
+import type { Undef } from '@alpha/core'
 
 export const COOKIE_NAME = 'alpha_session'
 
@@ -30,7 +30,7 @@ export class SessionGate {
   }
 
   /** The cookie to set for a correct token, or undefined for anything else. */
-  exchange(candidate: unknown): Absent<string> {
+  exchange(candidate: unknown): Undef<string> {
     if (typeof candidate !== 'string' || !sameSecret(candidate, this.#token)) return undefined
     return `${COOKIE_NAME}=${this.#token}; HttpOnly; SameSite=Strict; Path=/`
   }

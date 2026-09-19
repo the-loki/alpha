@@ -4,7 +4,6 @@
  * last word. Everything the window sees in the sidebar comes from here.
  */
 import {
-  type Absent,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
   type PermissionLevel,
@@ -12,6 +11,7 @@ import {
   summarize,
   titleFromMessage,
   titleFromPath,
+  type Undef,
 } from '@alpha/core'
 import { ConversationIndexStore } from '../conversations/index-store.ts'
 
@@ -63,7 +63,7 @@ export class ConversationBookkeeper {
     return this.#store.all()
   }
 
-  find(id: string): Absent<ConversationSummary> {
+  find(id: string): Undef<ConversationSummary> {
     return this.#store.find(id)
   }
 

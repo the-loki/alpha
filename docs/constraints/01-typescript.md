@@ -10,26 +10,33 @@ packages, so there is no per-package escape.
 
 **Enforcement:** `pnpm typecheck`; `tsconfig.json` is the single source of these settings.
 
-## C1.2 — `undefined` is the absence value; `null` is not
+## C1.2 — Absence has a name
 
-Do not write `T | null`. The absence value is `undefined`; `null` appears only where a foreign
-system produced it — a JSON payload, a vendor SDK, an IPC frame — and is converted at the boundary
-that received it, so `null` never travels into the domain. The point is to have one absence value,
-not two: the moment both are legal, every check has to be written twice and one of them is
-eventually forgotten.
+There is one absence value in the domain: `undefined`. `null` appears only where a foreign system
+produced it — a JSON payload, a vendor SDK, an IPC frame, the DOM — and the module that received it
+converts the value at that boundary, so `null` never travels inward. The point is to have one
+absence value, not two: the moment both are legal in the domain, every check has to be written
+twice and one of them is eventually forgotten.
 
-Absence is *named*, and the name is `Absent<T>` (from `core`) — a generic alias for `T | undefined`,
-so a signature reads `findCatalogEntry(id): Absent<CatalogEntry>` rather than a union spelled out. It
-is for the places a `?` cannot speak for: a return type, a generic argument, an element of a
-collection, a parameter the caller has to pass either way.
+Neither is ever spelled as a bare union. `core` exports two aliases, and which one a value wears
+says where it came from:
 
-- An **optional property** or an **omittable parameter** keeps its `?`. `foo?: T` already means
-  `T | undefined`, and it lets the caller leave the name out instead of writing `undefined` into the
-  call — which is the ugliness `Absent<T>` exists to keep out of the rest of the code.
-- A parameter the caller **must pass**, absence and all, is `Absent<T>`, not `T | undefined` and not
-  a `?` (that would let them omit it and change what the function promises).
+- **`Undef<T>`** — `T | undefined`, the domain's absence. This is the one the codebase uses: a
+  signature reads `findCatalogEntry(id): Undef<CatalogEntry>` rather than a union spelled out. It is
+  for the places a `?` cannot speak for: a return type, a generic argument, an element of a
+  collection, a parameter the caller has to pass either way.
+- **`Null<T>`** — `T | null`, the boundary's absence: a parsed JSON payload, a vendor return,
+  `document.querySelector`, a React ref. It is named so the boundary is visible, and the module that
+  received it converts the value to `undefined` before it travels any further, which is the rule at
+  the top of this section. A ref is the everyday case: `useRef<Null<HTMLDivElement>>(null)`.
 
-There is no `Null<T>`. A second alias would be a second absence value wearing a name.
+An **optional property** or an **omittable parameter** keeps its `?` rather than either alias:
+`foo?: T` already means `T | undefined`, and it lets the caller leave the name out instead of
+writing `undefined` into the call — the ugliness these aliases exist to keep out of the code. A
+parameter the caller **must pass**, absence and all, is `Undef<T>` and not a `?`, which would let
+them omit it and change what the function promises.
+
+Neither alias is written `T | undefined` or `T | null` at a use site: the name is the point.
 
 **Enforcement:** `pnpm check:constraints` rules `01-typescript:no-null-union` and
 `01-typescript:absence-is-named` scan `packages/*/src/**/*.{ts,tsx}` for `| null` and for a bare

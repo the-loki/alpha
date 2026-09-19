@@ -1,4 +1,11 @@
-import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS, type PermissionLevel } from '@alpha/core'
+import {
+  levelDescription,
+  levelLabel,
+  levelTone,
+  type Null,
+  PERMISSION_LEVELS,
+  type PermissionLevel,
+} from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
@@ -39,7 +46,7 @@ export function LevelChip() {
     else await setWorkspaceLevel(next)
   }
   const [open, setOpen] = useState(false)
-  const container = useRef<HTMLDivElement>(null)
+  const container = useRef<Null<HTMLDivElement>>(null)
 
   useEffect(() => {
     if (!open) return

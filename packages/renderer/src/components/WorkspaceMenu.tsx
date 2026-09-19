@@ -1,4 +1,4 @@
-import type { WorkspaceRef } from '@alpha/core'
+import type { Null, WorkspaceRef } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { NO_FOLDER_PICKER, useShell } from '../stores/shell.ts'
 
@@ -13,7 +13,7 @@ export function WorkspaceButton() {
   const pickWorkspace = useShell((state) => state.pickWorkspace)
   const openRecent = useShell((state) => state.openRecent)
   const [open, setOpen] = useState(false)
-  const container = useRef<HTMLDivElement>(null)
+  const container = useRef<Null<HTMLDivElement>>(null)
   const browser = host === 'browser'
 
   useEffect(() => {

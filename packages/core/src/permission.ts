@@ -3,7 +3,7 @@
  * the rules that stand in for a decision the user has already made twice. All of it is pure — the
  * gate asks these functions, and the window only ever sees their answers.
  */
-import type { Absent } from './absence.ts'
+import type { Undef } from './maybe.ts'
 import type { ToolRisk } from './tools.ts'
 
 export const PERMISSION_LEVELS = ['plan', 'ask', 'accept-edits', 'full-access'] as const
@@ -154,7 +154,7 @@ export function normalizePath(path: string): string {
 }
 
 /** The one string a rule for this call would be about, or none when the arguments offer nothing. */
-export function patternOf(toolName: string, args: Record<string, unknown>): Absent<string> {
+export function patternOf(toolName: string, args: Record<string, unknown>): Undef<string> {
   if (COMMAND_TOOLS.includes(toolName)) {
     return typeof args.command === 'string' ? normalizeCommand(args.command) : undefined
   }

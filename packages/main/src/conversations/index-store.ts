@@ -6,7 +6,6 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  type Absent,
   type ConversationIndex,
   type ConversationSummary,
   emptyConversationIndex,
@@ -14,6 +13,7 @@ import {
   listForWorkspace,
   parseConversationIndex,
   removeConversation,
+  type Undef,
   upsertConversation,
 } from '@alpha/core'
 
@@ -34,7 +34,7 @@ export class ConversationIndexStore {
     return listForWorkspace(this.#index, workspacePath)
   }
 
-  find(id: string): Absent<ConversationSummary> {
+  find(id: string): Undef<ConversationSummary> {
     return findConversation(this.#index, id)
   }
 

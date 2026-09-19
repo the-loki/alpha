@@ -1,4 +1,4 @@
-import { type ApprovalRequest, levelLabel, type RuleScope, riskLabel } from '@alpha/core'
+import { type ApprovalRequest, levelLabel, type Null, type RuleScope, riskLabel } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { DiffView } from './DiffView.tsx'
@@ -12,7 +12,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
   const answer = useConversations((state) => state.answerApproval)
   const [reason, setReason] = useState('')
   const [scope, setScope] = useState<RuleScope>('conversation')
-  const field = useRef<HTMLInputElement>(null)
+  const field = useRef<Null<HTMLInputElement>>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {

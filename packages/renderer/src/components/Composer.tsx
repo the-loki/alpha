@@ -1,3 +1,4 @@
+import type { Null } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
@@ -89,7 +90,7 @@ export function Composer() {
   const stop = useConversations((state) => state.stop)
   const focusSignal = useConversations((state) => state.composerFocus)
   const navigate = useNavigate()
-  const field = useRef<HTMLTextAreaElement>(null)
+  const field = useRef<Null<HTMLTextAreaElement>>(null)
 
   // Answering a card hands the keyboard back: the next thing typed is the next message.
   useEffect(() => {

@@ -13,7 +13,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type Absent, type ApprovalRecord, isPermissionLevel } from '@alpha/core'
+import { type ApprovalRecord, isPermissionLevel, type Undef } from '@alpha/core'
 import { Type } from 'typebox'
 import { Value } from 'typebox/value'
 
@@ -30,7 +30,7 @@ const FileSchema = Type.Object({ decisions: Type.Record(Type.String(), Type.Unkn
 
 /** How each call got past the gate, by call id: the part of pi's session the log does not hold. */
 export interface DecisionLookup {
-  get(callId: string): Absent<ApprovalRecord>
+  get(callId: string): Undef<ApprovalRecord>
 }
 
 export class DecisionLog {
@@ -80,7 +80,7 @@ interface LedgerLocation {
  */
 export class DecisionLedger implements DecisionLookup {
   readonly #records: Map<string, ApprovalRecord>
-  readonly #persist: Absent<(records: Map<string, ApprovalRecord>) => void>
+  readonly #persist: Undef<(records: Map<string, ApprovalRecord>) => void>
 
   constructor(
     options: { records?: Map<string, ApprovalRecord>; persist?: (records: Map<string, ApprovalRecord>) => void } = {},
@@ -89,7 +89,7 @@ export class DecisionLedger implements DecisionLookup {
     this.#persist = options.persist
   }
 
-  get(callId: string): Absent<ApprovalRecord> {
+  get(callId: string): Undef<ApprovalRecord> {
     return this.#records.get(callId)
   }
 
@@ -131,7 +131,7 @@ function readRecords(location: LedgerLocation): Map<string, ApprovalRecord> {
   return records
 }
 
-function readRecord(candidate: unknown): Absent<ApprovalRecord> {
+function readRecord(candidate: unknown): Undef<ApprovalRecord> {
   if (!Value.Check(DecisionSchema, candidate)) return undefined
   const record = Value.Decode(DecisionSchema, candidate)
   if (!isPermissionLevel(record.level)) return undefined

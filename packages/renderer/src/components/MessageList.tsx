@@ -1,9 +1,10 @@
 import {
-  type Absent,
   formatCost,
   formatTokens,
+  type Null,
   type TranscriptState,
   type TurnUsage,
+  type Undef,
   visibleMessages,
 } from '@alpha/core'
 import { Fragment, useEffect, useRef } from 'react'
@@ -18,7 +19,7 @@ const userIndex = (messages: { role: string }[], index: number): number =>
  * The usage row belongs to the end of a turn, so it is drawn under the last message of the turn —
  * which is the last assistant message before the next user message.
  */
-const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]): Absent<TurnUsage> => {
+const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]): Undef<TurnUsage> => {
   const isLastOfTurn = messages[index]?.role === 'assistant' && messages[index + 1]?.role !== 'assistant'
   if (!isLastOfTurn) return undefined
   const finished = messages.slice(0, index + 1).filter((message) => message.role === 'user').length - 1
@@ -26,7 +27,7 @@ const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]
 }
 
 /** What one turn spent, so the header's total can be read back to the turns that made it. */
-function TurnUsageNote({ turn }: { turn: Absent<TurnUsage> }) {
+function TurnUsageNote({ turn }: { turn: Undef<TurnUsage> }) {
   if (turn === undefined) return null
   const cost = formatCost(turn.usage.cost)
 
@@ -44,7 +45,7 @@ function TurnUsageNote({ turn }: { turn: Absent<TurnUsage> }) {
  * next delta.
  */
 export function MessageList({ transcript }: { transcript: TranscriptState }) {
-  const container = useRef<HTMLDivElement>(null)
+  const container = useRef<Null<HTMLDivElement>>(null)
   const atBottom = useRef(true)
   const messages = visibleMessages(transcript)
   // A card is the newest thing in the transcript, so it is the thing to scroll to.

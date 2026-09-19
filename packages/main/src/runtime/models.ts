@@ -8,7 +8,7 @@
  * transport are all real, and only the model's replies are decided in advance.
  */
 
-import type { Absent, ConversationModel } from '@alpha/core'
+import type { ConversationModel, Undef } from '@alpha/core'
 import {
   type Api,
   createModels,
@@ -129,19 +129,19 @@ export function resolveModelRuntime(
 }
 
 /** How many characters arrive at a time, when a test wants a stream it can interrupt between pieces. */
-function readTokenSize(env: NodeJS.ProcessEnv): Absent<number> {
+function readTokenSize(env: NodeJS.ProcessEnv): Undef<number> {
   const requested = Number(env.ALPHA_FAUX_TOKEN_SIZE ?? '')
   return Number.isFinite(requested) && requested > 0 ? requested : undefined
 }
 
 /** How fast the scripted model streams, in tokens per second, when a test asks for a slow one. */
-function readTokenRate(env: NodeJS.ProcessEnv): Absent<number> {
+function readTokenRate(env: NodeJS.ProcessEnv): Undef<number> {
   const requested = Number(env.ALPHA_FAUX_TOKENS_PER_SECOND ?? '')
   return Number.isFinite(requested) && requested > 0 ? requested : undefined
 }
 
 /** Which wire protocol the configured endpoint speaks. */
-function readApi(requested: Absent<string>): 'openai-completions' | 'anthropic-messages' {
+function readApi(requested: Undef<string>): 'openai-completions' | 'anthropic-messages' {
   return requested === 'anthropic-messages' ? 'anthropic-messages' : 'openai-completions'
 }
 
@@ -155,7 +155,7 @@ function scriptedMessage(reply: ScriptedReply): ReturnType<typeof fauxAssistantM
 }
 
 /** Accepts a bare string (text) or an object carrying text, a tool call, or both. */
-function readScriptedReplies(raw: Absent<string>): ScriptedReply[] {
+function readScriptedReplies(raw: Undef<string>): ScriptedReply[] {
   if (raw === undefined || raw === '') return DEFAULT_FAUX_REPLIES
   try {
     const parsed: unknown = JSON.parse(raw)
@@ -187,7 +187,7 @@ function isScriptedReply(item: unknown): item is ScriptedReply {
  * the runtime's default otherwise — a provider that was deleted must not leave a conversation
  * unusable.
  */
-export function modelFor(runtime: ModelRuntime, conversation: { model: ConversationModel }): Absent<Model<Api>> {
+export function modelFor(runtime: ModelRuntime, conversation: { model: ConversationModel }): Undef<Model<Api>> {
   const chosen = conversation.model
   if (chosen.providerId === '' || chosen.modelId === '') return runtime.defaultModel
   return runtime.models.getModel(chosen.providerId, chosen.modelId) ?? runtime.defaultModel

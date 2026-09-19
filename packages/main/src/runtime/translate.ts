@@ -10,13 +10,13 @@
  */
 
 import {
-  type Absent,
   type ApprovalRecord,
   outputTextOf,
   type QueuedMessage,
   type RuntimeEvent,
   textOfContent,
   toolOutcomeOf,
+  type Undef,
   type UsageTotals,
 } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
@@ -46,7 +46,7 @@ function usageTotals(usage: {
 }
 
 /** How a row learns why its call got past the gate. */
-export type ApprovalLookup = (callId: string) => Absent<ApprovalRecord>
+export type ApprovalLookup = (callId: string) => Undef<ApprovalRecord>
 
 interface TranslatorState {
   counter: number

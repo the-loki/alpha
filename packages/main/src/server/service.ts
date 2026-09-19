@@ -6,7 +6,7 @@
 import { existsSync } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { join } from 'node:path'
-import type { Absent, NetworkAccess, NetworkPatch, NetworkState } from '@alpha/core'
+import type { NetworkAccess, NetworkPatch, NetworkState, Undef } from '@alpha/core'
 import type { Broadcast } from '../broadcast.ts'
 import type { ChannelPorts } from '../channels.ts'
 import type { StateStore } from '../state-store.ts'
@@ -38,7 +38,7 @@ export function networkUrls(port: number, interfaces: ReturnType<typeof networkI
 
 export class NetworkService {
   readonly #options: NetworkServiceOptions
-  #server: Absent<RunningServer>
+  #server: Undef<RunningServer>
   #error = ''
 
   constructor(options: NetworkServiceOptions) {
