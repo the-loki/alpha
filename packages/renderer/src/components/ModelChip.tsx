@@ -83,7 +83,7 @@ export function ModelChip() {
         <div
           role="menu"
           aria-label={t('model.menuLabel')}
-          className="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
+          className="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
         >
           {snapshot.providers.map((provider) => (
             <div key={provider.id}>
@@ -97,7 +97,9 @@ export function ModelChip() {
                     role="menuitemradio"
                     aria-checked={current}
                     onClick={() => void choose({ providerId: provider.id, modelId: model.id })}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-ui text-parchment transition-colors hover:bg-ink-600"
+                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-ui text-parchment transition-colors ${
+                      current ? 'bg-ink-700' : 'hover:bg-ink-600'
+                    }`}
                   >
                     {/* The mark of the chosen one, the same one the settings choices wear. */}
                     <CheckIcon className={current ? 'text-accent' : 'invisible'} />

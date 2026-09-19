@@ -67,6 +67,12 @@
    */
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07);
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 16px rgb(0 0 0 / 0.05);
+  /*
+   * What a menu wears, which is more than a card: it is further off the page than anything else
+   * and it has to be read against whatever is under it. Still low-alpha and wide — a menu that
+   * casts a black halo is the thing that makes a soft interface look cheap in one screenshot.
+   */
+  --shadow-overlay: 0 2px 4px rgb(0 0 0 / 0.04), 0 18px 44px rgb(0 0 0 / 0.13);
 
   /*
    * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
@@ -129,6 +135,7 @@
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px rgb(0 0 0 / 0.42);
     --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 18px rgb(0 0 0 / 0.35);
+    --shadow-overlay: 0 2px 5px rgb(0 0 0 / 0.45), 0 20px 48px rgb(0 0 0 / 0.55);
   }
 
   /*

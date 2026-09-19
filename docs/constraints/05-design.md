@@ -163,11 +163,14 @@ composer's bar; `--radius-overlay` `1.25rem` for a menu and the command palette.
 dots are pills (`rounded-full`). There are three radii and no fourth: a component that wants a
 different corner wants a different element.
 
-**Height comes from two shadows, edges come from hairlines.** `--shadow-card` lifts the page and
+**Height comes from three shadows, edges come from hairlines.** `--shadow-card` lifts the page and
 the rail off the window; `--shadow-soft` lifts what floats a little less — the composer's bar, the
-row you are in, a grouped control inside a form. Both are wide and low-alpha, and the dark palette
-carries the stronger pair because a dark page swallows the first. A shadow is never drawn where a
-hairline would have done, and nothing has both a heavy border and a shadow.
+row you are in, a grouped control inside a form; `--shadow-overlay` is for the only things that
+leave the page entirely — a menu, the command palette — and it is the one that has to read against
+whatever is under it. All three are low-alpha and wide: a menu casting a black halo is the thing
+that makes a soft interface look cheap in one screenshot. The dark palette carries the stronger
+set, because a dark page swallows the first of them. A shadow is never drawn where a hairline would
+have done, and nothing has both a heavy border and a shadow.
 
 **The window has a gutter, and two panels sit in it.** A half-rem all the way round, on
 `--ink-900`. The rail is a rounded panel; the page — the conversation, the tasks list, the settings
@@ -277,9 +280,11 @@ reveals them for the keyboard as well, so nothing is hover-only). Nothing moves 
 Keyboard reachable: every control, including the approval buttons, with a visible 0.125rem ember focus
 ring that is never removed. The approval prompt takes focus when it appears and is operable with
 `Enter` (allow once) and `Escape` (deny). Colour is never the only carrier of meaning: each level
-chip pairs its colour with its name, each tool status pairs its colour with a glyph, the row you are
-in pairs its accent rule with `aria-current`, and a chosen option pairs its tint with a check mark
-(the state is also `aria-pressed` / `aria-current`, so a reader that cannot see either still has it).
+chip pairs its colour with its name, each tool status pairs its colour with a glyph, and the row you
+are in pairs its fill with `aria-current`. **A menu marks what is in force the same way everywhere**
+— the row is filled and carries the accent check, while the state itself is `aria-checked` — so the
+level menu and the model menu are read as the same control twice rather than as two controls that
+happen to look similar. A mark that only a screen reader knows about is half a mark.
 
 **Decoration is hidden from a reader.** The entry numbers and the composer's prompt mark are
 `aria-hidden`: they are the page's furniture, and a reader being told "zero one" before every

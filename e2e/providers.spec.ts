@@ -55,31 +55,16 @@ async function addModel(
   const box = window.getByRole('region', { name: provider })
   await box.getByRole('button', { name: 'Add model' }).click()
   // The rows are positional, and a model is always added at the end of them.
-  await box
-    .getByRole('textbox', { name: /^Model id / })
-    .last()
-    .fill(model.id)
+  await box.getByRole('textbox', { name: 'Model id', exact: true }).last().fill(model.id)
   if (model.name !== undefined)
-    await box
-      .getByRole('textbox', { name: /^Display name / })
-      .last()
-      .fill(model.name)
+    await box.getByRole('textbox', { name: 'Display name', exact: true }).last().fill(model.name)
   if (model.context !== undefined) {
-    await box
-      .getByRole('textbox', { name: /^Context window / })
-      .last()
-      .fill(model.context)
+    await box.getByRole('textbox', { name: 'Context window', exact: true }).last().fill(model.context)
   }
   if (model.max !== undefined)
-    await box
-      .getByRole('textbox', { name: /^Max output / })
-      .last()
-      .fill(model.max)
+    await box.getByRole('textbox', { name: 'Max output', exact: true }).last().fill(model.max)
   if (model.reasoning === true)
-    await box
-      .getByRole('checkbox', { name: /^Reasoning / })
-      .last()
-      .check()
+    await box.getByRole('checkbox', { name: 'Thinks before answering', exact: true }).last().check()
   await box.getByRole('button', { name: 'Save models' }).click()
 }
 

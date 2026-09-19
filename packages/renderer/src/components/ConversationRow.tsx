@@ -150,7 +150,7 @@ function RowActions({
         <div
           role="menu"
           aria-label={t('sidebar.actions', { title: conversation.title })}
-          className="absolute top-full right-0 z-50 w-44 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
+          className="absolute top-full right-0 z-50 w-44 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
         >
           <button
             type="button"

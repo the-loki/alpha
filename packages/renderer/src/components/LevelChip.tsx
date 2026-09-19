@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell, useText } from '../stores/shell.ts'
+import { CheckIcon } from './icons.tsx'
 
 /** How each tone of the permission level reads: the settings page uses the same map. */
 export const TONE_CLASS: Record<string, string> = {
@@ -92,7 +93,7 @@ export function LevelChip() {
         <div
           role="menu"
           aria-label={t('level.chipTitle')}
-          className="absolute bottom-full left-0 z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
+          className="absolute bottom-full left-0 z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
         >
           {PERMISSION_LEVELS.map((candidate: PermissionLevel) => (
             <button
@@ -104,11 +105,16 @@ export function LevelChip() {
                 void setPermissionLevel(candidate)
                 setOpen(false)
               }}
-              className="block w-full px-3 py-2 text-left transition-colors hover:bg-ink-600"
+              className={`block w-full px-3 py-2 text-left transition-colors ${
+                candidate === level ? 'bg-ink-700' : 'hover:bg-ink-600'
+              }`}
             >
               <span className="flex items-center gap-2 text-ui text-parchment">
                 <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[levelTone(candidate)]}`} aria-hidden="true" />
                 {t(levelKey(candidate))}
+                {/* The mark of the one in force, in the place every menu in the app puts it: the
+                    dot says which level it is, the check says that it is the one being used. */}
+                <CheckIcon className={`ml-auto ${candidate === level ? 'text-accent' : 'invisible'}`} />
               </span>
               <span className="mt-0.5 block text-xs leading-snug text-parchment-faint">
                 {t(levelDescriptionKey(candidate))}

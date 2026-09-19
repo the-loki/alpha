@@ -9,7 +9,7 @@ import {
   text,
   type Undef,
 } from '@alpha/core'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { languageOf, useShell, useText } from '../stores/shell.ts'
 import { DiffView } from './DiffView.tsx'
 import { CopyButton } from './MessageView.tsx'
@@ -112,37 +112,45 @@ export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?
 
       {open && (
         // Recessed: the audit of a row belongs to the row, and the surface says so without a box
-        // drawn around the whole thing.
-        <div className="mb-2 rounded-card border border-line bg-ink-900/50 px-3 py-2">
+        // drawn around the whole thing. It is a record and it is laid out as one — a label column
+        // and a value column — so the panel is scanned rather than read line by line.
+        <div className="mb-2 rounded-card border border-line bg-ink-900/50 px-3 py-2.5">
           {block.approval !== undefined && (
-            <p className="mb-1 font-mono text-micro text-parchment-faint">
+            <AuditRow label={t('tool.gate')}>
               {approvalNote(language, block.approval)}
               {block.approval.reason === undefined ? '' : ` Reason: ${block.approval.reason}`}
-            </p>
+            </AuditRow>
           )}
-          <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">{t('tool.arguments')}</p>
-          <pre className="mt-1 overflow-x-auto font-mono text-code text-parchment-dim">{block.raw}</pre>
-          {block.details?.diff !== undefined && <DiffView diff={block.details.diff} />}
+          <AuditRow label={t('tool.arguments')}>
+            <pre className="overflow-x-auto font-mono text-code text-parchment-dim">{block.raw}</pre>
+          </AuditRow>
+          {block.details?.diff !== undefined && (
+            <AuditRow label={t('tool.diff')}>
+              <DiffView diff={block.details.diff} />
+            </AuditRow>
+          )}
           {block.output !== '' && (
-            <>
-              {/* The button sits on the heading it belongs to: two rows on screen can each have
-                  an output, and "copy" alone would not say which one it takes. */}
-              <div className="mt-2 flex items-center justify-between">
-                <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">
-                  {t('tool.output')}
-                  {block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
-                </p>
+            <AuditRow
+              label={
+                block.details?.exitCode === undefined
+                  ? t('tool.output')
+                  : `${t('tool.output')} · exit ${block.details.exitCode}`
+              }
+              // The button belongs to the value it copies: two rows on screen can each have an
+              // output, and "copy" alone would not say which one it takes.
+              action={
                 <CopyButton
                   what="message.copyOutput"
                   params={{ tool: block.name }}
                   text={block.output}
                   label="message.copyOutputLabel"
                 />
-              </div>
-              <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
+              }
+            >
+              <pre className="max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
                 {block.output}
               </pre>
-            </>
+            </AuditRow>
           )}
           {block.details?.fullOutputPath !== undefined && (
             <p className="mt-1 font-mono text-micro text-parchment-faint">
@@ -152,5 +160,25 @@ export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?
         </div>
       )}
     </article>
+  )
+}
+
+/**
+ * One line of the audit: what this part of the record is, in the label column, and the thing
+ * itself beside it. The label column is fixed, so three rows of a panel are read as a table.
+ */
+function AuditRow({ label, action, children }: { label: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="mt-1.5 flex gap-3 first:mt-0">
+      <span className="w-16 shrink-0 pt-0.5 font-mono text-micro tracking-wider text-parchment-faint uppercase">
+        {label}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 font-mono text-micro leading-relaxed text-parchment-faint">{children}</div>
+          {action !== undefined && <span className="shrink-0">{action}</span>}
+        </div>
+      </div>
+    </div>
   )
 }

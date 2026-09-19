@@ -342,6 +342,8 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('tool.failed', 'failed', '失败'),
     ('tool.arguments', 'Arguments', '参数'),
     ('tool.output', 'Output', '输出'),
+    ('tool.gate', 'Gate', '门控'),
+    ('tool.diff', 'Diff', '改动'),
     ('tool.truncated', 'Truncated. Full output: {path}', '已截断。完整输出：{path}'),
 
     (
@@ -471,6 +473,13 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.addModel', 'Add model', '添加模型'),
     ('settings.removeModel', 'Remove', '移除'),
     ('settings.displayNamePlaceholder', 'What it is called', '显示名称'),
+    # The four fields of a model row. The row's number is in the row, in its own column, so a label
+    # never has to carry it: "Model id 1" and "Model id 2" are the same field written twice.
+    ('settings.modelRow', 'Model {index}', '模型 {index}'),
+    ('settings.modelId', 'Model id', '模型 ID'),
+    ('settings.modelName', 'Display name', '显示名称'),
+    ('settings.modelContext', 'Context window', '上下文窗口'),
+    ('settings.modelMaxTokens', 'Max output', '最大输出'),
     ('settings.wireProtocol', 'Wire protocol', '协议'),
     ('settings.defaultLevel', 'Default permission level', '默认权限级别'),
     (
