@@ -434,9 +434,9 @@ export const RULES = [
         path.startsWith('e2e/') ||
         isTest(path) ||
         path.includes('/providers/templates') ||
-        // The server's own address is what that module is about: it listens, and it has to say
-        // where. A provider host is still a violation anywhere a model client is built.
-        path.startsWith('packages/main/src/server/') ||
+        // The server's own address is what that one module is about: it listens, and it has to
+        // say where. A provider host is still a violation anywhere a model client is built.
+        path === 'packages/main/src/server/http.ts' ||
         isCheckerSource(path)
       if (exempt || !/\.(ts|tsx|mjs|js|json)$/.test(path)) return []
       const found = []

@@ -6,12 +6,12 @@
 import { existsSync } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { join } from 'node:path'
-import type { NetworkAccess, NetworkBind, NetworkPatch, NetworkState } from '@alpha/core'
+import type { NetworkAccess, NetworkPatch, NetworkState } from '@alpha/core'
 import type { Broadcast } from '../broadcast.ts'
 import type { ChannelPorts } from '../channels.ts'
 import type { StateStore } from '../state-store.ts'
-import { type RunningServer, startServer } from './http.ts'
-import { SessionGate } from './session.ts'
+import { BIND_ADDRESS, type RunningServer, startServer } from './http.ts'
+import { mintToken } from './session.ts'
 
 export interface NetworkServiceOptions {
   store: StateStore
@@ -27,7 +27,7 @@ export interface NetworkServiceOptions {
 
 /** Every address on this machine that someone else's browser could reach. */
 export function networkUrls(port: number, interfaces: ReturnType<typeof networkInterfaces>): string[] {
-  const urls = [`http://127.0.0.1:${port}`]
+  const urls = [`http://${BIND_ADDRESS.local}:${port}`]
   for (const addresses of Object.values(interfaces)) {
     for (const address of addresses ?? []) {
       if (address.family === 'IPv4' && !address.internal) urls.push(`http://${address.address}:${port}`)
@@ -88,7 +88,7 @@ export class NetworkService {
   async set(patch: NetworkPatch): Promise<NetworkState> {
     const state = this.#options.store.read()
     const next: NetworkAccess = { ...state.network, ...patch }
-    if (next.enabled && next.token === '') next.token = new SessionGate().token
+    if (next.enabled && next.token === '') next.token = mintToken()
     this.#options.store.write({ ...state, network: next })
     return this.apply()
   }
@@ -96,7 +96,7 @@ export class NetworkService {
   /** A new token, which stops every browser that was holding the old one. */
   async regenerateToken(): Promise<NetworkState> {
     const state = this.#options.store.read()
-    const next: NetworkAccess = { ...state.network, token: new SessionGate().token }
+    const next: NetworkAccess = { ...state.network, token: mintToken() }
     this.#options.store.write({ ...state, network: next })
     return this.apply()
   }
@@ -111,5 +111,3 @@ export class NetworkService {
     if (server !== undefined) await server.close()
   }
 }
-
-export type { NetworkBind }

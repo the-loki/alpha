@@ -28,12 +28,6 @@ export class SessionGate {
     return this.#token
   }
 
-  /** A new token, which stops every browser that was holding the old one. */
-  replace(): string {
-    this.#token = mintToken()
-    return this.#token
-  }
-
   /** The cookie to set for a correct token, or undefined for anything else. */
   exchange(candidate: unknown): string | undefined {
     if (typeof candidate !== 'string' || !sameSecret(candidate, this.#token)) return undefined
@@ -71,6 +65,6 @@ function createDigest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
 }
 
-function mintToken(): string {
+export function mintToken(): string {
   return randomBytes(32).toString('base64url')
 }

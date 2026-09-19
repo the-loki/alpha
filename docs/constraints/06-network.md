@@ -19,8 +19,9 @@ in Settings, and the choice is one value (`'local' | 'network'`) rather than an 
 write by hand.
 
 **Enforcement:** `NetworkBind` is a closed union of `local` and `network`, and the mapping from it
-to an address lives in one table in the server. The suite pins the default and the address a
-browser is told about for each choice.
+to an address lives in one table (`BIND_ADDRESS`) — the same one the settings page reads the
+loopback address from, so the two cannot drift. The browser E2E reaches this machine's own network
+address: nothing answers there while the bind is loopback, and Settings is what makes it answer.
 
 ## C6.3 — Every API route is authenticated
 
@@ -46,7 +47,8 @@ The renderer's build directory is the only place files come from, and a request 
 it (`../`, an absolute path, a symlink) is refused rather than resolved.
 
 **Enforcement:** integration test — the server is started on an ephemeral port and asked for paths
-outside the bundle.
+outside the bundle, encoded `../` and a symlink pointing out of it; both are refused, and a symlink
+that stays inside is served.
 
 ## C6.6 — The browser gets no more than the window
 
@@ -56,4 +58,5 @@ permission levels, and the same events. There is no second, more powerful path f
 
 **Enforcement:** both transports dispatch the one table in `channels.ts`, and what differs is the
 `WindowPort` they are given — a desktop one with a native picker, a headless one that refuses. The
-browser E2E asserts the absence of window chrome and the refusal of the folder picker.
+browser E2E asserts the absence of window chrome and that no folder picker is offered; the server's
+own test asserts the refusal for a client that asks for one anyway.

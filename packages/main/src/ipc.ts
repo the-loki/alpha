@@ -19,7 +19,6 @@ export interface IpcContext {
   store: StateStore
   runtime: RuntimeManager
   providers: ProviderService
-  getWindow: () => BrowserWindow
   /** What answers the folder picker and the chrome commands for this client. */
   window: ChannelPorts['window']
   /** Browser access, which the settings page reads and changes. */
@@ -44,8 +43,11 @@ export function registerIpcHandlers(context: IpcContext): void {
  * The window as a subscriber to the broadcast: every push channel, forwarded under the contract's
  * own name for it. One function rather than one per channel, so a channel added to the contract is
  * delivered by the same road as the rest.
+ *
+ * The window is asked for on every push rather than held, because it can be gone by then — which is
+ * what the type says, so the check below is not a branch nothing can reach.
  */
-export function windowSubscriber(getWindow: () => BrowserWindow): Subscriber {
+export function windowSubscriber(getWindow: () => BrowserWindow | undefined): Subscriber {
   return ({ channel, payload }) => {
     const window = getWindow()
     if (window === undefined || window.isDestroyed()) return

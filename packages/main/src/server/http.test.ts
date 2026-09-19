@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { IPC, type PermissionRule } from '@alpha/core'
@@ -42,7 +42,15 @@ const bundleWith = (files: Record<string, string>): string => {
 
 const servers: RunningServer[] = []
 
-const start = async (options: { token?: string; bundle?: Record<string, string>; broadcast?: Broadcast } = {}) => {
+const start = async (
+  options: {
+    token?: string
+    bundle?: Record<string, string>
+    /** A bundle that is already on disk, for the tests that plant something in it. */
+    bundleDirectory?: string
+    broadcast?: Broadcast
+  } = {},
+) => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-server-'))
   const events: unknown[] = []
   const vault = new CredentialVault(dataDirectory, testCipher)
@@ -68,7 +76,8 @@ const start = async (options: { token?: string; bundle?: Record<string, string>;
     ports,
     broadcast,
     token: options.token ?? 'a-token-that-is-long-enough-to-be-one',
-    bundleDirectory: bundleWith(options.bundle ?? { 'index.html': '<html>the workbench</html>' }),
+    bundleDirectory:
+      options.bundleDirectory ?? bundleWith(options.bundle ?? { 'index.html': '<html>the workbench</html>' }),
     port: 0,
     bind: 'local',
   })
@@ -102,6 +111,26 @@ describe('[main] the workbench server', () => {
     const route = await fetch(`${url}/conversations/anything`)
     expect(route.status).toBe(200)
     expect(await route.text()).toContain('the workbench')
+  })
+
+  it('refuses a symlink inside the bundle that points out of it', async () => {
+    const secret = join(mkdtempSync(join(tmpdir(), 'alpha-outside-')), 'a-secret.txt')
+    writeFileSync(secret, 'not for browsers', 'utf-8')
+
+    const bundle = bundleWith({ 'index.html': '<html>the workbench</html>' })
+    // A name inside the bundle that resolves to a file outside it: the path check alone is happy
+    // with it, because the path is inside until the filesystem says otherwise.
+    symlinkSync(secret, join(bundle, 'escape.txt'))
+
+    const { url: served } = await start({ bundleDirectory: bundle })
+    const escaped = await fetch(`${served}/escape.txt`)
+    expect(escaped.status).toBe(404)
+    expect(await escaped.text()).not.toContain('not for browsers')
+
+    // A symlink that stays inside is still the bundle's own file, and is served.
+    symlinkSync(join(bundle, 'index.html'), join(bundle, 'same.html'))
+    const inside = await fetch(`${served}/same.html`)
+    expect(inside.status).toBe(200)
   })
 
   it('refuses every API call without a session, and the token is the only way in', async () => {

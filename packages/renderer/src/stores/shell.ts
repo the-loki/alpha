@@ -9,7 +9,7 @@ import {
 } from '@alpha/core'
 import { create } from 'zustand'
 import { bridge, type ClientHost, clientHost } from '../lib/bridge.ts'
-import { Unauthorized, unlock as unlockTransport } from '../lib/network-bridge.ts'
+import { Unauthorized, unlock as unlockTransport, watchRefusals } from '../lib/network-bridge.ts'
 
 export interface ShellStore {
   ready: boolean
@@ -59,6 +59,9 @@ export function applyTheme(theme: Theme): void {
   if (theme === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', theme)
 }
+
+/** Where the desktop offers a native folder dialog, a browser has nothing to offer instead. */
+export const NO_FOLDER_PICKER = 'A folder can only be opened in the desktop app.'
 
 export const useShell = create<ShellStore>((set, get) => ({
   ready: false,
@@ -117,3 +120,7 @@ export const useShell = create<ShellStore>((set, get) => ({
 
   clearResume: () => set({ lastConversationId: '' }),
 }))
+
+// Once per page, wherever the refusal was noticed: a session that is gone takes the whole
+// workbench with it, because every screen behind it would only be refused in turn.
+watchRefusals(() => useShell.setState({ locked: true }))

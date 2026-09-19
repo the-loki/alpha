@@ -1,5 +1,5 @@
-import type { NetworkBind, NetworkState } from '@alpha/core'
-import { useEffect, useState } from 'react'
+import type { NetworkBind, NetworkPatch, NetworkState } from '@alpha/core'
+import { useCallback, useEffect, useState } from 'react'
 import { bridge } from '../../lib/bridge.ts'
 import { useShell } from '../../stores/shell.ts'
 
@@ -18,25 +18,20 @@ export function BrowserAccessSection() {
   const [port, setPort] = useState('')
   const [copied, setCopied] = useState(false)
 
-  const apply = (next: NetworkState) => {
+  const apply = useCallback((next: NetworkState) => {
     setState(next)
     setPort(String(next.port))
-  }
+  }, [])
 
   // Read once on mount: the page is the only place browser access is changed, so nothing else
   // can have moved it in the meantime.
   useEffect(() => {
-    void bridge()
-      .networkState()
-      .then((next) => {
-        setState(next)
-        setPort(String(next.port))
-      })
-  }, [])
+    void bridge().networkState().then(apply)
+  }, [apply])
 
   if (state === undefined) return null
 
-  const change = (patch: { enabled?: boolean; bind?: NetworkBind; port?: number }) => {
+  const change = (patch: NetworkPatch) => {
     void bridge().setNetworkAccess(patch).then(apply)
   }
 

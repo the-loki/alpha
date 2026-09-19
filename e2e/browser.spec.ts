@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { networkInterfaces, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,6 +8,8 @@ const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 const TOKEN = 'the-token-a-person-would-paste'
 const REPLY = 'Two files use that name. I can rename both.'
+/** A first reply that asks to write a file, so the gate has something to ask about. */
+const WRITE = { tool: { name: 'write', args: { path: 'made.txt', content: 'written by the agent' } } }
 
 /** A port nothing is listening on, so the test does not collide with anything on this machine. */
 async function freePort(): Promise<number> {
@@ -23,7 +25,7 @@ async function freePort(): Promise<number> {
  * The app with browser access already on, which is what Settings would have written. The desktop
  * window opens too: the point of the test is that a browser is a second client, not a replacement.
  */
-async function launchServing(port: number, options: { token?: string } = {}) {
+async function launchServing(port: number, options: { token?: string; level?: string; replies?: unknown[] } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   writeFileSync(
@@ -33,7 +35,7 @@ async function launchServing(port: number, options: { token?: string } = {}) {
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      permissionLevel: 'full-access',
+      permissionLevel: options.level ?? 'full-access',
       network: { enabled: true, port, bind: 'local', token: options.token ?? TOKEN },
     }),
     'utf-8',
@@ -46,7 +48,7 @@ async function launchServing(port: number, options: { token?: string } = {}) {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
       ALPHA_FAUX: '1',
-      ALPHA_FAUX_REPLIES: JSON.stringify([REPLY]),
+      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]),
       NODE_ENV: 'production',
     },
   })
@@ -98,7 +100,7 @@ async function answersAt(origin: string): Promise<boolean> {
 
 test('a browser on the machine opens the workbench and runs a turn', async () => {
   const port = await freePort()
-  const { app, url, workspace } = await launchServing(port)
+  const { app, url } = await launchServing(port)
   const browser = await chromium.launch()
 
   try {
@@ -122,9 +124,97 @@ test('a browser on the machine opens the workbench and runs a turn', async () =>
     await browser.close()
     await app.close()
   }
+})
 
-  // A browser cannot pick a folder: the workspace it works in is the one that is already open.
-  expect(workspace).toContain('alpha-e2e-ws-')
+test('a browser unlocks into the whole workbench, sidebar included', async () => {
+  const port = await freePort()
+  const { app, window, url } = await launchServing(port)
+
+  try {
+    // A conversation that already exists, made in the window: what a browser arrives to find.
+    await ask(window, 'explain the parser module')
+    await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 20_000 })
+
+    const browser = await chromium.launch()
+    try {
+      const page = await openInBrowser(browser, url, TOKEN)
+      // The mount that was refused is the same mount that would have listed these: unlocking has to
+      // ask again, or the workbench opens with an empty sidebar and a lie about what is in it.
+      await expect(page.getByRole('button', { name: /^explain the parser module (idle|working)$/ })).toBeVisible()
+    } finally {
+      await browser.close()
+    }
+  } finally {
+    await app.close()
+  }
+})
+
+test('a browser is offered no folder picker, because it has none', async () => {
+  const port = await freePort()
+  const { app, url } = await launchServing(port)
+  const browser = await chromium.launch()
+
+  try {
+    const page = await openInBrowser(browser, url, TOKEN)
+
+    // The workspace menu: the folders we remember, and nothing that opens a dialog this browser
+    // cannot have. The refusal is real either way — the picker is refused in main — but a menu
+    // that offers it would only ever produce that refusal.
+    await page.getByRole('button', { name: /^sandbox/ }).click()
+    await expect(page.getByRole('menu', { name: 'Workspaces' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Open another folder…' })).toHaveCount(0)
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
+test('a replaced token sends the browser back to the unlock screen', async () => {
+  const port = await freePort()
+  const { app, window, url } = await launchServing(port)
+  const browser = await chromium.launch()
+
+  try {
+    const page = await openInBrowser(browser, url, TOKEN)
+    await expect(page.getByRole('main')).toBeVisible()
+
+    // The desk replaces the token, which restarts the server and closes every stream with it.
+    await window.getByRole('link', { name: 'Settings' }).click()
+    await window.getByRole('button', { name: 'Replace' }).click()
+
+    // Nothing is clicked in the browser: a workbench it can no longer drive has to notice by
+    // itself, or it sits there looking usable and refuses everything it is asked to do.
+    await expect(page.getByLabel('Access token')).toBeVisible({ timeout: 20_000 })
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
+test('a browser answers an approval card, and the tool runs on this machine', async () => {
+  const port = await freePort()
+  const { app, url, workspace } = await launchServing(port, { level: 'ask', replies: [WRITE, 'Done.'] })
+  const browser = await chromium.launch()
+
+  try {
+    const page = await openInBrowser(browser, url, TOKEN)
+    await ask(page, 'write the file')
+
+    // The card arrives as an event and leaves as an invoke: the same gate, the same decision,
+    // reached over the network instead of over IPC.
+    const card = page.getByRole('region', { name: 'Waiting for your decision' })
+    await expect(card).toBeVisible({ timeout: 20_000 })
+    await expect(card).toContainText('made.txt')
+    await page.getByRole('button', { name: 'Allow once' }).click()
+
+    const row = page.getByRole('main').locator('[data-role="tool"][data-tool="write"]')
+    await expect(row).toContainText('allowed once', { timeout: 20_000 })
+    // The decision was a browser's; the file it allowed is on the machine the workbench runs on.
+    await expect.poll(() => existsSync(join(workspace, 'made.txt'))).toBe(true)
+  } finally {
+    await browser.close()
+    await app.close()
+  }
 })
 
 test('a wrong token does not open anything', async () => {

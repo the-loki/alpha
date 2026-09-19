@@ -286,8 +286,13 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
   })
 
   it('passes the module that owns the workbench its own address', () => {
-    const listen = file('packages/main/src/server/service.ts', 'const urls = ["http://127.0.0.1:" + port]')
+    const listen = file('packages/main/src/server/http.ts', 'const urls = ["http://127.0.0.1:" + port]')
     expect(violationsFor(rule, listen)).toEqual([])
+  })
+
+  it('flags a host in another module of the server, which does not own the address', () => {
+    const nearby = file('packages/main/src/server/service.ts', 'const urls = ["http://127.0.0.1:4123"]')
+    expect(violationsFor(rule, nearby)).toHaveLength(1)
   })
 
   it('passes docs and test fixtures', () => {

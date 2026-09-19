@@ -1,4 +1,4 @@
-import { useShell } from '../stores/shell.ts'
+import { NO_FOLDER_PICKER, useShell } from '../stores/shell.ts'
 
 /**
  * One sentence and one action. Which sentence depends on how far the user has got: no folder,
@@ -6,6 +6,7 @@ import { useShell } from '../stores/shell.ts'
  */
 export function EmptyState() {
   const workspace = useShell((state) => state.workspace)
+  const host = useShell((state) => state.host)
   const pickWorkspace = useShell((state) => state.pickWorkspace)
 
   if (workspace.kind === 'none') {
@@ -16,13 +17,17 @@ export function EmptyState() {
           A workspace is the folder the agent reads and edits. Everything you ask for happens inside it, and nothing
           happens outside it without your say-so.
         </p>
-        <button
-          type="button"
-          onClick={() => void pickWorkspace()}
-          className="mt-5 rounded-control bg-ember px-4 py-2 text-ui font-medium text-ember-ink transition-colors hover:bg-ember-bright"
-        >
-          Open folder
-        </button>
+        {host === 'browser' ? (
+          <p className="mt-5 text-ui text-parchment-dim">{NO_FOLDER_PICKER}</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void pickWorkspace()}
+            className="mt-5 rounded-control bg-ember px-4 py-2 text-ui font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+          >
+            Open folder
+          </button>
+        )}
       </div>
     )
   }

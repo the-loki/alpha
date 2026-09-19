@@ -68,7 +68,7 @@ app.whenReady().then(async () => {
     window: desktopWindowPort(() => BrowserWindow.getAllWindows()[0]),
   }
 
-  registerIpcHandlers({ ...desktopPorts, getWindow: () => BrowserWindow.getAllWindows()[0] })
+  registerIpcHandlers(desktopPorts)
   await service.apply()
 
   app.on('activate', () => {

@@ -37,15 +37,56 @@ export class Unauthorized extends Error {
   }
 }
 
+/**
+ * Which session this page is on. A refusal takes a moment to come back — the server delays one
+ * deliberately, so guessing a token is pointless — and in that moment the person can have typed
+ * the token and signed in. A 401 that was answered before that says nothing about the page as it
+ * is now, so it is counted here rather than believed.
+ */
+let session = 0
+
+/**
+ * Whoever draws the workbench hears about it when the session behind it goes away — a token
+ * replaced at the desk, a server restarted — because a workbench that cannot do anything has to
+ * say so instead of looking usable.
+ */
+const refusals = new Set<() => void>()
+
+export function watchRefusals(listener: () => void): () => void {
+  refusals.add(listener)
+  return () => refusals.delete(listener)
+}
+
 export function isBrowserClient(): boolean {
   return typeof window !== 'undefined' && window.alpha === undefined && window.location.protocol.startsWith('http')
 }
 
+/**
+ * The token lives in this tab and no longer: it is kept so a reload does not ask again, and the
+ * cookie it was traded for is a session cookie, so the tab is the honest lifetime for both.
+ */
 export function rememberedToken(): string {
   try {
-    return window.localStorage.getItem(TOKEN_KEY) ?? ''
+    return window.sessionStorage.getItem(TOKEN_KEY) ?? ''
   } catch {
     return ''
+  }
+}
+
+function rememberToken(token: string): void {
+  try {
+    window.sessionStorage.setItem(TOKEN_KEY, token)
+  } catch {
+    // Storage disabled: the cookie still works until the browser is closed.
+  }
+}
+
+/** A token the server refused is the one it no longer knows, so keeping it would only mislead. */
+function forgetToken(): void {
+  try {
+    window.sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // Storage disabled: there was nothing remembered to forget.
   }
 }
 
@@ -61,24 +102,30 @@ export async function unlock(token: string): Promise<void> {
     credentials: 'same-origin',
   })
   if (!response.ok) throw new Error('That token was not accepted.')
-  try {
-    window.localStorage.setItem(TOKEN_KEY, token)
-  } catch {
-    // Storage disabled: the cookie still works until the browser is closed.
-  }
+  rememberToken(token)
+  session += 1
   // The page subscribed before it had a session, and a refused stream is closed for good rather
   // than retried, so the events have to be asked for again now that there is one.
   reconnectStream()
 }
 
 async function invoke(name: keyof typeof IPC, args: unknown[]): Promise<unknown> {
+  const sentWith = session
   const response = await fetch('/api/invoke', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ channel: IPC[name], args }),
     credentials: 'same-origin',
   })
-  if (response.status === 401) throw new Unauthorized()
+  if (response.status === 401) {
+    // Only a refusal of the session this page is on now. One answered on the way to signing in is
+    // a fact about a page that no longer exists, and acting on it would sign the person back out.
+    if (sentWith === session) {
+      forgetToken()
+      for (const listener of refusals) listener()
+    }
+    throw new Unauthorized()
+  }
   const body = (await response.json()) as { value?: unknown; error?: string }
   if (!response.ok) throw new Error(body.error ?? 'the workbench refused that')
   return body.value
@@ -116,12 +163,34 @@ function openStream(): void {
   // A stream the browser closed — a refused session, a server that went away — is replaced rather
   // than left: `EventSource` only retries the failures it considers temporary.
   if (stream !== undefined && stream.readyState === EventSource.CLOSED) closeStream()
-  stream ??= new EventSource('/api/events', { withCredentials: true })
+  if (stream === undefined) {
+    const source = new EventSource('/api/events', { withCredentials: true })
+    source.addEventListener('error', () => {
+      if (source.readyState === EventSource.CLOSED) void reviveStream()
+    })
+    stream = source
+  }
   for (const channel of listeners.keys()) {
     if (attached.has(channel)) continue
     attach(channel)
     attached.add(channel)
   }
+}
+
+/**
+ * What a stream that was given up on means: the session is gone, or only the stream is. Asking the
+ * workbench settles it — a refusal sends the page to the unlock screen by itself, and a session
+ * that still works only needs the stream again. A page with no session has nothing to revive: the
+ * unlock that follows opens the stream for itself.
+ */
+async function reviveStream(): Promise<void> {
+  if (rememberedToken() === '') return
+  try {
+    await invoke('launchState', [])
+  } catch {
+    return
+  }
+  reconnectStream()
 }
 
 /** Asks for the event stream again, which is what unlocking has to do. */

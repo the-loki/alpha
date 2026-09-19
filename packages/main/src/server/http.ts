@@ -8,16 +8,13 @@
  * route outside `/api/` that touches anything but the bundle's own files.
  */
 
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync, realpathSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { extname, join, resolve, sep } from 'node:path'
-import { IPC } from '@alpha/core'
+import { IPC, type NetworkBind } from '@alpha/core'
 import type { Broadcast } from '../broadcast.ts'
 import { CHANNELS, type ChannelHandler, type ChannelPorts } from '../channels.ts'
 import { SessionGate } from './session.ts'
-
-/** Where the server listens: this machine only, or every interface it has. */
-export type Bind = 'local' | 'network'
 
 export interface ServerOptions {
   ports: ChannelPorts
@@ -26,7 +23,7 @@ export interface ServerOptions {
   bundleDirectory: string
   token: string
   port: number
-  bind: Bind
+  bind: NetworkBind
 }
 
 export interface RunningServer {
@@ -37,7 +34,11 @@ export interface RunningServer {
   close(): Promise<void>
 }
 
-const BIND_ADDRESS: Record<Bind, string> = { local: '127.0.0.1', network: '0.0.0.0' }
+/**
+ * The address each choice means, in one table: where the server listens, and — for the loopback
+ * one — the address the settings page offers, which is what keeps the two from drifting apart.
+ */
+export const BIND_ADDRESS: Record<NetworkBind, string> = { local: '127.0.0.1', network: '0.0.0.0' }
 const BODY_LIMIT = 1024 * 1024
 /** A failed unlock waits this long before saying so, which makes guessing pointless. */
 const REFUSAL_DELAY_MS = 200
@@ -176,18 +177,22 @@ function streamEvents(options: ServerOptions, request: IncomingMessage, response
 
 /** The bundle, and only the bundle: a path that resolves outside it is refused, not resolved. */
 function sendFile(bundleDirectory: string, pathname: string, response: ServerResponse): void {
-  const root = resolve(bundleDirectory)
+  // Resolved once, links and all: the bundle may itself be reached through one, and every file
+  // read below has to be compared against where that actually is rather than where it is named.
+  const root = realPath(resolve(bundleDirectory))
   const wanted = resolve(join(root, decodeURIComponent(pathname)))
-  const inside = wanted === root || wanted.startsWith(root + sep)
   // A path that resolves outside the bundle is refused, not answered with the app shell: the
   // fallback below is for a route the app renders, not for a request that walked out of the tree.
-  if (!inside) {
+  if (!inside(root, wanted)) {
     sendJson(response, 404, { error: 'not found' })
     return
   }
-  const file = isFile(wanted) ? wanted : join(root, 'index.html')
+  // Inside on paper is not inside: a symlink is followed by the filesystem and not by that check,
+  // so the file that will really be read — the request's own, or the shell it falls back to — is
+  // resolved too, and a name that leaves the bundle that way is refused like any other.
+  const file = realPath(isFile(wanted) ? wanted : join(root, 'index.html'))
 
-  if (!isFile(file)) {
+  if (!inside(root, file)) {
     sendJson(response, 404, { error: 'not found' })
     return
   }
@@ -196,6 +201,20 @@ function sendFile(bundleDirectory: string, pathname: string, response: ServerRes
     'cache-control': 'no-store',
   })
   response.end(readFileSync(file))
+}
+
+/** Nothing is served through a root that is not there, so an empty one is never inside anything. */
+function inside(root: string, path: string): boolean {
+  return root !== '' && (path === root || path.startsWith(root + sep))
+}
+
+/** Where a path really is, with every link followed; empty when it is not there at all. */
+function realPath(path: string): string {
+  try {
+    return realpathSync(path)
+  } catch {
+    return ''
+  }
 }
 
 function isFile(path: string): boolean {

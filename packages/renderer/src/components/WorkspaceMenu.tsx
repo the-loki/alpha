@@ -1,6 +1,6 @@
 import type { WorkspaceRef } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
-import { useShell } from '../stores/shell.ts'
+import { NO_FOLDER_PICKER, useShell } from '../stores/shell.ts'
 
 /**
  * Where the agent is pointed, and the folders it was pointed at before. The list is what the
@@ -9,10 +9,12 @@ import { useShell } from '../stores/shell.ts'
 export function WorkspaceButton() {
   const workspace = useShell((state) => state.workspace)
   const recents = useShell((state) => state.recents)
+  const host = useShell((state) => state.host)
   const pickWorkspace = useShell((state) => state.pickWorkspace)
   const openRecent = useShell((state) => state.openRecent)
   const [open, setOpen] = useState(false)
   const container = useRef<HTMLDivElement>(null)
+  const browser = host === 'browser'
 
   useEffect(() => {
     if (!open) return
@@ -48,8 +50,9 @@ export function WorkspaceButton() {
         title={selected ? workspace.workspace.path : 'Choose a folder for the agent to work in'}
         onClick={() => {
           // With nothing remembered the menu would hold one item; the picker is what the click
-          // means (T1), so it opens straight away.
-          if (elsewhere.length === 0) void pickWorkspace()
+          // means (T1), so it opens straight away. A browser has no picker to open, so it gets
+          // the menu and the menu says why it is short.
+          if (elsewhere.length === 0 && !browser) void pickWorkspace()
           else setOpen((value) => !value)
         }}
         className="w-full rounded-card border border-line bg-ink-700 px-3 py-2.5 text-left transition-colors hover:border-line-strong hover:bg-ink-600"
@@ -80,17 +83,23 @@ export function WorkspaceButton() {
               <span className="block truncate font-mono text-micro text-parchment-faint">{recent.path}</span>
             </button>
           ))}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false)
-              void pickWorkspace()
-            }}
-            className="mt-1 block w-full border-t border-line px-3 pt-2 pb-1.5 text-left text-xs text-parchment-dim transition-colors hover:text-parchment"
-          >
-            Open another folder…
-          </button>
+          {browser ? (
+            <p className="mt-1 border-t border-line px-3 pt-2 pb-1.5 text-xs text-parchment-faint">
+              {NO_FOLDER_PICKER}
+            </p>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                void pickWorkspace()
+              }}
+              className="mt-1 block w-full border-t border-line px-3 pt-2 pb-1.5 text-left text-xs text-parchment-dim transition-colors hover:text-parchment"
+            >
+              Open another folder…
+            </button>
+          )}
         </div>
       )}
     </div>

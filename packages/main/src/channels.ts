@@ -15,6 +15,7 @@ import {
   type IPC,
   isNetworkBind,
   isPermissionLevel,
+  isPortNumber,
   isRuleScope,
   isTheme,
   isThinkingLevel,
@@ -245,9 +246,7 @@ export function readNetworkPatch(input: unknown): NetworkPatch {
     patch.enabled = record.enabled
   }
   if (record.port !== undefined) {
-    if (typeof record.port !== 'number' || !Number.isInteger(record.port) || record.port < 0 || record.port > 65535) {
-      throw new Error('port must be a whole number between 0 and 65535')
-    }
+    if (!isPortNumber(record.port)) throw new Error('port must be a whole number between 0 and 65535')
     patch.port = record.port
   }
   if (record.bind !== undefined) {

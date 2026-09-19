@@ -36,13 +36,12 @@ describe('[main] the session gate', () => {
     expect(gate.allows({})).toBe(false)
   })
 
-  it('stops accepting the old token when a new one is minted', () => {
+  it('accepts its own token and refuses another, which is what replacing one comes to', () => {
     const gate = gateWith()
-    const before = gate.token
-    const next = gate.replace()
+    const other = new SessionGate()
 
-    expect(next).not.toBe(before)
-    expect(gate.allows({ authorization: `Bearer ${before}` })).toBe(false)
-    expect(gate.allows({ authorization: `Bearer ${next}` })).toBe(true)
+    expect(other.token).not.toBe(gate.token)
+    expect(gate.allows({ authorization: `Bearer ${gate.token}` })).toBe(true)
+    expect(other.allows({ authorization: `Bearer ${gate.token}` })).toBe(false)
   })
 })

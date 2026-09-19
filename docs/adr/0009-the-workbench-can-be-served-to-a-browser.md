@@ -32,11 +32,17 @@ the same channel table the IPC handlers are registered from.
 - **One token, one cookie.** A 32-byte token is minted when network access is first enabled, shown
   in Settings, and exchanged at `POST /api/session` for an httpOnly, SameSite=Strict cookie. Every
   `/api/*` route requires it, compared in constant time. Scripts may use the token directly as a
-  bearer header; the browser never puts it in a URL.
+  bearer header; the browser never puts it in a URL. The typed token is kept in the tab's own
+  session storage so a reload does not ask again, and closing the tab forgets it — the life the
+  cookie already has.
 - **The same gate.** Network clients go through the permission ladder unchanged. Their cards arrive
   as events and their answers arrive as invokes, exactly like the window's.
-- **What a browser cannot do.** Window commands (minimize/maximize/close) do nothing, and the native
-  folder picker refuses with a message — the recents list is how a browser picks a workspace.
+- **A session that goes away takes the workbench with it.** A token replaced at the desk, or a
+  server that restarted, leaves a browser holding something that refuses everything: the page
+  returns to the unlock screen instead of staying up and failing one action at a time.
+- **What a browser cannot do.** Window commands (minimize/maximize/close) do nothing, the native
+  folder picker refuses with a message, and the browser is not offered one — it changes workspace
+  from the recents list, and where there is no list it says why.
 
 ## Consequences
 
@@ -46,6 +52,10 @@ the same channel table the IPC handlers are registered from.
 - The token lives in the workbench state file beside the encrypted credentials, in plaintext. Files
   on that machine are readable by its user, who can already run the agent; anything that can read
   the state file can already act as the workbench.
+- A refusal takes a moment to arrive — the server delays one deliberately, so guessing is pointless
+  — and a page can sign in while its own refusal is still in flight. The renderer counts the
+  sessions it has been on and disbelieves a refusal that was answered before the current one, which
+  is why signing in does not immediately sign itself back out.
 - A dead port means a clear failure in Settings, not a silent one: a busy port is reported where the
   switch is.
 - Everything the renderer bundle contains is served to anyone who asks for the files. No key

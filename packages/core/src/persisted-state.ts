@@ -80,6 +80,11 @@ export function isNetworkBind(value: unknown): value is NetworkBind {
   return typeof value === 'string' && (NETWORK_BINDS as readonly string[]).includes(value)
 }
 
+/** A port as both ends of the wire accept it: zero asks the system to pick one. */
+export function isPortNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 65535
+}
+
 const NetworkSchema = Type.Object({
   enabled: Type.Boolean(),
   port: Type.Number(),
@@ -167,8 +172,7 @@ function readNetwork(value: unknown): NetworkAccess {
   if (typeof value !== 'object' || value === null) return fallback
   const record = value as Record<string, unknown>
   const chosen = record.port
-  const usable =
-    typeof chosen === 'number' && Number.isInteger(chosen) && chosen >= 0 && chosen <= 65535 ? chosen : undefined
+  const usable = isPortNumber(chosen) ? chosen : undefined
   return {
     enabled: record.enabled === true,
     port: usable ?? fallback.port,

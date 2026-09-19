@@ -30,10 +30,12 @@ It binds to this machine (`127.0.0.1`) by default; choosing *Anything on this ne
 every interface this machine has, and shows the addresses to use. Whoever holds the token can read
 every conversation, approve every tool call, and change the permission level: a browser client is a
 remote control for this machine, not a viewer. The token is stored in the workbench state file in
-plaintext, and can be replaced from the same page — which signs every browser out at once.
+plaintext, and can be replaced from the same page — which signs every browser out at once, and puts
+each of them back on the unlock screen.
 
-A browser cannot open a native folder dialog, so it works in one of the folders in the recent list.
-Window controls are not drawn there, because there is no window of ours to move.
+A browser cannot open a native folder dialog, so it is offered none: it works in one of the folders
+in the recent list, and says so when there is no list to pick from. Window controls are not drawn
+there either, because there is no window of ours to move.
 
 ## First run
 

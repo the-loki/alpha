@@ -10,6 +10,7 @@ import { useShell } from '../stores/shell.ts'
 
 function RootLayout() {
   const load = useShell((state) => state.load)
+  const ready = useShell((state) => state.ready)
   const locked = useShell((state) => state.locked)
   const setWindowMaximized = useShell((state) => state.setWindowMaximized)
   const loadList = useConversations((state) => state.loadList)
@@ -21,14 +22,20 @@ function RootLayout() {
   useEffect(() => {
     // The contract, whichever transport is behind it: a browser reaches the same events.
     const client = bridge()
-    void load().then(() => loadList())
+    void load()
     const stopWindowState = client.onWindowState((state) => setWindowMaximized(state.maximized))
     const stopRuntimeEvents = client.onRuntimeEvent((event) => applyEvent(event))
     return () => {
       stopWindowState()
       stopRuntimeEvents()
     }
-  }, [load, loadList, applyEvent, setWindowMaximized])
+  }, [load, applyEvent, setWindowMaximized])
+
+  // The list belongs to a session, not to a mount: a browser that was refused at mount has none
+  // yet, and asking while locked would only be refused again.
+  useEffect(() => {
+    if (ready && !locked) void loadList()
+  }, [ready, locked, loadList])
 
   if (locked) return <UnlockScreen />
 
