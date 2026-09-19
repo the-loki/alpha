@@ -202,6 +202,12 @@ test('no state is carried by colour alone', async () => {
   await app.close()
 })
 
+/** Settings lands on its first panel; the theme lives behind the menu. */
+async function openAppearance(window: Page) {
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Appearance' }).click()
+}
+
 test('the light theme is selectable, and both themes are captured', async () => {
   const { app, window } = await launch({ replies: ['A short answer.'] })
 
@@ -209,8 +215,7 @@ test('the light theme is selectable, and both themes are captured', async () => 
   await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible({ timeout: 20_000 })
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })
 
-  await window.getByRole('link', { name: 'Settings' }).click()
-  await window.getByRole('link', { name: 'Appearance' }).click()
+  await openAppearance(window)
   const card = () =>
     window.evaluate(() => {
       const button = document.querySelector('aside button')
@@ -234,7 +239,7 @@ test('the light theme is selectable, and both themes are captured', async () => 
   await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible()
   await window.screenshot({ path: join(SHOT_DIR, 'theme-light.png') })
 
-  await window.getByRole('link', { name: 'Settings' }).click()
+  await openAppearance(window)
   await window.getByRole('button', { name: 'Follow the system' }).click()
   await expect(window.locator('html')).not.toHaveAttribute('data-theme', 'light')
   await app.close()
