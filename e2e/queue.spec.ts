@@ -126,3 +126,23 @@ test('a queue that cannot be sent stops, and says so', async () => {
 
   await app.close()
 })
+
+test('Stop stops the queue too, and Resume sends what was waiting', async () => {
+  const { app, window } = await launch()
+
+  await composer(window).fill('first task')
+  await composer(window).press('Enter')
+  await expect(window.getByRole('button', { name: 'Queue', exact: true })).toBeVisible({ timeout: 15_000 })
+
+  await queue(window, 'the waiting one')
+  // Stop means stop: the queue does not fire the moment the turn it waited behind is cut short.
+  await window.getByRole('button', { name: 'Stop', exact: true }).click()
+  await expect(window.getByText('The queue is stopped.')).toBeVisible({ timeout: 15_000 })
+  await window.screenshot({ path: join(SHOT_DIR, 'queue-stopped.png') })
+
+  await window.getByRole('button', { name: 'Resume', exact: true }).click()
+  await expect(window.getByRole('main').getByText('the waiting one')).toBeVisible({ timeout: 20_000 })
+  await expect(window.getByText('The queue is stopped.')).toHaveCount(0)
+
+  await app.close()
+})
