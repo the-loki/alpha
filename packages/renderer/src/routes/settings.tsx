@@ -90,7 +90,7 @@ function Settings() {
         <h1 className="mt-5 px-2 text-xl font-semibold text-parchment">{t('settings.title')}</h1>
 
         {TAB_GROUPS.map((group) => (
-          <section key={group.label} className="mt-5">
+          <section key={group.label} className="mt-5 border-t border-line pt-3">
             <h2 className="px-2 pb-1 text-micro font-medium tracking-wide text-parchment-faint">{t(group.label)}</h2>
             <ul className="space-y-0.5">
               {group.tabs.map((candidate) => (
@@ -117,10 +117,11 @@ function Settings() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden py-2 pr-2">
         <div className="min-h-0 flex-1 overflow-y-auto rounded-overlay border border-line bg-ink-700 px-8 py-7 shadow-card">
-          <div className="mx-auto max-w-3xl space-y-8">
-            {/* The panel says what it is before it says anything else: the menu on the left names it
-                too, but a heading you had to click to reach is not a heading. */}
-            <header className="border-b border-line pb-4">
+          {/* One rule between one panel section and the next, drawn by the container so a section
+              cannot forget it and two of them cannot draw it twice. The heading has none of its
+              own: it is the rule's first subject, not a section under it. */}
+          <div className="mx-auto max-w-3xl divide-y divide-line [&>*]:pt-8">
+            <header className="pb-4">
               <h1 className="text-lg font-semibold text-parchment">{t(TAB_LABELS[tab])}</h1>
               <p className="mt-1 text-xs text-parchment-dim">{t(TAB_NOTES[tab])}</p>
             </header>

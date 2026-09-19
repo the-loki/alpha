@@ -30,7 +30,18 @@ const SHOWN = 8
  * once — that is the shape of the thing, not a mode to switch into — so this is a section, and the
  * only thing that is ever "current" is where the composer's next message lands.
  */
-function FolderSection({ folder, current, tasks }: { folder: FolderNode; current: boolean; tasks: TaskNode[] }) {
+function FolderSection({
+  folder,
+  current,
+  tasks,
+  divided,
+}: {
+  folder: FolderNode
+  current: boolean
+  tasks: TaskNode[]
+  /** Whether a rule goes above it: every folder but the first is set apart from the one before. */
+  divided: boolean
+}) {
   const selectWorkspace = useShell((state) => state.selectWorkspace)
   const language = useShell((state) => languageOf(state.language))
   const t = useText()
@@ -46,7 +57,7 @@ function FolderSection({ folder, current, tasks }: { folder: FolderNode; current
   }
 
   return (
-    <section className="mt-0.5" data-workspace={folder.path}>
+    <section className={`mt-0.5 ${divided ? 'mt-1 border-t border-line pt-1' : ''}`} data-workspace={folder.path}>
       <div className="group flex items-center gap-1">
         <h2 className="min-w-0 flex-1">
           <button
@@ -158,7 +169,7 @@ function ArchivedSection({ conversations }: { conversations: ConversationSummary
   const hidden = conversations.length - shown.length
 
   return (
-    <section className="mt-2 border-t border-line/70 pt-1">
+    <section className="mt-2 border-t border-line pt-1">
       <button
         type="button"
         aria-expanded={open}
@@ -271,7 +282,9 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
         <ActionRow icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => void navigate({ to: '/tasks' })} />
       </div>
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
+      {/* A rule between doing something and what you have: the rows above act, the tree below is
+          the workbench's contents. */}
+      <div className="mt-2 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line pt-2">
         <div className="flex items-center justify-between px-2 pb-1">
           <h2 className="text-micro font-medium tracking-wide text-parchment-faint">{t('sidebar.folders')}</h2>
           <span className="font-mono text-micro text-parchment-faint">{folders.length}</span>
@@ -281,12 +294,13 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
           ? // One line, and only once the list has been read: before that, "nothing here" would be a
             // claim about a file nobody has opened yet.
             listed && <p className="mt-2 px-2 text-xs text-parchment-faint">{t('sidebar.noFolders')}</p>
-          : folders.map((folder) => (
+          : folders.map((folder, index) => (
               <FolderSection
                 key={folder.path}
                 folder={folder}
                 current={folder.path === composerFolder?.path}
                 tasks={folderTasks(tasks, runs, conversations, folder.path)}
+                divided={index > 0}
               />
             ))}
 
@@ -294,7 +308,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
       </div>
 
       {/* What this window is, at the bottom: the same place the reference puts the account row. */}
-      <div className="mt-1 flex items-center gap-2 border-t border-line/70 px-2 pt-2">
+      <div className="mt-1 flex items-center gap-2 border-t border-line px-2 pt-2">
         <span className="min-w-0 flex-1 truncate text-micro text-parchment-faint">
           Alpha <span className="font-mono">{version}</span>
         </span>

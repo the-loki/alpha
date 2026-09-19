@@ -145,6 +145,14 @@ transcript above it takes the whole pane. Everything the message carries or is a
 in one row at the foot of the box: the way in to the file picker, the level chip, and the control
 that sends it. The words keep the width above that row to themselves.
 
+**Where a rule goes.** A hairline separates two *different kinds* of thing: the window chrome from
+the content, a conversation's header from its transcript, that transcript from the composer's band,
+the rail's actions from the rail's contents, one folder group from the next, one section of the
+settings panel from the next. Two of the same thing repeating get space and nothing else — no rule
+between two messages, two conversation rows, or two tool rows, which are already set apart by their
+own bubbles and cards. A rule is `--line` at full strength and never a shadow: depth in Alpha is a
+change of surface or a 1px line, not a blur.
+
 **The rail's columns.** Every row in the sidebar is built on three x-positions, so a list of
 folders and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder,
 the icon of an action row), the second column at 1.75rem (a folder's glyph, a conversation's

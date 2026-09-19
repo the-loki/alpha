@@ -134,7 +134,9 @@ export function TasksPage() {
           {t('tasks.new')}
         </button>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-parchment-dim">{t('tasks.intro')}</p>
+      {/* The page's own band: what this page is, then a rule, then the tasks it holds — the same
+          shape the settings panel and the conversation header use. */}
+      <p className="mt-2 border-b border-line pb-4 text-xs leading-relaxed text-parchment-dim">{t('tasks.intro')}</p>
 
       {form !== undefined && (
         <TaskForm

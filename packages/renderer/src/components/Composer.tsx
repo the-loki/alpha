@@ -193,9 +193,9 @@ export function Composer() {
   }
 
   return (
-    // Narrower than the transcript above it: a line of prose wants the whole pane, and a line
-    // being typed wants to stay a line.
-    <div className="shrink-0 px-8 pt-2 pb-5">
+    // The rule is the floor of the transcript: above it the conversation, below it the box the
+    // next message is written in — and the box is narrower than the pane the transcript takes.
+    <div className="shrink-0 border-t border-line px-8 pt-3 pb-5">
       <div className="mx-auto w-full max-w-3xl">
         <QueueStrip />
         <div className="rounded-card border border-line bg-ink-800 transition-colors focus-within:border-line-strong">
