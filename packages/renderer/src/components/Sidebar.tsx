@@ -5,7 +5,20 @@ import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
-import { ChevronDownIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
+import {
+  ArchiveIcon,
+  ChevronDownIcon,
+  FolderIcon,
+  GearIcon,
+  MoreIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+} from './icons.tsx'
+
+/** PROTOTYPE ONLY: the two candidate shapes for the row's actions, side by side in one window. */
+type RowActions = 'icons' | 'menu'
+const ICON_ACTION = 'grid h-5 w-5 place-items-center rounded-control text-parchment-dim transition-colors hover:text-parchment'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
 const STATE = {
@@ -14,12 +27,19 @@ const STATE = {
   waiting: { dot: 'bg-amber', key: 'sidebar.waiting' },
 } as const
 
-function ConversationRow({ conversation }: { conversation: ConversationSummary }) {
+function ConversationRow({
+  conversation,
+  actions,
+}: {
+  conversation: ConversationSummary
+  actions: RowActions
+}) {
   const activeId = useConversations((state) => state.activeId)
   const rename = useConversations((state) => state.rename)
   const remove = useConversations((state) => state.remove)
   const navigate = useNavigate()
   const [renaming, setRenaming] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [title, setTitle] = useState(conversation.title)
   const t = useText()
   const state = STATE[conversation.status]
@@ -68,24 +88,86 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
       </button>
       {/* Laid over the name rather than beside it: at rest the name has the whole row, and the two
           things you can do to it appear where its tail was. */}
-      <span className="absolute inset-y-0 right-0 flex items-center gap-2 rounded-control bg-ink-600 pr-1.5 pl-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-        <button
-          type="button"
-          aria-label={t('sidebar.rename', { title: conversation.title })}
-          onClick={() => setRenaming(true)}
-          className={TEXT_ACTION}
+      {actions === 'icons' ? (
+        <span className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-control bg-ink-600 px-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+          <button
+            type="button"
+            aria-label={`Archive ${conversation.title}`}
+            title="Archive"
+            className={ICON_ACTION}
+          >
+            <ArchiveIcon />
+          </button>
+          <button
+            type="button"
+            aria-label={t('sidebar.delete', { title: conversation.title })}
+            title={t('sidebar.deleteAction')}
+            onClick={() => void remove(conversation.id)}
+            className={`${ICON_ACTION} hover:text-danger`}
+          >
+            <TrashIcon />
+          </button>
+          <button
+            type="button"
+            aria-label={`More actions for ${conversation.title}`}
+            title="More"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((value) => !value)}
+            className={ICON_ACTION}
+          >
+            <MoreIcon />
+          </button>
+        </span>
+      ) : (
+        <span className="absolute inset-y-0 right-0 flex items-center rounded-control bg-ink-600 pr-1 pl-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+          <button
+            type="button"
+            aria-label={`Actions for ${conversation.title}`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((value) => !value)}
+            className={ICON_ACTION}
+          >
+            <MoreIcon />
+          </button>
+        </span>
+      )}
+      {menuOpen && (
+        <div
+          role="menu"
+          aria-label={`Actions for ${conversation.title}`}
+          className="absolute top-full right-1 z-50 -mt-1 w-40 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
         >
-          {t('sidebar.renameAction')}
-        </button>
-        <button
-          type="button"
-          aria-label={t('sidebar.delete', { title: conversation.title })}
-          onClick={() => void remove(conversation.id)}
-          className={DESTRUCTIVE_ACTION}
-        >
-          {t('sidebar.deleteAction')}
-        </button>
-      </span>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false)
+              setRenaming(true)
+            }}
+            className={`block w-full px-3 py-1.5 text-left ${TEXT_ACTION}`}
+          >
+            {t('sidebar.renameAction')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            className={`block w-full px-3 py-1.5 text-left ${TEXT_ACTION}`}
+          >
+            Archive
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void remove(conversation.id)}
+            className={`block w-full px-3 py-1.5 text-left ${DESTRUCTIVE_ACTION}`}
+          >
+            {t('sidebar.deleteAction')}
+          </button>
+        </div>
+      )}
     </li>
   )
 }
@@ -95,7 +177,15 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
  * once — that is the shape of the thing, not a mode to switch into — so this is a section, and the
  * only thing that is ever "current" is where the composer's next message lands.
  */
-function FolderSection({ folder, current }: { folder: FolderNode; current: boolean }) {
+function FolderSection({
+  folder,
+  current,
+  actions,
+}: {
+  folder: FolderNode
+  current: boolean
+  actions: RowActions
+}) {
   const selectWorkspace = useShell((state) => state.selectWorkspace)
   const language = useShell((state) => languageOf(state.language))
   const t = useText()
@@ -163,7 +253,7 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
         ) : (
           <ul className="space-y-0.5">
             {folder.conversations.map((conversation) => (
-              <ConversationRow key={conversation.id} conversation={conversation} />
+              <ConversationRow key={conversation.id} conversation={conversation} actions={actions} />
             ))}
           </ul>
         ))}
@@ -249,8 +339,13 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
           ? // One line, and only once the list has been read: before that, "nothing here" would be a
             // claim about a file nobody has opened yet.
             listed && <p className="mt-2 px-2 text-xs text-parchment-faint">{t('sidebar.noFolders')}</p>
-          : folders.map((folder) => (
-              <FolderSection key={folder.path} folder={folder} current={folder.path === composerFolder?.path} />
+          : folders.map((folder, index) => (
+              <FolderSection
+                key={folder.path}
+                folder={folder}
+                current={folder.path === composerFolder?.path}
+                actions={index === 0 ? 'icons' : 'menu'}
+              />
             ))}
       </div>
 

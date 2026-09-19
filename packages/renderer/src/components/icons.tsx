@@ -126,3 +126,24 @@ export const BranchIcon = (props: IconProps) => (
     <path d="M4.5 5.6v4.8M6.1 7h3.8" />
   </Glyph>
 )
+
+export const ArchiveIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <rect x="2.5" y="3" width="11" height="3" rx="0.8" />
+    <path d="M3.5 6v6.2a0.8 0.8 0 0 0 0.8 0.8h7.4a0.8 0.8 0 0 0 0.8-0.8V6M6.5 9.2h3" />
+  </Glyph>
+)
+
+export const TrashIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <path d="M3 4.5h10M6.4 4.5V3.4a0.8 0.8 0 0 1 0.8-0.8h1.6a0.8 0.8 0 0 1 0.8 0.8v1.1M4.5 4.5l0.6 8a0.8 0.8 0 0 0 0.8 0.7h4.2a0.8 0.8 0 0 0 0.8-0.7l0.6-8" />
+  </Glyph>
+)
+
+export const MoreIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+  </Glyph>
+)
