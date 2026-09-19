@@ -76,13 +76,16 @@ test('a task missed while the workbench was closed runs, and refuses what nobody
     timeout: 20_000,
   })
 
-  await window.getByRole('button', { name: 'Tasks' }).click()
+  // Exact: the rail's own task row is named "Expand the tasks in …", which matches as a substring.
+  await window.getByRole('button', { name: 'Tasks', exact: true }).click()
   // The page's own row: the sidebar is still on screen, with the run's conversation in it.
   await window.getByRole('main').getByRole('button', { name: 'Nightly check' }).first().click()
 
   // The run finished, and it says the command was refused because nobody was watching.
   await expect(window.getByText('Finished')).toBeVisible({ timeout: 20_000 })
-  await expect(window.getByText('1 refused')).toBeVisible()
+  // Two places say it: the run's own row in the history, and the task's folded row in the rail.
+  await expect(window.getByRole('main').getByText('· 1 refused')).toBeVisible()
+  await expect(window.getByRole('complementary').getByText('1 refused', { exact: true })).toBeVisible()
   await window.screenshot({ path: join(SHOT_DIR, 'tasks-catch-up.png') })
 
   await app.close()

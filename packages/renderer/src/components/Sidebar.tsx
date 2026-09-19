@@ -4,15 +4,20 @@ import {
   conversationCount,
   type FolderNode,
   folderName,
+  folderTasks,
   folderTree,
+  type TaskNode,
+  withoutRuns,
 } from '@alpha/core'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
+import { useTasks } from '../stores/tasks.ts'
 import { ConversationRow } from './ConversationRow.tsx'
 import { ChevronDownIcon, ClockIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
+import { TaskGroup } from './TaskGroup.tsx'
 
 /**
  * How many rows a list shows before it offers the rest. A rail is for scanning, not for scrolling,
@@ -25,7 +30,7 @@ const SHOWN = 8
  * once — that is the shape of the thing, not a mode to switch into — so this is a section, and the
  * only thing that is ever "current" is where the composer's next message lands.
  */
-function FolderSection({ folder, current }: { folder: FolderNode; current: boolean }) {
+function FolderSection({ folder, current, tasks }: { folder: FolderNode; current: boolean; tasks: TaskNode[] }) {
   const selectWorkspace = useShell((state) => state.selectWorkspace)
   const language = useShell((state) => languageOf(state.language))
   const t = useText()
@@ -87,12 +92,21 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
         </span>
       </div>
 
-      {!collapsed &&
-        (count === 0 ? (
-          <p className="py-1 pr-2 pl-11 text-micro text-parchment-faint">{t('sidebar.noConversations')}</p>
-        ) : (
-          <ConversationList conversations={folder.conversations} />
-        ))}
+      {!collapsed && (
+        <>
+          {count === 0 && tasks.length === 0 ? (
+            <p className="py-1 pr-2 pl-11 text-micro text-parchment-faint">{t('sidebar.noConversations')}</p>
+          ) : (
+            <ConversationList conversations={folder.conversations} />
+          )}
+
+          {/* The tasks that run in this folder, each with the conversations its runs made. A folder
+              with no tasks grows no row: an empty group is noise for everyone who never makes one. */}
+          {tasks.map((node) => (
+            <TaskGroup key={node.task.id} node={node} />
+          ))}
+        </>
+      )}
     </section>
   )
 }
@@ -227,7 +241,10 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
   const navigate = useNavigate()
   const conversations = useConversations((state) => state.list)
   const listed = useConversations((state) => state.listed)
-  const folders = folderTree(recents, conversations)
+  const tasks = useTasks((state) => state.tasks)
+  const runs = useTasks((state) => state.runs)
+  // A run is a conversation, but it is shown under its task rather than in the folder's own list.
+  const folders = folderTree(recents, withoutRuns(conversations, runs))
 
   return (
     <aside className="flex w-64 shrink-0 flex-col px-2 pb-2">
@@ -265,7 +282,12 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
             // claim about a file nobody has opened yet.
             listed && <p className="mt-2 px-2 text-xs text-parchment-faint">{t('sidebar.noFolders')}</p>
           : folders.map((folder) => (
-              <FolderSection key={folder.path} folder={folder} current={folder.path === composerFolder?.path} />
+              <FolderSection
+                key={folder.path}
+                folder={folder}
+                current={folder.path === composerFolder?.path}
+                tasks={folderTasks(tasks, runs, conversations, folder.path)}
+              />
             ))}
 
         <ArchivedSection conversations={archivedConversations(conversations)} />

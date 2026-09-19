@@ -20,10 +20,13 @@ const STATE = {
  */
 export function ConversationRow({
   conversation,
+  label,
   detail,
   archived = false,
 }: {
   conversation: ConversationSummary
+  /** What to show instead of the title, for a row whose title is the same on every row. */
+  label?: string
   /** Where it lives, for the archived section: the folder is not on screen there. */
   detail?: string
   archived?: boolean
@@ -72,7 +75,7 @@ export function ConversationRow({
         <span className="flex w-4 shrink-0 justify-center">
           <span className={`h-1.5 w-1.5 rounded-full ${state.dot}`} aria-hidden="true" />
         </span>
-        <span className="min-w-0 flex-1 truncate text-code">{conversation.title}</span>
+        <span className="min-w-0 flex-1 truncate text-code">{label ?? conversation.title}</span>
         {detail !== undefined && (
           // Capped rather than free: the folder is the row's context, not its subject, and an
           // unbounded detail leaves the name two characters wide.

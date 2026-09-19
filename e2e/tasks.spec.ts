@@ -63,23 +63,33 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await window.screenshot({ path: join(SHOT_DIR, 'tasks-list.png') })
 
   // It is on the list with a next run, and its history is empty until it has run.
-  await expect(window.getByText('Nightly check')).toBeVisible()
-  await window.getByRole('button', { name: 'Nightly check' }).click()
+  // Scoped to the page: the rail names the task too, under its folder.
+  await expect(window.getByRole('main').getByText('Nightly check').first()).toBeVisible()
+  await window.getByRole('main').getByRole('button', { name: 'Nightly check' }).first().click()
   await expect(window.getByText('It has not run yet.')).toBeVisible()
 
   await window.getByRole('button', { name: 'Run now' }).click()
 
-  // A run is a conversation titled with the task's name, and the history says how it went.
-  await expect(window.getByText(/Finished/)).toBeVisible({ timeout: 20_000 })
-  await window.screenshot({ path: join(SHOT_DIR, 'tasks-history.png') })
-
-  // And it is a conversation like any other: the sidebar has it under the folder.
+  // A run is a conversation titled with the task's name, and the history says how it went. Scoped:
+  // the rail says the same word in the task's folded row.
   await expect(
     window
-      .getByRole('complementary')
-      .getByRole('button', { name: /Nightly check/ })
+      .getByRole('main')
+      .getByText(/Finished/)
       .first(),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 20_000 })
+  await window.screenshot({ path: join(SHOT_DIR, 'tasks-history.png') })
+
+  // The rail has the task in its folder, folded, saying how the last run went; the run is a
+  // conversation like any other, one fold below it (ticket #85).
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  const rail = window.getByRole('complementary')
+  const taskRow = rail.getByRole('button', { name: 'Expand the tasks in Nightly check' })
+  await expect(taskRow).toBeVisible()
+  await expect(rail.getByText('Finished')).toBeVisible()
+  await taskRow.click()
+  await expect(rail.getByRole('button', { name: /Nightly check/ }).first()).toBeVisible()
+  await window.screenshot({ path: join(SHOT_DIR, 'tasks-rail.png') })
 
   await app.close()
 })
@@ -100,7 +110,7 @@ test('the level a task is given is the level it runs at, and the level is writte
 
   // Saved from the same form the level was chosen in: opening a new one would start over.
   await form(window).getByRole('button', { name: 'Save task' }).click()
-  await expect(window.getByText('Quiet check')).toBeVisible()
+  await expect(window.getByRole('main').getByText('Quiet check').first()).toBeVisible()
 
   // The task file says which level it will run at, which is what the run then uses.
   const stored = JSON.parse(readFileSync(join(dataDirectory, 'tasks.json'), 'utf-8'))
