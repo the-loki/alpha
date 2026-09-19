@@ -196,12 +196,12 @@ export function Composer() {
   }
 
   return (
-    // The rule is the floor of the transcript: above it the conversation, below it the box the
-    // next message is written in — and the box is narrower than the pane the transcript takes.
-    <div className="shrink-0 border-t border-line px-8 pt-3 pb-5">
+    // The floor of the transcript, and a surface of its own: the band is chrome, the box on it is
+    // the content surface, which is the same step the transcript takes above it.
+    <div className="shrink-0 border-t border-line bg-ink-800 px-8 pt-3 pb-5">
       <div className="mx-auto w-full max-w-3xl">
         <QueueStrip />
-        <div className="rounded-card border border-line bg-ink-800 transition-colors focus-within:border-line-strong">
+        <div className="rounded-card border border-line bg-ink-700 transition-colors focus-within:border-line-strong">
           <div className="px-3.5 pt-2.5">
             <PendingAttachments items={attached} onRemove={removeAt} />
             <textarea

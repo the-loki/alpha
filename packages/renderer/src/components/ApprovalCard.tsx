@@ -101,7 +101,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           onChange={(event) => setReason(event.target.value)}
           aria-label={t('approval.reasonLabel')}
           placeholder={t('approval.reasonPlaceholder')}
-          className="min-w-40 max-w-80 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          className="min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
         <button

@@ -64,6 +64,9 @@ const STATUS_WORD: Record<ChatBlockTool['status'], TextKey> = {
 /**
  * One line per tool call: what ran, on what, for how long. Expanding shows the arguments the
  * model sent and the output the tool produced, because a ledger you cannot audit is decoration.
+ *
+ * A row is a ruled line rather than a card: the ledger reads as a log, the answer beside it stays
+ * the loudest thing in the transcript, and a run of calls stacks as one ruled block (C5.5).
  */
 export function ToolRow({ block }: { block: ChatBlockTool }) {
   const t = useText()
@@ -75,12 +78,12 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
   const markTone = approval === undefined ? '' : MARK_TONE[approval.kind]
 
   return (
-    <article className="rounded-card border border-line bg-ink-800/70" data-role="tool" data-tool={block.name}>
+    <article className="border-t border-line" data-role="tool" data-tool={block.name}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left"
+        className="flex w-full items-center gap-2 py-2 text-left transition-colors hover:bg-ink-800"
       >
         <span className={`font-mono text-micro ${TONE[block.status]}`} title={t(riskKey(block.risk))}>
           {GLYPH[block.risk]}
@@ -99,7 +102,9 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
       </button>
 
       {open && (
-        <div className="border-t border-line px-3 py-2">
+        // Recessed: the audit of a row belongs to the row, and the surface says so without a box
+        // drawn around the whole thing.
+        <div className="mb-2 rounded-control border border-line bg-ink-900/60 px-3 py-2">
           {block.approval !== undefined && (
             <p className="mb-1 font-mono text-micro text-parchment-faint">
               {approvalNote(language, block.approval)}

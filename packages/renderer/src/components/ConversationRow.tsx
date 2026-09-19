@@ -75,7 +75,9 @@ export function ConversationRow({
         <span className="flex w-4 shrink-0 justify-center">
           <span className={`h-1.5 w-1.5 rounded-full ${state.dot}`} aria-hidden="true" />
         </span>
-        <span className="min-w-0 flex-1 truncate text-code">{label ?? conversation.title}</span>
+        {/* A name, not a measurement: sans, like every other name in the app. What the row's
+            state is, and when it was last touched, are the data — those stay mono. */}
+        <span className="min-w-0 flex-1 truncate text-ui">{label ?? conversation.title}</span>
         {detail !== undefined && (
           // Capped rather than free: the folder is the row's context, not its subject, and an
           // unbounded detail leaves the name two characters wide.

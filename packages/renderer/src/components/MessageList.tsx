@@ -36,9 +36,14 @@ function TurnUsageNote({ turn }: { turn: Undef<TurnUsage> }) {
   const earlier = turn.earlier === true
 
   return (
-    <p className="mt-1 font-mono text-micro text-parchment-faint">
-      {t(NOTE[cost === '' ? (earlier ? 'earlier' : 'turn') : earlier ? 'earlierCost' : 'turnCost'], { tokens, cost })}
-    </p>
+    // The turn's closing edge: a rule the width of the ledger, with what the turn spent at its
+    // right end. It is what makes a long transcript read as turns rather than as one run of text.
+    <div className="mt-3 flex items-center gap-3">
+      <span className="h-px flex-1 bg-line" aria-hidden="true" />
+      <span className="font-mono text-micro text-parchment-faint">
+        {t(NOTE[cost === '' ? (earlier ? 'earlier' : 'turn') : earlier ? 'earlierCost' : 'turnCost'], { tokens, cost })}
+      </span>
+    </div>
   )
 }
 

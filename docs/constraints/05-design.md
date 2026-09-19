@@ -22,9 +22,9 @@ third palette, and resolving it once keeps the stylesheet to plain selectors.
 
 | Token | Light (default) | Dark | Use |
 | --- | --- | --- | --- |
-| `--ink-900` | `#F3F3F5` | `#17171A` | The page behind everything |
-| `--ink-800` | `#F3F3F5` | `#1D1D20` | The sidebar, and the composer's own surface |
-| `--ink-700` | `#FFFFFF` | `#232327` | Cards: the content pane and the settings panels |
+| `--ink-900` | `#F3F3F5` | `#17171A` | The page: the window, the rail, the margins around the content |
+| `--ink-800` | `#F3F3F5` | `#1D1D20` | Chrome and grouped blocks: the title bar, a conversation's header, the composer's band, overlays |
+| `--ink-700` | `#FFFFFF` | `#232327` | Cards and fields: the content pane, a settings panel, anything typed into |
 | `--ink-600` | `#E9E9EC` | `#2C2C32` | Hover, and the selected row |
 | `--line` | `#E2E2E6` | `#33333A` | Hairline borders, dividers |
 | `--line-strong` | `#C7C7CF` | `#4A4A54` | Focused input border |
@@ -41,6 +41,29 @@ The surfaces are neutral grey and the cards are white, so the page and the conte
 another border around the window: the content pane and each settings panel are a rounded card
 floating on `--ink-900`. **The accent is the only colour in the chrome** — everything else is the
 grey scale above plus the four semantic tokens.
+
+### The surface ladder
+
+A surface is placed, never picked, and the placement alternates as it nests:
+
+1. **The page** is `--ink-900`. The window is read on it: the rail, and the 0.5rem of margin the
+   content floats in.
+2. **A card** is `--ink-700`, with `rounded-overlay`, a hairline and `shadow-card`: a conversation,
+   the tasks list, the settings panel. Anything the reader reads as a document, and anything they
+   type into, is on this step.
+3. **Chrome inside a card** is `--ink-800` again — the title bar, a conversation's header, the band
+   the composer stands on, an overlay, and a block that *groups* rows inside a settings panel. This
+   is why the step exists twice: the second grey is not the page, it is the card's own edge.
+4. **An inset inside that** alternates once more: an expanded tool body is `--ink-900/60`, a
+   thinking block `--ink-800/60`, a nested model row `--ink-800/60`. Half-alpha rather than a
+   fourth token, so an inset is a tint of the surface it sits on in either palette.
+
+The alternation is what answers "how deep am I" without a border telling the reader: grey, white,
+grey, tinted. It also means one rule holds in both palettes — in light the sequence is
+`#F3F3F5 → #FFF → #F3F3F5`, in dark `#17171A → #232327 → #1D1D20` — and the light palette's first and
+third steps being the same value is not a mistake, because they are never adjacent except where a
+hairline separates them anyway. A surface never blends a colour of its own: these four steps and the
+scrim behind an overlay (`--ink-900` at alpha) are the whole vocabulary.
 
 ### The accent is a slot, not a colour
 
@@ -83,7 +106,6 @@ own scale.
 | Markdown headings inside a message | IBM Plex Sans | `text-lg`, `text-base`, `text-body` | 1.125, 1, 0.9375rem / 1.4 | semibold |
 | The name of a thing: a conversation's title in the header, a provider, a sidebar row, a field label | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | medium |
 | Prose in the interface: an empty state, the sentence under a control | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | regular |
-| Conversation titles in the sidebar | JetBrains Mono | `text-code` | 0.78125rem / 1.55 | regular |
 | Metadata, chips | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 | regular |
 | Actions that are words: Copy, Rename, Export, Delete | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 | regular (the one primary action on a surface: medium) |
 | Code, tool output, diffs, inline code | JetBrains Mono | `text-code` | 0.78125rem / 1.55 | regular |
@@ -115,12 +137,14 @@ and it would have to be regenerated every time a line of copy changes. If a mach
 font becomes a real target, the upgrade is a `pyftsubset` pass over the dictionary's characters.
 `tools/design/theme.test.ts` pins the stack.
 
-**Two voices, never swapped.** Sans speaks: every control, every label, every sentence. Mono
-measures: paths, counts, tokens, shortcuts, identifiers, code. So an action is set in sans
-wherever it appears — as a word under a message, a row in the sidebar, or a button in a toolbar —
-and mono inside a button is data the button is carrying (the shortcut it answers to), not the
-button's own voice. `05-design:control-voice` fails `pnpm check` on a `<button>` whose own
-className says `font-mono`.
+**Two voices, never swapped.** Sans speaks: every control, every label, every sentence, and every
+name — a folder, a conversation, a task, a model. Mono measures: paths, counts, tokens, durations,
+shortcuts, identifiers, code. So an action is set in sans wherever it appears — as a word under a
+message, a row in the sidebar, or a button in a toolbar — and mono inside a button is data the
+button is carrying (the shortcut it answers to), not the button's own voice.
+`05-design:control-voice` fails `pnpm check` on a `<button>` whose own className says `font-mono`.
+A sidebar row is the place the rule is easiest to get wrong: it is a list of names, so it is sans,
+and the counts and ages beside those names are the measurement that stays mono.
 
 The token carries the leading for its role; a paragraph of UI text that wraps anyway (empty
 states, the sentence under a control) may add `leading-relaxed` on top of it.
@@ -135,26 +159,34 @@ and the user's bubble — the assistant's prose is the one thing that reads wors
 A 0.25rem base scale, used as `1, 2, 3, 4, 6, 8, 12` (Tailwind's `p-1`…`p-12`). Radii:
 `0.375rem` for controls, `0.75rem` for cards, `1rem` for the content surface and overlays.
 Borders are 1px hairlines. Shadows are for things that float over other things — overlays, and
-the content card itself, which carries `shadow-card` (weaker on the light palette, where the page
-is the lighter of the two surfaces). The composer's focused state is a 1px border change, not a
-bloom.
+the content card itself, which carries `shadow-card` (weaker on the light palette, where a shadow
+turns into dirt sooner). The composer's focused state is a 1px border change, not a bloom.
 
-**The composer is narrower than the pane.** A line being typed wants to stay a line, so the
-composer is capped and centred (48rem, the same measure the settings page uses) while the
-transcript above it takes the whole pane. Everything the message carries or is allowed to do sits
-in one row at the foot of the box: the way in to the file picker and the level chip at the left,
-the model it will run on and the control that sends it at the right. The words keep the width above
-that row to themselves. Both chips follow one rule — with a conversation open they change that
-conversation, and with none open they change what the next one starts with — and neither is
-duplicated in the header, because a setting lives where the message that uses it is written.
+**The composer is narrower than the pane, and stands on a band.** A line being typed wants to stay
+a line, so the composer is capped and centred (48rem, the same measure the settings page uses) while
+the transcript above it takes the whole pane. The band across the foot is chrome (`--ink-800`) and
+the box on it is a content surface, which is the same step the transcript takes above it, so the
+floor of the window reads as a place to write rather than as one more paragraph. Everything the
+message carries or is allowed to do sits in one row at the foot of the box: the way in to the file
+picker and the level chip at the left, the model it will run on and the control that sends it at the
+right. The words keep the width above that row to themselves. Both chips follow one rule — with a
+conversation open they change that conversation, and with none open they change what the next one
+starts with — and neither is duplicated in the header, because a setting lives where the message
+that uses it is written.
 
 **Where a rule goes.** A hairline separates two *different kinds* of thing: the window chrome from
 the content, a conversation's header from its transcript, that transcript from the composer's band,
 the rail's actions from the rail's contents, one folder group from the next, one section of the
 settings panel from the next. Two of the same thing repeating get space and nothing else — no rule
-between two messages, two conversation rows, or two tool rows, which are already set apart by their
-own bubbles and cards. A rule is `--line` at full strength and never a shadow: depth in Alpha is a
-change of surface or a 1px line, not a blur.
+between two messages, and none between two conversation rows, which are already set apart by their
+own bubbles and their own hover. The one repetition that *is* ruled is the ledger: a run of tool
+calls is a log, a log is read line by line, and a line is not a card (C5.5). A rule is `--line` at
+full strength and never a shadow: depth in Alpha is a change of surface or a 1px line, not a blur.
+
+**A turn ends with a line.** The last answer of a turn is closed by a hairline the width of the
+transcript with what the turn spent at its right end — mono, faint, one line. It is the one rule in
+the app that carries text, and it is what lets a long conversation be read as turns rather than as
+one run of prose; the running total stays in the header, where it belongs to the conversation.
 
 **The rail's columns.** Every row in the sidebar is built on three x-positions, so a list of
 folders and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder,
@@ -171,9 +203,12 @@ stay a device pixel to stay crisp.
 Four elements carry the identity. They must be recognisable from a screenshot with the text
 removed:
 
-1. **The ledger row.** Every tool call renders as a full-width row: risk glyph, mono tool name,
-   a one-line argument summary on the right, and duration. Rows stack into a ledger that reads
-   like a log, not like chat bubbles.
+1. **The ledger row.** Every tool call is a ruled line rather than a card: risk glyph, mono tool
+   name, a one-line argument summary taking the rest of the width, the status word, and the
+   duration at the right edge. Rows stack into a ruled ledger that reads like a log, not like chat
+   bubbles, and the answer beside them stays the loudest thing in the transcript. Opening a row
+   drops a recessed panel under it — arguments, who let it through, output, diff — because the
+   audit belongs to the row and is not a card of its own.
 2. **The gate.** A pending approval is not a modal. It is an amber-railed card inline in the
    transcript with the exact command, its working directory, and three buttons: Allow once,
    Always allow, Deny.

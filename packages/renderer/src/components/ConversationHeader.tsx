@@ -67,14 +67,19 @@ export function ConversationHeader() {
   if (summary === undefined) return null
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-8 py-2">
+    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-ink-800 px-8 py-2">
       {/* Which folder this conversation belongs to is part of what it is, now that several are in
           play at once; the sidebar shows the same name. Its age is here rather than in the sidebar,
           where the row belongs to the name. */}
       <span className="flex min-w-0 items-baseline gap-2">
         <h1 className="min-w-0 truncate text-ui font-medium text-parchment">{summary.title}</h1>
+        {/* One cluster of quiet facts about the title, told apart by a middot rather than by
+            three gaps that read as three columns. */}
         <span className="shrink-0 font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
           {folderName(summary.workspacePath)}
+        </span>
+        <span className="shrink-0 font-mono text-micro text-parchment-faint" aria-hidden="true">
+          ·
         </span>
         <span className="shrink-0 font-mono text-micro text-parchment-faint">
           {t('header.updated', { age: formatAge(summary.updatedAt, Date.now()) })}
