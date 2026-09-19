@@ -210,6 +210,7 @@ test('the light theme is selectable, and both themes are captured', async () => 
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })
 
   await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Appearance' }).click()
   const card = () =>
     window.evaluate(() => {
       const button = document.querySelector('aside button')

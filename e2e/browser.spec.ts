@@ -67,6 +67,12 @@ async function openInBrowser(browser: Browser, url: string, token: string) {
   return page
 }
 
+/** The desktop window's settings, on the browser-access panel, which the menu now keeps behind it. */
+async function openBrowserAccess(window: Awaited<ReturnType<Browser['newPage']>>) {
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Browser access' }).click()
+}
+
 async function ask(page: Awaited<ReturnType<Browser['newPage']>>, text: string) {
   const composer = page.getByRole('textbox', { name: 'Message the agent' })
   await composer.fill(text)
@@ -179,7 +185,7 @@ test('a replaced token sends the browser back to the unlock screen', async () =>
     await expect(page.getByRole('main')).toBeVisible()
 
     // The desk replaces the token, which restarts the server and closes every stream with it.
-    await window.getByRole('link', { name: 'Settings' }).click()
+    await openBrowserAccess(window)
     await window.getByRole('button', { name: 'Replace' }).click()
 
     // Nothing is clicked in the browser: a workbench it can no longer drive has to notice by
@@ -250,7 +256,7 @@ test('the switch in Settings is what opens this machine to the network', async (
     // nothing is listening on that address at all.
     expect(await answersAt(origin)).toBe(false)
 
-    await window.getByRole('link', { name: 'Settings' }).click()
+    await openBrowserAccess(window)
     await window.getByRole('button', { name: 'Anything on this network' }).click()
     await expect(window.getByRole('button', { name: 'Anything on this network' })).toHaveAttribute(
       'aria-pressed',
@@ -278,7 +284,7 @@ test('the served workbench has no window chrome, and says what a browser cannot 
     await expect(page.getByRole('button', { name: 'Close window' })).toHaveCount(0)
 
     // The settings page carries the same switch, and says where the token lives.
-    await page.goto(`${url}/#/settings`)
+    await page.goto(`${url}/#/settings?tab=browser-access`)
     await expect(page.getByRole('heading', { name: 'Browser access' })).toBeVisible()
     await expect(page.getByText(/a browser cannot pick a folder/i)).toBeVisible()
   } finally {

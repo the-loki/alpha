@@ -12,7 +12,7 @@ export function ProvidersSection() {
   }, [load])
 
   return (
-    <section className="mt-8">
+    <section>
       <h2 className="text-body font-medium text-parchment">Model providers</h2>
       <p className="mt-1 text-xs text-parchment-dim">
         Alpha ships no keys. A provider you add here is the only thing it can talk to, and its key is stored on this

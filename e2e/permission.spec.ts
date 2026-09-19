@@ -159,6 +159,7 @@ test('Always allow remembers a workspace rule, which settings can revoke', async
   await expect.poll(() => readFileSync(join(workspace, 'made.txt'), 'utf8')).toBe('again')
 
   await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Permissions' }).click()
   const rule = window.getByRole('listitem').filter({ hasText: 'made.txt' })
   await expect(rule).toContainText('write')
   await expect(rule).toContainText('This workspace')

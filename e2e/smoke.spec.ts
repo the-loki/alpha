@@ -106,35 +106,47 @@ test('the remembered workspaces are one click away', async () => {
   await app.close()
 })
 
-test('the settings route is addressable', async () => {
+test('settings is a menu of panels, one at a time, each with its address', async () => {
   const { app, window } = await launchApp()
 
   await window.getByRole('link', { name: 'Settings' }).click()
-  await expect(window.getByRole('heading', { name: 'Settings' })).toBeVisible()
+
+  // Providers is where Settings lands, because that is what a person comes here to change, and
+  // it is the panel the providers suite drives.
+  await expect(window.getByRole('heading', { name: 'Model providers' })).toBeVisible()
+  await expect(window.getByRole('heading', { name: 'Default permission level' })).toHaveCount(0)
+
+  await window.getByRole('link', { name: 'Permissions' }).click()
+  await expect(window.getByRole('link', { name: 'Permissions' })).toHaveAttribute('aria-current', 'page')
+  await expect(window.getByRole('link', { name: 'Providers' })).not.toHaveAttribute('aria-current', 'page')
   await expect(window.getByRole('heading', { name: 'Default permission level' })).toBeVisible()
   await expect(window.getByRole('heading', { name: 'Remembered approvals' })).toBeVisible()
+  // One at a time: the panel that was showing is gone, not scrolled past.
+  await expect(window.getByRole('heading', { name: 'Model providers' })).toHaveCount(0)
+  expect(new URL(window.url()).hash).toContain('tab=permissions')
 
-  // Tall enough for the whole page: the capture has to show every level and the remembered
-  // rules, not the first screenful of them. The page scrolls inside itself, so what is checked is
-  // that the last section's heading is on screen, not that the document has no overflow.
-  const pageHeight = await window.evaluate(() => {
-    const heading = [...document.querySelectorAll('h2')].find(
-      (element) => element.textContent === 'Remembered approvals',
-    )
-    const scroller = heading?.closest('.overflow-y-auto')
-    return Math.ceil(scroller?.scrollHeight ?? document.documentElement.scrollHeight)
-  })
-  await window.setViewportSize({ width: 1440, height: Math.min(pageHeight + 40, 1600) })
-  const lastSectionIsOnScreen = await window.evaluate(() => {
-    const heading = [...document.querySelectorAll('h2')].find(
-      (element) => element.textContent === 'Remembered approvals',
-    )
-    if (heading === undefined) return false
-    const rect = heading.getBoundingClientRect()
-    return rect.top >= 0 && rect.bottom <= globalThis.innerHeight
-  })
-  expect(lastSectionIsOnScreen).toBe(true)
+  // The menu says where you are, with more than the heading: the panel you are on is raised.
+  await window.mouse.move(0, 0)
+  const raised = await window
+    .getByRole('link', { name: 'Permissions' })
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  const resting = await window
+    .getByRole('link', { name: 'Providers' })
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  expect(raised).not.toBe(resting)
 
+  await window.setViewportSize({ width: 1440, height: 1000 })
   await window.screenshot({ path: join(SHOT_DIR, 'settings-permissions.png') })
+
+  // An address is a way in: asking for a panel by name opens it, without clicking the menu.
+  await window.evaluate(() => {
+    globalThis.location.hash = '/settings?tab=browser-access'
+  })
+  await expect(window.getByRole('heading', { name: 'Browser access' })).toBeVisible()
+  await expect(window.getByRole('heading', { name: 'Default permission level' })).toHaveCount(0)
+
+  await window.getByRole('link', { name: 'Appearance' }).click()
+  await expect(window.getByRole('heading', { name: 'Theme' })).toBeVisible()
+
   await app.close()
 })

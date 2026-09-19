@@ -1,0 +1,36 @@
+import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS } from '@alpha/core'
+import { useShell } from '../../stores/shell.ts'
+import { TONE_CLASS } from '../LevelChip.tsx'
+
+/** The level a new conversation in this workspace starts at. */
+export function PermissionSection() {
+  const level = useShell((state) => state.workspaceLevel)
+  const setPermissionLevel = useShell((state) => state.setPermissionLevel)
+
+  return (
+    <section>
+      <h2 className="text-body font-medium text-parchment">Default permission level</h2>
+      <p className="mt-1 text-xs text-parchment-dim">
+        New conversations in this workspace start here. An open conversation keeps its own level — change that from the
+        chip in the header.
+      </p>
+      <ul className="mt-3 space-y-1.5">
+        {PERMISSION_LEVELS.map((candidate) => (
+          <li key={candidate}>
+            <button
+              type="button"
+              aria-pressed={candidate === level}
+              onClick={() => void setPermissionLevel(candidate)}
+              className={`w-full rounded-card border px-3 py-2.5 text-left transition-colors hover:bg-ink-700 ${
+                candidate === level ? TONE_CLASS[levelTone(candidate)] : 'border-line text-parchment-dim'
+              }`}
+            >
+              <span className="block text-ui font-medium">{levelLabel(candidate)}</span>
+              <span className="mt-0.5 block text-xs text-parchment-faint">{levelDescription(candidate)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

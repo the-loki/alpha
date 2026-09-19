@@ -1,89 +1,85 @@
-import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS, THEMES, type Theme } from '@alpha/core'
-import { createFileRoute } from '@tanstack/react-router'
-import { TONE_CLASS } from '../components/LevelChip.tsx'
+import { createFileRoute, Link, type SearchSchemaInput } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
 import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
+import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
-import { useShell } from '../stores/shell.ts'
 
-function PermissionSection() {
-  const level = useShell((state) => state.workspaceLevel)
-  const setPermissionLevel = useShell((state) => state.setPermissionLevel)
+/**
+ * Settings is a menu, not a scroll: one panel at a time, and each panel has an address of its own
+ * so a link to "the browser access page" means something.
+ */
+const SETTING_TABS = ['providers', 'permissions', 'appearance', 'browser-access'] as const
 
-  return (
-    <section className="mt-8">
-      <h2 className="text-body font-medium text-parchment">Default permission level</h2>
-      <p className="mt-1 text-xs text-parchment-dim">
-        New conversations in this workspace start here. An open conversation keeps its own level — change that from the
-        chip in the header.
-      </p>
-      <ul className="mt-3 space-y-1.5">
-        {PERMISSION_LEVELS.map((candidate) => (
-          <li key={candidate}>
-            <button
-              type="button"
-              aria-pressed={candidate === level}
-              onClick={() => void setPermissionLevel(candidate)}
-              className={`w-full rounded-card border px-3 py-2.5 text-left transition-colors hover:bg-ink-700 ${
-                candidate === level ? TONE_CLASS[levelTone(candidate)] : 'border-line text-parchment-dim'
-              }`}
-            >
-              <span className="block text-ui font-medium">{levelLabel(candidate)}</span>
-              <span className="mt-0.5 block text-xs text-parchment-faint">{levelDescription(candidate)}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
+type SettingTab = (typeof SETTING_TABS)[number]
+
+const TAB_LABELS: Record<SettingTab, string> = {
+  providers: 'Providers',
+  permissions: 'Permissions',
+  appearance: 'Appearance',
+  'browser-access': 'Browser access',
 }
 
-const THEME_LABELS: Record<Theme, string> = { system: 'Follow the system', dark: 'Dark', light: 'Light' }
-
-function ThemeSection() {
-  const theme = useShell((state) => state.theme)
-  const setTheme = useShell((state) => state.setTheme)
-
-  return (
-    <section className="mt-8">
-      <h2 className="text-body font-medium text-parchment">Theme</h2>
-      <p className="mt-1 text-xs text-parchment-dim">
-        Alpha follows the system by default. The light theme is its own palette, not a filter over the dark one.
-      </p>
-      <div className="mt-3 flex gap-1.5">
-        {THEMES.map((candidate) => (
-          <button
-            key={candidate}
-            type="button"
-            aria-pressed={candidate === theme}
-            onClick={() => void setTheme(candidate)}
-            className={`rounded-control border px-3 py-1.5 text-xs transition-colors ${
-              candidate === theme
-                ? 'border-ember/50 bg-ember/10 text-ember'
-                : 'border-line text-parchment-dim hover:bg-ink-700'
-            }`}
-          >
-            {THEME_LABELS[candidate]}
-          </button>
-        ))}
-      </div>
-    </section>
-  )
+/** What each panel holds. Providers is first because it is what a person comes here to change. */
+const PANELS: Record<SettingTab, ReactNode> = {
+  providers: <ProvidersSection />,
+  permissions: (
+    <>
+      <PermissionSection />
+      <RememberedRules />
+    </>
+  ),
+  appearance: <AppearanceSection />,
+  'browser-access': <BrowserAccessSection />,
 }
+
+function isSettingTab(value: unknown): value is SettingTab {
+  return typeof value === 'string' && (SETTING_TABS as readonly string[]).includes(value)
+}
+
+/**
+ * A tab in the URL, defaulted rather than optional: the panel is a complete value by the time a
+ * screen reads it, so nothing downstream narrows a union. The `SearchSchemaInput` label is what
+ * keeps the write side honest — without it every `Link` in the app would have to be handed a
+ * `search`, including the ones with nothing to do with settings.
+ */
+const validateSearch = (input: { tab?: unknown } & SearchSchemaInput): { tab: SettingTab } => ({
+  tab: isSettingTab(input.tab) ? input.tab : 'providers',
+})
 
 function Settings() {
+  const { tab } = Route.useSearch()
+
   return (
-    <div className="h-full overflow-y-auto px-8 py-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-xl font-medium text-parchment">Settings</h1>
-        <ProvidersSection />
-        <BrowserAccessSection />
-        <PermissionSection />
-        <ThemeSection />
-        <RememberedRules />
+    <div className="flex h-full">
+      <nav aria-label="Settings sections" className="w-56 shrink-0 overflow-y-auto border-r border-line px-3 py-8">
+        <h1 className="px-2 text-xl font-medium text-parchment">Settings</h1>
+        <ul className="mt-5 space-y-0.5">
+          {SETTING_TABS.map((candidate) => (
+            <li key={candidate}>
+              <Link
+                to="/settings"
+                search={{ tab: candidate }}
+                aria-current={candidate === tab ? 'page' : undefined}
+                className={`block rounded-control px-2 py-1.5 text-ui transition-colors ${
+                  candidate === tab
+                    ? 'bg-ink-700 text-parchment'
+                    : 'text-parchment-dim hover:bg-ink-700 hover:text-parchment'
+                }`}
+              >
+                {TAB_LABELS[candidate]}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div className="min-w-0 flex-1 overflow-y-auto px-8 py-8">
+        <div className="mx-auto max-w-2xl space-y-8">{PANELS[tab]}</div>
       </div>
     </div>
   )
 }
 
-export const Route = createFileRoute('/settings')({ component: Settings })
+export const Route = createFileRoute('/settings')({ validateSearch, component: Settings })

@@ -26,7 +26,7 @@ export function RememberedRules() {
   }
 
   return (
-    <section className="mt-8">
+    <section>
       <h2 className="text-body font-medium text-parchment">Remembered approvals</h2>
       <p className="mt-1 text-xs text-parchment-dim">
         {rules.length === 0

@@ -36,7 +36,7 @@ export function BrowserAccessSection() {
   }
 
   return (
-    <section className="mt-8" aria-label="Browser access">
+    <section aria-label="Browser access">
       <h2 className="text-body font-medium text-parchment">Browser access</h2>
       <p className="mt-1 text-xs text-parchment-dim">
         Serve this workbench to a browser on another device. Whoever holds the token can read every conversation and
