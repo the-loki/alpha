@@ -15,11 +15,15 @@ const CSS = readFileSync(join(REPO_ROOT, 'packages/renderer/src/styles/app.css')
 
 type Palette = Record<string, string>
 
-/** Tokens from the base block, then the ones a theme overrides on top. */
+/**
+ * The tokens of one block, by its exact selector. Not a substring match: `:root[data-accent='x']`
+ * contains `:root`, and matching that way silently folds every accent into the base palette.
+ */
 function paletteOf(selector: string): Palette {
-  const blocks = [...CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((match) => match[1].includes(selector))
   const palette: Palette = {}
-  for (const block of blocks) {
+  for (const block of CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selectors = block[1].split(/[;\n]/).map((part) => part.trim())
+    if (!selectors.includes(selector)) continue
     for (const [, name, value] of block[2].matchAll(/--color-([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
       palette[name] = value
     }
@@ -27,8 +31,27 @@ function paletteOf(selector: string): Palette {
   return palette
 }
 
-const dark = paletteOf(':root')
-const light = { ...dark, ...paletteOf(":root[data-theme='light']") }
+/** The default palette, which is the light one; dark and each accent are overrides on top. */
+const light = paletteOf('@theme')
+const dark = { ...light, ...paletteOf(":root[data-theme='dark']") }
+const ACCENTS = [...new Set([...CSS.matchAll(/\[data-accent='([\w-]+)'\]/g)].map((match) => match[1]))]
+
+/** Every palette the app can be in: two modes, and each accent in each of them. */
+const PALETTES: [string, Palette][] = [
+  ['light', light],
+  ['dark', dark],
+  ...ACCENTS.flatMap((accent): [string, Palette][] => [
+    [`light/${accent}`, { ...light, ...paletteOf(`[data-accent='${accent}']`) }],
+    [
+      `dark/${accent}`,
+      {
+        ...dark,
+        ...paletteOf(`[data-accent='${accent}']`),
+        ...paletteOf(`[data-theme='dark'][data-accent='${accent}']`),
+      },
+    ],
+  ]),
+]
 
 function channel(value: number): number {
   const normalized = value / 255
@@ -57,9 +80,14 @@ const PAIRS: { text: string; surface: string; minimum: number }[] = [
   { text: 'parchment-faint', surface: 'ink-900', minimum: 3 },
   { text: 'parchment-faint', surface: 'ink-800', minimum: 3 },
   { text: 'parchment-faint', surface: 'ink-700', minimum: 3 },
-  { text: 'ember', surface: 'ink-900', minimum: 4.5 },
-  { text: 'ember', surface: 'ink-800', minimum: 4.5 },
-  { text: 'ember', surface: 'ink-700', minimum: 4.5 },
+  // The accent is whichever palette the user picked, so this is measured once per accent below.
+  { text: 'accent', surface: 'ink-900', minimum: 4.5 },
+  { text: 'accent', surface: 'ink-800', minimum: 4.5 },
+  { text: 'accent', surface: 'ink-700', minimum: 4.5 },
+  { text: 'accent-ink', surface: 'accent', minimum: 4.5 },
+  // Text on the accent, which is what a primary button is.
+  { text: 'warm', surface: 'ink-800', minimum: 4.5 },
+  { text: 'warm', surface: 'ink-700', minimum: 4.5 },
   { text: 'jade', surface: 'ink-800', minimum: 4.5 },
   { text: 'jade', surface: 'ink-700', minimum: 4.5 },
   { text: 'amber', surface: 'ink-800', minimum: 4.5 },
@@ -68,14 +96,21 @@ const PAIRS: { text: string; surface: string; minimum: number }[] = [
   { text: 'danger', surface: 'ink-700', minimum: 4.5 },
   { text: 'info', surface: 'ink-800', minimum: 4.5 },
   { text: 'info', surface: 'ink-700', minimum: 4.5 },
-  // Text on the accent, which is what a primary button is.
-  { text: 'ember-ink', surface: 'ember', minimum: 4.5 },
 ]
 
-describe.each([
-  ['dark', dark],
-  ['light', light],
-])('the %s palette', (name, palette) => {
+describe('the accent attribute', () => {
+  const ACCENT_TOKENS = ['accent', 'accent-bright', 'accent-ink']
+
+  it('means the same as its absence for the default accent', () => {
+    // `ember` is written both as the default and as an attribute, because the settings page shows
+    // an accent by wearing it. The two spellings drifting apart would show there first.
+    const pick = (palette: Palette) => Object.fromEntries(ACCENT_TOKENS.map((token) => [token, palette[token]]))
+    expect(pick(paletteOf("[data-accent='ember']"))).toEqual(pick(light))
+    expect(pick(paletteOf("[data-theme='dark'][data-accent='ember']"))).toEqual(pick(dark))
+  })
+})
+
+describe.each(PALETTES)('the %s palette', (name, palette) => {
   it('defines every token the design table names', () => {
     const tokens = [
       'ink-900',
@@ -87,9 +122,10 @@ describe.each([
       'parchment',
       'parchment-dim',
       'parchment-faint',
-      'ember',
-      'ember-bright',
-      'ember-ink',
+      'accent',
+      'accent-bright',
+      'accent-ink',
+      'warm',
       'jade',
       'amber',
       'danger',
@@ -113,9 +149,9 @@ describe.each([
   })
 
   it('keeps the levels tellable apart from each other by luminance as well as hue', () => {
-    // Levels use info, amber, jade and ember; a reader who cannot tell hue must still see a
-    // difference between neighbouring levels, so no two of them may be the same colour.
-    const levels = ['info', 'amber', 'jade', 'ember'].map((token) => palette[token])
+    // Levels use info, amber, jade and warm — the fixed four, not the user's accent: a green
+    // accent would otherwise make full-access and accept-edits the same colour.
+    const levels = ['info', 'amber', 'jade', 'warm'].map((token) => palette[token])
     expect(new Set(levels).size).toBe(levels.length)
     void name
   })

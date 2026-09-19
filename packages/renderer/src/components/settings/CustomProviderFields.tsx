@@ -112,7 +112,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                 aria-label={`Reasoning ${index + 1}`}
                 checked={model.reasoning}
                 onChange={(event) => replace(index, { reasoning: event.target.checked })}
-                className="h-3.5 w-3.5 accent-ember"
+                className="h-3.5 w-3.5 accent-[var(--color-accent)]"
               />
               Thinks before answering
             </label>

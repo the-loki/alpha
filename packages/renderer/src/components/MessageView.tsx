@@ -51,7 +51,7 @@ function EditBox({ message, index }: { message: ChatMessage; index: number }) {
         <button
           type="button"
           onClick={() => void editMessage(index, text, 'replace')}
-          className="rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+          className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
         >
           Resend, replacing what followed
         </button>
@@ -149,7 +149,7 @@ export const MessageView = memo(function MessageView({
           </div>
         )
       })}
-      {streaming && message.blocks.length === 0 && <span className="ember-cursor" aria-hidden="true" />}
+      {streaming && message.blocks.length === 0 && <span className="caret" aria-hidden="true" />}
       <StatusNote message={message} />
       {spoken && (
         <div className="mt-1.5 flex items-center gap-3">

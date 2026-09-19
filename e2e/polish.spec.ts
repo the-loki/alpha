@@ -149,11 +149,11 @@ test('reduced motion collapses transitions and freezes the cursor', async () => 
   await window.emulateMedia({ reducedMotion: 'reduce' })
 
   await ask(window, 'say something long')
-  const cursor = window.getByRole('main').locator('.ember-cursor')
+  const cursor = window.getByRole('main').locator('.caret')
   await expect(cursor.first()).toBeVisible({ timeout: 20_000 })
 
   const motion = await window.evaluate(() => {
-    const element = document.querySelector('.ember-cursor')
+    const element = document.querySelector('.caret')
     const cursorStyle = element === null ? null : getComputedStyle(element)
     const button = document.querySelector('button')
     const buttonStyle = button === null ? null : getComputedStyle(button)
@@ -208,12 +208,16 @@ async function openAppearance(window: Page) {
   await window.getByRole('link', { name: 'Appearance' }).click()
 }
 
-test('the light theme is selectable, and both themes are captured', async () => {
+test('a fresh workbench opens light, and the dark palette is one click away', async () => {
   const { app, window } = await launch({ replies: ['A short answer.'] })
+
+  // Light is the default (C5.2): the window is painted before any state is read, so this is also
+  // what someone sees for the first frame.
+  await expect(window.locator('html')).toHaveAttribute('data-theme', 'light')
 
   await ask(window, 'which theme is this')
   await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible({ timeout: 20_000 })
-  await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })
+  await window.screenshot({ path: join(SHOT_DIR, 'theme-light.png') })
 
   await openAppearance(window)
   const card = () =>
@@ -221,29 +225,70 @@ test('the light theme is selectable, and both themes are captured', async () => 
       const button = document.querySelector('aside button')
       return button === null ? '' : getComputedStyle(button).backgroundColor
     })
-  const paintedDark = await card()
-  await window.getByRole('button', { name: 'Light' }).click()
-  await expect(window.locator('html')).toHaveAttribute('data-theme', 'light')
+  const paintedLight = await card()
+  await window.getByRole('button', { name: 'Dark' }).click()
+  await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
   // The palette repaints rather than switching instantly, so the capture waits for the sidebar
-  // to actually be paper-coloured instead of catching the switch halfway.
-  await expect.poll(card).not.toBe(paintedDark)
-  await window.screenshot({ path: join(SHOT_DIR, 'theme-light-settings.png') })
+  // to actually be ink-coloured instead of catching the switch halfway.
+  await expect.poll(card).not.toBe(paintedLight)
+  await window.screenshot({ path: join(SHOT_DIR, 'theme-dark-settings.png') })
 
-  // The workspace stays legible in the light theme: the transcript is readable against paper,
-  // and the sidebar still names the folder it is pointed at rather than only its path.
-  const paper = await window.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  expect(paper).not.toBe('rgb(20, 17, 14)')
+  // The workspace stays legible in the dark palette too: the transcript reads against it, and the
+  // sidebar still names the folder it is pointed at rather than only its path.
+  const ink = await window.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  expect(ink).not.toBe(paintedLight)
   await expect(window.getByRole('complementary').getByRole('button', { name: /sandbox/ })).toBeVisible()
 
   await window.getByRole('button', { name: /^which theme is this/ }).click()
   await expect(window.getByRole('main').getByText('A short answer.')).toBeVisible()
-  await window.screenshot({ path: join(SHOT_DIR, 'theme-light.png') })
+  await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })
 
   await openAppearance(window)
   await window.getByRole('button', { name: 'Follow the system' }).click()
-  await expect(window.locator('html')).not.toHaveAttribute('data-theme', 'light')
+  // Whatever the machine says, the mode is resolved to one of the two palettes rather than a
+  // third one: `system` is a choice about which palette, not a palette of its own.
+  await expect(window.locator('html')).toHaveAttribute('data-theme', /^(light|dark)$/)
   await app.close()
 })
+
+test('the accent is a choice, and it is painted on both palettes', async () => {
+  const { app, window } = await launch({ replies: ['A short answer.'] })
+
+  await openAppearance(window)
+  const accent = () => colourOf(window, 'accent')
+  const swatch = (name: string) =>
+    window.locator(`[data-accent-swatch="${name}"]`).evaluate((element) => getComputedStyle(element).backgroundColor)
+
+  // A fresh workbench is light, in ember, and says so on the document rather than leaving it to
+  // the stylesheet's default: the mode and the accent are both written out.
+  await expect(window.locator('html')).toHaveAttribute('data-accent', 'ember')
+  const emberLight = await accent()
+  expect(await swatch('ember')).not.toBe(await swatch('sage'))
+
+  await window.getByRole('button', { name: 'Sage' }).click()
+  await expect(window.locator('html')).toHaveAttribute('data-accent', 'sage')
+  expect(await accent()).not.toBe(emberLight)
+
+  // The same accent is a different colour on the other palette: each one is measured against both,
+  // so a choice made in one mode is still legible when the mode changes.
+  await window.getByRole('button', { name: 'Dark' }).click()
+  await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
+  expect(await accent()).not.toBe(emberLight)
+
+  await window.getByRole('button', { name: 'Ember' }).click()
+  await expect(window.locator('html')).toHaveAttribute('data-accent', 'ember')
+  expect(await accent()).not.toBe(emberLight)
+
+  await app.close()
+})
+
+/** Whatever `--color-accent` currently resolves to on the document. */
+async function colourOf(window: Page, token: string): Promise<string> {
+  return window.evaluate(
+    (name) => getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim(),
+    token,
+  )
+}
 
 test('opening and closing twenty conversations does not leak', async () => {
   test.setTimeout(120_000)

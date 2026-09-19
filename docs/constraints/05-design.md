@@ -15,35 +15,54 @@ lamp rather than a status LED.
 
 These are the only colours in the app. Components reference tokens, never raw hex.
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `--ink-900` | `#14110E` | Window background |
-| `--ink-800` | `#1B1714` | Sidebar, raised panels |
-| `--ink-700` | `#221D18` | Cards, composer |
-| `--ink-600` | `#2B251F` | Hover, selected row |
-| `--line` | `#332C25` | Hairline borders, dividers |
-| `--line-strong` | `#443A30` | Focused input border |
-| `--parchment` | `#F2EBE1` | Primary text |
-| `--parchment-dim` | `#B3A794` | Secondary text, labels |
-| `--parchment-faint` | `#837869` | Metadata, timestamps |
-| `--ember` | `#E2762F` | Primary accent: streaming, focus ring, primary action |
-| `--ember-bright` | `#F08A45` | Accent hover |
-| `--ember-ink` | `#1A0F07` | Text on accent |
-| `--jade` | `#4FA98B` | Success, connected, auto-approved |
-| `--amber` | `#D9A23B` | Waiting on the user, warnings |
-| `--danger` | `#D9605A` | Denied, failed, destructive |
-| `--info` | `#6D8FD1` | Neutral system notices |
+**Light is the default theme.** The window is painted before any state is read, so the palette in
+`@theme` is the light one and the dark palette is the override. `prefers-color-scheme` is resolved
+in the renderer, not in the stylesheet: `system` is a *choice* between two palettes rather than a
+third palette, and resolving it once keeps the stylesheet to plain selectors.
 
-Level colours, used by the permission chip and nowhere else:
+| Token | Light (default) | Dark | Use |
+| --- | --- | --- | --- |
+| `--ink-900` | `#FAF5ED` | `#14110E` | Window background |
+| `--ink-800` | `#F3ECE0` | `#1B1714` | Sidebar, raised panels |
+| `--ink-700` | `#FFFDF9` | `#221D18` | Cards, composer |
+| `--ink-600` | `#EBE0CF` | `#2B251F` | Hover, selected row |
+| `--line` | `#DED2C0` | `#332C25` | Hairline borders, dividers |
+| `--line-strong` | `#B8A288` | `#443A30` | Focused input border |
+| `--parchment` | `#241C14` | `#F2EBE1` | Primary text |
+| `--parchment-dim` | `#55483A` | `#B3A794` | Secondary text, labels |
+| `--parchment-faint` | `#6B5946` | `#837869` | Metadata, timestamps |
+| `--warm` | `#A8481A` | `#E2762F` | The `full-access` level, and nothing else |
+| `--jade` | `#26654C` | `#4FA98B` | Success, connected, auto-approved |
+| `--amber` | `#7A520E` | `#D9A23B` | Waiting on the user, warnings |
+| `--danger` | `#A8322C` | `#D9605A` | Denied, failed, destructive |
+| `--info` | `#33549B` | `#6D8FD1` | Neutral system notices |
+
+### The accent is a slot, not a colour
+
+`--accent`, `--accent-bright` and `--accent-ink` are the primary accent: the streaming answer, the
+focus ring, the primary action. `data-accent` on the document picks the palette, and each one
+defines all three for both modes — an accent that is only legible on one palette is not shipped.
+
+| Accent | Light | Dark | Named for |
+| --- | --- | --- | --- |
+| `ember` (default) | `#A8481A` | `#E2762F` | the colour the app is named after |
+| `sage` | `#5C7220` | `#A8BF5C` | olive, clear of `jade` |
+| `iris` | `#4F46B0` | `#9A92EE` | blue-violet, clear of `info` |
+| `rose` | `#A83A63` | `#E989AE` | pink enough not to read as `danger` |
+| `plum` | `#7241A8` | `#B98AE0` | the purple side of violet |
+
+The four level colours — `info`, `amber`, `jade`, `warm` — are fixed and are **not** the user's
+accent: a green accent would otherwise paint `accept-edits` and `full-access` the same colour.
 
 | Level | Token |
 | --- | --- |
 | `plan` | `--info` |
 | `ask` | `--amber` |
 | `accept-edits` | `--jade` |
-| `full-access` | `--ember` |
+| `full-access` | `--warm` |
 
-Every text/background pair above must clear **4.5:1**; `--parchment-faint` is metadata only and
+Every text/background pair above must clear **4.5:1** — including every accent against every surface
+in both modes, and `--accent-ink` against its own accent. `--parchment-faint` is metadata only and
 still clears 3:1. Contrast is asserted numerically in a test, not eyeballed.
 
 ## C5.3 — Type

@@ -75,7 +75,7 @@ test('the answer is visibly still arriving, with a caret at its end', async () =
 
   // The caret is the state: while it is there the answer is still arriving, and the actions
   // that only make sense on a finished answer are not offered yet.
-  const caret = window.getByRole('main').locator('.ember-cursor')
+  const caret = window.getByRole('main').locator('.caret')
   await expect(caret).toBeVisible({ timeout: 20_000 })
   // Once part of the answer is on screen, so the frame shows text still arriving rather than the
   // moment before the first token, when there is nothing but a caret.
@@ -108,7 +108,7 @@ test('the caret follows text that ends inside a code fence', async () => {
 
   // A stream rarely stops at a paragraph: an unclosed fence is a code block, and the caret has
   // to be in it rather than nowhere. Wait until the fence is what is being written.
-  const caret = window.getByRole('main').locator('.ember-cursor')
+  const caret = window.getByRole('main').locator('.caret')
   await expect(window.getByRole('main')).toContainText('const answer', { timeout: 20_000 })
   await expect(caret).toBeVisible()
   // Drawn inside the code block that is being written, not after it.

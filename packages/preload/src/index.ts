@@ -5,6 +5,7 @@
 
 import {
   type AlphaBridge,
+  type AppearancePatch,
   type ApprovalAnswerInput,
   type ConversationSummary,
   type CustomProviderInput,
@@ -20,7 +21,6 @@ import {
   type ProviderModelDefinition,
   type ProvidersSnapshotMessage,
   type RuntimeEvent,
-  type Theme,
   type ThinkingLevel,
   WINDOW_COMMAND_CHANNELS,
   type WindowCommand,
@@ -34,7 +34,7 @@ const bridge: AlphaBridge = {
   selectWorkspace: (path: string) => ipcRenderer.invoke(IPC.selectWorkspace, path) as Promise<LaunchState>,
   setPermissionLevel: (level: PermissionLevel) =>
     ipcRenderer.invoke(IPC.setPermissionLevel, level) as Promise<LaunchState>,
-  setTheme: (theme: Theme) => ipcRenderer.invoke(IPC.setTheme, theme) as Promise<LaunchState>,
+  setAppearance: (patch: AppearancePatch) => ipcRenderer.invoke(IPC.setAppearance, patch) as Promise<LaunchState>,
   networkState: () => ipcRenderer.invoke(IPC.networkState) as Promise<NetworkState>,
   setNetworkAccess: (patch: NetworkPatch) => ipcRenderer.invoke(IPC.setNetworkAccess, patch) as Promise<NetworkState>,
   regenerateNetworkToken: () => ipcRenderer.invoke(IPC.regenerateNetworkToken) as Promise<NetworkState>,

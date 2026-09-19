@@ -114,6 +114,12 @@ test('Escape leaves the palette without changing anything', async () => {
 test('Control-N starts a new conversation and Control-comma opens settings', async () => {
   const { app, window } = await launch()
   await ask(window, 'a question to leave behind')
+  // Wait for the turn to have made its conversation before starting another one: pressing Control-N
+  // while the first is still being created is a race the app is allowed to lose either way, and the
+  // assertion below is about what the keyboard does, not about that race.
+  await expect(
+    window.getByRole('complementary').getByRole('button', { name: /^a question to leave behind/ }),
+  ).toBeVisible()
 
   await window.keyboard.press('ControlOrMeta+n')
   // The pane is empty, and the message that follows is a conversation of its own rather than one

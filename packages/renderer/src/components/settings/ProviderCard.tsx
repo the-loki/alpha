@@ -58,7 +58,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           onClick={() => {
             void setCredential(provider.id, secret).then(() => setSecret(''))
           }}
-          className="rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:bg-ember/25 disabled:text-ember-ink/60"
+          className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-accent/25 disabled:text-accent-ink/60"
         >
           Save key
         </button>

@@ -15,19 +15,19 @@ export const TONE_CLASS: Record<string, string> = {
   info: 'text-info border-info/40 bg-info/10',
   amber: 'text-amber border-amber/40 bg-amber/10',
   jade: 'text-jade border-jade/40 bg-jade/10',
-  ember: 'text-ember border-ember/40 bg-ember/10',
+  warm: 'text-warm border-warm/40 bg-warm/10',
 }
 
 const DOT_CLASS: Record<string, string> = {
   info: 'bg-info',
   amber: 'bg-amber',
   jade: 'bg-jade',
-  ember: 'bg-ember',
+  warm: 'bg-warm',
 }
 
 /**
  * The permission level, always visible. Colour distinguishes the levels, but the label is what
- * carries the meaning, so the chip still reads for someone who cannot tell ember from jade.
+ * carries the meaning, so the chip still reads for someone who cannot tell warm from jade.
  *
  * With a conversation open the chip changes *that conversation's* level, and it shows that
  * conversation's level — a transcript and the level it ran under belong together. With no

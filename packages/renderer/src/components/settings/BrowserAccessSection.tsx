@@ -56,7 +56,7 @@ export function BrowserAccessSection() {
             aria-label="Serve this workbench to a browser"
             checked={state.enabled}
             onChange={(event) => change({ enabled: event.target.checked })}
-            className="h-4 w-4 accent-[var(--color-ember)]"
+            className="h-4 w-4 accent-[var(--color-accent)]"
           />
         </label>
 
@@ -71,7 +71,7 @@ export function BrowserAccessSection() {
                 onClick={() => change({ bind })}
                 className={`rounded-control border px-3 py-1.5 text-xs transition-colors ${
                   state.bind === bind
-                    ? 'border-ember/50 bg-ember/10 text-ember'
+                    ? 'border-accent/50 bg-accent/10 text-accent'
                     : 'border-line text-parchment-dim hover:bg-ink-700'
                 }`}
               >

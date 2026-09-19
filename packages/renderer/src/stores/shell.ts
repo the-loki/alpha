@@ -1,5 +1,8 @@
 import {
+  type Accent,
+  type AppearancePatch,
   DEFAULT_LEVEL,
+  DEFAULT_THEME,
   emptyWorkspaceState,
   type LaunchState,
   type PermissionLevel,
@@ -21,6 +24,8 @@ export interface ShellStore {
   /** What this workspace's new conversations start at. */
   workspaceLevel: PermissionLevel
   theme: Theme
+  /** Which accent palette the workbench is drawn in. */
+  accent: Accent
   model: LaunchState['model']
   /** The conversation to come back to on launch, empty when there is none. */
   lastConversationId: string
@@ -34,13 +39,14 @@ export interface ShellStore {
   pickWorkspace: () => Promise<void>
   openRecent: (path: string) => Promise<void>
   setPermissionLevel: (level: PermissionLevel) => Promise<void>
-  setTheme: (theme: Theme) => Promise<void>
+  setAppearance: (patch: AppearancePatch) => Promise<void>
   setWindowMaximized: (maximized: boolean) => void
   /** Spends the memory of the last conversation: it is for one launch, not for every visit to / */
   clearResume: () => void
 }
 
 const applyLaunchState = (state: LaunchState) => ({
+  accent: state.accent,
   ready: true,
   appVersion: state.appVersion,
   platform: state.platform,
@@ -53,11 +59,22 @@ const applyLaunchState = (state: LaunchState) => ({
   lastConversationId: state.lastConversationId,
 })
 
-/** System is the absence of the attribute: the stylesheet's `prefers-color-scheme` decides. */
-export function applyTheme(theme: Theme): void {
+/**
+ * Paints the look onto the document. The mode is resolved here rather than left to the stylesheet:
+ * "system" is a choice about which palette to use, not a third palette, and resolving it in one
+ * place is what lets the light/dark blocks stay plain selectors (C5.2).
+ */
+export function applyAppearance(theme: Theme, accent: Accent): void {
   const root = document.documentElement
-  if (theme === 'system') root.removeAttribute('data-theme')
-  else root.setAttribute('data-theme', theme)
+  const mode = theme === 'system' ? systemMode() : theme
+  // Both are written out rather than left to the stylesheet's defaults: the document says what it
+  // is drawn in, which is what the settings page and the tests read back.
+  root.setAttribute('data-theme', mode)
+  root.setAttribute('data-accent', accent)
+}
+
+function systemMode(): 'light' | 'dark' {
+  return globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches === true ? 'dark' : 'light'
 }
 
 /** Where the desktop offers a native folder dialog, a browser has nothing to offer instead. */
@@ -71,7 +88,8 @@ export const useShell = create<ShellStore>((set, get) => ({
   recents: [],
   permissionLevel: DEFAULT_LEVEL,
   workspaceLevel: DEFAULT_LEVEL,
-  theme: 'system',
+  theme: DEFAULT_THEME,
+  accent: 'ember',
   model: { configured: false, description: '' },
   lastConversationId: '',
   windowMaximized: false,
@@ -83,7 +101,7 @@ export const useShell = create<ShellStore>((set, get) => ({
     // screen it needs is the one that asks for the token.
     try {
       const state = await bridge().launchState()
-      applyTheme(state.theme)
+      applyAppearance(state.theme, state.accent)
       set({ ...applyLaunchState(state), host: clientHost(), locked: false })
     } catch (failure) {
       if (!(failure instanceof Unauthorized)) throw failure
@@ -110,9 +128,9 @@ export const useShell = create<ShellStore>((set, get) => ({
     set(applyLaunchState(await bridge().setPermissionLevel(level)))
   },
 
-  setTheme: async (theme: Theme) => {
-    const state = await bridge().setTheme(theme)
-    applyTheme(state.theme)
+  setAppearance: async (patch: AppearancePatch) => {
+    const state = await bridge().setAppearance(patch)
+    applyAppearance(state.theme, state.accent)
     set(applyLaunchState(state))
   },
 

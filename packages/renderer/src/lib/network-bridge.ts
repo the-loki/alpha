@@ -8,6 +8,7 @@
  */
 import {
   type AlphaBridge,
+  type AppearancePatch,
   type ApprovalAnswerInput,
   type ConversationSummary,
   type CustomProviderInput,
@@ -23,7 +24,6 @@ import {
   type ProviderModelDefinition,
   type ProvidersSnapshotMessage,
   type RuntimeEvent,
-  type Theme,
   type ThinkingLevel,
   type Undef,
   type WindowState,
@@ -221,7 +221,7 @@ export function networkBridge(): AlphaBridge {
     setPermissionLevel: (level: PermissionLevel) => invoke('setPermissionLevel', [level]) as Promise<LaunchState>,
     setConversationLevel: (id: string, level: PermissionLevel) =>
       invoke('setConversationLevel', [id, level]) as Promise<ConversationSummary>,
-    setTheme: (theme: Theme) => invoke('setTheme', [theme]) as Promise<LaunchState>,
+    setAppearance: (patch: AppearancePatch) => invoke('setAppearance', [patch]) as Promise<LaunchState>,
     networkState: () => invoke('networkState', []) as Promise<NetworkState>,
     setNetworkAccess: (patch: NetworkPatch) => invoke('setNetworkAccess', [patch]) as Promise<NetworkState>,
     regenerateNetworkToken: () => invoke('regenerateNetworkToken', []) as Promise<NetworkState>,

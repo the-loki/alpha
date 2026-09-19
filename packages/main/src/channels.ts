@@ -10,9 +10,11 @@
  * check someone has to remember.
  */
 import {
+  type AppearancePatch,
   type ApprovalAnswerInput,
   defaultLevelFor,
   type IPC,
+  isAccent,
   isNetworkBind,
   isPermissionLevel,
   isPortNumber,
@@ -114,8 +116,9 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   setConversationLevel: ({ runtime }, args) =>
     runtime.setConversationLevel(requireString(args[0], 'conversationId'), requireLevel(args[1])),
 
-  setTheme: ({ store, runtime }, args) => {
-    if (isTheme(args[0])) store.write({ ...store.read(), theme: args[0] })
+  setAppearance: ({ store, runtime }, args) => {
+    const patch = readAppearancePatch(args[0])
+    store.write({ ...store.read(), ...patch })
     return launchState(store, runtime)
   },
 
@@ -232,9 +235,26 @@ export function launchState(store: StateStore, runtime: RuntimeManager): LaunchS
     permissionLevel: store.read().permissionLevel,
     workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
     theme: store.read().theme,
+    accent: store.read().accent,
     model: runtime.modelStatus(),
     lastConversationId: store.read().lastConversationId,
   }
+}
+
+/** The look: the mode, the accent, or both. Either field may be left out. */
+export function readAppearancePatch(input: unknown): AppearancePatch {
+  if (typeof input !== 'object' || input === null) throw new Error('an appearance patch is required')
+  const record = input as Record<string, unknown>
+  const patch: AppearancePatch = {}
+  if (record.theme !== undefined) {
+    if (!isTheme(record.theme)) throw new Error('theme must be system, light or dark')
+    patch.theme = record.theme
+  }
+  if (record.accent !== undefined) {
+    if (!isAccent(record.accent)) throw new Error('accent must be one of the palettes this app ships')
+    patch.accent = record.accent
+  }
+  return patch
 }
 
 /** A patch from the window: only the fields it may change, and only if they are the right shape. */

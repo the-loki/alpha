@@ -54,6 +54,13 @@ function Settings() {
   return (
     <div className="flex h-full">
       <nav aria-label="Settings sections" className="w-56 shrink-0 overflow-y-auto border-r border-line px-3 py-8">
+        {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
+        <Link
+          to="/"
+          className="mb-4 flex items-center gap-1.5 px-2 text-xs text-parchment-faint transition-colors hover:text-parchment"
+        >
+          <span aria-hidden="true">←</span> Back to the workbench
+        </Link>
         <h1 className="px-2 text-xl font-medium text-parchment">Settings</h1>
         <ul className="mt-5 space-y-0.5">
           {SETTING_TABS.map((candidate) => (

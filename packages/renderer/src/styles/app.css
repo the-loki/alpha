@@ -9,27 +9,35 @@
 /*
  * Ember Ink — docs/constraints/05-design.md is the source of truth for these values.
  * Components use the token names, never the hex values.
+ *
+ * The values in `@theme` are the default palette, which is the light one (C5.2): the window is
+ * painted before any state has been read, so the default has to be the theme most people see.
+ * The dark palette is the override, and `--color-accent*` is the slot every accent palette
+ * redefines — components name the role, never the colour it happens to be.
  */
 @theme {
-  --color-ink-900: #14110e;
-  --color-ink-800: #1b1714;
-  --color-ink-700: #221d18;
-  --color-ink-600: #2b251f;
-  --color-line: #332c25;
-  --color-line-strong: #443a30;
+  --color-ink-900: #faf5ed;
+  --color-ink-800: #f3ece0;
+  --color-ink-700: #fffdf9;
+  --color-ink-600: #ebe0cf;
+  --color-line: #ded2c0;
+  --color-line-strong: #b8a288;
 
-  --color-parchment: #f2ebe1;
-  --color-parchment-dim: #b3a794;
-  --color-parchment-faint: #837869;
+  --color-parchment: #241c14;
+  --color-parchment-dim: #55483a;
+  --color-parchment-faint: #6b5946;
 
-  --color-ember: #e2762f;
-  --color-ember-bright: #f08a45;
-  --color-ember-ink: #1a0f07;
+  --color-accent: #a8481a;
+  --color-accent-bright: #8f3c13;
+  --color-accent-ink: #fff8f0;
 
-  --color-jade: #4fa98b;
-  --color-amber: #d9a23b;
-  --color-danger: #d9605a;
-  --color-info: #6d8fd1;
+  /* The four level colours, fixed: a level is not the user's accent, or half of them would be
+     green at once. `--color-warm` is what the full-access level is painted in. */
+  --color-warm: #a8481a;
+  --color-jade: #26654c;
+  --color-amber: #7a520e;
+  --color-danger: #a8322c;
+  --color-info: #33549b;
 
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
@@ -63,38 +71,107 @@
 }
 
 /*
- * The light theme is its own palette rather than an inversion: warm paper rather than white, ink
- * that keeps the same hue relationship, and accents darkened until they clear the same contrast
- * thresholds as the dark ones. docs/constraints/05-design.md C5.2 is the rule; `theme.test.ts`
- * checks these numbers.
+ * The dark palette, and the accent palettes. Both are overrides: the theme is `data-theme` and
+ * the accent is `data-accent`, and the default of each is the absence of the attribute (C5.2).
+ * An accent carries three values per mode — the colour, its hover, and the text that sits on it —
+ * and each pair below is measured by `tools/design/theme.test.ts` in both modes.
  */
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
-  :root[data-theme='light'] {
-    color-scheme: light;
+  :root[data-theme='dark'] {
+    color-scheme: dark;
 
-    --color-ink-900: #faf5ed;
-    --color-ink-800: #f3ece0;
-    --color-ink-700: #fffdf9;
-    --color-ink-600: #ebe0cf;
-    --color-line: #ded2c0;
-    --color-line-strong: #b8a288;
+    --color-ink-900: #14110e;
+    --color-ink-800: #1b1714;
+    --color-ink-700: #221d18;
+    --color-ink-600: #2b251f;
+    --color-line: #332c25;
+    --color-line-strong: #443a30;
 
-    --color-parchment: #241c14;
-    --color-parchment-dim: #55483a;
-    --color-parchment-faint: #6b5946;
+    --color-parchment: #f2ebe1;
+    --color-parchment-dim: #b3a794;
+    --color-parchment-faint: #837869;
 
-    --color-ember: #a8481a;
-    --color-ember-bright: #8f3c13;
-    --color-ember-ink: #fff8f0;
+    --color-accent: #e2762f;
+    --color-accent-bright: #f08a45;
+    --color-accent-ink: #1a0f07;
 
-    --color-jade: #26654c;
-    --color-amber: #7a520e;
-    --color-danger: #a8322c;
-    --color-info: #33549b;
+    --color-warm: #e2762f;
+    --color-jade: #4fa98b;
+    --color-amber: #d9a23b;
+    --color-danger: #d9605a;
+    --color-info: #6d8fd1;
+  }
+
+  /*
+   * Ember is the default accent: its values are the ones above, used when the attribute is absent.
+   * They are repeated here so the attribute means the same thing as its absence — the settings
+   * page shows each accent by wearing it, and it cannot wear "no attribute" — and the design test
+   * asserts the two spellings agree.
+   */
+  [data-accent='ember'] {
+    --color-accent: #a8481a;
+    --color-accent-bright: #8f3c13;
+    --color-accent-ink: #fff8f0;
+  }
+
+  [data-theme='dark'][data-accent='ember'] {
+    --color-accent: #e2762f;
+    --color-accent-bright: #f08a45;
+    --color-accent-ink: #1a0f07;
+  }
+
+  /* Sage — olive, so it stays clear of jade, which means "auto-approved". */
+  [data-accent='sage'] {
+    --color-accent: #5c7220;
+    --color-accent-bright: #4d6118;
+    --color-accent-ink: #fbfdf2;
+  }
+
+  [data-theme='dark'][data-accent='sage'] {
+    --color-accent: #a8bf5c;
+    --color-accent-bright: #b9d16d;
+    --color-accent-ink: #14180a;
+  }
+
+  /* Iris — blue-violet, clear of `info`, which is the neutral-notice blue. */
+  [data-accent='iris'] {
+    --color-accent: #4f46b0;
+    --color-accent-bright: #403898;
+    --color-accent-ink: #f6f5ff;
+  }
+
+  [data-theme='dark'][data-accent='iris'] {
+    --color-accent: #9a92ee;
+    --color-accent-bright: #aea7f5;
+    --color-accent-ink: #100e26;
+  }
+
+  /* Rose — pink enough that it never reads as `danger`. */
+  [data-accent='rose'] {
+    --color-accent: #a83a63;
+    --color-accent-bright: #912f54;
+    --color-accent-ink: #fff5f8;
+  }
+
+  [data-theme='dark'][data-accent='rose'] {
+    --color-accent: #e989ae;
+    --color-accent-bright: #f49dc0;
+    --color-accent-ink: #2a0f19;
+  }
+
+  /* Plum — the purple side of violet, where iris is the blue side. */
+  [data-accent='plum'] {
+    --color-accent: #7241a8;
+    --color-accent-bright: #623691;
+  }
+  [data-theme='dark'][data-accent='plum'] {
+    --color-accent: #b98ae0;
+    --color-accent-bright: #c99de9;
+    --color-accent-ink: #1c0f2a;
   }
 
   html,
@@ -120,14 +197,14 @@
     cursor: pointer;
   }
 
-  /* A visible ember focus ring on everything, including the controls we compose ourselves. */
+  /* A visible accent focus ring on everything, including the controls we compose ourselves. */
   :focus-visible {
-    outline: 0.125rem solid var(--color-ember);
+    outline: 0.125rem solid var(--color-accent);
     outline-offset: 0.125rem;
   }
 
   ::selection {
-    background-color: color-mix(in oklab, var(--color-ember) 35%, transparent);
+    background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
   }
 
   ::-webkit-scrollbar {
@@ -157,7 +234,7 @@
     -webkit-app-region: no-drag;
   }
 
-  @keyframes ember-pulse {
+  @keyframes accent-pulse {
     0%,
     100% {
       opacity: 1;
@@ -167,13 +244,13 @@
     }
   }
 
-  .ember-cursor {
+  .caret {
     display: inline-block;
     width: 0.125rem;
     height: 1em;
     vertical-align: text-bottom;
-    background-color: var(--color-ember);
-    animation: ember-pulse 1.2s ease-in-out infinite;
+    background-color: var(--color-accent);
+    animation: accent-pulse 1.2s ease-in-out infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -182,7 +259,7 @@
       transition-duration: 0.001ms !important;
     }
 
-    .ember-cursor {
+    .caret {
       animation: none;
     }
   }

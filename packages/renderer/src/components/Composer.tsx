@@ -34,7 +34,7 @@ function QueueStrip() {
 }
 
 const PRIMARY =
-  'rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:cursor-not-allowed disabled:bg-ember/25 disabled:text-ember-ink/60'
+  'rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:cursor-not-allowed disabled:bg-accent/25 disabled:text-accent-ink/60'
 
 /**
  * The secondary actions are outlined, not filled: while a turn runs the accent belongs to the one

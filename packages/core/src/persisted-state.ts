@@ -49,9 +49,26 @@ const RuleSchema = Type.Object({
  */
 export const THEMES = ['system', 'dark', 'light'] as const
 
+/** Light is what a fresh install opens on (C5.2); `system` follows the machine from then on. */
+export const DEFAULT_THEME: Theme = 'light'
+
+/**
+ * The accent palettes. `ember` is the default and the one the app is named after; every other
+ * name is an attribute value the stylesheet has a block for (C5.2). The token those blocks
+ * redefine is `--color-accent*`, so a component never learns which colour it is drawing.
+ */
+export const ACCENTS = ['ember', 'sage', 'iris', 'rose', 'plum'] as const
+
+export type Accent = (typeof ACCENTS)[number]
+
+export function isAccent(value: unknown): value is Accent {
+  return typeof value === 'string' && (ACCENTS as readonly string[]).includes(value)
+}
+
 export type Theme = (typeof THEMES)[number]
 
 const ThemeSchema = Type.Union(THEMES.map((theme) => Type.Literal(theme)))
+const AccentSchema = Type.Union(ACCENTS.map((accent) => Type.Literal(accent)))
 
 export function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value)
@@ -101,6 +118,7 @@ const PersistedStateSchema = Type.Object({
    */
   workspaceLevels: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   theme: Type.Optional(ThemeSchema),
+  accent: Type.Optional(AccentSchema),
   /** The conversation that was open when the window closed, so the next launch can bring it back. */
   lastConversationId: Type.Optional(Type.String()),
   /** Browser access: absent in a file written before the workbench could be served. */
@@ -117,6 +135,7 @@ export interface PersistedState {
   permissionRules: PermissionRule[]
   /** System by default: the app follows the room it is in unless told otherwise. */
   theme: Theme
+  accent: Accent
   /** Empty when nothing was open, which is also what a launch with no history gets. */
   lastConversationId: string
   network: NetworkAccess
@@ -128,7 +147,8 @@ export function emptyPersistedState(): PersistedState {
     permissionLevel: DEFAULT_LEVEL,
     workspaceLevels: {},
     permissionRules: [],
-    theme: 'system',
+    theme: DEFAULT_THEME,
+    accent: 'ember',
     lastConversationId: '',
     network: emptyNetworkAccess(),
   }
@@ -153,7 +173,8 @@ export function parsePersistedState(raw: unknown): PersistedState {
     permissionLevel: state.permissionLevel,
     workspaceLevels: readLevels(readLevelsField(candidate)),
     permissionRules: readRules(readRulesField(candidate)),
-    theme: state.theme ?? 'system',
+    theme: state.theme ?? DEFAULT_THEME,
+    accent: isAccent(state.accent) ? state.accent : 'ember',
     lastConversationId: state.lastConversationId ?? '',
     network: readNetwork(readNetworkField(candidate)),
   }

@@ -19,6 +19,7 @@ const rule = {
 
 const valid = {
   theme: 'system',
+  accent: 'sage',
   workspaceLevels: {},
   workspace: {
     selection: { kind: 'selected', workspace: { path: '/dev/alpha', name: 'alpha', lastOpenedAt: 12 } },
@@ -31,13 +32,15 @@ const valid = {
 }
 
 describe('[core] emptyPersistedState', () => {
-  it('has nothing selected, the default level, no remembered rules, and follows the system', () => {
+  it('has nothing selected, the default level, no remembered rules, and the default look', () => {
     const state = emptyPersistedState()
     expect(state.workspace.selection.kind).toBe('none')
     expect(state.workspace.recents).toEqual([])
     expect(state.permissionLevel).toBe('ask')
     expect(state.permissionRules).toEqual([])
-    expect(state.theme).toBe('system')
+    // A fresh install opens light, in the accent the app is named after (C5.2).
+    expect(state.theme).toBe('light')
+    expect(state.accent).toBe('ember')
     // Browser access is off until it is asked for, and it listens only to this machine (C6.1, C6.2).
     expect(state.network).toEqual({ enabled: false, port: 4123, bind: 'local', token: '' })
   })
@@ -94,6 +97,7 @@ describe('[core] parsePersistedState', () => {
       workspaceLevels: { '/dev/alpha': 'full-access' },
       permissionRules: [],
       theme: 'light',
+      accent: 'ember',
       lastConversationId: '',
       network: emptyNetworkAccess(),
     }
@@ -131,9 +135,9 @@ describe('[core] parsePersistedState', () => {
     expect(state.workspaceLevels).toEqual({ '/dev/good': 'plan' })
   })
 
-  it('follows the system when the file predates the theme choice', () => {
+  it('opens light when the file predates the theme choice, and keeps what it does say', () => {
     const older = { workspace: valid.workspace, permissionLevel: 'ask' }
-    expect(parsePersistedState(older).theme).toBe('system')
+    expect(parsePersistedState(older).theme).toBe('light')
   })
 
   it('keeps a chosen theme', () => {

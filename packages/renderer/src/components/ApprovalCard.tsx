@@ -64,7 +64,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           type="button"
           onClick={allowOnce}
           disabled={busy}
-          className="rounded-control bg-ember px-3 py-1 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:opacity-60"
+          className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60"
         >
           Allow once
         </button>

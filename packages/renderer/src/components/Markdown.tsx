@@ -21,7 +21,7 @@ export const Markdown = memo(function Markdown({ text, caret = false }: { text: 
   const tail = (node: Undef<Positioned>, children: ReactNode): ReactNode => (
     <>
       {children}
-      {endsHere(node) && <span className="ember-cursor ml-0.5" aria-hidden="true" />}
+      {endsHere(node) && <span className="caret ml-0.5" aria-hidden="true" />}
     </>
   )
 
@@ -46,7 +46,7 @@ export const Markdown = memo(function Markdown({ text, caret = false }: { text: 
               {tail(props.node, props.children)}
             </li>
           ),
-          a: (props) => <a className="text-ember underline underline-offset-2 hover:text-ember-bright" {...props} />,
+          a: (props) => <a className="text-accent underline underline-offset-2 hover:text-accent-bright" {...props} />,
           blockquote: (props) => (
             <blockquote className="mb-3 max-w-measure border-l-2 border-line-strong pl-3 text-parchment-dim" {...props}>
               {tail(props.node, props.children)}

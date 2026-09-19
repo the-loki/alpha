@@ -23,7 +23,7 @@ export function EmptyState() {
           <button
             type="button"
             onClick={() => void pickWorkspace()}
-            className="mt-5 rounded-control bg-ember px-4 py-2 text-ui font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+            className="mt-5 rounded-control bg-accent px-4 py-2 text-ui font-medium text-accent-ink transition-colors hover:bg-accent-bright"
           >
             Open folder
           </button>

@@ -81,7 +81,7 @@ export function AddProvider() {
         <button
           type="button"
           onClick={() => void add()}
-          className="mt-3 rounded-control bg-ember px-3 py-1.5 text-xs font-medium text-ember-ink transition-colors hover:bg-ember-bright"
+          className="mt-3 rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
         >
           Add custom provider
         </button>

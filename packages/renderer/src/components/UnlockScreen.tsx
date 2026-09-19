@@ -58,7 +58,7 @@ export function UnlockScreen() {
         <button
           type="submit"
           disabled={busy || token.trim() === ''}
-          className="mt-5 w-full rounded-control bg-ember px-4 py-2 text-ui font-medium text-ember-ink transition-colors hover:bg-ember-bright disabled:opacity-40"
+          className="mt-5 w-full rounded-control bg-accent px-4 py-2 text-ui font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-40"
         >
           {busy ? 'Opening…' : 'Open the workbench'}
         </button>

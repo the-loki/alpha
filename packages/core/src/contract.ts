@@ -5,7 +5,7 @@
  */
 
 import type { PermissionLevel, PermissionRule } from './permission.ts'
-import type { NetworkBind, Theme } from './persisted-state.ts'
+import type { Accent, NetworkBind, Theme } from './persisted-state.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ThinkingLevel } from './thinking.ts'
@@ -28,7 +28,7 @@ export const IPC = {
   selectWorkspace: 'alpha:select-workspace',
   setPermissionLevel: 'alpha:set-permission-level',
   setConversationLevel: 'alpha:set-conversation-level',
-  setTheme: 'alpha:set-theme',
+  setAppearance: 'alpha:set-appearance',
   windowMinimize: 'alpha:window-minimize',
   windowToggleMaximize: 'alpha:window-toggle-maximize',
   windowClose: 'alpha:window-close',
@@ -80,6 +80,7 @@ export interface LaunchState {
   /** What this workspace's new conversations start at, which may differ from the general default. */
   workspaceLevel: PermissionLevel
   theme: Theme
+  accent: Accent
   model: ModelStatus
   /** The conversation that was open when the window last closed, or empty. */
   lastConversationId: string
@@ -132,6 +133,12 @@ export interface NetworkState {
   error: string
 }
 
+/** The look, as a patch: the mode, the accent, or both at once. */
+export interface AppearancePatch {
+  theme?: Theme
+  accent?: Accent
+}
+
 export interface NetworkPatch {
   enabled?: boolean
   port?: number
@@ -156,7 +163,7 @@ export interface AlphaBridge {
   setPermissionLevel(level: PermissionLevel): Promise<LaunchState>
   /** The level in force for one conversation. */
   setConversationLevel(id: string, level: PermissionLevel): Promise<ConversationSummary>
-  setTheme(theme: Theme): Promise<LaunchState>
+  setAppearance(patch: AppearancePatch): Promise<LaunchState>
   networkState(): Promise<NetworkState>
   setNetworkAccess(patch: NetworkPatch): Promise<NetworkState>
   regenerateNetworkToken(): Promise<NetworkState>

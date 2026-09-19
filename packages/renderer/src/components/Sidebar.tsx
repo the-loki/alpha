@@ -8,7 +8,7 @@ import { WorkspaceButton } from './WorkspaceMenu.tsx'
 /** The three states a conversation can be in, told apart by colour and by a word. */
 const STATE = {
   idle: { dot: 'bg-line-strong', word: 'idle' },
-  running: { dot: 'bg-ember', word: 'working' },
+  running: { dot: 'bg-accent', word: 'working' },
   waiting: { dot: 'bg-amber', word: 'waiting for you' },
 } as const
 
