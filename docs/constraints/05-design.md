@@ -201,8 +201,9 @@ neither is duplicated in the head, because a setting lives where the message tha
 written.
 
 **Where a rule goes.** A hairline separates two *different kinds* of thing: the page's head from its
-body, the transcript from the composer's bar, the rail's actions from the rail's contents, one
-folder group from the next, one section of the settings panel from the next. Two of the same thing
+body, the transcript from the composer's bar, **the rail's one starting action from the two that go
+somewhere, and those from the index below them**, one folder group from the next, one section of the
+settings panel from the next. Two of the same thing
 repeating get space and nothing else — no rule between two conversation rows, which are set apart
 by their own hover and by the lifted row the current one is. Two repetitions *are* ruled, and both
 are logs read line by line: the ledger of tool calls, and the events inside an expanded row (C5.5).
@@ -222,6 +223,15 @@ centred in its own 1rem box), and the third at 3.25rem (the name). The conversat
 lifted row — the page's own fill, a rounded row, `--shadow-soft` — and the accent is not spent on
 saying where you are. A row that puts a name anywhere else is the thing that makes a rail look
 hand-assembled.
+
+**The rail's groups, and the one action that is a glyph.** The rows above the index are three
+things and only three: the one row that *starts* something (a new conversation, with the folder it
+will land in written under it), then the rows that *go* somewhere (search, tasks), then the index.
+They are all the same size, so the two hairlines between them are the only thing that can say which
+is which — a rail whose actions run together is a rail where the fourth row means nothing. A control
+that acts on the index itself belongs *in* the index's heading row: adding a folder is a glyph at
+the right end of `Folders`, beside its count, and never a row of its own. A row spent on it reads as
+a fourth place to go, and it costs the rail a line of height to say something the `+` says in 1.25rem.
 
 **Lengths are rem, and the checker says so.** `05-design:no-px-lengths` fails `pnpm check` on any
 px length inside `packages/renderer/`, with exactly one exception: `1px` hairlines, which have to
