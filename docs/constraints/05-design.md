@@ -76,17 +76,31 @@ Sizes are written as **rem** (0.0625rem = 1px at the default root): the four rol
 Tailwind built-in are named tokens declared in `app.css`'s `@theme`, and the rest use Tailwind's
 own scale.
 
-| Role | Family | Token | Size / line-height |
-| --- | --- | --- | --- |
-| Body, message text | IBM Plex Sans | `text-body` | 0.9375rem / 1.65 |
-| Markdown headings inside a message | IBM Plex Sans | `text-lg`, `text-base`, `text-body` | 1.125, 1, 0.9375rem / 1.4 |
-| UI labels, buttons, panel headings, sidebar labels | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 |
-| Conversation titles in the sidebar | JetBrains Mono | `text-code` | 0.78125rem / 1.55 |
-| Metadata, chips | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 |
-| Actions that are words: Copy, Rename, Export, Delete | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 |
-| Code, tool output, diffs, inline code | JetBrains Mono | `text-code` | 0.78125rem / 1.55 |
-| Mono metadata: paths, counts, editable fields | JetBrains Mono | `text-xs` | 0.75rem / 1.3 |
-| Micro-labels: block markers, status words, shortcuts | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase, tracking wider |
+| Role | Family | Token | Size / line-height | Weight |
+| --- | --- | --- | --- | --- |
+| Page title, section title | IBM Plex Sans | `text-xl`, `text-lg` | 1.25, 1.125rem / 1.4 | semibold |
+| Body, message text | IBM Plex Sans | `text-body` | 0.9375rem / 1.65 | regular |
+| Markdown headings inside a message | IBM Plex Sans | `text-lg`, `text-base`, `text-body` | 1.125, 1, 0.9375rem / 1.4 | semibold |
+| The name of a thing: a conversation's title in the header, a provider, a sidebar row, a field label | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | medium |
+| Prose in the interface: an empty state, the sentence under a control | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | regular |
+| Conversation titles in the sidebar | JetBrains Mono | `text-code` | 0.78125rem / 1.55 | regular |
+| Metadata, chips | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 | regular |
+| Actions that are words: Copy, Rename, Export, Delete | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 | regular (the one primary action on a surface: medium) |
+| Code, tool output, diffs, inline code | JetBrains Mono | `text-code` | 0.78125rem / 1.55 | regular |
+| Mono metadata: paths, counts, editable fields | JetBrains Mono | `text-xs` | 0.75rem / 1.3 | regular |
+| Micro-labels: block markers, status words, shortcuts | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase, tracking wider | regular |
+
+**Two weights exist, and only two.** `font-medium` marks *the name of a thing* and *the word on a
+control*; `font-semibold` marks *titles* — the app's own name, a page's title, a heading. Nothing
+here is bold, light or black: hierarchy comes from size, colour and space, and a third weight would
+be a way of shouting what the layout should have said. `05-design:no-other-weights` fails
+`pnpm check` on `font-bold`, `font-extrabold`, `font-black`, `font-light` or `font-thin` anywhere
+under `packages/renderer/`.
+
+**`text-ui` and `text-xs` are one pixel apart and are not interchangeable.** The boundary is the
+two voices again: `text-ui` is what a thing *is* (a name, a label, a sentence in the interface);
+`text-xs` is what a control *says*, and the metadata around it (a button's word, a hint, a chip). A
+row's name is `text-ui`; the action at the end of that row is `text-xs`.
 
 Both families are bundled with the app; there is no runtime font fetch.
 

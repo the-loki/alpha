@@ -389,6 +389,32 @@ export const RULES = [
   },
 
   {
+    id: '05-design:no-other-weights',
+    constraint: '05-design.md',
+    description: 'two weights exist: medium and semibold',
+    // Read whole lines rather than stripped ones: a weight lives inside a className, and stripping
+    // quoted text is exactly how it would hide. Hierarchy comes from size, colour and space, so the
+    // rule names the forbidden weights rather than letting a new one arrive by accident.
+    check({ path, text }) {
+      if (!path.startsWith('packages/renderer/')) return []
+      if (!/\.(ts|tsx|css)$/.test(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return
+        const weight = line.match(/\bfont-(?:bold|extrabold|black|light|thin)\b/)
+        if (weight === null) return
+        found.push({
+          line: index + 1,
+          message: `${weight[0]} is a weight this interface does not have; hierarchy is size, colour and space, and the only two are medium and semibold (C5.3)`,
+          text: trimmed,
+        })
+      })
+      return found
+    },
+  },
+
+  {
     id: '05-design:copy-has-a-key',
     constraint: '05-design.md',
     description: 'the interface says what the dictionary says, in the language it is in',

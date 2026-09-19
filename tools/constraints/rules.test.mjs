@@ -115,6 +115,27 @@ describe('05-design:control-voice', () => {
   })
 })
 
+describe('05-design:no-other-weights', () => {
+  const rule = '05-design:no-other-weights'
+
+  it('flags every weight this interface does not have', () => {
+    for (const weight of ['font-bold', 'font-extrabold', 'font-black', 'font-light', 'font-thin']) {
+      const found = violationsFor(rule, file('packages/renderer/src/a.tsx', `<h1 className="${weight}">x</h1>`))
+      expect(found, weight).toHaveLength(1)
+    }
+  })
+
+  it('allows the two weights there are, and the same words in the main process', () => {
+    const allowed = violationsFor(
+      rule,
+      file('packages/renderer/src/a.tsx', '<h1 className="font-semibold"><span className="font-medium">x</span></h1>'),
+    )
+    expect(allowed).toEqual([])
+
+    expect(violationsFor(rule, file('packages/main/src/a.ts', "const a = 'font-bold'"))).toEqual([])
+  })
+})
+
 describe('05-design:copy-has-a-key', () => {
   const rule = '05-design:copy-has-a-key'
 
