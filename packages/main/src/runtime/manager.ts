@@ -152,10 +152,12 @@ export class RuntimeManager {
     this.#unattended.start(id)
     try {
       await this.prompt(id, text)
-      return 0
-    } finally {
+    } catch (error) {
+      // A run that threw still stops being watched, and the caller hears about the failure.
       this.#unattended.finish(id)
+      throw error
     }
+    return this.#unattended.finish(id)
   }
 
   async prompt(id: string, text: string): Promise<void> {

@@ -7,6 +7,7 @@
 import {
   DEFAULT_SCHEDULE,
   isValidSchedule,
+  type PermissionLevel,
   type ScheduledTask,
   type TaskRun,
   type TaskSchedule,
@@ -19,6 +20,8 @@ export interface TaskServicePorts {
   tasks: TaskStore
   create: (workspacePath: string) => Promise<string>
   rename: (conversationId: string, title: string) => void
+  /** The level the run acts at, which is the task's own and not the folder's default (ADR-0012). */
+  setLevel: (conversationId: string, level: PermissionLevel) => void
   /** One turn with nobody watching; answers with how many steps the gate had to refuse. */
   runUnattended: (conversationId: string, text: string) => Promise<number>
   /** One turn with the person who pressed "run now" watching, so the gate may ask. */
@@ -129,6 +132,7 @@ export class TaskService {
   async #run(task: ScheduledTask, attended: boolean, started: RunStarted = () => undefined): Promise<RunOutcome> {
     const conversationId = await this.#ports.create(task.workspacePath)
     this.#ports.rename(conversationId, task.name)
+    this.#ports.setLevel(conversationId, task.permissionLevel)
     started(conversationId)
     try {
       const refusals = attended ? 0 : await this.#ports.runUnattended(conversationId, task.prompt)

@@ -59,6 +59,7 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
       tasks: new TaskStore(dataDirectory),
       create: async (workspacePath) => (await runtime.create(workspacePath)).conversation.id,
       rename: (conversationId, title) => void runtime.rename(conversationId, title),
+      setLevel: (conversationId, level) => void runtime.setConversationLevel(conversationId, level),
       prompt: (conversationId, text) => runtime.prompt(conversationId, text),
       runUnattended: (conversationId, text) => runtime.runUnattended(conversationId, text),
       workspaceExists: () => true,
