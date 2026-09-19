@@ -12,6 +12,7 @@ import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { useConversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
 import { TEXT_ACTION } from './controls.ts'
+import { entryNumber, MARGIN_MARK } from './ledger.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -69,26 +70,26 @@ function EditBox({ message, index }: { message: ChatMessage; index: number }) {
   const [text, setText] = useState(message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n'))
 
   return (
-    <div className="w-3/4 rounded-card border border-amber/40 bg-ink-800 p-3">
+    <div className="w-3/4 border border-amber/40 bg-ink-900/60 p-3">
       <textarea
         rows={3}
         value={text}
         aria-label={t('message.editLabel')}
         onChange={(event) => setText(event.target.value)}
-        className="block w-full resize-none rounded-control border border-line bg-ink-900 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
+        className="block w-full resize-none border border-line bg-ink-700 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void editMessage(index, text, 'replace')}
-          className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
+          className="bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
         >
           {t('message.resend')}
         </button>
         <button
           type="button"
           onClick={() => void editMessage(index, text, 'fork')}
-          className="rounded-control border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
+          className="border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
         >
           {t('message.fork')}
         </button>
@@ -131,55 +132,61 @@ export const MessageView = memo(function MessageView({
 
   if (message.role === 'user') {
     return (
-      <article className="group flex flex-col items-end gap-1.5" data-role="user">
+      <article className="group relative flex flex-col" data-role="user">
+        {/* The entry's number, stamped in the margin: what was asked, in the order it was asked.
+            It is the one thing in the transcript that is numbered, because it is the one thing
+            the work hangs off. */}
+        <span className={`${MARGIN_MARK} top-0 font-mono text-micro text-parchment-faint`} aria-hidden="true">
+          {entryNumber(index)}
+        </span>
         {editing ? (
           <EditBox message={message} index={index} />
         ) : (
-          <div className="flex max-w-measure flex-col items-end gap-1.5">
+          <>
             {/* The pictures sit above the words they came with, which is the order they were
                 attached in and the order the model read them. */}
-            {message.blocks
-              .filter((block): block is ChatBlockAttachment => block.kind === 'attachment')
-              .map((block, index) => {
-                // Blocks are append-only, so a picture's position among them is its identity.
-                const key = `${message.id}-shot-${index}`
-                return <AttachmentThumb key={key} block={block} />
-              })}
-            {words !== '' && (
-              // Filled rather than outlined: the reader's own words are a block of the page, not a
-              // bordered panel, and the fill is what tells the two voices apart at a glance.
-              <div className="rounded-card bg-ink-800 px-3.5 py-2.5 text-body leading-[1.6] whitespace-pre-wrap text-parchment">
-                {words}
-              </div>
-            )}
-          </div>
-        )}
-        {/* One row of actions, whatever there is to do: stacked one per line they read as three
-            separate remarks under the message. */}
-        {!editing && (
-          <div className="flex items-center gap-3">
-            <CopyButton
-              what="message.copyMessage"
-              label="message.copy"
-              text={markdownOf(message.blocks)}
-              className="group-hover:opacity-100"
-            />
-            {!running && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${TEXT_ACTION}`}
-              >
-                {t('message.edit')}
-              </button>
-            )}
-          </div>
+            <div className="flex flex-col items-start gap-2">
+              {message.blocks
+                .filter((block): block is ChatBlockAttachment => block.kind === 'attachment')
+                .map((block, index) => {
+                  // Blocks are append-only, so a picture's position among them is its identity.
+                  const key = `${message.id}-shot-${index}`
+                  return <AttachmentThumb key={key} block={block} />
+                })}
+              {words !== '' && <p className="max-w-measure text-body leading-[1.6] whitespace-pre-wrap">{words}</p>}
+            </div>
+            {/* One row of actions, revealed over the entry rather than printed in it: an entry at
+                rest is its number, its words and the rule under them, and the answer below is
+                what has to be readable. The answer's own row stays visible — that is the thing
+                a reader copies. */}
+            <div className="mt-1 flex items-center gap-3">
+              <CopyButton
+                what="message.copyMessage"
+                label="message.copy"
+                text={markdownOf(message.blocks)}
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100"
+              />
+              {!running && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${TEXT_ACTION}`}
+                >
+                  {t('message.edit')}
+                </button>
+              )}
+            </div>
+            {/* The entry's own rule, drawn under everything that belongs to it — the words and the
+                two things you can do to them — and before the work that answers it. */}
+            <span className="mt-2 h-px w-full bg-line" aria-hidden="true" />
+          </>
         )}
       </article>
     )
   }
 
   const streaming = message.status === 'streaming'
+  const firstTool = message.blocks.findIndex((block) => block.kind === 'tool')
   // Nothing to copy until something has been said: an action row under an empty streaming
   // answer is a control for a thing that is not there yet.
   const spoken = message.blocks.some((block) => block.kind === 'text' && block.text !== '')
@@ -191,7 +198,11 @@ export const MessageView = memo(function MessageView({
         // blocks with the same text are still two blocks.
         const key = `${message.id}-${index}`
         if (block.kind === 'thinking') return <ThinkingBlock key={key} block={block} />
-        if (block.kind === 'tool') return <ToolRow key={block.callId} block={block} />
+        // A ledger that opens the answer hangs directly under the entry's own rule, so its first
+        // row is the one that does not draw a second rule beside it.
+        if (block.kind === 'tool') {
+          return <ToolRow key={block.callId} block={block} first={index === firstTool} />
+        }
         if (block.kind === 'compaction') return <CompactionMarker key={key} block={block} />
         if (block.kind === 'attachment') return <AttachmentThumb key={key} block={block} />
         return (

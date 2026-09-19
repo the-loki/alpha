@@ -47,6 +47,19 @@ is a sequence of turns.
 One user-visible unit in a conversation: what the user typed, what the model produced, or what a
 tool returned. Messages are the only thing the transcript stores.
 
+### Entry
+
+One numbered thing the user asked for, with the number stamped in the page's margin: a message the
+user typed, seen as a line of the ledger, with the work that answers it hanging under it. Avoid:
+*row*, *item*. `Entry` is the display word for the user's own messages and nothing else — the
+model's answers are `messages` and the calls it makes are `tools`.
+
+### Page
+
+The surface a conversation is read on: full bleed, a ruled margin down its left side, chrome bands
+above and below it (ADR-0016). *Sheet* is the same thing seen whole — the window's one document.
+Avoid: *card*, *panel*, *pane*.
+
 ### Attachment
 
 A picture the user sends with a message. It travels as bytes rather than as a path, so the model

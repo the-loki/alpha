@@ -10,12 +10,13 @@ import {
 } from '@alpha/core'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { useText } from '../stores/shell.ts'
+import { composerFolderOf, useShell, useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { PAGE } from './ledger.ts'
 
-/** The two choices in the header are controls, and they read as controls rather than as text. */
+/** The head's own controls are stamps, like every other control on the sheet. */
 const SELECT_CLASS =
-  'rounded-control border border-line bg-ink-800 px-2 py-1 text-xs text-parchment-dim transition-colors hover:text-parchment focus:border-line-strong focus:outline-none'
+  'border border-line bg-ink-700 px-2 py-1 text-xs text-parchment-dim transition-colors hover:text-parchment focus:border-line-strong focus:outline-none'
 
 /** What the session has spent. Cost is shown only when the model's own cost data is non-zero. */
 function UsageReadout() {
@@ -55,36 +56,62 @@ function ConversationActions() {
   )
 }
 
-/**
- * What this conversation is: who it belongs to, what it has spent, and how hard it should think.
- * Which model it runs on is per conversation too, and lives at the foot of the composer.
- */
-export function ConversationHeader() {
+/** The title of the page and the quiet facts about it, told apart by a middot. */
+function ConversationTitle() {
   const summary = useConversations((state) => state.transcript.summary)
   const t = useText()
-  const setThinkingLevel = useConversations((state) => state.setThinkingLevel)
-
   if (summary === undefined) return null
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-ink-800 px-8 py-2">
-      {/* Which folder this conversation belongs to is part of what it is, now that several are in
-          play at once; the sidebar shows the same name. Its age is here rather than in the sidebar,
-          where the row belongs to the name. */}
-      <span className="flex min-w-0 items-baseline gap-2">
-        <h1 className="min-w-0 truncate text-ui font-medium text-parchment">{summary.title}</h1>
-        {/* One cluster of quiet facts about the title, told apart by a middot rather than by
-            three gaps that read as three columns. */}
-        <span className="shrink-0 font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
-          {folderName(summary.workspacePath)}
-        </span>
-        <span className="shrink-0 font-mono text-micro text-parchment-faint" aria-hidden="true">
-          ·
-        </span>
-        <span className="shrink-0 font-mono text-micro text-parchment-faint">
-          {t('header.updated', { age: formatAge(summary.updatedAt, Date.now()) })}
-        </span>
+    <span className="flex min-w-0 items-baseline gap-3">
+      <h1 className="min-w-0 truncate text-lg font-semibold text-parchment">{summary.title}</h1>
+      <span className="shrink-0 font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
+        {folderName(summary.workspacePath)}
       </span>
+      <span className="shrink-0 font-mono text-micro text-parchment-faint" aria-hidden="true">
+        ·
+      </span>
+      <span className="shrink-0 font-mono text-micro text-parchment-faint">
+        {t('header.updated', { age: formatAge(summary.updatedAt, Date.now()) })}
+      </span>
+    </span>
+  )
+}
+
+/**
+ * The head of the page, at the top of it: what this document is, and nothing else. With a
+ * conversation open that is its title and what it has spent; with none it is the folder the next
+ * message will land in, because a page about to be written still says what it is about.
+ *
+ * A div rather than a `<header>`: the window has one banner — the strip with the app's mark and
+ * the window controls — and a second element with that role would make "the header" ambiguous,
+ * to a reader and to a test. The heading inside is what carries the meaning.
+ */
+export function DocHead() {
+  const summary = useConversations((state) => state.transcript.summary)
+  const folder = useShell(composerFolderOf)
+  const t = useText()
+  const setThinkingLevel = useConversations((state) => state.setThinkingLevel)
+
+  const band = `flex shrink-0 items-end justify-between gap-4 border-b border-line bg-ink-800 pt-2.5 pb-2 ${PAGE}`
+
+  if (summary === undefined) {
+    if (folder === undefined) return null
+    return (
+      <div className={band}>
+        <span className="flex min-w-0 items-baseline gap-3">
+          <h1 className="min-w-0 truncate text-lg font-semibold text-parchment">{folder.name}</h1>
+          <span className="shrink-0 truncate font-mono text-micro text-parchment-faint" title={folder.path}>
+            {folder.path}
+          </span>
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={band}>
+      <ConversationTitle />
       <div className="flex shrink-0 items-center gap-3">
         <UsageReadout />
         <ConversationActions />
@@ -105,6 +132,6 @@ export function ConversationHeader() {
           ))}
         </select>
       </div>
-    </header>
+    </div>
   )
 }

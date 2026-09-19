@@ -258,8 +258,10 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
   const folders = folderTree(recents, withoutRuns(conversations, runs))
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col px-2 pb-2">
-      <div>
+    // A column of the sheet, ruled down its right edge: the workbench's contents, beside the page
+    // they are written on (C5.4). Nothing in it floats and nothing in it is rounded.
+    <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-ink-800 px-2 pb-2">
+      <div className="pt-2">
         <ActionRow
           icon={<PlusIcon />}
           label={t('sidebar.newConversation')}
@@ -282,11 +284,13 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
         <ActionRow icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => void navigate({ to: '/tasks' })} />
       </div>
 
-      {/* A rule between doing something and what you have: the rows above act, the tree below is
+      {/* A rule between doing something and what you have: the rows above act, the index below is
           the workbench's contents. */}
-      <div className="mt-2 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line pt-2">
+      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line pt-3">
         <div className="flex items-center justify-between px-2 pb-1">
-          <h2 className="text-micro font-medium tracking-wide text-parchment-faint">{t('sidebar.folders')}</h2>
+          <h2 className="font-mono text-micro tracking-widest text-parchment-faint uppercase">
+            {t('sidebar.folders')}
+          </h2>
           <span className="font-mono text-micro text-parchment-faint">{folders.length}</span>
         </div>
 
@@ -309,13 +313,13 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
 
       {/* What this window is, at the bottom: the same place the reference puts the account row. */}
       <div className="mt-1 flex items-center gap-2 border-t border-line px-2 pt-2">
-        <span className="min-w-0 flex-1 truncate text-micro text-parchment-faint">
-          Alpha <span className="font-mono">{version}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-micro text-parchment-faint">
+          Alpha <span>{version}</span>
         </span>
         <Link
           to="/settings"
           aria-label={t('settings.open')}
-          className="rounded-control p-1 text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
+          className="p-1 text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           <GearIcon />
         </Link>

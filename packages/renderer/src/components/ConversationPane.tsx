@@ -1,6 +1,6 @@
 import { useConversations } from '../stores/conversations.ts'
 import { Composer } from './Composer.tsx'
-import { ConversationHeader } from './ConversationHeader.tsx'
+import { DocHead } from './DocHead.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MessageList } from './MessageList.tsx'
 
@@ -11,7 +11,7 @@ export function ConversationPane() {
 
   return (
     <div className="flex h-full flex-col">
-      <ConversationHeader />
+      <DocHead />
       {/* A flex column, so the transcript inside it shrinks to the space left by the composer
           instead of growing to its own content and painting over it. */}
       <div className="flex min-h-0 flex-1 flex-col">

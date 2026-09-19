@@ -29,13 +29,24 @@ export function UnlockScreen() {
   return (
     <div className="grid h-screen place-items-center bg-ink-900 px-6">
       <form
-        className="w-full max-w-md rounded-card border border-line bg-ink-800 p-6"
+        className="w-full max-w-md border border-line bg-ink-800 p-6"
         onSubmit={(event) => {
           event.preventDefault()
           void submit()
         }}
       >
-        <h1 className="font-serif text-2xl text-parchment">{t('unlock.title')}</h1>
+        {/* The one screen that is not the workbench is still signed the same way: the stamp, in
+            the same place, so a browser that has to unlock knows whose window it is looking at. */}
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="grid h-4 w-4 place-items-center bg-accent font-mono text-micro text-accent-ink"
+          >
+            A
+          </span>
+          <span className="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
+        </span>
+        <h1 className="mt-5 text-xl font-semibold text-parchment">{t('unlock.title')}</h1>
         <p className="mt-2 text-body text-parchment-dim">{t('unlock.body')}</p>
 
         <label className="mt-5 block">
@@ -47,7 +58,7 @@ export function UnlockScreen() {
             value={token}
             onChange={(event) => setToken(event.target.value)}
             placeholder={t('unlock.tokenPlaceholder')}
-            className="w-full rounded-control border border-line bg-ink-700 px-3 py-2 font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
+            className="w-full border border-line bg-ink-700 px-3 py-2 font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
           />
         </label>
 
@@ -56,7 +67,7 @@ export function UnlockScreen() {
         <button
           type="submit"
           disabled={busy || token.trim() === ''}
-          className="mt-5 w-full rounded-control bg-accent px-4 py-2 text-ui font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-40"
+          className="mt-5 w-full bg-accent px-4 py-2 text-ui font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-40"
         >
           {t(busy ? 'unlock.opening' : 'unlock.submit')}
         </button>

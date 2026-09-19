@@ -10,6 +10,7 @@ import {
 import { Fragment, useEffect, useRef } from 'react'
 import { useText } from '../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
+import { PAGE, PAGE_RULE } from './ledger.ts'
 import { MessageView } from './MessageView.tsx'
 
 /** Which user message this is, counting from the top, which is how an edit names its target. */
@@ -84,19 +85,34 @@ export function MessageList({ transcript }: { transcript: TranscriptState }) {
         atBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48
       }}
       className="min-h-0 flex-1 overflow-y-auto"
+      data-region="transcript"
     >
-      {/* Full pane width: tool rows, diffs and code get the room, and prose carries its own
-          reading measure (C5.3) rather than the column being centred and narrow. */}
-      <div className="flex w-full flex-col gap-6 px-8 py-6">
-        {messages.map((message, index) => (
-          <Fragment key={message.id}>
-            <MessageView message={message} index={userIndex(messages, index)} last={index === messages.length - 1} />
-            <TurnUsageNote turn={turnFor(messages, index, transcript.turns)} />
-          </Fragment>
-        ))}
-        {transcript.approvals.map((request) => (
-          <ApprovalCard key={request.requestId} request={request} />
-        ))}
+      {/* The page: a ruled margin, then the text block. Tool rows, diffs and code take the width
+          of the block, and prose carries its own reading measure (C5.3) rather than the column
+          being centred and narrow. `min-h-full` is what makes the margin rule run to the foot of
+          the page even when the turns only fill the top of it. */}
+      <div className={`min-h-full py-6 ${PAGE}`}>
+        <div className={`min-h-full ${PAGE_RULE} flex flex-col`}>
+          {messages.map((message, index) => (
+            // A turn opens with the reader's own words and everything after it is the work done
+            // for them, so the gap inside a turn is smaller than the gap between two of them.
+            <Fragment key={message.id}>
+              <div className={index === 0 ? '' : message.role === 'user' ? 'mt-10' : 'mt-4'}>
+                <MessageView
+                  message={message}
+                  index={userIndex(messages, index)}
+                  last={index === messages.length - 1}
+                />
+                <TurnUsageNote turn={turnFor(messages, index, transcript.turns)} />
+              </div>
+            </Fragment>
+          ))}
+          {transcript.approvals.map((request) => (
+            <div key={request.requestId} className="mt-4">
+              <ApprovalCard request={request} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

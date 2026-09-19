@@ -24,5 +24,9 @@ reads as a professional tool, not a theme.
 
 Colour carries meaning, so it cannot be spent on decoration: every saturated pixel in a resting
 window is either the accent on an active element or a state colour on a state. Contrast is
-asserted by test rather than reviewed by eye, and the four identity elements in
-[05-design.md](../constraints/05-design.md) are the ones that must survive a redesign.
+asserted by test rather than reviewed by eye.
+
+The palette, the type scale and the two voices stand. The *shape* this ADR was first implemented
+with — a rail of rounded rows beside a rounded card floating in a grey window — does not: it is
+superseded by [0016](0016-the-page-the-margin-and-the-stamp.md), which makes the window one
+full-bleed sheet and reserves rounding for what floats over it.

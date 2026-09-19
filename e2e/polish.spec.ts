@@ -77,8 +77,9 @@ test('a five-hundred-message transcript still scrolls smoothly', async () => {
 
   // Scroll the transcript and measure the frames the window actually painted while it moved.
   const frameMs = await window.evaluate(async () => {
-    const pane = document.querySelector('main > div, [data-role]')?.closest('div')
-    const scroller = (pane ?? document.body) as HTMLElement
+    // The page's own scroll region, named rather than guessed at: the transcript and the composer
+    // both live in `main`, and only one of them is what a reader scrolls.
+    const scroller = (document.querySelector('[data-region="transcript"]') ?? document.body) as HTMLElement
     const frames: number[] = []
     let previous = performance.now()
     let running = true
@@ -100,6 +101,9 @@ test('a five-hundred-message transcript still scrolls smoothly', async () => {
   const sorted = [...frameMs].sort((left, right) => left - right)
   const median = sorted[Math.floor(sorted.length / 2)] ?? 0
   const worst = sorted.at(-1) ?? 0
+  // One frame at 60Hz is 16.6ms, so this line means "the scroll keeps up with the display". It has
+  // been measured at 33ms on this machine — twice, each time with other Electron instances still
+  // running from an earlier suite — so if it fails, look for load before looking for a regression.
   expect(median).toBeLessThan(20)
   expect(worst).toBeLessThan(120)
 

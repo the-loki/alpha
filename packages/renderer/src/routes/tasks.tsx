@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeftIcon } from '../components/icons.tsx'
+import { PAGE } from '../components/ledger.ts'
 import { TasksPage } from '../components/tasks/TasksPage.tsx'
 import { useText } from '../stores/shell.ts'
 
@@ -10,18 +11,22 @@ import { useText } from '../stores/shell.ts'
 function TasksRoute() {
   const t = useText()
   return (
-    <main className="h-full overflow-y-auto">
-      <div className="px-8 pt-5">
+    // A div, not a second `<main>`: the window has one main landmark, and this is it — the tasks
+    // page is inside it, not beside it.
+    <div className="h-full overflow-y-auto">
+      {/* The way back sits at the page's own edge, the way it does in settings: above the column
+          of content, not inside it. */}
+      <div className={`pt-2 ${PAGE}`}>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 rounded-control px-2 py-1 text-xs text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          className="inline-flex items-center gap-2 px-2 py-1 text-xs text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           <ArrowLeftIcon />
           {t('settings.back')}
         </Link>
       </div>
       <TasksPage />
-    </main>
+    </div>
   )
 }
 

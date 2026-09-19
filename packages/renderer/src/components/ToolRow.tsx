@@ -66,9 +66,11 @@ const STATUS_WORD: Record<ChatBlockTool['status'], TextKey> = {
  * model sent and the output the tool produced, because a ledger you cannot audit is decoration.
  *
  * A row is a ruled line rather than a card: the ledger reads as a log, the answer beside it stays
- * the loudest thing in the transcript, and a run of calls stacks as one ruled block (C5.5).
+ * the loudest thing in the transcript, and a run of calls stacks as one ruled block (C5.5). The
+ * row directly under an entry's own rule is the one that does not draw a rule of its own — two of
+ * them a few pixels apart read as a mistake rather than as two things.
  */
-export function ToolRow({ block }: { block: ChatBlockTool }) {
+export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?: boolean }) {
   const t = useText()
   const language = useShell((state) => languageOf(state.language))
   const [open, setOpen] = useState(block.status === 'failed')
@@ -78,25 +80,30 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
   const markTone = approval === undefined ? '' : MARK_TONE[approval.kind]
 
   return (
-    <article className="border-t border-line" data-role="tool" data-tool={block.name}>
+    // The columns are fixed rather than fitted, so a stack of rows is a table: what ran, on what,
+    // how it went, how long. That is what makes it a ledger instead of a list of sentences.
+    <article className={first ? '' : 'border-t border-line'} data-role="tool" data-tool={block.name}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 py-2 text-left transition-colors hover:bg-ink-800"
+        className="flex w-full items-center gap-3 py-2 text-left transition-colors hover:bg-ink-800"
       >
-        <span className={`font-mono text-micro ${TONE[block.status]}`} title={t(riskKey(block.risk))}>
+        <span
+          className={`w-3 shrink-0 text-center font-mono text-micro ${TONE[block.status]}`}
+          title={t(riskKey(block.risk))}
+        >
           {GLYPH[block.risk]}
         </span>
-        <span className="shrink-0 font-mono text-code text-parchment">{block.name}</span>
+        <span className="w-24 shrink-0 truncate font-mono text-code text-parchment">{block.name}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-code text-parchment-dim">{block.summary}</span>
         {mark !== undefined && (
-          <span className={`shrink-0 rounded-control border px-1.5 text-micro font-mono tracking-wide ${markTone}`}>
-            {t(mark)}
-          </span>
+          <span className={`shrink-0 border px-1.5 font-mono text-micro tracking-wide ${markTone}`}>{t(mark)}</span>
         )}
-        <span className={`shrink-0 font-mono text-micro ${TONE[block.status]}`}>{t(STATUS_WORD[block.status])}</span>
-        <span className="w-14 shrink-0 text-right font-mono text-micro text-parchment-faint">
+        <span className={`w-14 shrink-0 text-right font-mono text-micro ${TONE[block.status]}`}>
+          {t(STATUS_WORD[block.status])}
+        </span>
+        <span className="w-12 shrink-0 text-right font-mono text-micro text-parchment-faint">
           {formatDuration(block.startedAt, block.endedAt)}
         </span>
       </button>

@@ -48,13 +48,21 @@ function WindowControls() {
 
 export function TitleBar() {
   return (
-    <header className="drag-region flex h-11 shrink-0 items-center justify-between border-b border-line bg-ink-800 pl-3">
-      {/* No folder name here: the workbench works in as many as you have added, and the sidebar is
-          where they are. This strip names the app and holds the window controls. */}
-      <span className="text-ui font-semibold tracking-wide text-parchment">Alpha</span>
+    <header className="drag-region flex h-9 shrink-0 items-stretch justify-between border-b border-line bg-ink-800 pl-3">
+      {/* The workbench's mark: a stamped square and its name, small enough to read as a publisher's
+          line rather than as a product name (C5.5). It is the only place the app signs the page. */}
+      <span className="flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          className="grid h-4 w-4 place-items-center bg-accent font-mono text-micro text-accent-ink"
+        >
+          A
+        </span>
+        <span className="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
+      </span>
 
-      {/* The window's own chrome and nothing else: the permission level moved down to the foot of
-          the composer, which is where the message it governs is written. */}
+      {/* The window's own chrome and nothing else: the permission level lives at the foot of the
+          composer, which is where the message it governs is written. */}
       <WindowControls />
     </header>
   )

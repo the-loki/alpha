@@ -127,9 +127,9 @@ export function TasksPage() {
   const note = levelNote(t, draft.permissionLevel ?? 'ask')
 
   return (
-    <div className="mx-auto w-full max-w-measure px-2 py-6">
+    <div className="mx-auto w-full max-w-3xl px-4 py-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-parchment">{t('tasks.title')}</h1>
+        <h1 className="text-lg font-semibold text-parchment">{t('tasks.title')}</h1>
         <button type="button" onClick={() => start()} className={PRIMARY_ACTION}>
           {t('tasks.new')}
         </button>

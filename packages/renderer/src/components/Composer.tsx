@@ -1,16 +1,15 @@
 import { type Attachment, type Language, type ModelStatus, modelText, type Null, text } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
 import { AttachButton, AttachmentNote, PendingAttachments } from './Attachments.tsx'
 import { OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
+import { MARGIN_MARK, PAGE } from './ledger.ts'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
-
-/**
 
 /**
  * While a turn is running the send control splits in three, because stopping, steering and
@@ -68,7 +67,7 @@ function ComposerFoot({
 }) {
   const t = useText()
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5">
+    <div className="mt-1 flex items-center gap-2">
       <AttachButton onPicked={onPicked} />
       <LevelChip />
       <span className="flex-1" />
@@ -84,13 +83,35 @@ function ComposerFoot({
           aria-label={t('composer.send')}
           // The accent means "this does something". A disabled send wears the quiet surface
           // instead, so the ember in the corner always means a message can go.
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
+          className="grid h-7 w-7 shrink-0 place-items-center bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
         >
           <ArrowUpIcon />
         </button>
       )}
     </div>
   )
+}
+
+/**
+ * The keyboard on the line being typed: Enter sends it, Shift+Enter is a new line, and
+ * Cmd/Ctrl+Enter queues it behind the turn that is already running — the one the user does not
+ * want to interrupt. Named rather than inlined because it is the whole interaction, and the
+ * component around it is about layout.
+ */
+function composerKeys(
+  event: ReactKeyboardEvent<HTMLTextAreaElement>,
+  acts: { running: boolean; send: () => void; queue: () => void },
+): void {
+  if (event.key !== 'Enter') return
+  if (event.metaKey || event.ctrlKey) {
+    if (!acts.running) return
+    event.preventDefault()
+    acts.queue()
+    return
+  }
+  if (event.shiftKey) return
+  event.preventDefault()
+  acts.send()
 }
 
 /**
@@ -196,50 +217,50 @@ export function Composer() {
   }
 
   return (
-    // The floor of the transcript, and a surface of its own: the band is chrome, the box on it is
-    // the content surface, which is the same step the transcript takes above it.
-    <div className="shrink-0 border-t border-line bg-ink-800 px-8 pt-3 pb-5">
-      <div className="mx-auto w-full max-w-3xl">
+    // The last rule on the sheet, and the line the next message is written on: a full-bleed band
+    // whose text starts where every entry's text starts, with the prompt mark stamped in the
+    // margin — the one mark that is not a number, on the same column as the numbers (C5.4).
+    <div className="shrink-0 border-t border-line bg-ink-800 pt-2.5 pb-3">
+      <div className={PAGE}>
         <QueueStrip />
-        <div className="rounded-card border border-line bg-ink-700 transition-colors focus-within:border-line-strong">
-          <div className="px-3.5 pt-2.5">
-            <PendingAttachments items={attached} onRemove={removeAt} />
+        <div className="relative flex">
+          <span className={`${MARGIN_MARK} top-1 font-mono text-body text-accent select-none`} aria-hidden="true">
+            ❯
+          </span>
+          <div className="min-w-0 flex-1 flex-col border-l border-line pl-6">
+            <PendingAttachments items={attached} onRemove={(index) => removeAt(index)} />
             <textarea
               ref={field}
-              rows={2}
+              rows={1}
               aria-label={t('composer.messageLabel')}
               value={value}
               placeholder={hasWorkspace ? t('composer.placeholder') : t('composer.placeholderNoFolder')}
               onChange={(event) => setValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  void send()
-                }
-                // Cmd/Ctrl+Enter queues, which is the one the user does not want to interrupt with.
-                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && running) {
-                  event.preventDefault()
-                  void redirect('queue')
-                }
-              }}
-              className="block w-full resize-none bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
+              onKeyDown={(event) =>
+                composerKeys(event, {
+                  running,
+                  send: () => void send(),
+                  queue: () => void redirect('queue'),
+                })
+              }
+              className="field-sizing-content block max-h-40 min-h-6 w-full resize-none overflow-y-auto bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
             />
+            <ComposerFoot
+              running={running}
+              canSend={canSend}
+              canRedirect={canRedirect}
+              onSend={() => void send()}
+              onStop={() => void stop()}
+              onRedirect={(how) => void redirect(how)}
+              onPicked={(picked, anyRefused) => {
+                setAttached((current) => [...current, ...picked])
+                setRefused(anyRefused)
+              }}
+            />
+            <AttachmentNote refused={refused} />
+            {note !== '' && <p className="mt-1 font-mono text-micro text-parchment-faint">{note}</p>}
           </div>
-          <ComposerFoot
-            running={running}
-            canSend={canSend}
-            canRedirect={canRedirect}
-            onSend={() => void send()}
-            onStop={() => void stop()}
-            onRedirect={(how) => void redirect(how)}
-            onPicked={(picked, anyRefused) => {
-              setAttached((current) => [...current, ...picked])
-              setRefused(anyRefused)
-            }}
-          />
         </div>
-        <AttachmentNote refused={refused} />
-        {note !== '' && <p className="mt-1.5 px-1 text-micro text-parchment-faint">{note}</p>}
       </div>
     </div>
   )
