@@ -16,7 +16,29 @@ const PIXEL_PNG = Buffer.from(
  * bytes, and kept in the transcript. These tests drive the picker the way a person does — through
  * the button, which opens the platform's dialog.
  */
-async function launch() {
+/** A provider list, for the tests about what a model can be handed. */
+function writeProvider(dataDirectory: string, images: boolean) {
+  writeFileSync(
+    join(dataDirectory, 'providers.json'),
+    JSON.stringify({
+      version: 1,
+      providers: [
+        {
+          id: 'local',
+          name: 'Local',
+          api: 'openai-completions',
+          baseUrl: 'https://llm.internal.example/v1',
+          models: [
+            { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images },
+          ],
+        },
+      ],
+    }),
+    'utf-8',
+  )
+}
+
+async function launch(options: { vision?: boolean } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-shots-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-shots-ws-'))
   writeFileSync(
@@ -34,6 +56,7 @@ async function launch() {
     }),
     'utf-8',
   )
+  if (options.vision !== undefined) writeProvider(dataDirectory, options.vision)
   const shot = join(workspace, 'screenshot.png')
   writeFileSync(shot, PIXEL_PNG)
   const note = join(workspace, 'notes.txt')
@@ -102,6 +125,28 @@ test('a file that is not a picture is refused out loud', async () => {
 
   await expect(window.getByText('Only pictures up to 4 MB can be attached.')).toBeVisible()
   await expect(window.getByRole('img', { name: 'notes.txt' })).toHaveCount(0)
+  await app.close()
+})
+
+test('a picture is turned away when the model cannot take one, and the reason is said', async () => {
+  const { app, window, shot } = await launch({ vision: false })
+
+  await attach(window, shot)
+
+  // The model is named, and where to change it: a picture that silently does not arrive is the
+  // kind of thing noticed too late.
+  await expect(
+    window.getByText('Local 7B does not take pictures. Turn that on for it under Models in Settings.'),
+  ).toBeVisible()
+  await expect(window.getByRole('img', { name: 'screenshot.png' })).toHaveCount(0)
+  await app.close()
+})
+
+test('a model that takes pictures is handed the picture', async () => {
+  const { app, window, shot } = await launch({ vision: true })
+
+  await attach(window, shot)
+  await expect(window.getByRole('img', { name: 'screenshot.png' })).toBeVisible()
   await app.close()
 })
 

@@ -53,7 +53,9 @@ function toPiModel(provider: StoredProvider, model: ProviderModelDefinition): Mo
     provider: provider.id,
     baseUrl: provider.baseUrl,
     reasoning: model.reasoning,
-    input: ['text'],
+    // What the model is handed, not a preference: every protocol in pi-ai drops the pictures on
+    // the floor for a model that does not list 'image' here (ADR-0018).
+    input: model.images ? ['text', 'image'] : ['text'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: model.contextWindow,
     maxTokens: model.maxTokens,

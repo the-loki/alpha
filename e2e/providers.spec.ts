@@ -164,8 +164,8 @@ test('the models a connection serves are a setting of their own', async () => {
 
   const stored = JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8'))
   expect(stored.providers[0].models).toEqual([
-    { id: 'local-7b', name: 'local-7b', contextWindow: 64000, maxTokens: 4096, reasoning: false },
-    { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: true },
+    { id: 'local-7b', name: 'local-7b', contextWindow: 64000, maxTokens: 4096, reasoning: false, images: false },
+    { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: true, images: false },
   ])
 
   // The default model is a choice among exactly those, and it is written down where it was made.
@@ -178,6 +178,29 @@ test('the models a connection serves are a setting of their own', async () => {
   })
 
   await window.screenshot({ path: join(SHOT_DIR, 'settings-models.png') })
+  await app.close()
+})
+
+test('whether a model takes pictures is a setting of its own', async () => {
+  const { app, window, directory } = await launch()
+  await openSettings(window, 'Providers')
+  await describeProvider(window, { id: 'local-endpoint', name: 'Local', baseUrl: 'https://llm.internal.example/v1' })
+  await window.getByRole('link', { name: 'Models', exact: true }).click()
+  await addModel(window, 'Local', { id: 'local-7b', context: '64000', max: '4096' })
+
+  // Off unless it is said: the app ships no catalog, so nothing here knows what the endpoint
+  // behind a model id can read (ADR-0018).
+  const saved = () => JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8')).providers[0].models[0].images
+  expect(saved()).toBe(false)
+
+  await window.getByRole('region', { name: 'Local' }).getByRole('checkbox', { name: 'Takes pictures' }).check()
+  await window.getByRole('button', { name: 'Save models' }).click()
+  await expect.poll(saved).toBe(true)
+
+  // And it comes back ticked, because it is stored with the model rather than with the window.
+  await window.getByRole('link', { name: 'Providers' }).click()
+  await window.getByRole('link', { name: 'Models', exact: true }).click()
+  await expect(window.getByRole('checkbox', { name: 'Takes pictures' })).toBeChecked()
   await app.close()
 })
 

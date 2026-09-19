@@ -25,6 +25,13 @@ export interface ProviderModelDefinition {
   contextWindow: number
   maxTokens: number
   reasoning: boolean
+  /**
+   * Whether this model can be handed a picture. It is a setting rather than a fact because there
+   * is no catalog to ask (ADR-0015) — and it is not cosmetic: a model that does not say it takes
+   * pictures is sent text only, so an attachment to one is refused rather than dropped on the way
+   * out (ADR-0018).
+   */
+  images: boolean
 }
 
 export interface StoredProvider {
@@ -60,6 +67,9 @@ const ModelSchema = Type.Object({
   contextWindow: Type.Number(),
   maxTokens: Type.Number(),
   reasoning: Type.Boolean(),
+  // Optional in the schema and defaulted below: a file written before this setting existed is
+  // still a valid file, and it is read as a model that takes text only.
+  images: Type.Optional(Type.Boolean()),
 })
 
 const ModelRefSchema = Type.Object({ providerId: Type.String(), modelId: Type.String() })
@@ -88,7 +98,10 @@ export function parseProviders(raw: unknown): ProviderIndex {
   const index: Static<typeof ProviderIndexSchema> = candidate
   return {
     version: 1,
-    providers: index.providers.map((provider) => ({ ...provider, models: provider.models })),
+    providers: index.providers.map((provider) => ({
+      ...provider,
+      models: provider.models.map((model) => ({ ...model, images: model.images === true })),
+    })),
     defaultModel: index.defaultModel,
   }
 }
@@ -152,6 +165,9 @@ export function readModels(input: unknown): ModelsResult {
       contextWindow,
       maxTokens: typeof model.maxTokens === 'number' && model.maxTokens > 0 ? model.maxTokens : 4096,
       reasoning: model.reasoning === true,
+      // Off unless it is said: a picture sent to a model that cannot read one is a turn that
+      // answers about nothing, which is worse than being told to turn the setting on.
+      images: model.images === true,
     })
   }
   return { models }
@@ -214,6 +230,16 @@ export function effectiveModelOf(index: ModelIndex): Undef<ConversationModel> {
 export function modelIn(index: ModelIndex, chosen: Undef<ConversationModel>): Undef<ConversationModel> {
   if (chosen !== undefined && servesModel(index, chosen)) return chosen
   return effectiveModelOf(index)
+}
+
+/**
+ * The definition behind a model reference: what the window needs to say a model's own name and to
+ * ask what it can be handed. Nothing is invented for a model the index does not serve.
+ */
+export function definitionOf(index: ModelIndex, chosen: Undef<ConversationModel>): Undef<ProviderModelDefinition> {
+  if (chosen === undefined) return undefined
+  const provider = index.providers.find((candidate) => candidate.id === chosen.providerId)
+  return provider?.models.find((model) => model.id === chosen.modelId)
 }
 
 function servesModel(index: ModelIndex, chosen: ConversationModel): boolean {

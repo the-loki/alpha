@@ -13,7 +13,14 @@ import {
   readProvider,
 } from './providers.ts'
 
-const model = { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false }
+const model = {
+  id: 'local-7b',
+  name: 'Local 7B',
+  contextWindow: 32_000,
+  maxTokens: 4_096,
+  reasoning: false,
+  images: false,
+}
 
 const input = {
   id: 'my-endpoint',
@@ -75,9 +82,16 @@ describe('[core] readProvider', () => {
 describe('[core] readModels', () => {
   it('reads a list and fills in what was left out', () => {
     expect(readModels([{ id: 'local-7b', contextWindow: 128_000 }]).models).toEqual([
-      { id: 'local-7b', name: 'local-7b', contextWindow: 128_000, maxTokens: 4096, reasoning: false },
+      { id: 'local-7b', name: 'local-7b', contextWindow: 128_000, maxTokens: 4096, reasoning: false, images: false },
     ])
     expect(readModels([model]).models).toEqual([model])
+  })
+
+  it('reads a model that takes pictures as one that does, and everything else as one that does not', () => {
+    expect(readModels([{ id: 'vision', contextWindow: 128_000, images: true }]).models?.[0]?.images).toBe(true)
+    expect(readModels([{ id: 'text-only', contextWindow: 128_000 }]).models?.[0]?.images).toBe(false)
+    // A file from before this setting existed is read as text only rather than refused.
+    expect(readModels([{ id: 'old', contextWindow: 128_000, images: 'yes' }]).models?.[0]?.images).toBe(false)
   })
 
   it('refuses a model with no id, and one with no room in it', () => {
@@ -109,6 +123,23 @@ describe('[core] parseProviders', () => {
   it('round-trips a stored provider and the default model', () => {
     const index = { ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
     expect(parseProviders(JSON.parse(JSON.stringify(index)))).toEqual(index)
+  })
+
+  it('reads a model written before the picture setting as one that takes text only', () => {
+    // The file as it was written by a version that had no such setting: same shape, one key less.
+    const legacy = {
+      version: 1,
+      providers: [
+        {
+          id: 'my-endpoint',
+          name: 'My endpoint',
+          api: 'openai-completions',
+          baseUrl: 'https://llm.internal.example/v1',
+          models: [{ id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false }],
+        },
+      ],
+    }
+    expect(parseProviders(legacy).providers[0]?.models[0]?.images).toBe(false)
   })
 
   it('treats a file it cannot trust as empty', () => {

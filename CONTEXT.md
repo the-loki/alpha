@@ -158,9 +158,12 @@ provider they belong to. Avoid: *token* (confusable with model tokens), *passwor
 
 ### Model
 
-A specific model id served by a provider, with the context window and token limits the workbench
-needs to run it. A model is always addressed as provider + id, and the list of them is a model
-setting rather than a fact about the connection. One of them is the **default model**: what a new
+A specific model id served by a provider, with the context window, the token limits and the
+capability the workbench needs to run it. A model is always addressed as provider + id, and the
+list of them is a model setting rather than a fact about the connection. **Takes pictures** is one
+of those capabilities: it says whether a picture may be attached to a message for that model, it
+is off until it is turned on, and a picture for a model without it is refused rather than sent
+(ADR-0018). One of them is the **default model**: what a new
 conversation starts on, and what a run with nobody watching uses. A conversation's own model is
 chosen at the foot of its composer, and the chip there follows the level chip's rule — with a
 conversation open it changes that conversation, with none open it changes the default.

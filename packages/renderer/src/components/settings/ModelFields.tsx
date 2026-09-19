@@ -10,6 +10,7 @@ export interface DraftModel {
   contextWindow: string
   maxTokens: string
   reasoning: boolean
+  images: boolean
 }
 
 export const emptyModel = (): DraftModel => ({
@@ -18,6 +19,9 @@ export const emptyModel = (): DraftModel => ({
   contextWindow: '128000',
   maxTokens: '8192',
   reasoning: false,
+  // Off: a new row is a model nobody has said anything about, and the honest answer for "can it
+  // read a picture" is the one that refuses the picture rather than sending it into the void.
+  images: false,
 })
 
 export const asDraft = (model: {
@@ -26,12 +30,14 @@ export const asDraft = (model: {
   contextWindow: number
   maxTokens: number
   reasoning: boolean
+  images: boolean
 }): DraftModel => ({
   id: model.id,
   name: model.name,
   contextWindow: String(model.contextWindow),
   maxTokens: String(model.maxTokens),
   reasoning: model.reasoning,
+  images: model.images,
 })
 
 /** The draft in the shape the boundary validates: the numbers become numbers here and nowhere else. */
@@ -42,6 +48,7 @@ export const modelInput = (models: DraftModel[]) =>
     contextWindow: Number(model.contextWindow),
     maxTokens: Number(model.maxTokens),
     reasoning: model.reasoning,
+    images: model.images,
   }))
 
 /** The models an endpoint serves, as rows being edited. Rows are positional until they are saved. */
@@ -96,7 +103,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                   onChange={(maxTokens) => replace(index, { maxTokens })}
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between">
+              <div className="mt-2 flex items-center gap-4">
                 <label className="flex items-center gap-2 text-xs text-parchment-dim">
                   <input
                     type="checkbox"
@@ -107,6 +114,20 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                   />
                   {t('settings.reasoning')}
                 </label>
+                {/* What the model can be handed. It is a setting because nothing here can know it:
+                    no catalog ships with the app, and only the person who typed the model id knows
+                    what is behind it (ADR-0018). */}
+                <label className="flex items-center gap-2 text-xs text-parchment-dim">
+                  <input
+                    type="checkbox"
+                    aria-label={t('settings.takesPictures')}
+                    checked={model.images}
+                    onChange={(event) => replace(index, { images: event.target.checked })}
+                    className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                  />
+                  {t('settings.takesPictures')}
+                </label>
+                <span className="flex-1" />
                 <button
                   type="button"
                   aria-label={t('settings.removeModel')}

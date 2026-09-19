@@ -68,6 +68,8 @@ export function resolveModelRuntime(
     const replies = readScriptedReplies(env.ALPHA_FAUX_REPLIES)
     const faux = fauxProvider({
       provider: 'faux',
+      // The scripted model is left on pi-ai's default input, which takes pictures: a suite that
+      // attaches one is testing the workbench, not whether a stand-in can read a PNG.
       models: [{ id: 'scripted', name: 'Scripted', reasoning: true }],
       // A scripted reply is normally as fast as the microtask queue; a test that wants to interrupt
       // one mid-flight slows it down here instead of racing it.

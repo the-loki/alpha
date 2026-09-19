@@ -1,7 +1,7 @@
-import { type ConversationModel, modelIn, type Null, type ProviderView, type Undef } from '@alpha/core'
+import type { ConversationModel, Null } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { useProviders } from '../stores/providers.ts'
+import { useProviders, useRunningModel } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
 import { CheckIcon } from './icons.tsx'
 
@@ -48,12 +48,8 @@ export function ModelChip() {
   }, [open])
 
   const inConversation = activeId !== '' && summary !== undefined
-  // A conversation that never chose runs on the default, and one whose choice is gone — the
-  // provider was deleted — runs on it too, which is the rule the runtime applies as well.
-  const chosen: Undef<ConversationModel> =
-    summary !== undefined && summary.model.providerId !== '' ? summary.model : undefined
-  const running = modelIn(snapshot, chosen)
-  const name = nameOf(snapshot.providers, running)
+  const runningModel = useRunningModel()
+  const name = runningModel.name
   const choose = async (next: ConversationModel) => {
     setOpen(false)
     if (inConversation) await setModel(next.providerId, next.modelId)
@@ -89,7 +85,8 @@ export function ModelChip() {
             <div key={provider.id}>
               <p className="px-3 pt-2 pb-1 font-mono text-micro text-parchment-faint">{provider.name}</p>
               {provider.models.map((model) => {
-                const current = running?.providerId === provider.id && running.modelId === model.id
+                const current =
+                  runningModel.chosen?.providerId === provider.id && runningModel.chosen.modelId === model.id
                 return (
                   <button
                     key={model.id}
@@ -113,11 +110,4 @@ export function ModelChip() {
       )}
     </div>
   )
-}
-
-/** The display name of a model, found where it is defined. Nothing is invented for a missing one. */
-function nameOf(providers: ProviderView[], chosen: Undef<ConversationModel>): Undef<string> {
-  if (chosen === undefined) return undefined
-  const provider = providers.find((entry) => entry.id === chosen.providerId)
-  return provider?.models.find((model) => model.id === chosen.modelId)?.name
 }

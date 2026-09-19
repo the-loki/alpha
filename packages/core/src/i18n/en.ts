@@ -185,6 +185,7 @@ export const EN = {
   'composer.attached': 'Attached pictures',
   'composer.removeAttachment': 'Remove {name}',
   'composer.attachmentRefused': 'Only pictures up to 4 MB can be attached.',
+  'composer.attachmentNoVision': '{model} does not take pictures. Turn that on for it under Models in Settings.',
   'message.regenerate': 'Regenerate',
   'message.resend': 'Resend, replacing what followed',
   'message.fork': 'Fork into a new conversation',
@@ -230,7 +231,7 @@ export const EN = {
   'settings.providersNote':
     'Where the workbench may reach, and with which key. Keys are held in the OS keychain and never leave this process.',
   'settings.modelsNote':
-    "Which model new conversations start on, and which models each connection serves. The limits are the ones the provider documents; only a model listed here appears in a conversation's picker.",
+    "Which model new conversations start on, and which models each connection serves. The limits are the ones the provider documents; only a model listed here appears in a conversation's picker. Whether a model takes pictures is on this panel too, because nothing else can know it.",
   'settings.permissionsNote': 'What the agent may do on its own, and what it has to ask about.',
   'settings.appearanceNote': 'Which palette the workbench is drawn in, and in which colour.',
   'settings.browserAccessNote':
@@ -282,6 +283,7 @@ export const EN = {
   'settings.saveModels': 'Save models',
   'settings.reset': 'Reset',
   'settings.reasoning': 'Thinks before answering',
+  'settings.takesPictures': 'Takes pictures',
   'settings.addModel': 'Add model',
   'settings.removeModel': 'Remove',
   'settings.displayNamePlaceholder': 'What it is called',

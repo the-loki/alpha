@@ -1,9 +1,10 @@
-import { type Attachment, type Language, type ModelStatus, modelText, type Null, text } from '@alpha/core'
+import { type Attachment, type Language, type ModelStatus, modelText, type Null, text, type Undef } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
+import { useRunningModel } from '../stores/providers.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
-import { AttachButton, AttachmentNote, PendingAttachments } from './Attachments.tsx'
+import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from './Attachments.tsx'
 import { OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
@@ -72,7 +73,7 @@ function ComposerFoot({
   onSend: () => void
   onStop: () => void
   onRedirect: (how: 'steer' | 'queue') => void
-  onPicked: (picked: Attachment[], refused: boolean) => void
+  onPicked: (picked: Attachment[], refused: Undef<Refusal>) => void
 }) {
   const t = useText()
   return (
@@ -99,6 +100,25 @@ function ComposerFoot({
       )}
     </div>
   )
+}
+
+/**
+ * While a turn is running, Escape stops it: the composer is where the hands already are. A menu
+ * that is open keeps its own Escape, which is the one thing this has to stay out of the way of.
+ */
+function useEscapeToStop(stop: () => Promise<void>, running: boolean): void {
+  useEffect(() => {
+    if (!running) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      const element = document.activeElement
+      if (element instanceof HTMLElement && element.closest('[role="menu"]') !== null) return
+      event.preventDefault()
+      void stop()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [running, stop])
 }
 
 /**
@@ -155,7 +175,8 @@ export interface ComposerNote {
 export function Composer() {
   const [value, setValue] = useState('')
   const [attached, setAttached] = useState<Attachment[]>([])
-  const [refused, setRefused] = useState(false)
+  const [refused, setRefused] = useState<Undef<Refusal>>(undefined)
+  const runningModel = useRunningModel()
   const composerFolder = useShell(composerFolderOf)
   const language = useShell((state) => languageOf(state.language))
   const t = useText()
@@ -174,6 +195,16 @@ export function Composer() {
     if (focusSignal > 0) field.current?.focus()
   }, [focusSignal])
 
+  // A picture is held only for as long as the model that would run on it can take one. Switching
+  // to a model that cannot — or opening a conversation that runs on one — drops what is attached
+  // and says why, rather than failing at the boundary with the picture already in the message
+  // (ADR-0018). With no provider list to read, the main process has the last word.
+  useEffect(() => {
+    if (runningModel.takesPictures || attached.length === 0) return
+    setAttached([])
+    setRefused('model')
+  }, [runningModel.takesPictures, attached.length])
+
   const hasWorkspace = composerFolder !== undefined
   const running = status === 'running'
   const note = composerNote(language, {
@@ -189,19 +220,7 @@ export function Composer() {
   // Steering and queueing carry words: a picture waits in the composer for a turn of its own.
   const canRedirect = writable && running && words
 
-  // While a turn is running, Escape stops it: the composer is where the hands already are.
-  useEffect(() => {
-    if (!running) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      const element = document.activeElement
-      if (element instanceof HTMLElement && element.closest('[role="menu"]') !== null) return
-      event.preventDefault()
-      void stop()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [running, stop])
+  useEscapeToStop(stop, running)
 
   const send = async () => {
     if (!canSend || composerFolder === undefined) return
@@ -209,7 +228,7 @@ export function Composer() {
     const picked = attached
     setValue('')
     setAttached([])
-    setRefused(false)
+    setRefused(undefined)
     const id = await sendOrCreate(composerFolder.path, message, picked)
     void navigate({ to: '/c/$conversationId', params: { conversationId: id } })
   }
@@ -267,7 +286,7 @@ export function Composer() {
               setRefused(anyRefused)
             }}
           />
-          <AttachmentNote refused={refused} />
+          <AttachmentNote refused={refused} model={runningModel.name} />
           {note !== '' && <p className="mt-1 font-mono text-micro text-parchment-faint">{note}</p>}
         </div>
       </div>

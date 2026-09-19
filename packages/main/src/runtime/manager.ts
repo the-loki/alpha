@@ -163,8 +163,15 @@ export class RuntimeManager {
 
   async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
     const conversation = this.#requireConversation(id)
-    if (modelFor(this.#modelRuntime(), conversation) === undefined) {
+    const model = modelFor(this.#modelRuntime(), conversation)
+    if (model === undefined) {
       throw new Error('No model is configured. Add a provider and a model in Settings first.')
+    }
+    // The last word on whether a picture may go: pi-ai would drop it silently for a model that
+    // does not take one, and a turn that answers about a picture nobody saw is worse than a turn
+    // that refuses (ADR-0018). The window says the same thing earlier, where it can.
+    if ((attachments?.length ?? 0) > 0 && !model.input.includes('image')) {
+      throw new Error(`${model.name} does not take pictures. Turn that on for it under Settings, Models.`)
     }
     const runtime = await this.#openFor(id)
     await runtime.prompt(text, attachments)

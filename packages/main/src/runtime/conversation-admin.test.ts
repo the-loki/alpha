@@ -41,20 +41,31 @@ const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) 
  * A manager whose model collection is the configured providers rather than the scripted one, so
  * the models a conversation may run on are real. Nothing here dials out: no turn is ever started.
  */
-const configuredManager = (dataDirectory?: string) => {
+const configuredManager = (dataDirectory?: string, seed = true) => {
   const directory = dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-data-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
   const providers = new ProviderStore(directory, new CredentialVault(directory, testCipher))
-  providers.save({
-    id: 'local',
-    name: 'Local',
-    api: 'openai-completions',
-    baseUrl: 'https://llm.internal.example/v1',
-    models: [
-      { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false },
-      { id: 'local-70b', name: 'Local 70B', contextWindow: 128_000, maxTokens: 8_192, reasoning: false },
-    ],
-  })
+  // A manager over an existing directory reads what is there rather than writing the fixture over
+  // it, which is what a relaunch does.
+  if (seed) {
+    providers.save({
+      id: 'local',
+      name: 'Local',
+      api: 'openai-completions',
+      baseUrl: 'https://llm.internal.example/v1',
+      models: [
+        { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images: false },
+        {
+          id: 'local-70b',
+          name: 'Local 70B',
+          contextWindow: 128_000,
+          maxTokens: 8_192,
+          reasoning: false,
+          images: false,
+        },
+      ],
+    })
+  }
   const manager = new RuntimeManager({
     dataDirectory: directory,
     sessionsRoot: join(directory, 'sessions'),
@@ -94,6 +105,29 @@ describe('[runtime] what a conversation runs on', () => {
       /does not serve/,
     )
     await manager.closeAll()
+  })
+
+  it('refuses a picture for a model that does not take one, before the turn starts', async () => {
+    const { manager, providers, workspace, dataDirectory } = configuredManager()
+    const created = await manager.create(workspace)
+    const picture = { mimeType: 'image/png', data: 'AAAA' }
+
+    await expect(manager.prompt(created.conversation.id, 'look at this', [picture])).rejects.toThrow(
+      /does not take pictures/,
+    )
+    // The same message without the picture is not the boundary's business: it goes through.
+    await manager.prompt(created.conversation.id, 'look at this')
+    await manager.closeAll()
+
+    // And turning the setting on is what lets it through the gate.
+    providers.saveModels('local', [
+      { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images: true },
+    ])
+    // The same directory, so the saved settings are the ones the new manager reads.
+    const after = configuredManager(dataDirectory, false)
+    const second = await after.manager.create(workspace)
+    await expect(after.manager.prompt(second.conversation.id, 'look at this', [picture])).resolves.toBeUndefined()
+    await after.manager.closeAll()
   })
 
   it('starts what is created later on the default the models panel chose', async () => {

@@ -28,6 +28,7 @@ const model = (id: string): ProviderModelDefinition => ({
   contextWindow: 128_000,
   maxTokens: 8_192,
   reasoning: false,
+  images: true,
 })
 
 describe('[main] adding a connection', () => {

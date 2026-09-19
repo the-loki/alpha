@@ -182,6 +182,7 @@ export const ZH = {
   'composer.attached': '已附加的图片',
   'composer.removeAttachment': '移除 {name}',
   'composer.attachmentRefused': '只能附加 4 MB 以内的图片。',
+  'composer.attachmentNoVision': '{model} 不能看图。可以在"设置 → 模型"里为它打开。',
   'message.regenerate': '重新生成',
   'message.resend': '重发，并替换其后的内容',
   'message.fork': '分叉成新会话',
@@ -225,7 +226,7 @@ export const ZH = {
   'settings.tabBrowserAccess': '浏览器访问',
   'settings.providersNote': '工作台能连到哪里、用哪把密钥。密钥存在系统钥匙串里，不离开这个进程。',
   'settings.modelsNote':
-    '新会话默认用哪个模型，以及每个连接提供哪些模型。限额按供应商文档填写；只有列在这里的模型，才会出现在会话的模型选择里。',
+    '新会话默认用哪个模型，以及每个连接提供哪些模型。限额按供应商文档填写；只有列在这里的模型，才会出现在会话的模型选择里。"能不能看图"也在这里设置——因为除了你，没有别的东西知道。',
   'settings.permissionsNote': 'agent 可以自己做什么，什么必须先问。',
   'settings.appearanceNote': '工作台用哪套调色板、哪种颜色。',
   'settings.browserAccessNote':
@@ -273,6 +274,7 @@ export const ZH = {
   'settings.saveModels': '保存模型',
   'settings.reset': '重置',
   'settings.reasoning': '回答前先思考',
+  'settings.takesPictures': '可以看图',
   'settings.addModel': '添加模型',
   'settings.removeModel': '移除',
   'settings.displayNamePlaceholder': '显示名称',

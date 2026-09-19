@@ -23,6 +23,7 @@ export interface ProviderModelInput {
   contextWindow: number
   maxTokens: number
   reasoning: boolean
+  images: boolean
 }
 
 /** Which model new conversations start on. Absent clears the choice, so the first model wins. */

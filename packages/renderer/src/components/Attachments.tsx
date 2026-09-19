@@ -1,4 +1,4 @@
-import type { Attachment, Null } from '@alpha/core'
+import type { Attachment, Null, Undef } from '@alpha/core'
 import { useRef } from 'react'
 import { readPicked } from '../lib/attachments.ts'
 import { useText } from '../stores/shell.ts'
@@ -12,7 +12,7 @@ export const FOOT_BUTTON =
  * The way in to the file picker. The picker is the platform's; this is a button that opens it, and
  * the input itself is off the page because nothing about it is worth drawing.
  */
-export function AttachButton({ onPicked }: { onPicked: (picked: Attachment[], refused: boolean) => void }) {
+export function AttachButton({ onPicked }: { onPicked: (picked: Attachment[], refused: Undef<Refusal>) => void }) {
   const t = useText()
   const input = useRef<Null<HTMLInputElement>>(null)
   return (
@@ -40,7 +40,7 @@ export function AttachButton({ onPicked }: { onPicked: (picked: Attachment[], re
           const files = [...(event.target.files ?? [])]
           // Choosing the same file twice is only a change the second time if the field is empty.
           event.target.value = ''
-          void readPicked(files).then((picked) => onPicked(picked.attachments, picked.refused))
+          void readPicked(files).then((picked) => onPicked(picked.attachments, picked.refused ? 'file' : undefined))
         }}
       />
     </>
@@ -84,12 +84,23 @@ export function PendingAttachments({ items, onRemove }: { items: Attachment[]; o
 }
 
 /**
+ * Why a picture was turned away: the file was not one the workbench can send, or the model it
+ * would run on cannot be handed a picture at all.
+ */
+export type Refusal = 'file' | 'model'
+
+/**
  * The composer's own line about attachments: a file that was turned away is said out loud, because
  * a picture that never arrived is the kind of thing noticed too late. It clears itself the next
  * time a pick goes through, so it never has to be dismissed.
  */
-export function AttachmentNote({ refused }: { refused: boolean }) {
+export function AttachmentNote({ refused, model }: { refused: Undef<Refusal>; model: Undef<string> }) {
   const t = useText()
-  if (!refused) return null
-  return <p className="mt-1.5 px-1 text-micro text-amber">{t('composer.attachmentRefused')}</p>
+  if (refused === undefined) return null
+  if (refused === 'model') {
+    return (
+      <p className="mt-1 font-mono text-micro text-amber">{t('composer.attachmentNoVision', { model: model ?? '' })}</p>
+    )
+  }
+  return <p className="mt-1 px-1 text-micro text-amber">{t('composer.attachmentRefused')}</p>
 }
