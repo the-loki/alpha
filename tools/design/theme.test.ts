@@ -156,3 +156,30 @@ describe.each(PALETTES)('the %s palette', (name, palette) => {
     void name
   })
 })
+
+/**
+ * The font stacks, because the interface has two languages and only one of them is bundled. A
+ * stack that stops at `sans-serif` still works on a machine that has a CJK font — by luck, and by
+ * a font nobody chose. These names are the ones a Chinese desktop actually has (C5.3).
+ */
+describe('[design] the font stacks', () => {
+  const stackOf = (name: string): string => {
+    const match = CSS.match(new RegExp(`--${name}:([^;]+);`))
+    if (match === null) throw new Error(`--${name} is not declared`)
+    return match[1]
+  }
+
+  it('names a chinese face per platform after the bundled ones', () => {
+    const sans = stackOf('font-sans')
+    for (const family of ['PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei']) {
+      expect(sans).toContain(family)
+    }
+    // First, so Latin characters in Chinese prose keep the bundled voice.
+    expect(sans.indexOf('IBM Plex Sans')).toBeLessThan(sans.indexOf('PingFang SC'))
+  })
+
+  it('keeps a CJK-capable family last in the mono stack too', () => {
+    // Chinese inside a mono context — a path, a count — must not fall off the stack.
+    expect(stackOf('font-mono')).toContain('monospace')
+  })
+})

@@ -90,6 +90,17 @@ own scale.
 
 Both families are bundled with the app; there is no runtime font fetch.
 
+**Chinese is not bundled: the machine's own face is named.** Neither bundled family has CJK
+glyphs, so the sans stack names the three desktop systems' Chinese faces after `system-ui` —
+`PingFang SC` (macOS), `Hiragino Sans GB`, `Noto Sans CJK SC` (Linux), `Microsoft YaHei`
+(Windows) — and the mono stack names a CJK monospace before `monospace`. Naming them rather than
+letting `sans-serif` decide is what makes a Chinese window drawn in a face someone chose, and
+putting them after the bundled family is what keeps Latin characters in Chinese prose in IBM Plex.
+A bundled subset was considered and skipped: it would only help a machine with no CJK font at all,
+and it would have to be regenerated every time a line of copy changes. If a machine with no CJK
+font becomes a real target, the upgrade is a `pyftsubset` pass over the dictionary's characters.
+`tools/design/theme.test.ts` pins the stack.
+
 **Two voices, never swapped.** Sans speaks: every control, every label, every sentence. Mono
 measures: paths, counts, tokens, shortcuts, identifiers, code. So an action is set in sans
 wherever it appears — as a word under a message, a row in the sidebar, or a button in a toolbar —
