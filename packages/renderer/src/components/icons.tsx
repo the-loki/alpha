@@ -126,3 +126,10 @@ export const BranchIcon = (props: IconProps) => (
     <path d="M4.5 5.6v4.8M6.1 7h3.8" />
   </Glyph>
 )
+
+export const ClockIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <circle cx="8" cy="8" r="5.5" />
+    <path d="M8 4.8V8l2.2 1.4" />
+  </Glyph>
+)

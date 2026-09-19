@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
-import { ChevronDownIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
+import { ChevronDownIcon, ClockIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon, SlidersIcon } from './icons.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
 const STATE = {
@@ -157,17 +157,92 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
         </span>
       </div>
 
-      {!collapsed &&
-        (count === 0 ? (
-          <p className="py-1 pr-2 pl-11 text-micro text-parchment-faint">{t('sidebar.noConversations')}</p>
-        ) : (
-          <ul className="space-y-0.5">
-            {folder.conversations.map((conversation) => (
-              <ConversationRow key={conversation.id} conversation={conversation} />
-            ))}
-          </ul>
-        ))}
+      {!collapsed && (
+        <>
+          {count > 0 && (
+            <ul className="space-y-0.5">
+              {folder.conversations.map((conversation) => (
+                <ConversationRow key={conversation.id} conversation={conversation} />
+              ))}
+            </ul>
+          )}
+
+          {/* PROTOTYPE ONLY: one task and its runs, so the third level can be looked at. */}
+          <TaskGroup folder={folder.name} />
+        </>
+      )}
     </section>
+  )
+}
+
+const PROTOTYPE_TASK = { name: 'Nightly check', runs: 3 }
+
+/**
+ * PROTOTYPE ONLY. A task sits inside its folder with its own runs beneath it: the run rows show
+ * *when* rather than the title, because every run is titled after its task.
+ */
+function TaskGroup({ folder }: { folder: string }) {
+  const [open, setOpen] = useState(true)
+  const t = useText()
+  return (
+    <div className="mt-1">
+      <div className="group flex items-center gap-1">
+        <h3 className="min-w-0 flex-1">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={`${open ? 'Collapse' : 'Expand'} tasks in ${folder}`}
+            onClick={() => setOpen((value) => !value)}
+            className="flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui text-parchment-dim transition-colors hover:bg-ink-600"
+          >
+            <ChevronDownIcon className={`transition-transform ${open ? '' : '-rotate-90'}`} />
+            <span className="ml-1 flex min-w-0 items-center gap-2">
+              <ClockIcon className="text-parchment-faint" />
+              <span className="min-w-0 truncate">{PROTOTYPE_TASK.name}</span>
+            </span>
+          </button>
+        </h3>
+        <span className="relative flex h-5 w-6 shrink-0 items-center justify-center">
+          <span
+            className="font-mono text-micro text-parchment-faint transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
+            title={`${PROTOTYPE_TASK.runs} runs`}
+          >
+            {PROTOTYPE_TASK.runs}
+          </span>
+          <button
+            type="button"
+            aria-label={`Open ${PROTOTYPE_TASK.name}`}
+            title="Task settings"
+            className="absolute inset-0 grid place-items-center rounded-control text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-ink-600 hover:text-parchment"
+          >
+            <SlidersIcon />
+          </button>
+        </span>
+      </div>
+      {open && (
+        <ul className="space-y-0.5">
+          {[
+            { when: '09-18 09:00', note: '3 refused', tone: 'text-amber' },
+            { when: '09-17 09:00', note: 'ok', tone: 'text-parchment-faint' },
+            { when: '09-16 09:00', note: 'failed', tone: 'text-danger' },
+          ].map((run) => (
+            <li key={run.when} className="group relative flex items-center">
+              <button
+                type="button"
+                onClick={() => undefined}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-control py-1.5 pr-2 pl-9 text-left text-parchment-dim transition-colors hover:bg-ink-600"
+              >
+                <span className="flex w-4 shrink-0 justify-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-line-strong" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1 truncate font-mono text-micro">{run.when}</span>
+                <span className={`font-mono text-micro ${run.tone}`}>{run.note}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
