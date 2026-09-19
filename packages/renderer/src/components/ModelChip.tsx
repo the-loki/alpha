@@ -83,7 +83,7 @@ export function ModelChip() {
         <div
           role="menu"
           aria-label={t('model.menuLabel')}
-          className="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
+          className="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-ink-800 py-1 overlay-in shadow-overlay"
         >
           {snapshot.providers.map((provider) => (
             <div key={provider.id}>

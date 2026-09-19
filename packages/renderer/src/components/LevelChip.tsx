@@ -93,7 +93,7 @@ export function LevelChip() {
         <div
           role="menu"
           aria-label={t('level.chipTitle')}
-          className="absolute bottom-full left-0 z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
+          className="absolute bottom-full left-0 overlay-in z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
         >
           {PERMISSION_LEVELS.map((candidate: PermissionLevel) => (
             <button

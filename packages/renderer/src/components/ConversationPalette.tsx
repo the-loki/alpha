@@ -59,7 +59,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-xl overflow-hidden rounded-overlay border border-line bg-ink-800 shadow-overlay">
+      <div className="w-full max-w-xl overflow-hidden rounded-overlay border border-line bg-ink-800 overlay-in shadow-overlay">
         <input
           ref={field}
           aria-label={t('palette.search')}

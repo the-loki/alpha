@@ -285,6 +285,27 @@
     animation: accent-pulse 1.2s ease-in-out infinite;
   }
 
+  /*
+   * A menu arrives rather than appearing: a quarter-rem of rise and a fade. It is what says "this
+   * came from that control" when the panel is not attached to the thing it belongs to, and it is
+   * short enough that a person clicking twice never waits for it (C5.6).
+   */
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.25rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .overlay-in {
+    animation: overlay-in 160ms ease-out;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.001ms !important;
