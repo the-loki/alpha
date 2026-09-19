@@ -10,7 +10,7 @@ import {
 } from '@alpha/core'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { composerFolderOf, useShell, useText } from '../stores/shell.ts'
+import { useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
 import { PAGE } from './ledger.ts'
 
@@ -64,7 +64,7 @@ function ConversationTitle() {
 
   return (
     <span className="flex min-w-0 items-baseline gap-3">
-      <h1 className="min-w-0 truncate text-lg font-semibold text-parchment">{summary.title}</h1>
+      <h1 className="min-w-0 truncate font-display text-xl font-medium text-parchment">{summary.title}</h1>
       <span className="shrink-0 font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
         {folderName(summary.workspacePath)}
       </span>
@@ -89,25 +89,14 @@ function ConversationTitle() {
  */
 export function DocHead() {
   const summary = useConversations((state) => state.transcript.summary)
-  const folder = useShell(composerFolderOf)
   const t = useText()
   const setThinkingLevel = useConversations((state) => state.setThinkingLevel)
 
   const band = `flex shrink-0 items-end justify-between gap-4 border-b border-line bg-ink-800 pt-2.5 pb-2 ${PAGE}`
 
-  if (summary === undefined) {
-    if (folder === undefined) return null
-    return (
-      <div className={band}>
-        <span className="flex min-w-0 items-baseline gap-3">
-          <h1 className="min-w-0 truncate text-lg font-semibold text-parchment">{folder.name}</h1>
-          <span className="shrink-0 truncate font-mono text-micro text-parchment-faint" title={folder.path}>
-            {folder.path}
-          </span>
-        </span>
-      </div>
-    )
-  }
+  // A page that has not been asked anything yet has no head band: its name is set on the page
+  // itself, large, where a title page puts it — and a document says its name once (ADR-0019).
+  if (summary === undefined) return null
 
   return (
     <div className={band}>

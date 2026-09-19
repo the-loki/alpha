@@ -126,12 +126,14 @@ be a way of shouting what the layout should have said. `05-design:no-other-weigh
 `pnpm check` on `font-bold`, `font-extrabold`, `font-black`, `font-light` or `font-thin` anywhere
 under `packages/renderer/`.
 
+| The display voice: a page's title, an entry's question, the title page | Newsreader | `font-display text-xl`–`text-3xl` | 1.125–1.875rem / 1.4–1.2 | medium (the sentence under it: regular, italic) |
+
 **`text-ui` and `text-xs` are one pixel apart and are not interchangeable.** The boundary is the
 two voices again: `text-ui` is what a thing *is* (a name, a label, a sentence in the interface);
 `text-xs` is what a control *says*, and the metadata around it (a button's word, a hint, a chip). A
 row's name is `text-ui`; the action at the end of that row is `text-xs`.
 
-Both families are bundled with the app; there is no runtime font fetch.
+All three families are bundled with the app; there is no runtime font fetch.
 
 **Chinese is not bundled: the machine's own face is named.** Neither bundled family has CJK
 glyphs, so the sans stack names the three desktop systems' Chinese faces after `system-ui` —
@@ -144,14 +146,17 @@ and it would have to be regenerated every time a line of copy changes. If a mach
 font becomes a real target, the upgrade is a `pyftsubset` pass over the dictionary's characters.
 `tools/design/theme.test.ts` pins the stack.
 
-**Two voices, never swapped.** Sans speaks: every control, every label, every sentence, and every
-name — a folder, a conversation, a task, a model. Mono measures: paths, counts, tokens, durations,
-shortcuts, identifiers, code. So an action is set in sans wherever it appears — as a word under a
-message, a row in the sidebar, or a button in a toolbar — and mono inside a button is data the
-button is carrying (the shortcut it answers to), not the button's own voice.
-`05-design:control-voice` fails `pnpm check` on a `<button>` whose own className says `font-mono`.
-A sidebar row is the place the rule is easiest to get wrong: it is a list of names, so it is sans,
-and the counts and ages beside those names are the measurement that stays mono.
+**Three voices, never swapped, and each voice is someone.** The **display voice** (Newsreader, a serif cut for reading) speaks *for the person*: a page's title, an
+entry's question, the title page, a section's name in the sentences that introduce a panel. The
+**sans voice** (IBM Plex) speaks *for the workbench and the agent*: every control, every label,
+every answer, every name. The **mono voice** (JetBrains Mono) *measures*: paths, counts, tokens,
+durations, shortcuts, identifiers, code. So a question in the transcript is serif and the answer
+under it is sans — the one voice is the person's, the other is the machine's — and the rule is
+visible in every turn without being explained. An action is set in sans wherever it appears, and
+mono inside a button is data the button is carrying (the shortcut it answers to), not the button's
+own voice. `05-design:control-voice` fails `pnpm check` on a `<button>` whose own className says
+`font-mono`. A sidebar row is the place the rule is easiest to get wrong: it is a list of names, so
+it is sans, and the counts and ages beside those names are the measurement that stays mono.
 
 The token carries the leading for its role; a paragraph of UI text that wraps anyway (empty
 states, the sentence under a control) may add `leading-relaxed` on top of it.

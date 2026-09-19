@@ -35,14 +35,22 @@ export function EmptyState() {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      {/* The page with its first entry unwritten: the number is already in the column, and the
-          sentence says what would fill the line beside it. */}
-      <div className={`flex py-6 ${PAGE}`}>
+      {/* The title page: the folio number set large, the name of the work in the display voice with
+          its address under it, and the sentence in the display italic — what this page is, before
+          its first entry is written. The heading is here because the page's one title belongs in
+          the page's one main landmark. */}
+      <div className={`py-12 ${PAGE}`}>
         <div className={BLOCK}>
-          <span className={MARK_COLUMN} aria-hidden="true">
+          <span className={`${MARK_COLUMN} pt-2 text-2xl`} aria-hidden="true">
             {entryNumber(0)}
           </span>
-          <p className="max-w-measure text-body leading-relaxed text-parchment-dim">{t('empty.folder.body')}</p>
+          <div>
+            <h1 className="font-display text-3xl leading-tight text-parchment">{composerFolder.name}</h1>
+            <p className="mt-1.5 font-mono text-micro text-parchment-faint">{composerFolder.path}</p>
+            <p className="mt-8 max-w-measure font-display text-lg leading-relaxed text-parchment-dim italic">
+              {t('empty.folder.body')}
+            </p>
+          </div>
         </div>
       </div>
     </div>

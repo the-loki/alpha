@@ -146,7 +146,12 @@ export const MessageView = memo(function MessageView({
                   const key = `${message.id}-shot-${index}`
                   return <AttachmentThumb key={key} block={block} />
                 })}
-              {words !== '' && <p className="max-w-measure text-body leading-[1.6] whitespace-pre-wrap">{words}</p>}
+              {words !== '' && (
+                // The question is set in the display voice, a size above the answer: it is the
+                // heading of everything that follows it, and the one place the manuscript's
+                // voice is heard in the body of the page.
+                <p className="max-w-measure font-display text-lg leading-[1.5] whitespace-pre-wrap">{words}</p>
+              )}
             </div>
             {/* One row of actions, revealed over the entry rather than printed in it: an entry at
                 rest is its number, its words and the rule under them, and the answer below is

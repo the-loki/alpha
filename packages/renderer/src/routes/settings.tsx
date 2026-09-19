@@ -97,7 +97,7 @@ function Settings() {
           <ArrowLeftIcon /> {t('settings.back')}
         </Link>
 
-        <h1 className="mt-5 px-2 text-lg font-semibold text-parchment">{t('settings.title')}</h1>
+        <h1 className="mt-5 px-2 font-display text-xl font-medium text-parchment">{t('settings.title')}</h1>
 
         {TAB_GROUPS.map((group) => (
           <section key={group.label} className="mt-5 pt-2">
@@ -135,7 +135,7 @@ function Settings() {
             own: it is the rule's first subject, not a section under it. */}
         <div className="mx-auto max-w-3xl divide-y divide-line px-8 py-6 [&>*]:pt-8">
           <header className="pb-4">
-            <h1 className="text-lg font-semibold text-parchment">{t(TAB_LABELS[tab])}</h1>
+            <h1 className="font-display text-xl font-medium text-parchment">{t(TAB_LABELS[tab])}</h1>
             <p className="mt-1 text-xs text-parchment-dim">{t(TAB_NOTES[tab])}</p>
           </header>
           {PANELS[tab]}

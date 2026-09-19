@@ -5,6 +5,9 @@
 @import '@fontsource/ibm-plex-sans/600.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/newsreader/400.css';
+@import '@fontsource/newsreader/500.css';
+@import '@fontsource/newsreader/500-italic.css';
 
 /*
  * Ember Ink — docs/constraints/05-design.md is the source of truth for these values.
@@ -56,6 +59,14 @@
     'IBM Plex Sans', ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC',
     'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Noto Sans Mono CJK SC', monospace;
+
+  /*
+   * The display voice (C5.3): what a page is about, and what the reader asked, set like print.
+   * Newsreader carries the Latin; the CJK serif faces named after it are the printing tradition a
+   * Chinese title belongs to — a title in 宋体 is a heading, where a title in 黑体 is a sign.
+   */
+  --font-display:
+    'Newsreader', 'Iowan Old Style', 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', Georgia, serif;
 
   /*
    * Soft corners, and generous ones (C5.4): a control is rounded enough to read as a shape rather
@@ -249,6 +260,24 @@
 
   ::selection {
     background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+  }
+
+  /*
+   * Lamplight (C5.5): a wash of the accent across the top of the page, the way a desk lamp pools
+   * on paper. Decoration, not information — it carries nothing a reader needs, so it is hidden
+   * from readers too and frozen under reduced motion like everything else.
+   */
+  .page-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 14rem;
+    pointer-events: none;
+    background: radial-gradient(
+      60% 100% at 50% 0%,
+      color-mix(in oklab, var(--color-accent) 7%, transparent),
+      transparent
+    );
   }
 
   ::-webkit-scrollbar {
