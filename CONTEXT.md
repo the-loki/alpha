@@ -19,6 +19,16 @@ The workbench holds several at once and shows them together; one of them is *cur
 means no more than this: the one the next conversation will be created in.
 Avoid: *project*, *repo*, *directory* (a directory is a filesystem fact, not a domain object).
 
+### Language
+
+Which of the two languages the interface is written in — `en` or `zh`. A setting of the
+workbench, not of a conversation: what the agent is told stays in the language the conversation
+is in, so the two can differ without either being wrong. Avoid: *locale* (that is the machine's,
+and the workbench only reads it to answer `system`).
+
+*Dictionary* is the interface's own words: the keys and their two translations. It holds chrome
+only — never what the agent is told, and never a vendor's sentence.
+
 ### Conversation
 
 One thread of messages between the user and the agent, persisted and resumable. A conversation

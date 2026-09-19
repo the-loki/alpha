@@ -20,13 +20,14 @@ async function launch(
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
       // Full access: these tests are about turn control, so no approval card intervenes.
+      language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
 
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,

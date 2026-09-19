@@ -8,7 +8,7 @@
  * transport are all real, and only the model's replies are decided in advance.
  */
 
-import type { ConversationModel, Undef } from '@alpha/core'
+import type { ConversationModel, ModelStatus, Undef } from '@alpha/core'
 import {
   type Api,
   createModels,
@@ -44,13 +44,14 @@ export interface ScriptedReply {
 
 const DEFAULT_FAUX_REPLIES: ScriptedReply[] = [{ text: 'Scripted reply.' }]
 
-/** What the window should say about the model, without dialling anything. */
-export function describeRuntime(runtime: ModelRuntime): { configured: boolean; description: string } {
-  if (runtime.kind === 'faux') return { configured: true, description: 'Scripted model (test mode)' }
-  if (runtime.defaultModel === undefined) {
-    return { configured: false, description: 'No provider with a model is configured yet.' }
-  }
-  return { configured: true, description: `${runtime.defaultModel.provider} · ${runtime.defaultModel.id}` }
+/**
+ * Which case the model is in, without dialling anything. Main stops here: the interface owns the
+ * sentence that goes with the case, because the interface is the thing that has a language.
+ */
+export function describeRuntime(runtime: ModelRuntime): ModelStatus {
+  // A scripted model is a model: which one it is matters to the runtime, not to the window.
+  if (runtime.kind === 'faux') return { kind: 'configured' }
+  return runtime.defaultModel === undefined ? { kind: 'none' } : { kind: 'configured' }
 }
 
 /**

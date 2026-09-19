@@ -119,6 +119,20 @@ describe('[main] the channel table', () => {
     expect(((await CHANNELS.launchState(context, [])) as { permissionLevel: string }).permissionLevel).toBe('plan')
   })
 
+  it('carries the language through the appearance patch, and refuses one it does not have', async () => {
+    const context = ports()
+    const before = (await CHANNELS.launchState(context, [])) as { language: string }
+    expect(before.language).toBe('system')
+
+    const changed = (await CHANNELS.setAppearance(context, [{ language: 'zh' }])) as { language: string }
+    expect(changed.language).toBe('zh')
+    // Written down, not just reported: the choice has to survive the window that made it.
+    expect(context.store.read().language).toBe('zh')
+
+    expect(() => CHANNELS.setAppearance(context, [{ language: 'de' }])).toThrow(/language/)
+    expect(context.store.read().language).toBe('zh')
+  })
+
   it('runs a conversation end to end through the table alone', async () => {
     const context = ports()
     const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-ws-'))

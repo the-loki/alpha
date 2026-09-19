@@ -1,8 +1,8 @@
-import type { Null } from '@alpha/core'
+import { type Language, type ModelStatus, modelText, type Null, text } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { composerFolderOf, useShell } from '../stores/shell.ts'
+import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 
@@ -10,24 +10,27 @@ import { ArrowUpIcon } from './icons.tsx'
 function QueueStrip() {
   const queued = useConversations((state) => state.transcript.queued)
   const cancelQueued = useConversations((state) => state.cancelQueued)
+  const t = useText()
   if (queued.length === 0) return null
 
   return (
-    <ul aria-label="Queued messages" className="mb-1.5 space-y-1">
+    <ul aria-label={t('composer.queuedList')} className="mb-1.5 space-y-1">
       {queued.map((item) => (
         <li
           key={item.entryId}
           className="flex items-center gap-2 rounded-control border border-line bg-ink-800/70 px-2.5 py-1"
         >
-          <span className="shrink-0 font-mono text-micro uppercase tracking-wider text-parchment-faint">Queued</span>
+          <span className="shrink-0 font-mono text-micro uppercase tracking-wider text-parchment-faint">
+            {t('composer.queued')}
+          </span>
           <span className="min-w-0 flex-1 truncate text-xs text-parchment-dim">{item.text}</span>
           <button
             type="button"
-            aria-label={`Cancel the queued message: ${item.text}`}
+            aria-label={t('composer.cancelQueued', { text: item.text })}
             onClick={() => void cancelQueued(item.entryId)}
             className={`shrink-0 ${DESTRUCTIVE_ACTION}`}
           >
-            Cancel
+            {t('composer.cancel')}
           </button>
         </li>
       ))}
@@ -48,6 +51,7 @@ function RunningActions({
   onStop: () => void
   onRedirect: (how: 'steer' | 'queue') => void
 }) {
+  const t = useText()
   return (
     <div className="flex items-center gap-2">
       <button
@@ -55,13 +59,13 @@ function RunningActions({
         onClick={onStop}
         className="rounded-control border border-amber/50 px-3 py-1 text-xs text-amber transition-colors hover:bg-amber/10"
       >
-        Stop
+        {t('composer.stop')}
       </button>
       <button type="button" onClick={() => onRedirect('queue')} disabled={!canRedirect} className={OUTLINED_ACTION}>
-        Queue
+        {t('composer.queue')}
       </button>
       <button type="button" onClick={() => onRedirect('steer')} disabled={!canRedirect} className={OUTLINED_ACTION}>
-        Steer
+        {t('composer.steer')}
       </button>
     </div>
   )
@@ -72,21 +76,24 @@ function RunningActions({
  * the box itself cannot: with no folder the placeholder has already said that, and repeating it
  * here would be the same sentence twice.
  */
-export function composerNote(state: {
+export function composerNote(language: Language, state: ComposerNote): string {
+  if (!state.hasFolder) return ''
+  // The model's own line comes first: with nothing to talk to, what the keyboard does is not the
+  // thing the reader needs to know.
+  const aboutModel = modelText(language, state.model)
+  if (aboutModel !== '') return aboutModel
+  if (state.running) {
+    return text(language, state.typed ? 'composer.noteSteer' : 'composer.noteWorking')
+  }
+  return text(language, 'composer.noteIdle')
+}
+
+/** Everything the composer's one line of explanation depends on. */
+export interface ComposerNote {
   hasFolder: boolean
-  modelDescription: string
-  modelConfigured: boolean
+  model: ModelStatus
   running: boolean
   typed: boolean
-}): string {
-  if (!state.hasFolder) return ''
-  if (!state.modelConfigured) return `No model configured yet: ${state.modelDescription}`
-  if (state.running) {
-    return state.typed
-      ? 'Steer changes what it does next. Queue waits until this turn is done.'
-      : 'The agent is working. Escape stops it.'
-  }
-  return 'Enter sends, Shift+Enter starts a new line.'
 }
 
 /**
@@ -94,8 +101,10 @@ export function composerNote(state: {
  * rather than left to a disabled button with no explanation.
  */
 export function Composer() {
-  const [text, setText] = useState('')
+  const [value, setValue] = useState('')
   const composerFolder = useShell(composerFolderOf)
+  const language = useShell((state) => languageOf(state.language))
+  const t = useText()
   const model = useShell((state) => state.model)
   const status = useConversations((state) => state.transcript.status)
   const sendOrCreate = useConversations((state) => state.sendOrCreate)
@@ -113,14 +122,13 @@ export function Composer() {
 
   const hasWorkspace = composerFolder !== undefined
   const running = status === 'running'
-  const note = composerNote({
+  const note = composerNote(language, {
     hasFolder: hasWorkspace,
-    modelConfigured: model.configured,
-    modelDescription: model.description,
+    model,
     running,
-    typed: text.trim() !== '',
+    typed: value.trim() !== '',
   })
-  const writable = hasWorkspace && model.configured && text.trim() !== ''
+  const writable = hasWorkspace && model.kind !== 'none' && value.trim() !== ''
   const canSend = writable && !running
   const canRedirect = writable && running
 
@@ -140,16 +148,16 @@ export function Composer() {
 
   const send = async () => {
     if (!canSend || composerFolder === undefined) return
-    const message = text
-    setText('')
+    const message = value
+    setValue('')
     const id = await sendOrCreate(composerFolder.path, message)
     void navigate({ to: '/c/$conversationId', params: { conversationId: id } })
   }
 
   const redirect = async (how: 'steer' | 'queue') => {
     if (!canRedirect) return
-    const message = text
-    setText('')
+    const message = value
+    setValue('')
     await (how === 'steer' ? steer(message) : queueMessage(message))
   }
 
@@ -161,10 +169,10 @@ export function Composer() {
           <textarea
             ref={field}
             rows={2}
-            aria-label="Message the agent"
-            value={text}
-            placeholder={hasWorkspace ? 'Ask the agent to change something…' : 'Add a folder first'}
-            onChange={(event) => setText(event.target.value)}
+            aria-label={t('composer.messageLabel')}
+            value={value}
+            placeholder={hasWorkspace ? t('composer.placeholder') : t('composer.placeholderNoFolder')}
+            onChange={(event) => setValue(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
@@ -191,7 +199,7 @@ export function Composer() {
               type="button"
               onClick={() => void send()}
               disabled={!canSend}
-              aria-label="Send"
+              aria-label={t('composer.send')}
               // The accent means "this does something". A disabled send wears the quiet surface
               // instead, so the ember in the corner always means a message can go.
               className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"

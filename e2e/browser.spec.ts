@@ -35,6 +35,7 @@ async function launchServing(port: number, options: { token?: string; level?: st
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      language: 'en',
       permissionLevel: options.level ?? 'full-access',
       network: { enabled: true, port, bind: 'local', token: options.token ?? TOKEN },
     }),
@@ -42,7 +43,7 @@ async function launchServing(port: number, options: { token?: string; level?: st
   )
 
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,

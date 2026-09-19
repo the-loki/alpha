@@ -12,8 +12,10 @@ export function ProvidersSection() {
   }, [load])
 
   return (
-    <section>
-      <h2 className="text-body font-medium text-parchment">Model providers</h2>
+    <section aria-labelledby="settings-providers">
+      <h2 id="settings-providers" className="text-body font-medium text-parchment">
+        Model providers
+      </h2>
       <p className="mt-1 text-xs text-parchment-dim">
         Alpha ships no keys. A provider you add here is the only thing it can talk to, and its key is stored on this
         machine alone.

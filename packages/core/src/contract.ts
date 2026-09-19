@@ -4,6 +4,7 @@
  * handler for each. `pnpm check:constraints` is what keeps the three in step.
  */
 
+import type { LanguageSetting } from './i18n.ts'
 import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { Accent, NetworkBind, Theme } from './persisted-state.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
@@ -65,11 +66,12 @@ export const IPC = {
   regenerateNetworkToken: 'alpha:regenerate-network-token',
 } as const
 
-export interface ModelStatus {
-  configured: boolean
-  /** What the runtime will talk to, or why it cannot talk to anything yet. */
-  description: string
-}
+/**
+ * Which model the runtime would talk to, as the window needs to know it — a case, not a sentence.
+ * Main knows *what* is configured; how to say it is the interface's business, and a sentence
+ * composed in main would be English in the middle of a Chinese window.
+ */
+export type ModelStatus = { kind: 'none' } | { kind: 'configured' }
 
 export interface LaunchState {
   appVersion: string
@@ -81,6 +83,8 @@ export interface LaunchState {
   workspaceLevel: PermissionLevel
   theme: Theme
   accent: Accent
+  /** Which language this workbench's interface is written in. */
+  language: LanguageSetting
   model: ModelStatus
   /** The conversation that was open when the window last closed, or empty. */
   lastConversationId: string
@@ -133,10 +137,11 @@ export interface NetworkState {
   error: string
 }
 
-/** The look, as a patch: the mode, the accent, or both at once. */
+/** How the workbench looks and reads, as a patch: the mode, the accent, the language. */
 export interface AppearancePatch {
   theme?: Theme
   accent?: Accent
+  language?: LanguageSetting
 }
 
 export interface NetworkPatch {

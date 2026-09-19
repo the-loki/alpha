@@ -1,20 +1,18 @@
-import { type ConversationSummary, type FolderNode, folderTree } from '@alpha/core'
+import { type ConversationSummary, conversationCount, type FolderNode, folderTree } from '@alpha/core'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { composerFolderOf, NO_FOLDER_PICKER, useShell } from '../stores/shell.ts'
+import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
 import { ChevronDownIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
 const STATE = {
-  idle: { dot: 'bg-line-strong', word: 'idle' },
-  running: { dot: 'bg-accent', word: 'working' },
-  waiting: { dot: 'bg-amber', word: 'waiting for you' },
+  idle: { dot: 'bg-line-strong', key: 'sidebar.idle' },
+  running: { dot: 'bg-accent', key: 'sidebar.working' },
+  waiting: { dot: 'bg-amber', key: 'sidebar.waiting' },
 } as const
-
-const plural = (count: number) => `${count} ${count === 1 ? 'conversation' : 'conversations'}`
 
 function ConversationRow({ conversation }: { conversation: ConversationSummary }) {
   const activeId = useConversations((state) => state.activeId)
@@ -23,6 +21,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
   const navigate = useNavigate()
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(conversation.title)
+  const t = useText()
   const state = STATE[conversation.status]
 
   if (renaming) {
@@ -32,7 +31,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
           // biome-ignore lint/a11y/noAutofocus: renaming is deliberate, and the field is the whole act.
           autoFocus
           value={title}
-          aria-label="Conversation title"
+          aria-label={t('sidebar.conversationTitle')}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => setRenaming(false)}
           onKeyDown={(event) => {
@@ -65,26 +64,26 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
           <span className={`h-1.5 w-1.5 rounded-full ${state.dot}`} aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1 truncate text-code">{conversation.title}</span>
-        <span className="sr-only">{state.word}</span>
+        <span className="sr-only">{t(state.key)}</span>
       </button>
       {/* Laid over the name rather than beside it: at rest the name has the whole row, and the two
           things you can do to it appear where its tail was. */}
       <span className="absolute inset-y-0 right-0 flex items-center gap-2 rounded-control bg-ink-600 pr-1.5 pl-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
         <button
           type="button"
-          aria-label={`Rename ${conversation.title}`}
+          aria-label={t('sidebar.rename', { title: conversation.title })}
           onClick={() => setRenaming(true)}
           className={TEXT_ACTION}
         >
-          Rename
+          {t('sidebar.renameAction')}
         </button>
         <button
           type="button"
-          aria-label={`Delete ${conversation.title}`}
+          aria-label={t('sidebar.delete', { title: conversation.title })}
           onClick={() => void remove(conversation.id)}
           className={DESTRUCTIVE_ACTION}
         >
-          Delete
+          {t('sidebar.deleteAction')}
         </button>
       </span>
     </li>
@@ -98,6 +97,8 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
  */
 function FolderSection({ folder, current }: { folder: FolderNode; current: boolean }) {
   const selectWorkspace = useShell((state) => state.selectWorkspace)
+  const language = useShell((state) => languageOf(state.language))
+  const t = useText()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const count = folder.conversations.length
@@ -116,7 +117,9 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
           <button
             type="button"
             aria-expanded={!collapsed}
-            aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${folder.name}`}
+            aria-label={
+              collapsed ? t('sidebar.expand', { folder: folder.name }) : t('sidebar.collapse', { folder: folder.name })
+            }
             title={folder.path}
             onClick={() => setCollapsed((value) => !value)}
             className={`flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui font-medium transition-colors hover:bg-ink-600 ${
@@ -138,14 +141,14 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
         <span className="relative flex h-5 w-6 shrink-0 items-center justify-center">
           <span
             className="font-mono text-micro text-parchment-faint transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
-            title={plural(count)}
+            title={conversationCount(language, count)}
           >
             {count}
           </span>
           <button
             type="button"
-            aria-label={`Start a conversation in ${folder.name}`}
-            title={`Start a conversation in ${folder.name}`}
+            aria-label={t('sidebar.startIn', { folder: folder.name })}
+            title={t('sidebar.startIn', { folder: folder.name })}
             onClick={() => void startHere()}
             className="absolute inset-0 grid place-items-center rounded-control text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-ink-600 hover:text-parchment"
           >
@@ -156,7 +159,7 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
 
       {!collapsed &&
         (count === 0 ? (
-          <p className="py-1 pr-2 pl-11 text-micro text-parchment-faint">No conversations yet</p>
+          <p className="py-1 pr-2 pl-11 text-micro text-parchment-faint">{t('sidebar.noConversations')}</p>
         ) : (
           <ul className="space-y-0.5">
             {folder.conversations.map((conversation) => (
@@ -206,6 +209,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
   const pickWorkspace = useShell((state) => state.pickWorkspace)
   const composerFolder = useShell(composerFolderOf)
   const modifier = platform === 'darwin' ? '⌘' : 'Ctrl+'
+  const t = useText()
   const navigate = useNavigate()
   const conversations = useConversations((state) => state.list)
   const listed = useConversations((state) => state.listed)
@@ -216,29 +220,35 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
       <div>
         <ActionRow
           icon={<PlusIcon />}
-          label="New conversation"
-          detail={composerFolder === undefined ? 'in no folder yet' : `in ${composerFolder.name}`}
+          label={t('sidebar.newConversation')}
+          detail={
+            composerFolder === undefined
+              ? t('sidebar.newConversationNowhere')
+              : t('sidebar.newConversationIn', { folder: composerFolder.name })
+          }
           hint={`${modifier}N`}
           onClick={() => void navigate({ to: '/' })}
         />
         {host === 'browser' ? (
-          <p className="px-2 py-1.5 pl-8 text-micro leading-relaxed text-parchment-faint">{NO_FOLDER_PICKER}</p>
+          <p className="px-2 py-1.5 pl-8 text-micro leading-relaxed text-parchment-faint">
+            {t('sidebar.browserNoPicker')}
+          </p>
         ) : (
-          <ActionRow icon={<FolderIcon />} label="Add a folder" onClick={() => void pickWorkspace()} />
+          <ActionRow icon={<FolderIcon />} label={t('sidebar.addFolder')} onClick={() => void pickWorkspace()} />
         )}
-        <ActionRow icon={<SearchIcon />} label="Search" hint={`${modifier}K`} onClick={onSearch} />
+        <ActionRow icon={<SearchIcon />} label={t('sidebar.search')} hint={`${modifier}K`} onClick={onSearch} />
       </div>
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="flex items-center justify-between px-2 pb-1">
-          <h2 className="text-micro font-medium tracking-wide text-parchment-faint">Folders</h2>
+          <h2 className="text-micro font-medium tracking-wide text-parchment-faint">{t('sidebar.folders')}</h2>
           <span className="font-mono text-micro text-parchment-faint">{folders.length}</span>
         </div>
 
         {folders.length === 0
           ? // One line, and only once the list has been read: before that, "nothing here" would be a
             // claim about a file nobody has opened yet.
-            listed && <p className="mt-2 px-2 text-xs text-parchment-faint">No folders yet.</p>
+            listed && <p className="mt-2 px-2 text-xs text-parchment-faint">{t('sidebar.noFolders')}</p>
           : folders.map((folder) => (
               <FolderSection key={folder.path} folder={folder} current={folder.path === composerFolder?.path} />
             ))}
@@ -251,7 +261,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
         </span>
         <Link
           to="/settings"
-          aria-label="Settings"
+          aria-label={t('settings.open')}
           className="rounded-control p-1 text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           <GearIcon />

@@ -20,6 +20,7 @@ const rule = {
 const valid = {
   theme: 'system',
   accent: 'sage',
+  language: 'zh',
   workspaceLevels: {},
   workspace: {
     selection: { kind: 'selected', workspace: { path: '/dev/alpha', name: 'alpha', lastOpenedAt: 12 } },
@@ -41,6 +42,8 @@ describe('[core] emptyPersistedState', () => {
     // A fresh install opens light, in the accent the app is named after (C5.2).
     expect(state.theme).toBe('light')
     expect(state.accent).toBe('ember')
+    // And in the language of the machine it is opened on.
+    expect(state.language).toBe('system')
     // Browser access is off until it is asked for, and it listens only to this machine (C6.1, C6.2).
     expect(state.network).toEqual({ enabled: false, port: 4123, bind: 'local', token: '' })
   })
@@ -98,6 +101,7 @@ describe('[core] parsePersistedState', () => {
       permissionRules: [],
       theme: 'light',
       accent: 'ember',
+      language: 'system',
       lastConversationId: '',
       network: emptyNetworkAccess(),
     }
@@ -142,6 +146,16 @@ describe('[core] parsePersistedState', () => {
 
   it('keeps a chosen theme', () => {
     expect(parsePersistedState({ ...valid, theme: 'light' }).theme).toBe('light')
+  })
+
+  it('follows the machine when the file predates the language choice', () => {
+    const older = { workspace: valid.workspace, permissionLevel: 'ask' }
+    expect(parsePersistedState(older).language).toBe('system')
+  })
+
+  it('keeps a chosen language', () => {
+    expect(parsePersistedState({ ...valid, language: 'en' }).language).toBe('en')
+    expect(parsePersistedState(valid).language).toBe('zh')
   })
 
   it('falls back to following the system when the theme is not one', () => {

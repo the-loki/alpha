@@ -1,11 +1,12 @@
 import { bridge } from '../lib/bridge.ts'
-import { useShell } from '../stores/shell.ts'
+import { useShell, useText } from '../stores/shell.ts'
 import { LevelChip } from './LevelChip.tsx'
 
 function WindowControls() {
   const platform = useShell((state) => state.platform)
   const host = useShell((state) => state.host)
   const maximized = useShell((state) => state.windowMaximized)
+  const t = useText()
   const client = bridge()
   // A browser has no window of ours to move, and macOS draws its own controls anyway.
   if (host === 'browser' || platform === 'darwin') return null
@@ -14,7 +15,7 @@ function WindowControls() {
     <div className="no-drag flex items-center">
       <button
         type="button"
-        aria-label="Minimize window"
+        aria-label={t('window.minimize')}
         onClick={() => void client.sendWindowCommand('minimize')}
         className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
       >
@@ -24,7 +25,7 @@ function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label={maximized ? 'Restore window' : 'Maximize window'}
+        aria-label={maximized ? t('window.restore') : t('window.maximize')}
         onClick={() => void client.sendWindowCommand('toggle-maximize')}
         className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
       >
@@ -34,7 +35,7 @@ function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label="Close window"
+        aria-label={t('window.close')}
         onClick={() => void client.sendWindowCommand('close')}
         className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
       >

@@ -23,6 +23,7 @@ async function launch(options: { dataDirectory?: string; workspace?: string; kee
         },
         recents: [{ path: workspace, name: workspace.split('/').pop(), lastOpenedAt: Date.now() }],
       },
+      language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
@@ -33,7 +34,7 @@ async function launch(options: { dataDirectory?: string; workspace?: string; kee
 
 async function start({ dataDirectory, workspace }: { dataDirectory: string; workspace: string }) {
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,

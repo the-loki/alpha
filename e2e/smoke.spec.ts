@@ -14,7 +14,7 @@ async function launchApp(
     writeFileSync(join(dataDirectory, 'workbench-state.json'), JSON.stringify(options.state), 'utf-8')
   }
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production', ...options.env },
   })
@@ -55,6 +55,7 @@ test('the remembered workspace is restored on launch', async () => {
         },
         recents: [{ path: '/tmp/alpha-e2e-workspace', name: 'alpha-e2e-workspace', lastOpenedAt: 1 }],
       },
+      language: 'en',
       permissionLevel: 'accept-edits',
     },
   })
@@ -93,6 +94,7 @@ test('every remembered folder is in the sidebar, and the next message lands in t
           { path: alpha, name: 'alpha', lastOpenedAt: 1 },
         ],
       },
+      language: 'en',
       permissionLevel: 'ask',
     },
   })

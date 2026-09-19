@@ -5,6 +5,7 @@
  */
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
+import { DEFAULT_LANGUAGE, LANGUAGE_SETTINGS, type LanguageSetting } from './i18n.ts'
 import {
   DEFAULT_LEVEL,
   isPermissionLevel,
@@ -74,6 +75,8 @@ export function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value)
 }
 
+const LanguageSchema = Type.Union(LANGUAGE_SETTINGS.map((language) => Type.Literal(language)))
+
 export const NETWORK_BINDS = ['local', 'network'] as const
 
 /** Whether the workbench is reachable from a browser, and how far that reach goes. */
@@ -119,6 +122,8 @@ const PersistedStateSchema = Type.Object({
   workspaceLevels: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   theme: Type.Optional(ThemeSchema),
   accent: Type.Optional(AccentSchema),
+  /** Absent in a file written before the interface had a second language. */
+  language: Type.Optional(LanguageSchema),
   /** The conversation that was open when the window closed, so the next launch can bring it back. */
   lastConversationId: Type.Optional(Type.String()),
   /** Browser access: absent in a file written before the workbench could be served. */
@@ -136,6 +141,8 @@ export interface PersistedState {
   /** System by default: the app follows the room it is in unless told otherwise. */
   theme: Theme
   accent: Accent
+  /** Which language the interface is written in, for every client of this workbench. */
+  language: LanguageSetting
   /** Empty when nothing was open, which is also what a launch with no history gets. */
   lastConversationId: string
   network: NetworkAccess
@@ -149,6 +156,7 @@ export function emptyPersistedState(): PersistedState {
     permissionRules: [],
     theme: DEFAULT_THEME,
     accent: 'ember',
+    language: DEFAULT_LANGUAGE,
     lastConversationId: '',
     network: emptyNetworkAccess(),
   }
@@ -175,6 +183,7 @@ export function parsePersistedState(raw: unknown): PersistedState {
     permissionRules: readRules(readRulesField(candidate)),
     theme: state.theme ?? DEFAULT_THEME,
     accent: isAccent(state.accent) ? state.accent : 'ember',
+    language: state.language ?? DEFAULT_LANGUAGE,
     lastConversationId: state.lastConversationId ?? '',
     network: readNetwork(readNetworkField(candidate)),
   }

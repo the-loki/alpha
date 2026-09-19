@@ -13,12 +13,13 @@ async function launch(dataDirectory?: string) {
     join(directory, 'workbench-state.json'),
     JSON.stringify({
       workspace: { selection: { kind: 'none' }, recents: [] },
+      language: 'en',
       permissionLevel: 'ask',
     }),
     'utf-8',
   )
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${join(directory, 'chromium')}`],
+    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(directory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: { ...process.env, ALPHA_DATA_DIR: directory, NODE_ENV: 'production' },
   })

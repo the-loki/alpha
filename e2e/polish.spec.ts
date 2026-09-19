@@ -22,13 +22,14 @@ async function launch(options: { replies?: unknown[]; slow?: boolean; dataDirect
         },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      language: 'en',
       permissionLevel: options.level ?? 'full-access',
     }),
     'utf-8',
   )
 
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,
@@ -224,7 +225,7 @@ test('a fresh workbench opens light, and the dark palette is one click away', as
   // screen wherever the switch is made — the sidebar is not, since settings takes the window.
   const page = () => window.evaluate(() => getComputedStyle(document.body).backgroundColor)
   const paintedLight = await page()
-  await window.getByRole('button', { name: 'Dark' }).click()
+  await window.getByRole('region', { name: 'Theme' }).getByRole('button', { name: 'Dark' }).click()
   await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
   // The palette repaints rather than switching instantly, so the capture waits for the page to
   // actually be ink-coloured instead of catching the switch halfway.
@@ -244,7 +245,9 @@ test('a fresh workbench opens light, and the dark palette is one click away', as
   await window.screenshot({ path: join(SHOT_DIR, 'theme-dark.png') })
 
   await openAppearance(window)
-  await window.getByRole('button', { name: 'Follow the system' }).click()
+  // Scoped to the theme section: "Follow the system" is also the language section's first choice,
+  // and the two are different questions.
+  await window.getByRole('region', { name: 'Theme' }).getByRole('button', { name: 'Follow the system' }).click()
   // Whatever the machine says, the mode is resolved to one of the two palettes rather than a
   // third one: `system` is a choice about which palette, not a palette of its own.
   await expect(window.locator('html')).toHaveAttribute('data-theme', /^(light|dark)$/)
@@ -271,7 +274,7 @@ test('the accent is a choice, and it is painted on both palettes', async () => {
 
   // The same accent is a different colour on the other palette: each one is measured against both,
   // so a choice made in one mode is still legible when the mode changes.
-  await window.getByRole('button', { name: 'Dark' }).click()
+  await window.getByRole('region', { name: 'Theme' }).getByRole('button', { name: 'Dark' }).click()
   await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
   expect(await accent()).not.toBe(emberLight)
 

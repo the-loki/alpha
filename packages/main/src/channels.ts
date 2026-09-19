@@ -15,6 +15,7 @@ import {
   defaultLevelFor,
   type IPC,
   isAccent,
+  isLanguageSetting,
   isNetworkBind,
   isPermissionLevel,
   isPortNumber,
@@ -236,12 +237,13 @@ export function launchState(store: StateStore, runtime: RuntimeManager): LaunchS
     workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
     theme: store.read().theme,
     accent: store.read().accent,
+    language: store.read().language,
     model: runtime.modelStatus(),
     lastConversationId: store.read().lastConversationId,
   }
 }
 
-/** The look: the mode, the accent, or both. Either field may be left out. */
+/** How it looks and reads: the mode, the accent, the language. Any field may be left out. */
 export function readAppearancePatch(input: unknown): AppearancePatch {
   if (typeof input !== 'object' || input === null) throw new Error('an appearance patch is required')
   const record = input as Record<string, unknown>
@@ -253,6 +255,10 @@ export function readAppearancePatch(input: unknown): AppearancePatch {
   if (record.accent !== undefined) {
     if (!isAccent(record.accent)) throw new Error('accent must be one of the palettes this app ships')
     patch.accent = record.accent
+  }
+  if (record.language !== undefined) {
+    if (!isLanguageSetting(record.language)) throw new Error('language must be system, en or zh')
+    patch.language = record.language
   }
   return patch
 }

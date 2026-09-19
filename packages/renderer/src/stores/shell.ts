@@ -2,16 +2,24 @@ import {
   type Accent,
   type AppearancePatch,
   composerFolder,
+  DEFAULT_LANGUAGE,
   DEFAULT_LEVEL,
   DEFAULT_THEME,
   emptyWorkspaceState,
+  type Language,
+  type LanguageSetting,
   type LaunchState,
   type PermissionLevel,
+  resolveLanguage,
+  type TextKey,
+  type TextParams,
   type Theme,
+  text,
   type Undef,
   type WorkspaceRef,
   type WorkspaceSelection,
 } from '@alpha/core'
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { bridge, type ClientHost, clientHost } from '../lib/bridge.ts'
 import { Unauthorized, unlock as unlockTransport, watchRefusals } from '../lib/network-bridge.ts'
@@ -28,6 +36,8 @@ export interface ShellStore {
   theme: Theme
   /** Which accent palette the workbench is drawn in. */
   accent: Accent
+  /** Which language the interface is written in: a setting, which `system` leaves to the client. */
+  language: LanguageSetting
   model: LaunchState['model']
   /** The conversation to come back to on launch, empty when there is none. */
   lastConversationId: string
@@ -58,6 +68,7 @@ export const composerFolderOf = (state: ShellStore): Undef<WorkspaceRef> =>
 
 const applyLaunchState = (state: LaunchState) => ({
   accent: state.accent,
+  language: state.language,
   ready: true,
   appVersion: state.appVersion,
   platform: state.platform,
@@ -88,8 +99,21 @@ function systemMode(): 'light' | 'dark' {
   return globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches === true ? 'dark' : 'light'
 }
 
-/** Where the desktop offers a native folder dialog, a browser has nothing to offer instead. */
-export const NO_FOLDER_PICKER = 'A folder can only be added in the desktop app.'
+/**
+ * The interface's words, in the language this client is showing. `system` is resolved per client
+ * rather than per workbench: the desktop window and a browser on the other side of the room are
+ * not necessarily in the same language, and each of them is reading for itself.
+ */
+export function useText(): (key: TextKey, params?: TextParams) => string {
+  const setting = useShell((state) => state.language)
+  const language = languageOf(setting)
+  return useMemo(() => (key: TextKey, params?: TextParams) => text(language, key, params), [language])
+}
+
+/** Which of the two languages this client reads a setting as. */
+export function languageOf(setting: LanguageSetting): Language {
+  return resolveLanguage(setting, globalThis.navigator?.language ?? '')
+}
 
 export const useShell = create<ShellStore>((set, get) => ({
   ready: false,
@@ -101,7 +125,8 @@ export const useShell = create<ShellStore>((set, get) => ({
   workspaceLevel: DEFAULT_LEVEL,
   theme: DEFAULT_THEME,
   accent: 'ember',
-  model: { configured: false, description: '' },
+  language: DEFAULT_LANGUAGE,
+  model: { kind: 'none' },
   lastConversationId: '',
   windowMaximized: false,
   host: 'desktop',

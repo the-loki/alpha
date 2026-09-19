@@ -26,8 +26,10 @@ export function RememberedRules() {
   }
 
   return (
-    <section>
-      <h2 className="text-body font-medium text-parchment">Remembered approvals</h2>
+    <section aria-labelledby="settings-rules">
+      <h2 id="settings-rules" className="text-body font-medium text-parchment">
+        Remembered approvals
+      </h2>
       <p className="mt-1 text-xs text-parchment-dim">
         {rules.length === 0
           ? 'Nothing is remembered yet. "Always allow" on a card adds a rule here.'

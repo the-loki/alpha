@@ -9,8 +9,10 @@ export function PermissionSection() {
   const setPermissionLevel = useShell((state) => state.setPermissionLevel)
 
   return (
-    <section>
-      <h2 className="text-body font-medium text-parchment">Default permission level</h2>
+    <section aria-labelledby="settings-level">
+      <h2 id="settings-level" className="text-body font-medium text-parchment">
+        Default permission level
+      </h2>
       <p className="mt-1 text-xs text-parchment-dim">
         New conversations in this workspace start here. An open conversation keeps its own level — change that from the
         chip in the header.
