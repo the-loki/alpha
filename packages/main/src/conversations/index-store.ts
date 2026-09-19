@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  archiveConversation,
   type ConversationIndex,
   type ConversationSummary,
   emptyConversationIndex,
@@ -14,6 +15,7 @@ import {
   parseConversationIndex,
   removeConversation,
   type Undef,
+  unarchiveConversation,
   upsertConversation,
 } from '@alpha/core'
 
@@ -46,6 +48,17 @@ export class ConversationIndexStore {
 
   remove(id: string): void {
     this.#index = removeConversation(this.#index, id)
+    this.#flush()
+  }
+
+  /** Putting it away, and taking it back out: the file is the only place the state lives. */
+  archive(id: string, at: number): void {
+    this.#index = archiveConversation(this.#index, id, at)
+    this.#flush()
+  }
+
+  unarchive(id: string): void {
+    this.#index = unarchiveConversation(this.#index, id)
     this.#flush()
   }
 

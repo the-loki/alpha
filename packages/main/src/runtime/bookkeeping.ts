@@ -89,6 +89,20 @@ export class ConversationBookkeeper {
     return this.#update(conversation, { title: title.trim() })
   }
 
+  /** Putting a conversation away. Which section it lands in is the window's business (#79). */
+  archive(id: string, at: number): ConversationSummary {
+    return this.update(id, { archivedAt: at })
+  }
+
+  /**
+   * Taking it back out. The key is removed rather than set to `undefined` — absent is how "not
+   * archived" is spelled — and `update` with nothing to change is what re-reads and announces it.
+   */
+  unarchive(id: string): ConversationSummary {
+    this.#store.unarchive(id)
+    return this.update(id, {})
+  }
+
   /** What the runtime said, before the window hears it. */
   observe(event: RuntimeEvent): void {
     const conversation = this.#store.find(event.conversationId)
@@ -102,6 +116,10 @@ export class ConversationBookkeeper {
       this.#named.add(event.conversationId)
       this.#update(conversation, { title: titleFromMessage(text) })
     }
+
+    // A message means it is in use again, so it leaves the archived section (#79). After the
+    // rename above, so the title and the unarchiving are not two answers about the same summary.
+    if (event.type === 'user_message' && conversation.archivedAt !== undefined) this.unarchive(conversation.id)
 
     if (event.type === 'turn_started') this.#update(conversation, { status: 'running' })
     // Waiting on a person is neither working nor finished, and the sidebar says which it is.

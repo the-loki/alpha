@@ -47,6 +47,14 @@ is a sequence of turns.
 One user-visible unit in a conversation: what the user typed, what the model produced, or what a
 tool returned. Messages are the only thing the transcript stores.
 
+### Archived Conversation
+
+A conversation that has been put away: it keeps its transcript and stays usable, and it lives in
+the archived section rather than in its folder. Sending it a message takes it back out — the state
+is one flag on the conversation's entry in the list, never a change to the transcript. A
+conversation that is working, or waiting on an answer, is not archived: the card asking for that
+answer lives inside it. Avoid: *closed*, *deleted* (deleting is the other action, and it is final).
+
 ### Queued Message
 
 What the user typed while the agent was working and meant to send *after* it: it waits in the

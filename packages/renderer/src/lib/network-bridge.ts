@@ -261,6 +261,8 @@ export function networkBridge(): AlphaBridge {
       invoke('editMessage', [conversationId, userMessageIndex, text, effect]) as Promise<OpenedConversation>,
     renameConversation: (id: string, title: string) =>
       invoke('renameConversation', [id, title]) as Promise<ConversationSummary>,
+    archiveConversation: (id: string) => invoke('archiveConversation', [id]) as Promise<ConversationSummary[]>,
+    unarchiveConversation: (id: string) => invoke('unarchiveConversation', [id]) as Promise<ConversationSummary[]>,
     deleteConversation: (id: string) => invoke('deleteConversation', [id]) as Promise<ConversationSummary[]>,
     exportConversation: (id: string) => invoke('exportConversation', [id]) as Promise<{ path: string }>,
     permissionRules: () => invoke('permissionRules', []) as Promise<PermissionRule[]>,

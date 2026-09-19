@@ -83,6 +83,10 @@ const bridge: AlphaBridge = {
     ipcRenderer.invoke(IPC.editMessage, conversationId, userMessageIndex, text, effect) as Promise<OpenedConversation>,
   renameConversation: (id: string, title: string) =>
     ipcRenderer.invoke(IPC.renameConversation, id, title) as Promise<ConversationSummary>,
+  archiveConversation: (id: string) =>
+    ipcRenderer.invoke(IPC.archiveConversation, id) as Promise<ConversationSummary[]>,
+  unarchiveConversation: (id: string) =>
+    ipcRenderer.invoke(IPC.unarchiveConversation, id) as Promise<ConversationSummary[]>,
   deleteConversation: (id: string) => ipcRenderer.invoke(IPC.deleteConversation, id) as Promise<ConversationSummary[]>,
   exportConversation: (id: string) => ipcRenderer.invoke(IPC.exportConversation, id) as Promise<{ path: string }>,
   permissionRules: () => ipcRenderer.invoke(IPC.permissionRules) as Promise<PermissionRule[]>,

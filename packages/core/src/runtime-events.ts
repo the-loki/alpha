@@ -138,6 +138,12 @@ export interface ConversationSummary {
   /** Empty strings mean no model has been chosen yet, which the composer reports. */
   model: ConversationModel
   thinkingLevel: ThinkingLevel
+  /**
+   * When it was put away, or absent for one that is in the list. An archived conversation is out
+   * of the tree and in the archived section, works like any other, and comes back the moment a
+   * message is sent to it (ticket #79).
+   */
+  archivedAt?: number
 }
 
 export type RuntimeEvent =

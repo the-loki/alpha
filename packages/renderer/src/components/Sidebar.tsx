@@ -1,94 +1,24 @@
-import { type ConversationSummary, conversationCount, type FolderNode, folderTree } from '@alpha/core'
+import {
+  archivedConversations,
+  type ConversationSummary,
+  conversationCount,
+  type FolderNode,
+  folderName,
+  folderTree,
+} from '@alpha/core'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { ConversationRow } from './ConversationRow.tsx'
 import { ChevronDownIcon, FolderIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
 
-/** The three states a conversation can be in, told apart by colour and by a word. */
-const STATE = {
-  idle: { dot: 'bg-line-strong', key: 'sidebar.idle' },
-  running: { dot: 'bg-accent', key: 'sidebar.working' },
-  waiting: { dot: 'bg-amber', key: 'sidebar.waiting' },
-} as const
-
-function ConversationRow({ conversation }: { conversation: ConversationSummary }) {
-  const activeId = useConversations((state) => state.activeId)
-  const rename = useConversations((state) => state.rename)
-  const remove = useConversations((state) => state.remove)
-  const navigate = useNavigate()
-  const [renaming, setRenaming] = useState(false)
-  const [title, setTitle] = useState(conversation.title)
-  const t = useText()
-  const state = STATE[conversation.status]
-
-  if (renaming) {
-    return (
-      <li className="px-1 py-0.5">
-        <input
-          // biome-ignore lint/a11y/noAutofocus: renaming is deliberate, and the field is the whole act.
-          autoFocus
-          value={title}
-          aria-label={t('sidebar.conversationTitle')}
-          onChange={(event) => setTitle(event.target.value)}
-          onBlur={() => setRenaming(false)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') setRenaming(false)
-            if (event.key !== 'Enter') return
-            const next = title.trim()
-            setRenaming(false)
-            if (next !== '' && next !== conversation.title) void rename(conversation.id, next)
-          }}
-          className="w-full rounded-control border border-line-strong bg-ink-900 px-2 py-1 text-code text-parchment focus:outline-none"
-        />
-      </li>
-    )
-  }
-
-  return (
-    <li className="group relative flex items-center">
-      {/* The row is the conversation's name and nothing else: an age here cost the name half its
-          width, and the list is already ordered by what was touched last. The age is in the
-          conversation's own header, where there is room for it. */}
-      <button
-        type="button"
-        onClick={() => void navigate({ to: '/c/$conversationId', params: { conversationId: conversation.id } })}
-        aria-current={conversation.id === activeId}
-        className={`flex min-w-0 flex-1 items-center gap-2 rounded-control py-1.5 pr-2 pl-5 text-left transition-colors ${
-          conversation.id === activeId ? 'bg-ink-600 text-parchment' : 'text-parchment-dim hover:bg-ink-600'
-        }`}
-      >
-        <span className="flex w-4 shrink-0 justify-center">
-          <span className={`h-1.5 w-1.5 rounded-full ${state.dot}`} aria-hidden="true" />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-code">{conversation.title}</span>
-        <span className="sr-only">{t(state.key)}</span>
-      </button>
-      {/* Laid over the name rather than beside it: at rest the name has the whole row, and the two
-          things you can do to it appear where its tail was. */}
-      <span className="absolute inset-y-0 right-0 flex items-center gap-2 rounded-control bg-ink-600 pr-1.5 pl-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-        <button
-          type="button"
-          aria-label={t('sidebar.rename', { title: conversation.title })}
-          onClick={() => setRenaming(true)}
-          className={TEXT_ACTION}
-        >
-          {t('sidebar.renameAction')}
-        </button>
-        <button
-          type="button"
-          aria-label={t('sidebar.delete', { title: conversation.title })}
-          onClick={() => void remove(conversation.id)}
-          className={DESTRUCTIVE_ACTION}
-        >
-          {t('sidebar.deleteAction')}
-        </button>
-      </span>
-    </li>
-  )
-}
+/**
+ * How many rows a list shows before it offers the rest. A rail is for scanning, not for scrolling,
+ * and the command palette reads the whole list — so nothing folded away here is lost (ticket #86).
+ */
+const SHOWN = 8
 
 /**
  * One folder and everything asked in it. The sidebar shows every folder the workbench knows at
@@ -161,12 +91,96 @@ function FolderSection({ folder, current }: { folder: FolderNode; current: boole
         (count === 0 ? (
           <p className="py-1 pr-2 pl-11 text-micro text-parchment-faint">{t('sidebar.noConversations')}</p>
         ) : (
+          <ConversationList conversations={folder.conversations} />
+        ))}
+    </section>
+  )
+}
+
+/**
+ * A folder's conversations, newest first, eight of them at a time. The rest are one click away
+ * rather than gone: this is a list for glancing at, and the palette is the one for finding things.
+ * The expanded state lives no longer than the window, like every other fold in the rail.
+ */
+function ConversationList({ conversations }: { conversations: ConversationSummary[] }) {
+  const t = useText()
+  const [all, setAll] = useState(false)
+  const shown = all ? conversations : conversations.slice(0, SHOWN)
+  const hidden = conversations.length - shown.length
+
+  return (
+    <>
+      <ul className="space-y-0.5">
+        {shown.map((conversation) => (
+          <ConversationRow key={conversation.id} conversation={conversation} />
+        ))}
+      </ul>
+      {(hidden > 0 || all) && (
+        <button
+          type="button"
+          onClick={() => setAll((value) => !value)}
+          aria-label={all ? t('sidebar.showFewer') : t('sidebar.showAll', { count: conversations.length })}
+          className="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
+        >
+          {all ? t('sidebar.showFewer') : t('sidebar.more', { count: hidden })}
+        </button>
+      )}
+    </>
+  )
+}
+
+/**
+ * What was put away, across every folder (ticket #79). It is a section of its own rather than a
+ * fold inside each folder: archiving is meant to get something out of the way, and a tail on every
+ * folder would be more of the thing the user just tidied. Sending a message brings one back.
+ */
+function ArchivedSection({ conversations }: { conversations: ConversationSummary[] }) {
+  const t = useText()
+  const [open, setOpen] = useState(false)
+  const [all, setAll] = useState(false)
+  if (conversations.length === 0) return null
+
+  const shown = all ? conversations : conversations.slice(0, SHOWN)
+  const hidden = conversations.length - shown.length
+
+  return (
+    <section className="mt-2 border-t border-line/70 pt-1">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={open ? t('sidebar.collapseArchived') : t('sidebar.expandArchived')}
+        title={t('sidebar.archivedHint')}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui font-medium text-parchment-dim transition-colors hover:bg-ink-600"
+      >
+        <ChevronDownIcon className={`transition-transform ${open ? '' : '-rotate-90'}`} />
+        <span className="ml-1 min-w-0 flex-1 truncate">{t('sidebar.archived')}</span>
+        <span className="font-mono text-micro text-parchment-faint">{conversations.length}</span>
+      </button>
+      {open && (
+        <>
           <ul className="space-y-0.5">
-            {folder.conversations.map((conversation) => (
-              <ConversationRow key={conversation.id} conversation={conversation} />
+            {shown.map((conversation) => (
+              <ConversationRow
+                key={conversation.id}
+                conversation={conversation}
+                detail={folderName(conversation.workspacePath)}
+                archived
+              />
             ))}
           </ul>
-        ))}
+          {hidden > 0 && (
+            <button
+              type="button"
+              onClick={() => setAll(true)}
+              aria-label={t('sidebar.showAll', { count: conversations.length })}
+              className="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
+            >
+              {t('sidebar.more', { count: hidden })}
+            </button>
+          )}
+        </>
+      )}
     </section>
   )
 }
@@ -252,6 +266,8 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
           : folders.map((folder) => (
               <FolderSection key={folder.path} folder={folder} current={folder.path === composerFolder?.path} />
             ))}
+
+        <ArchivedSection conversations={archivedConversations(conversations)} />
       </div>
 
       {/* What this window is, at the bottom: the same place the reference puts the account row. */}

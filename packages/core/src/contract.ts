@@ -55,6 +55,8 @@ export const IPC = {
   regenerate: 'alpha:regenerate',
   editMessage: 'alpha:edit-message',
   renameConversation: 'alpha:rename-conversation',
+  archiveConversation: 'alpha:archive-conversation',
+  unarchiveConversation: 'alpha:unarchive-conversation',
   deleteConversation: 'alpha:delete-conversation',
   exportConversation: 'alpha:export-conversation',
   permissionRules: 'alpha:permission-rules',
@@ -81,6 +83,8 @@ export interface LaunchState {
   permissionLevel: PermissionLevel
   /** What this workspace's new conversations start at, which may differ from the general default. */
   workspaceLevel: PermissionLevel
+  /** Per-folder defaults, so the window can say what a new conversation in a folder starts at. */
+  workspaceLevels: Record<string, PermissionLevel>
   theme: Theme
   accent: Accent
   /** Which language this workbench's interface is written in. */
@@ -206,6 +210,9 @@ export interface AlphaBridge {
     effect: EditEffect,
   ): Promise<OpenedConversation>
   renameConversation(id: string, title: string): Promise<ConversationSummary>
+  /** Puts it away, or takes it back out; both answer with the list the sidebar should draw. */
+  archiveConversation(id: string): Promise<ConversationSummary[]>
+  unarchiveConversation(id: string): Promise<ConversationSummary[]>
   /** Removes the conversation and its transcript from disk. */
   deleteConversation(id: string): Promise<ConversationSummary[]>
   /** Writes a markdown file next to the workspace and answers with where it went. */

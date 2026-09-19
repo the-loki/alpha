@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  archiveConversation,
+  archivedConversations,
   emptyConversationIndex,
   findConversation,
   folderTree,
   listForWorkspace,
   parseConversationIndex,
   removeConversation,
+  unarchiveConversation,
   upsertConversation,
 } from './conversation-index.ts'
 import type { ConversationSummary } from './runtime-events.ts'
@@ -134,5 +137,41 @@ describe('[core] folderTree', () => {
 
   it('has nothing to show when there are no folders and no conversations', () => {
     expect(folderTree([], [])).toEqual([])
+  })
+})
+
+describe('[core] archiving', () => {
+  it('sets a timestamp and takes it away again, leaving the rest alone', () => {
+    const archived = archiveConversation(index, 'a', 1234)
+    expect(findConversation(archived, 'a')?.archivedAt).toBe(1234)
+    expect(findConversation(archived, 'b')).toEqual(findConversation(index, 'b'))
+
+    const back = unarchiveConversation(archived, 'a')
+    expect(findConversation(back, 'a')?.archivedAt).toBeUndefined()
+    expect(back.conversations).toHaveLength(2)
+  })
+
+  it('does nothing to a conversation that is not there', () => {
+    expect(archiveConversation(index, 'nope', 1).conversations).toEqual(index.conversations)
+    expect(unarchiveConversation(index, 'nope').conversations).toEqual(index.conversations)
+  })
+
+  it('reads an index written before archiving existed', () => {
+    const before = { version: 1, conversations: [{ ...conversation('a', '/dev/alpha', 10) }] }
+    expect(parseConversationIndex(before).conversations).toHaveLength(1)
+  })
+
+  it('keeps an archived conversation out of the tree, and out of what made the folder recent', () => {
+    const archived = archiveConversation(index, 'b', 99)
+    const tree = folderTree([folder('/dev/alpha', 1)], archived.conversations)
+    expect(tree.map((node) => node.path)).toEqual(['/dev/alpha'])
+    expect(tree[0].conversations.map((entry) => entry.id)).toEqual(['a'])
+    expect(tree[0].lastActiveAt).toBe(10)
+  })
+
+  it('answers with the archived ones, newest first', () => {
+    const both = archiveConversation(archiveConversation(index, 'a', 5), 'b', 9)
+    expect(archivedConversations(both.conversations).map((entry) => entry.id)).toEqual(['b', 'a'])
+    expect(archivedConversations(index.conversations)).toEqual([])
   })
 })

@@ -23,6 +23,10 @@ const ConversationSummarySchema = Type.Object({
   permissionLevel: Type.Union(PERMISSION_LEVELS.map((level) => Type.Literal(level))),
   model: Type.Object({ providerId: Type.String(), modelId: Type.String() }),
   thinkingLevel: Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level))),
+  // Absent means not archived, and it is optional on purpose: a required field would fail the
+  // whole index on the first launch after an upgrade and empty the sidebar (ADR-0011's sibling
+  // decision, ticket #79).
+  archivedAt: Type.Optional(Type.Number()),
 })
 
 const ConversationIndexSchema = Type.Object({
@@ -70,6 +74,10 @@ export interface FolderNode {
  * has conversations, so a folder the workbench has forgotten — the recent list is short — does not
  * take its conversations with it. Grouping is by path, not by name, because two folders can share
  * a name and merging them would be a lie.
+ *
+ * Archived conversations are not here: they are a section of their own (see
+ * `archivedConversations`), and a folder is not "recently active" because something in it was put
+ * away.
  */
 export function folderTree(recents: WorkspaceRef[], conversations: ConversationSummary[]): FolderNode[] {
   const folders = new Map<string, FolderNode>()
@@ -83,6 +91,7 @@ export function folderTree(recents: WorkspaceRef[], conversations: ConversationS
   }
 
   for (const conversation of conversations) {
+    if (conversation.archivedAt !== undefined) continue
     const existing = folders.get(conversation.workspacePath)
     const folder: FolderNode = existing ?? {
       path: conversation.workspacePath,
@@ -101,6 +110,43 @@ export function folderTree(recents: WorkspaceRef[], conversations: ConversationS
       conversations: [...folder.conversations].sort((left, right) => right.updatedAt - left.updatedAt),
     }))
     .sort((left, right) => right.lastActiveAt - left.lastActiveAt || left.name.localeCompare(right.name))
+}
+
+/** Everything put away, newest first: the sidebar's archived section, across every folder. */
+export function archivedConversations(conversations: ConversationSummary[]): ConversationSummary[] {
+  return conversations
+    .filter((conversation) => conversation.archivedAt !== undefined)
+    .sort((left, right) => right.updatedAt - left.updatedAt)
+}
+
+/**
+ * A conversation that is working, or waiting on an approval, is not offered for archiving: the
+ * card asking for an answer lives inside its transcript, and folding that away would hide the one
+ * thing that needs a person (ticket #79).
+ */
+export function canArchive(conversation: ConversationSummary): boolean {
+  return conversation.status === 'idle'
+}
+
+export function archiveConversation(index: ConversationIndex, id: string, at: number): ConversationIndex {
+  return mapConversation(index, id, (conversation) => ({ ...conversation, archivedAt: at }))
+}
+
+export function unarchiveConversation(index: ConversationIndex, id: string): ConversationIndex {
+  return mapConversation(index, id, ({ archivedAt: _archived, ...conversation }) => conversation)
+}
+
+function mapConversation(
+  index: ConversationIndex,
+  id: string,
+  change: (conversation: ConversationSummary) => ConversationSummary,
+): ConversationIndex {
+  return {
+    version: 1,
+    conversations: index.conversations.map((conversation) =>
+      conversation.id === id ? change(conversation) : conversation,
+    ),
+  }
 }
 
 export function upsertConversation(index: ConversationIndex, conversation: ConversationSummary): ConversationIndex {

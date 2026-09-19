@@ -41,6 +41,9 @@ export interface ConversationStore {
   regenerate: () => Promise<void>
   editMessage: (userMessageIndex: number, text: string, effect: EditEffect) => Promise<void>
   rename: (id: string, title: string) => Promise<void>
+  /** Putting a conversation away, and taking it back out: the list answers either way (#79). */
+  archive: (id: string) => Promise<void>
+  unarchive: (id: string) => Promise<void>
   remove: (id: string) => Promise<void>
   exportMarkdown: (id: string) => Promise<string>
   /** Bumped when a card is answered, so the composer can take the focus back. */
@@ -163,6 +166,14 @@ export const useConversations = create<ConversationStore>((set, get) => ({
 
   rename: async (id, title) => {
     await bridge().renameConversation(id, title)
+  },
+
+  archive: async (id) => {
+    set({ list: await bridge().archiveConversation(id) })
+  },
+
+  unarchive: async (id) => {
+    set({ list: await bridge().unarchiveConversation(id) })
   },
 
   remove: async (id) => {

@@ -10,6 +10,7 @@
 import {
   type ChatMessage,
   type ConversationSummary,
+  canArchive,
   DEFAULT_THINKING_LEVEL,
   defaultLevelFor,
   type EditEffect,
@@ -179,6 +180,22 @@ export class RuntimeManager {
 
   rename(id: string, title: string): ConversationSummary {
     return this.#books.rename(id, title)
+  }
+
+  /**
+   * Archiving is refused for a conversation that is working or waiting on an approval: the card
+   * asking for an answer is inside its transcript, and folding that away hides the one thing that
+   * needs a person (ticket #79). The window greys the action out for the same reason.
+   */
+  archive(id: string): ConversationSummary[] {
+    const conversation = this.#requireConversation(id)
+    if (canArchive(conversation)) this.#books.archive(id, Date.now())
+    return this.list()
+  }
+
+  unarchive(id: string): ConversationSummary[] {
+    this.#books.unarchive(id)
+    return this.list()
   }
 
   /**

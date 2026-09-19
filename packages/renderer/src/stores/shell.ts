@@ -33,6 +33,8 @@ export interface ShellStore {
   permissionLevel: PermissionLevel
   /** What this workspace's new conversations start at. */
   workspaceLevel: PermissionLevel
+  /** The per-folder defaults behind that, for a folder that is not the selected one. */
+  workspaceLevels: Record<string, PermissionLevel>
   theme: Theme
   /** Which accent palette the workbench is drawn in. */
   accent: Accent
@@ -76,6 +78,7 @@ const applyLaunchState = (state: LaunchState) => ({
   recents: state.recents,
   permissionLevel: state.permissionLevel,
   workspaceLevel: state.workspaceLevel,
+  workspaceLevels: state.workspaceLevels,
   theme: state.theme,
   model: state.model,
   lastConversationId: state.lastConversationId,
@@ -123,6 +126,7 @@ export const useShell = create<ShellStore>((set, get) => ({
   recents: [],
   permissionLevel: DEFAULT_LEVEL,
   workspaceLevel: DEFAULT_LEVEL,
+  workspaceLevels: {},
   theme: DEFAULT_THEME,
   accent: 'ember',
   language: DEFAULT_LANGUAGE,

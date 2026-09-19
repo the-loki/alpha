@@ -151,6 +151,8 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   renameConversation: ({ runtime }, args) =>
     runtime.rename(requireString(args[0], 'conversationId'), requireString(args[1], 'title')),
 
+  archiveConversation: ({ runtime }, args) => runtime.archive(requireString(args[0], 'conversationId')),
+  unarchiveConversation: ({ runtime }, args) => runtime.unarchive(requireString(args[0], 'conversationId')),
   deleteConversation: ({ runtime }, args) => runtime.remove(requireString(args[0], 'conversationId')),
 
   exportConversation: ({ runtime }, args) => runtime.exportMarkdown(requireString(args[0], 'conversationId')),
@@ -235,6 +237,7 @@ export function launchState(store: StateStore, runtime: RuntimeManager): LaunchS
     recents: store.read().workspace.recents,
     permissionLevel: store.read().permissionLevel,
     workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
+    workspaceLevels: store.read().workspaceLevels,
     theme: store.read().theme,
     accent: store.read().accent,
     language: store.read().language,

@@ -93,7 +93,10 @@ test('a renamed conversation keeps its name across a relaunch', async () => {
   await ask(first.window, 'rename me')
   await expect(first.window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
 
-  await first.window.getByRole('button', { name: 'Rename rename me' }).click()
+  // Renaming lives behind the row's menu since #80: one `⋯` instead of words painted over the name.
+  await first.window.getByRole('button', { name: /^rename me/ }).hover()
+  await first.window.getByRole('button', { name: 'Actions for rename me' }).click()
+  await first.window.getByRole('menuitem', { name: 'Rename' }).click()
   const field = first.window.getByRole('textbox', { name: 'Conversation title' })
   await field.fill('The parser rewrite')
   await field.press('Enter')
@@ -142,7 +145,9 @@ test('deleting a conversation takes its transcript off the disk', async () => {
   await expect(window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
   expect(sessionsHaveTranscripts(dataDirectory)).toBe(true)
 
-  await window.getByRole('button', { name: 'Delete this will be deleted' }).click()
+  await window.getByRole('button', { name: /this will be deleted/ }).first().hover()
+  await window.getByRole('button', { name: 'Actions for this will be deleted' }).click()
+  await window.getByRole('menuitem', { name: 'Delete' }).click()
 
   await expect(window.getByRole('button', { name: /this will be deleted/ })).toHaveCount(0)
   // The folder stays where it was in the sidebar — it is still a folder the workbench works in —

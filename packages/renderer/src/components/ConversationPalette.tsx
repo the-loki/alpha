@@ -19,7 +19,11 @@ const matches = (conversations: ConversationSummary[], query: string): Conversat
  * list of the ones there are, typed into it filters them, arrows move, Enter opens, Escape leaves.
  */
 export function ConversationPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const conversations = useConversations((state) => state.list)
+  // Archived conversations are not offered here: this is the list of what you are working on, and
+  // the palette shows eight at a time — an archived one would push a live one out (ticket #79).
+  const conversations = useConversations((state) => state.list).filter(
+    (conversation) => conversation.archivedAt === undefined,
+  )
   const t = useText()
   const openConversation = useConversations((state) => state.open)
   const navigate = useNavigate()

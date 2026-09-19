@@ -118,6 +118,14 @@ export const StopIcon = (props: IconProps) => (
   </Glyph>
 )
 
+export const MoreIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+  </Glyph>
+)
+
 export const BranchIcon = (props: IconProps) => (
   <Glyph {...props}>
     <circle cx="4.5" cy="4" r="1.6" />
