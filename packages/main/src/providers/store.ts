@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import {
   type ConversationModel,
   defaultModelOf,
+  effectiveModelOf,
   emptyProviderIndex,
   type ProviderIndex,
   type ProviderModelDefinition,
@@ -57,8 +58,14 @@ export class ProviderStore {
     this.save({ ...provider, models })
   }
 
-  defaultModel(): Undef<ConversationModel> {
+  /** What the user chose, which may be nothing: the models panel shows this one as selected. */
+  chosenModel(): Undef<ConversationModel> {
     return defaultModelOf(this.#index)
+  }
+
+  /** What a new conversation actually starts on: the choice, or the first model there is. */
+  effectiveModel(): Undef<ConversationModel> {
+    return effectiveModelOf(this.#index)
   }
 
   setDefaultModel(chosen: Undef<ConversationModel>): void {

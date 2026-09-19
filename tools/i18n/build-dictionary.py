@@ -281,14 +281,21 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('unlock.opening', 'Opening…', '正在进入…'),
 
     ('header.tokens', 'Tokens and cost for this conversation', '本会话的 token 与花费'),
-    ('header.model', 'Model', '模型'),
     ('header.thinking', 'Thinking effort', '思考强度'),
-    ('header.noProvider', 'No provider configured', '没有配置供应商'),
     ('header.export', 'Export', '导出'),
     ('header.delete', 'Delete', '删除'),
     ('header.exportedTo', 'Exported to {path}', '已导出到 {path}'),
     ('header.updated', 'updated {age}', '更新于 {age}'),
 
+    ('model.chipTitleHere', 'This conversation runs on {model}. Click to change it.', '这个会话使用 {model}。点击更换。'),
+    (
+        'model.chipTitleDefault',
+        'New conversations start on {model}. Click to change it.',
+        '新会话默认使用 {model}。点击更换。',
+    ),
+    ('model.menuLabel', 'The model this runs on', '使用的模型'),
+    ('model.none', 'No model', '没有模型'),
+    ('model.noneHint', 'Add a provider and its models in Settings, then choose one here.', '先在设置里添加供应商和它的模型，然后在这里选一个。'),
     ('message.copy', 'Copy', '复制'),
     ('message.copied', 'Copied', '已复制'),
     ('message.copyFailed', 'Copy failed', '复制失败'),

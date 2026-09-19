@@ -7,6 +7,7 @@ import { AttachButton, AttachmentNote, PendingAttachments } from './Attachments.
 import { OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
+import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
 
 /**
@@ -71,6 +72,8 @@ function ComposerFoot({
       <AttachButton onPicked={onPicked} />
       <LevelChip />
       <span className="flex-1" />
+      {/* The right end of the foot, where the message is sent from: what it is about to run on. */}
+      <ModelChip />
       {running ? (
         <RunningActions canRedirect={canRedirect} onStop={onStop} onRedirect={onRedirect} />
       ) : (

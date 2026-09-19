@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   credentialRequirement,
   defaultModelOf,
+  effectiveModelOf,
   emptyProviderIndex,
+  firstModelOf,
   isProviderApi,
   PROVIDER_APIS,
   parseProviders,
@@ -112,6 +114,36 @@ describe('[core] parseProviders', () => {
     expect(parseProviders('{oops')).toEqual(emptyProviderIndex())
     expect(parseProviders({ version: 1, providers: [{ id: 'x' }] })).toEqual(emptyProviderIndex())
     expect(parseProviders({ ...stored, defaultModel: { providerId: 'my-endpoint' } })).toEqual(emptyProviderIndex())
+  })
+})
+
+describe('[core] which model a new conversation starts on', () => {
+  const twoProviders = {
+    version: 1 as const,
+    providers: [
+      { id: 'empty', name: 'Empty', api: 'openai-completions' as const, baseUrl: 'https://a.test', models: [] },
+      ...stored.providers,
+    ],
+  }
+
+  it('is the first model of the first provider that has one', () => {
+    expect(firstModelOf(twoProviders)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+    expect(firstModelOf({ version: 1, providers: [] })).toBeUndefined()
+  })
+
+  it('is the chosen one when there is a choice', () => {
+    const chosen = { ...twoProviders, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
+    expect(effectiveModelOf(chosen)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+  })
+
+  it('falls back to the first model there is when nothing was chosen, or the choice is gone', () => {
+    expect(effectiveModelOf(twoProviders)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+    const stale = { ...twoProviders, defaultModel: { providerId: 'my-endpoint', modelId: 'deleted' } }
+    expect(effectiveModelOf(stale)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+  })
+
+  it('is nothing at all when no provider serves anything', () => {
+    expect(effectiveModelOf({ version: 1, providers: [] })).toBeUndefined()
   })
 })
 

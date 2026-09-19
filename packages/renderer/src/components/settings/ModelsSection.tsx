@@ -62,7 +62,7 @@ function DefaultModel() {
   const t = useText()
   const snapshot = useProviders((state) => state.snapshot)
   const setDefaultModel = useProviders((state) => state.setDefaultModel)
-  const chosen = snapshot.defaultModel
+  const chosen = snapshot.defaultModelChoice
   const value = chosen === undefined ? '' : `${chosen.providerId}::${chosen.modelId}`
 
   return (

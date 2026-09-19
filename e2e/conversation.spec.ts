@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
@@ -9,7 +9,15 @@ const REPLY = 'Two files use that name. I can rename both.'
 
 /** A fresh install pointed at a real folder, with the model scripted rather than dialled. */
 async function launch(
-  options: { dataDirectory?: string; replies?: string[]; workspace?: string; faux?: boolean; slow?: boolean } = {},
+  options: {
+    dataDirectory?: string
+    replies?: string[]
+    workspace?: string
+    faux?: boolean
+    slow?: boolean
+    /** A configured endpoint, for the tests that need models to switch between. */
+    models?: boolean
+  } = {},
 ) {
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
@@ -25,6 +33,29 @@ async function launch(
     }),
     'utf-8',
   )
+
+  // Written once, so a relaunch over the same directory keeps whatever the test changed there.
+  if (options.models === true && !existsSync(join(dataDirectory, 'providers.json'))) {
+    writeFileSync(
+      join(dataDirectory, 'providers.json'),
+      JSON.stringify({
+        version: 1,
+        providers: [
+          {
+            id: 'local',
+            name: 'Local',
+            api: 'openai-completions',
+            baseUrl: 'https://llm.internal.example/v1',
+            models: [
+              { id: 'local-7b', name: 'Local 7B', contextWindow: 32000, maxTokens: 4096, reasoning: false },
+              { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: false },
+            ],
+          },
+        ],
+      }),
+      'utf-8',
+    )
+  }
 
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -142,6 +173,34 @@ test('the conversation is listed, titled, and restored after a relaunch', async 
   await expect(second.window.getByText(REPLY)).toBeVisible()
   await second.window.screenshot({ path: join(SHOT_DIR, 'conversation-restored.png') })
   await second.app.close()
+})
+
+test('the model is chosen at the foot of the composer, and a new conversation starts on it', async () => {
+  test.setTimeout(90_000)
+  // No scripted model: the point is the control and the record, and nothing here dials out.
+  const { app, window, dataDirectory, workspace } = await launch({ faux: false, models: true })
+  await window.setViewportSize({ width: 1440, height: 900 })
+
+  // With no conversation open the chip names what a new one will start on, and the menu is the
+  // models the connection serves, under the name of that connection.
+  await expect(window.getByRole('button', { name: 'Local 7B', exact: true })).toBeVisible()
+  await window.getByRole('button', { name: 'Local 7B', exact: true }).click()
+  // Grouped by connection, under its name: the models are named, not their endpoint.
+  await expect(window.getByRole('menu').getByText('Local', { exact: true })).toBeVisible()
+  await expect(window.getByRole('menuitemradio')).toHaveText(['Local 7B', 'Local 70B'])
+  await window.getByRole('menuitemradio', { name: 'Local 70B' }).click()
+
+  await expect(window.getByRole('button', { name: 'Local 70B', exact: true })).toBeVisible()
+  expect(JSON.parse(readFileSync(join(dataDirectory, 'providers.json'), 'utf-8')).defaultModel).toEqual({
+    providerId: 'local',
+    modelId: 'local-70b',
+  })
+  await app.close()
+
+  // And it is what the next launch starts a conversation on, which is the whole point of choosing.
+  const reopened = await launch({ dataDirectory, workspace, faux: false, models: true })
+  await expect(reopened.window.getByRole('button', { name: 'Local 70B', exact: true })).toBeVisible()
+  await reopened.app.close()
 })
 
 test('with no model configured the app opens and says what is missing', async () => {

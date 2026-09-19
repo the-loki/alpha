@@ -60,22 +60,38 @@ describe('[main] the models panel', () => {
     expect(() => providers.saveModels('local', [{ id: 'a', contextWindow: 0 }])).toThrow(/context/)
   })
 
-  it('leaves the default alone when the model it points at survives the edit', () => {
+  it('starts a new conversation on the first model there is, before anything is chosen', () => {
+    const { service: providers } = service()
+    providers.save(endpoint)
+    providers.saveModels('local', [model('a'), model('b')])
+    expect(providers.snapshot()).toMatchObject({
+      defaultModel: { providerId: 'local', modelId: 'a' },
+      defaultModelChoice: undefined,
+    })
+  })
+
+  it('leaves the choice alone when the model it points at survives the edit', () => {
     const { service: providers } = service()
     providers.save(endpoint)
     providers.saveModels('local', [model('a'), model('b')])
     providers.setDefaultModel({ providerId: 'local', modelId: 'b' })
     providers.saveModels('local', [model('b')])
-    expect(providers.snapshot().defaultModel).toEqual({ providerId: 'local', modelId: 'b' })
+    expect(providers.snapshot()).toMatchObject({
+      defaultModel: { providerId: 'local', modelId: 'b' },
+      defaultModelChoice: { providerId: 'local', modelId: 'b' },
+    })
   })
 
-  it('drops the default when the model it pointed at is removed', () => {
+  it('forgets the choice when that model is removed, and falls back to what is left', () => {
     const { service: providers } = service()
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
     providers.setDefaultModel({ providerId: 'local', modelId: 'a' })
     providers.saveModels('local', [model('b')])
-    expect(providers.snapshot().defaultModel).toBeUndefined()
+    expect(providers.snapshot()).toMatchObject({
+      defaultModel: { providerId: 'local', modelId: 'b' },
+      defaultModelChoice: undefined,
+    })
   })
 
   it('refuses a default pointing at a model nobody serves', () => {
@@ -84,13 +100,17 @@ describe('[main] the models panel', () => {
     expect(() => providers.setDefaultModel({ providerId: 'local', modelId: 'ghost' })).toThrow(/does not serve/)
   })
 
-  it('drops the default when the provider it pointed at is deleted', () => {
+  it('has no model at all once the provider it pointed at is deleted', () => {
     const { service: providers } = service()
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
     providers.setDefaultModel({ providerId: 'local', modelId: 'a' })
     providers.remove('local')
-    expect(providers.snapshot()).toMatchObject({ providers: [], defaultModel: undefined })
+    expect(providers.snapshot()).toMatchObject({
+      providers: [],
+      defaultModel: undefined,
+      defaultModelChoice: undefined,
+    })
   })
 })
 

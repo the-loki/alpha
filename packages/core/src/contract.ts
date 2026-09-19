@@ -140,8 +140,10 @@ export interface OpenedConversation {
 export interface ProvidersSnapshotMessage {
   providers: ProviderView[]
   protection: 'os' | 'plaintext'
-  /** What new conversations start on. Absent means the first model of the first provider. */
+  /** What new conversations start on: the choice below, or the first model there is. */
   defaultModel?: ConversationModel
+  /** What the user chose for that, absent when they never chose one. */
+  defaultModelChoice?: ConversationModel
 }
 
 /** Browser access as the settings page shows it: what is stored, and what the server makes of it. */

@@ -10,7 +10,6 @@ import {
 } from '@alpha/core'
 import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { useProviders } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
 
@@ -57,18 +56,15 @@ function ConversationActions() {
 }
 
 /**
- * What this conversation runs on. Both choices are per conversation — a throwaway question can
- * be cheap and a hard one expensive — and both take effect on the next turn.
+ * What this conversation is: who it belongs to, what it has spent, and how hard it should think.
+ * Which model it runs on is per conversation too, and lives at the foot of the composer.
  */
 export function ConversationHeader() {
   const summary = useConversations((state) => state.transcript.summary)
   const t = useText()
-  const setModel = useConversations((state) => state.setModel)
   const setThinkingLevel = useConversations((state) => state.setThinkingLevel)
-  const snapshot = useProviders((state) => state.snapshot)
 
   if (summary === undefined) return null
-  const chosen = `${summary.model.providerId}::${summary.model.modelId}`
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-8 py-2">
@@ -87,30 +83,10 @@ export function ConversationHeader() {
       <div className="flex shrink-0 items-center gap-3">
         <UsageReadout />
         <ConversationActions />
-        {/* What this conversation is, and what it runs on: two groups, told apart by a rule rather
-            than by five controls of equal weight sitting in a row. */}
+        {/* What this conversation is, and how hard it should think: told apart by a rule rather
+            than by a row of controls of equal weight. Which model it runs on is chosen at the foot
+            of the composer, next to the message that will use it. */}
         <span className="h-4 w-px bg-line" aria-hidden="true" />
-        <select
-          aria-label={t('header.model')}
-          value={chosen}
-          onChange={(event) => {
-            const [providerId, modelId] = event.target.value.split('::')
-            void setModel(providerId, modelId)
-          }}
-          className={`max-w-[22rem] ${SELECT_CLASS}`}
-        >
-          {snapshot.providers.length === 0 && <option value="">{t('header.noProvider')}</option>}
-          {snapshot.providers.map((provider) => (
-            <optgroup key={provider.id} label={provider.name}>
-              {provider.models.map((model) => (
-                <option key={model.id} value={`${provider.id}::${model.id}`}>
-                  {model.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-
         <select
           aria-label={t('header.thinking')}
           value={summary.thinkingLevel}

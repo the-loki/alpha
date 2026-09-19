@@ -142,8 +142,11 @@ bloom.
 **The composer is narrower than the pane.** A line being typed wants to stay a line, so the
 composer is capped and centred (48rem, the same measure the settings page uses) while the
 transcript above it takes the whole pane. Everything the message carries or is allowed to do sits
-in one row at the foot of the box: the way in to the file picker, the level chip, and the control
-that sends it. The words keep the width above that row to themselves.
+in one row at the foot of the box: the way in to the file picker and the level chip at the left,
+the model it will run on and the control that sends it at the right. The words keep the width above
+that row to themselves. Both chips follow one rule — with a conversation open they change that
+conversation, and with none open they change what the next one starts with — and neither is
+duplicated in the header, because a setting lives where the message that uses it is written.
 
 **Where a rule goes.** A hairline separates two *different kinds* of thing: the window chrome from
 the content, a conversation's header from its transcript, that transcript from the composer's band,
@@ -176,9 +179,10 @@ removed:
    Always allow, Deny.
 3. **The ember cursor.** Streaming text is followed by a 0.125rem copper block that pulses at
    1.2s. It is the only animation running in a resting window.
-4. **The level chip.** The permission level sits at the foot of the composer as a coloured chip
-    with a one-word label: the level in force for what is about to be typed, next to the message
-    it governs. It is never hidden, including in `full-access`.
+4. **The two chips at the foot of the composer.** The permission level is a coloured chip with a
+    one-word label at the left of the foot, and the model is a quiet chip naming the model at the
+    right: what the message about to be typed is allowed to do and what it will run on, both next
+    to the message itself. The level chip is never hidden, including in `full-access`.
 
 ## C5.6 — Motion
 

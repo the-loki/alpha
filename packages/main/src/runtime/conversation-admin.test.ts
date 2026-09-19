@@ -37,6 +37,75 @@ const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) 
   return { manager, store, workspace, dataDirectory, events }
 }
 
+/**
+ * A manager whose model collection is the configured providers rather than the scripted one, so
+ * the models a conversation may run on are real. Nothing here dials out: no turn is ever started.
+ */
+const configuredManager = (dataDirectory?: string) => {
+  const directory = dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-data-'))
+  const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
+  const providers = new ProviderStore(directory, new CredentialVault(directory, testCipher))
+  providers.save({
+    id: 'local',
+    name: 'Local',
+    api: 'openai-completions',
+    baseUrl: 'https://llm.internal.example/v1',
+    models: [
+      { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false },
+      { id: 'local-70b', name: 'Local 70B', contextWindow: 128_000, maxTokens: 8_192, reasoning: false },
+    ],
+  })
+  const manager = new RuntimeManager({
+    dataDirectory: directory,
+    sessionsRoot: join(directory, 'sessions'),
+    providers,
+    store: new StateStore(directory),
+    env: {},
+    emit: () => undefined,
+    emitRules: () => undefined,
+  })
+  return { manager, providers, workspace, dataDirectory: directory }
+}
+
+describe('[runtime] what a conversation runs on', () => {
+  it('is the default model to begin with, and its own choice from then on', async () => {
+    const { manager, workspace, dataDirectory } = configuredManager()
+    const created = await manager.create(workspace)
+    expect(created.conversation.model).toEqual({ providerId: 'local', modelId: 'local-7b' })
+
+    const switched = await manager.setConversationModel(created.conversation.id, 'local', 'local-70b')
+    expect(switched.model).toEqual({ providerId: 'local', modelId: 'local-70b' })
+    await manager.closeAll()
+
+    // The choice is the conversation's, so the next launch reads it back with the conversation.
+    const reopened = configuredManager(dataDirectory)
+    expect(reopened.manager.list()[0]?.model).toEqual({ providerId: 'local', modelId: 'local-70b' })
+    await reopened.manager.closeAll()
+  })
+
+  it('refuses a model the provider does not serve', async () => {
+    const { manager, workspace } = configuredManager()
+    const created = await manager.create(workspace)
+
+    await expect(manager.setConversationModel(created.conversation.id, 'local', 'ghost')).rejects.toThrow(
+      /does not serve/,
+    )
+    await expect(manager.setConversationModel(created.conversation.id, 'nobody', 'local-7b')).rejects.toThrow(
+      /does not serve/,
+    )
+    await manager.closeAll()
+  })
+
+  it('starts what is created later on the default the models panel chose', async () => {
+    const { manager, providers, workspace } = configuredManager()
+    providers.setDefaultModel({ providerId: 'local', modelId: 'local-70b' })
+
+    const created = await manager.create(workspace)
+    expect(created.conversation.model).toEqual({ providerId: 'local', modelId: 'local-70b' })
+    await manager.closeAll()
+  })
+})
+
 describe('[runtime] naming a conversation', () => {
   it('renames it, and the new name survives a restart', async () => {
     const { manager, workspace, dataDirectory } = freshManager()

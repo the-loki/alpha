@@ -7,7 +7,7 @@
  * first model of the first provider that has any when nobody has chosen.
  */
 
-import type { ConversationModel, ProviderApi, ProviderModelDefinition, StoredProvider, Undef } from '@alpha/core'
+import type { ProviderApi, ProviderModelDefinition, StoredProvider } from '@alpha/core'
 import {
   type Api,
   createModels,
@@ -71,21 +71,13 @@ function buildProvider(store: ProviderStore, provider: StoredProvider): Provider
   })
 }
 
-/** The model the workbench falls back to when nobody has chosen one: the first that exists. */
-function firstModel(providers: StoredProvider[]): Undef<ConversationModel> {
-  for (const provider of providers) {
-    const model = provider.models[0]
-    if (model !== undefined) return { providerId: provider.id, modelId: model.id }
-  }
-  return undefined
-}
-
 export function createProviderModelRuntime(store: ProviderStore): ProviderModelRuntime {
   const models = createModels()
   const providers = store.list()
   for (const provider of providers) models.setProvider(buildProvider(store, provider))
 
-  const chosen = store.defaultModel() ?? firstModel(providers)
+  // Which model that is, is one rule and lives in core: the choice, or the first there is.
+  const chosen = store.effectiveModel()
   const model = chosen === undefined ? undefined : models.getModel(chosen.providerId, chosen.modelId)
   return model === undefined ? { models } : { models, defaultModel: model }
 }

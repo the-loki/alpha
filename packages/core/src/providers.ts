@@ -181,6 +181,24 @@ export function defaultModelOf(index: ProviderIndex): Undef<ConversationModel> {
   return provider.models.some((model) => model.id === chosen.modelId) ? chosen : undefined
 }
 
+/** The first model there is, for a workbench that has never had one chosen for it. */
+export function firstModelOf(index: ProviderIndex): Undef<ConversationModel> {
+  for (const provider of index.providers) {
+    const model = provider.models[0]
+    if (model !== undefined) return { providerId: provider.id, modelId: model.id }
+  }
+  return undefined
+}
+
+/**
+ * What a new conversation starts on: the choice when there is one, and the first model there is
+ * otherwise. One rule with two callers — the runtime that builds the model collection, and the
+ * composer's chip, which has to name a model before any conversation exists.
+ */
+export function effectiveModelOf(index: ProviderIndex): Undef<ConversationModel> {
+  return defaultModelOf(index) ?? firstModelOf(index)
+}
+
 function parseJson(text: string): unknown {
   try {
     return JSON.parse(text)

@@ -28,8 +28,10 @@ export interface ProvidersSnapshot {
   providers: ProviderView[]
   /** 'plaintext' means the OS gave us no keychain and the UI must say so. */
   protection: 'os' | 'plaintext'
-  /** What a new conversation starts on. Absent means the first model of the first provider. */
+  /** What a new conversation starts on: the choice below, or the first model there is. */
   defaultModel?: ConversationModel
+  /** The model the user chose for that, absent when they never chose one. */
+  defaultModelChoice?: ConversationModel
 }
 
 export interface ProviderTestResult {
@@ -49,7 +51,8 @@ export class ProviderService {
     return {
       providers: this.#store.views(),
       protection: this.#store.protection(),
-      defaultModel: this.#store.defaultModel(),
+      defaultModel: this.#store.effectiveModel(),
+      defaultModelChoice: this.#store.chosenModel(),
     }
   }
 

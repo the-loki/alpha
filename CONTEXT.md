@@ -148,7 +148,9 @@ provider they belong to. Avoid: *token* (confusable with model tokens), *passwor
 A specific model id served by a provider, with the context window and token limits the workbench
 needs to run it. A model is always addressed as provider + id, and the list of them is a model
 setting rather than a fact about the connection. One of them is the **default model**: what a new
-conversation starts on, and what a run with nobody watching uses.
+conversation starts on, and what a run with nobody watching uses. A conversation's own model is
+chosen at the foot of its composer, and the chip there follows the level chip's rule — with a
+conversation open it changes that conversation, with none open it changes the default.
 
 ### Thinking Effort
 
