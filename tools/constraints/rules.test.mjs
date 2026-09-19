@@ -357,6 +357,19 @@ describe('02-architecture:contract-channels', () => {
     expect(found).toHaveLength(1)
   })
 
+  it('flags an import of the transport outside the seam, which a call alone would miss', () => {
+    const imported = violationsFor(rule, file('packages/main/src/runtime/a.ts', "import { ipcMain } from 'electron'"))
+    expect(imported).toHaveLength(1)
+  })
+
+  it('lets a comment name the transport, because prose is not a dependency', () => {
+    const prose = violationsFor(
+      rule,
+      file('packages/main/src/channels.ts', ' * `ipcMain`, and the HTTP server dispatches the same table'),
+    )
+    expect(prose).toEqual([])
+  })
+
   it('lets a line opt out with a marker, like every other rule', () => {
     const marked = preloadUsing('ipcRenderer.invoke(IPC.pong) // constraints-ignore 02-architecture')
     expect(crossViolations([contract, mainWith(['ping']), marked])).toEqual([])

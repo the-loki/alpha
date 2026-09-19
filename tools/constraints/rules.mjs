@@ -191,6 +191,9 @@ const isPreloadSource = (path) => path.startsWith('packages/preload/src/')
 /** The one file on each side that is allowed to know the transport exists. */
 const isSeamFile = (path) => path === 'packages/main/src/ipc.ts' || path === 'packages/preload/src/index.ts'
 
+/** Whether a line is only prose: the transport may be named in a comment and nowhere else. */
+const isComment = (line) => /^\s*(\/\/|\/\*|\*)/.test(line)
+
 export const RULES = [
   lineRule({
     id: '01-typescript:no-null-union',
@@ -370,8 +373,10 @@ export const RULES = [
               text: line.trim(),
             })
           }
-          // A comment may name the transport; only a call touches it.
-          if (/\bipcMain\s*\.|\bipcRenderer\s*\./.test(line) && !isSeamFile(path)) {
+          // A comment may name the transport; code may not. The name is the transport whether it
+          // is called or imported, so this reads the name rather than the call — the only two
+          // files allowed to hold it in code are the seam itself.
+          if (!isComment(line) && /\b(ipcMain|ipcRenderer|contextBridge)\b/.test(line) && !isSeamFile(path)) {
             found.push({
               line: index + 1,
               message: 'the transport is touched outside the seam (main ipc.ts and the preload)',

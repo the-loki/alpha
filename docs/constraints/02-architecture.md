@@ -36,8 +36,9 @@ dead code the checker will find.
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:contract-channels`. It reads the
 three sides at once and fails when a channel string is written out by hand instead of taken from
 the contract module, when the window calls a channel nothing in `main` handles, or when it listens
-for an event nothing sends. It also fails on `ipcMain`/`ipcRenderer` anywhere outside the two seam
-files, and on the renderer so much as naming the transport.
+for an event nothing sends. It also fails on `ipcMain`/`ipcRenderer`/`contextBridge` in code
+anywhere outside the two seam files — a comment may name the transport, code may not, and an import
+counts as code — and on the renderer so much as naming the transport.
 
 ## C2.3 — The agent runtime lives in `main`
 
