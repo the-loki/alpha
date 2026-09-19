@@ -10,7 +10,7 @@
 import { IPC } from '@alpha/core'
 import { type BrowserWindow, ipcMain } from 'electron'
 import type { Subscriber } from './broadcast.ts'
-import { CHANNELS, type ChannelPorts } from './channels.ts'
+import { CHANNELS, type ChannelPorts, type NetworkPort } from './channels.ts'
 import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
 import type { StateStore } from './state-store.ts'
@@ -22,6 +22,8 @@ export interface IpcContext {
   getWindow: () => BrowserWindow
   /** What answers the folder picker and the chrome commands for this client. */
   window: ChannelPorts['window']
+  /** Browser access, which the settings page reads and changes. */
+  network: NetworkPort
 }
 
 export function registerIpcHandlers(context: IpcContext): void {
@@ -30,6 +32,7 @@ export function registerIpcHandlers(context: IpcContext): void {
     runtime: context.runtime,
     providers: context.providers,
     window: context.window,
+    network: context.network,
   }
 
   for (const [name, handler] of Object.entries(CHANNELS)) {

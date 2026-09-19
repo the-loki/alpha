@@ -8,7 +8,8 @@ import {
   type WorkspaceSelection,
 } from '@alpha/core'
 import { create } from 'zustand'
-import { bridge } from '../lib/bridge.ts'
+import { bridge, type ClientHost, clientHost } from '../lib/bridge.ts'
+import { Unauthorized, unlock as unlockTransport } from '../lib/network-bridge.ts'
 
 export interface ShellStore {
   ready: boolean
@@ -24,6 +25,11 @@ export interface ShellStore {
   /** The conversation to come back to on launch, empty when there is none. */
   lastConversationId: string
   windowMaximized: boolean
+  /** Which process draws this workbench: the window chrome and the folder picker differ. */
+  host: ClientHost
+  /** A browser with no session: the workbench is not reachable until the token is given. */
+  locked: boolean
+  unlock: (token: string) => Promise<void>
   load: () => Promise<void>
   pickWorkspace: () => Promise<void>
   openRecent: (path: string) => Promise<void>
@@ -66,11 +72,25 @@ export const useShell = create<ShellStore>((set, get) => ({
   model: { configured: false, description: '' },
   lastConversationId: '',
   windowMaximized: false,
+  host: 'desktop',
+  locked: false,
 
   load: async () => {
-    const state = await bridge().launchState()
-    applyTheme(state.theme)
-    set(applyLaunchState(state))
+    // A refusal is not a failure to report: it means this browser has no session yet, and the
+    // screen it needs is the one that asks for the token.
+    try {
+      const state = await bridge().launchState()
+      applyTheme(state.theme)
+      set({ ...applyLaunchState(state), host: clientHost(), locked: false })
+    } catch (failure) {
+      if (!(failure instanceof Unauthorized)) throw failure
+      set({ locked: true, ready: true, host: clientHost() })
+    }
+  },
+
+  unlock: async (token: string) => {
+    await unlockTransport(token)
+    await get().load()
   },
 
   pickWorkspace: async () => {

@@ -5,7 +5,7 @@
  */
 
 import type { PermissionLevel, PermissionRule } from './permission.ts'
-import type { Theme } from './persisted-state.ts'
+import type { NetworkBind, Theme } from './persisted-state.ts'
 import type { ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ThinkingLevel } from './thinking.ts'
@@ -60,6 +60,9 @@ export const IPC = {
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
   permissionRulesChanged: 'alpha:permission-rules-changed',
+  networkState: 'alpha:network-state',
+  setNetworkAccess: 'alpha:set-network-access',
+  regenerateNetworkToken: 'alpha:regenerate-network-token',
 } as const
 
 export interface ModelStatus {
@@ -116,6 +119,25 @@ export interface ProvidersSnapshotMessage {
   catalog: { id: string; name: string; api: string; baseUrl: string; keyHint: string }[]
 }
 
+/** Browser access as the settings page shows it: what is stored, and what the server makes of it. */
+export interface NetworkState {
+  enabled: boolean
+  port: number
+  bind: NetworkBind
+  /** The token a browser pastes. Empty until the switch has been on once. */
+  token: string
+  /** Where a browser on this machine, and on the network, should go. */
+  urls: string[]
+  /** Why it is not listening, when it is meant to be. */
+  error: string
+}
+
+export interface NetworkPatch {
+  enabled?: boolean
+  port?: number
+  bind?: NetworkBind
+}
+
 /** What the window answers a card with: allow this once, remember it, or refuse it. */
 export interface ApprovalAnswerInput {
   conversationId: string
@@ -135,6 +157,9 @@ export interface AlphaBridge {
   /** The level in force for one conversation. */
   setConversationLevel(id: string, level: PermissionLevel): Promise<ConversationSummary>
   setTheme(theme: Theme): Promise<LaunchState>
+  networkState(): Promise<NetworkState>
+  setNetworkAccess(patch: NetworkPatch): Promise<NetworkState>
+  regenerateNetworkToken(): Promise<NetworkState>
   sendWindowCommand(command: WindowCommand): Promise<void>
   onWindowState(listener: (state: WindowState) => void): () => void
 

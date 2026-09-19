@@ -57,6 +57,36 @@ export function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value)
 }
 
+export const NETWORK_BINDS = ['local', 'network'] as const
+
+/** Whether the workbench is reachable from a browser, and how far that reach goes. */
+export type NetworkBind = (typeof NETWORK_BINDS)[number]
+
+export interface NetworkAccess {
+  /** Off until the user turns it on: a workbench that opened a port unasked would be a surprise. */
+  enabled: boolean
+  port: number
+  /** `local` is this machine; `network` is every interface it has (C6.2). */
+  bind: NetworkBind
+  /** Empty until it is first needed; minted when the switch goes on. */
+  token: string
+}
+
+export function emptyNetworkAccess(): NetworkAccess {
+  return { enabled: false, port: 4123, bind: 'local', token: '' }
+}
+
+export function isNetworkBind(value: unknown): value is NetworkBind {
+  return typeof value === 'string' && (NETWORK_BINDS as readonly string[]).includes(value)
+}
+
+const NetworkSchema = Type.Object({
+  enabled: Type.Boolean(),
+  port: Type.Number(),
+  bind: Type.Union(NETWORK_BINDS.map((bind) => Type.Literal(bind))),
+  token: Type.String(),
+})
+
 const PersistedStateSchema = Type.Object({
   workspace: WorkspaceStateSchema,
   permissionLevel: PermissionLevelSchema,
@@ -68,6 +98,8 @@ const PersistedStateSchema = Type.Object({
   theme: Type.Optional(ThemeSchema),
   /** The conversation that was open when the window closed, so the next launch can bring it back. */
   lastConversationId: Type.Optional(Type.String()),
+  /** Browser access: absent in a file written before the workbench could be served. */
+  network: Type.Optional(NetworkSchema),
 })
 
 type PersistedStateShape = Static<typeof PersistedStateSchema>
@@ -82,6 +114,7 @@ export interface PersistedState {
   theme: Theme
   /** Empty when nothing was open, which is also what a launch with no history gets. */
   lastConversationId: string
+  network: NetworkAccess
 }
 
 export function emptyPersistedState(): PersistedState {
@@ -92,6 +125,7 @@ export function emptyPersistedState(): PersistedState {
     permissionRules: [],
     theme: 'system',
     lastConversationId: '',
+    network: emptyNetworkAccess(),
   }
 }
 
@@ -116,6 +150,30 @@ export function parsePersistedState(raw: unknown): PersistedState {
     permissionRules: readRules(readRulesField(candidate)),
     theme: state.theme ?? 'system',
     lastConversationId: state.lastConversationId ?? '',
+    network: readNetwork(readNetworkField(candidate)),
+  }
+}
+
+/**
+ * Browser access, read field by field: a port that is not a port costs the port, not the whole
+ * setting — the same bargain the permission levels get.
+ */
+function readNetworkField(candidate: unknown): unknown {
+  return typeof candidate === 'object' && candidate !== null ? (candidate as { network?: unknown }).network : undefined
+}
+
+function readNetwork(value: unknown): NetworkAccess {
+  const fallback = emptyNetworkAccess()
+  if (typeof value !== 'object' || value === null) return fallback
+  const record = value as Record<string, unknown>
+  const chosen = record.port
+  const usable =
+    typeof chosen === 'number' && Number.isInteger(chosen) && chosen >= 0 && chosen <= 65535 ? chosen : undefined
+  return {
+    enabled: record.enabled === true,
+    port: usable ?? fallback.port,
+    bind: isNetworkBind(record.bind) ? record.bind : fallback.bind,
+    token: typeof record.token === 'string' ? record.token : fallback.token,
   }
 }
 

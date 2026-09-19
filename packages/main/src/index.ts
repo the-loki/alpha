@@ -1,12 +1,14 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, safeStorage } from 'electron'
 import { Broadcast } from './broadcast.ts'
+import { type ChannelPorts, headlessWindowPort } from './channels.ts'
 import { desktopWindowPort } from './desktop-window.ts'
 import { registerIpcHandlers, windowSubscriber } from './ipc.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
 import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
 import { RuntimeManager } from './runtime/manager.ts'
+import { NetworkService } from './server/service.ts'
 import { StateStore } from './state-store.ts'
 import { createMainWindow } from './window.ts'
 
@@ -28,7 +30,7 @@ function osCipher(): SecretCipher {
 
 app.setName('Alpha')
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const dataDirectory = process.env.ALPHA_DATA_DIR ?? app.getPath('userData')
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, osCipher())
@@ -49,13 +51,25 @@ app.whenReady().then(() => {
     emitRules: (rules) => broadcast.send('permissionRulesChanged', rules),
   })
 
-  registerIpcHandlers({
+  const providerService = new ProviderService(providers)
+  const service = new NetworkService({
     store,
-    runtime,
-    providers: new ProviderService(providers),
-    getWindow: () => BrowserWindow.getAllWindows()[0],
-    window: desktopWindowPort(() => BrowserWindow.getAllWindows()[0]),
+    broadcast,
+    bundleDirectory: join(import.meta.dirname, '../renderer'),
+    ports: () => serverPorts,
   })
+
+  // Two clients, two windows on the same workbench: the desktop window may open a native folder
+  // dialog and move itself, and a browser may do neither. Everything else is one set of handlers.
+  const shared = { store, runtime, providers: providerService, network: service }
+  const serverPorts: ChannelPorts = { ...shared, window: headlessWindowPort }
+  const desktopPorts: ChannelPorts = {
+    ...shared,
+    window: desktopWindowPort(() => BrowserWindow.getAllWindows()[0]),
+  }
+
+  registerIpcHandlers({ ...desktopPorts, getWindow: () => BrowserWindow.getAllWindows()[0] })
+  await service.apply()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow({ ...windowPaths, broadcast })

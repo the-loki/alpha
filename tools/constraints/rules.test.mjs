@@ -285,6 +285,11 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
     expect(violationsFor(rule, file('packages/core/src/providers/templates.ts', text))).toEqual([])
   })
 
+  it('passes the module that owns the workbench its own address', () => {
+    const listen = file('packages/main/src/server/service.ts', 'const urls = ["http://127.0.0.1:" + port]')
+    expect(violationsFor(rule, listen)).toEqual([])
+  })
+
   it('passes docs and test fixtures', () => {
     expect(violationsFor(rule, file('docs/research/x.md', 'see https://example.com'))).toEqual([])
     expect(violationsFor(rule, file('packages/main/src/a.test.ts', 'const u = "https://x.test"'))).toEqual([])

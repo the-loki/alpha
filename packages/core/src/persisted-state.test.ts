@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { defaultLevelFor, emptyPersistedState, type PersistedState, parsePersistedState } from './persisted-state.ts'
+import {
+  defaultLevelFor,
+  emptyNetworkAccess,
+  emptyPersistedState,
+  type PersistedState,
+  parsePersistedState,
+} from './persisted-state.ts'
 
 const rule = {
   id: 'r1',
@@ -21,6 +27,7 @@ const valid = {
   permissionLevel: 'accept-edits',
   permissionRules: [rule],
   lastConversationId: 'c1',
+  network: { enabled: true, port: 4123, bind: 'network', token: 'a-token-kept-across-launches' },
 }
 
 describe('[core] emptyPersistedState', () => {
@@ -31,6 +38,18 @@ describe('[core] emptyPersistedState', () => {
     expect(state.permissionLevel).toBe('ask')
     expect(state.permissionRules).toEqual([])
     expect(state.theme).toBe('system')
+    // Browser access is off until it is asked for, and it listens only to this machine (C6.1, C6.2).
+    expect(state.network).toEqual({ enabled: false, port: 4123, bind: 'local', token: '' })
+  })
+
+  it('gives a file written before browser access existed the off default', () => {
+    const { network: _dropped, ...older } = valid
+    expect(parsePersistedState(older).network).toEqual(emptyNetworkAccess())
+  })
+
+  it('keeps the network settings it can read, and the defaults for the rest', () => {
+    const broken = { ...valid, network: { enabled: 'yes', port: -1, bind: 'everywhere', token: 7 } }
+    expect(parsePersistedState(broken).network).toEqual(emptyNetworkAccess())
   })
 })
 
@@ -76,6 +95,7 @@ describe('[core] parsePersistedState', () => {
       permissionRules: [],
       theme: 'light',
       lastConversationId: '',
+      network: emptyNetworkAccess(),
     }
     expect(parsePersistedState(fresh)).toEqual(fresh)
   })

@@ -13,11 +13,14 @@ import {
   type ApprovalAnswerInput,
   defaultLevelFor,
   type IPC,
+  isNetworkBind,
   isPermissionLevel,
   isRuleScope,
   isTheme,
   isThinkingLevel,
   type LaunchState,
+  type NetworkPatch,
+  type NetworkState,
   type PermissionLevel,
   type PickWorkspaceResult,
   rememberWorkspace,
@@ -37,11 +40,35 @@ export interface WindowPort {
   close(): void
 }
 
+/**
+ * A client with no machine under it: a browser. It has no folder to pick and no window to move, so
+ * the picker refuses with something a person can act on, and the chrome commands do nothing.
+ */
+export const headlessWindowPort: WindowPort = {
+  pickFolder: async () => {
+    throw new Error('A folder can only be chosen in the desktop app. Pick one of the recent folders.')
+  },
+  minimize: () => undefined,
+  toggleMaximize: () => undefined,
+  close: () => undefined,
+}
+
+/**
+ * Browser access as the channels see it: read it, change it, replace the token. The server's own
+ * life cycle is not a channel's business, so this is as much of the service as they get.
+ */
+export interface NetworkPort {
+  state(): NetworkState
+  set(patch: NetworkPatch): Promise<NetworkState>
+  regenerateToken(): Promise<NetworkState>
+}
+
 export interface ChannelPorts {
   store: StateStore
   runtime: RuntimeManager
   providers: ProviderService
   window: WindowPort
+  network: NetworkPort
 }
 
 /** The arguments as they arrived from another process, before any handler has looked at them. */
@@ -154,6 +181,12 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
     return runtime.setThinkingLevel(requireString(args[0], 'conversationId'), level)
   },
 
+  networkState: ({ network }) => network.state(),
+
+  setNetworkAccess: ({ network }, args) => network.set(readNetworkPatch(args[0])),
+
+  regenerateNetworkToken: ({ network }) => network.regenerateToken(),
+
   providersSnapshot: ({ providers }) => providers.snapshot(),
 
   saveCatalogProvider: ({ providers }, args) => providers.saveFromCatalog(requireString(args[0], 'providerId'), []),
@@ -200,6 +233,28 @@ export function launchState(store: StateStore, runtime: RuntimeManager): LaunchS
     model: runtime.modelStatus(),
     lastConversationId: store.read().lastConversationId,
   }
+}
+
+/** A patch from the window: only the fields it may change, and only if they are the right shape. */
+export function readNetworkPatch(input: unknown): NetworkPatch {
+  if (typeof input !== 'object' || input === null) throw new Error('a network patch is required')
+  const record = input as Record<string, unknown>
+  const patch: NetworkPatch = {}
+  if (record.enabled !== undefined) {
+    if (typeof record.enabled !== 'boolean') throw new Error('enabled must be a boolean')
+    patch.enabled = record.enabled
+  }
+  if (record.port !== undefined) {
+    if (typeof record.port !== 'number' || !Number.isInteger(record.port) || record.port < 0 || record.port > 65535) {
+      throw new Error('port must be a whole number between 0 and 65535')
+    }
+    patch.port = record.port
+  }
+  if (record.bind !== undefined) {
+    if (!isNetworkBind(record.bind)) throw new Error('bind must be local or network')
+    patch.bind = record.bind
+  }
+  return patch
 }
 
 /** The window is the process that could be compromised, so its answer is read defensively. */

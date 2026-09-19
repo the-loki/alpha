@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { IPC, type PermissionRule } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
-import { CHANNELS, type ChannelPorts, PUSHED_CHANNELS, type WindowPort } from './channels.ts'
+import { CHANNELS, type ChannelPorts, type NetworkPort, PUSHED_CHANNELS, type WindowPort } from './channels.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
 import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
@@ -18,6 +18,13 @@ const testCipher: SecretCipher = {
   available: true,
   encrypt: (plaintext) => `enc:${plaintext}`,
   decrypt: (payload) => payload.replace(/^enc:/, ''),
+}
+
+/** Browser access in a test that is not about browser access. */
+const stubNetwork: NetworkPort = {
+  state: () => ({ enabled: false, port: 4123, bind: 'local', token: '', urls: [], error: '' }),
+  set: async () => stubNetwork.state(),
+  regenerateToken: async () => stubNetwork.state(),
 }
 
 const ports = (): ChannelPorts & { events: unknown[] } => {
@@ -35,6 +42,7 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
     store,
     window,
     providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
+    network: stubNetwork,
     runtime: new RuntimeManager({
       dataDirectory,
       sessionsRoot: join(dataDirectory, 'sessions'),

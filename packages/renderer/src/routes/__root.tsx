@@ -3,11 +3,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { ConversationPalette, useShortcuts } from '../components/ConversationPalette.tsx'
 import { Sidebar } from '../components/Sidebar.tsx'
 import { TitleBar } from '../components/TitleBar.tsx'
+import { UnlockScreen } from '../components/UnlockScreen.tsx'
+import { bridge } from '../lib/bridge.ts'
 import { useConversations } from '../stores/conversations.ts'
 import { useShell } from '../stores/shell.ts'
 
 function RootLayout() {
   const load = useShell((state) => state.load)
+  const locked = useShell((state) => state.locked)
   const setWindowMaximized = useShell((state) => state.setWindowMaximized)
   const loadList = useConversations((state) => state.loadList)
   const applyEvent = useConversations((state) => state.applyEvent)
@@ -16,15 +19,18 @@ function RootLayout() {
   useShortcuts({ onPalette: openPalette })
 
   useEffect(() => {
-    void load()
-    void loadList()
-    const stopWindowState = window.alpha?.onWindowState((state) => setWindowMaximized(state.maximized))
-    const stopRuntimeEvents = window.alpha?.onRuntimeEvent((event) => applyEvent(event))
+    // The contract, whichever transport is behind it: a browser reaches the same events.
+    const client = bridge()
+    void load().then(() => loadList())
+    const stopWindowState = client.onWindowState((state) => setWindowMaximized(state.maximized))
+    const stopRuntimeEvents = client.onRuntimeEvent((event) => applyEvent(event))
     return () => {
-      stopWindowState?.()
-      stopRuntimeEvents?.()
+      stopWindowState()
+      stopRuntimeEvents()
     }
   }, [load, loadList, applyEvent, setWindowMaximized])
+
+  if (locked) return <UnlockScreen />
 
   return (
     <div className="flex h-screen flex-col bg-ink-900">

@@ -1,19 +1,22 @@
 import { Link } from '@tanstack/react-router'
+import { bridge } from '../lib/bridge.ts'
 import { useShell } from '../stores/shell.ts'
 import { LevelChip } from './LevelChip.tsx'
 
 function WindowControls() {
   const platform = useShell((state) => state.platform)
+  const host = useShell((state) => state.host)
   const maximized = useShell((state) => state.windowMaximized)
-  const bridge = window.alpha
-  if (platform === 'darwin') return null
+  const client = bridge()
+  // A browser has no window of ours to move, and macOS draws its own controls anyway.
+  if (host === 'browser' || platform === 'darwin') return null
 
   return (
     <div className="no-drag flex items-center">
       <button
         type="button"
         aria-label="Minimize window"
-        onClick={() => void bridge?.sendWindowCommand('minimize')}
+        onClick={() => void client.sendWindowCommand('minimize')}
         className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -23,7 +26,7 @@ function WindowControls() {
       <button
         type="button"
         aria-label={maximized ? 'Restore window' : 'Maximize window'}
-        onClick={() => void bridge?.sendWindowCommand('toggle-maximize')}
+        onClick={() => void client.sendWindowCommand('toggle-maximize')}
         className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -33,7 +36,7 @@ function WindowControls() {
       <button
         type="button"
         aria-label="Close window"
-        onClick={() => void bridge?.sendWindowCommand('close')}
+        onClick={() => void client.sendWindowCommand('close')}
         className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">

@@ -20,6 +20,21 @@ pnpm package:win     # nsis     (build on Windows)
 The packaged builds land in `dist/`. Each platform's installer has to be produced on that
 platform — that is electron-builder's rule, not a limitation of the app.
 
+## From a browser
+
+The workbench can serve itself to a browser on another device — a laptop on the couch, a phone, a
+second machine. Settings → *Browser access* switches it on, picks a port, and shows the token a
+browser has to be given.
+
+It binds to this machine (`127.0.0.1`) by default; choosing *Anything on this network* opens it to
+every interface this machine has, and shows the addresses to use. Whoever holds the token can read
+every conversation, approve every tool call, and change the permission level: a browser client is a
+remote control for this machine, not a viewer. The token is stored in the workbench state file in
+plaintext, and can be replaced from the same page — which signs every browser out at once.
+
+A browser cannot open a native folder dialog, so it works in one of the folders in the recent list.
+Window controls are not drawn there, because there is no window of ours to move.
+
 ## First run
 
 1. **Open a workspace.** The folder the agent works in. Everything it reads, writes and runs is

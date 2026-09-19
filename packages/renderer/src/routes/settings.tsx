@@ -1,6 +1,7 @@
 import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS, THEMES, type Theme } from '@alpha/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { TONE_CLASS } from '../components/LevelChip.tsx'
+import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
 import { useShell } from '../stores/shell.ts'
@@ -76,6 +77,7 @@ function Settings() {
       <div className="mx-auto max-w-2xl">
         <h1 className="text-xl font-medium text-parchment">Settings</h1>
         <ProvidersSection />
+        <BrowserAccessSection />
         <PermissionSection />
         <ThemeSection />
         <RememberedRules />

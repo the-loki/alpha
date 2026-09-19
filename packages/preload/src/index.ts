@@ -11,6 +11,8 @@ import {
   type EditEffect,
   IPC,
   type LaunchState,
+  type NetworkPatch,
+  type NetworkState,
   type OpenedConversation,
   type PermissionLevel,
   type PermissionRule,
@@ -33,6 +35,9 @@ const bridge: AlphaBridge = {
   setPermissionLevel: (level: PermissionLevel) =>
     ipcRenderer.invoke(IPC.setPermissionLevel, level) as Promise<LaunchState>,
   setTheme: (theme: Theme) => ipcRenderer.invoke(IPC.setTheme, theme) as Promise<LaunchState>,
+  networkState: () => ipcRenderer.invoke(IPC.networkState) as Promise<NetworkState>,
+  setNetworkAccess: (patch: NetworkPatch) => ipcRenderer.invoke(IPC.setNetworkAccess, patch) as Promise<NetworkState>,
+  regenerateNetworkToken: () => ipcRenderer.invoke(IPC.regenerateNetworkToken) as Promise<NetworkState>,
   setConversationLevel: (id: string, level: PermissionLevel) =>
     ipcRenderer.invoke(IPC.setConversationLevel, id, level) as Promise<ConversationSummary>,
   sendWindowCommand: (command: WindowCommand) => ipcRenderer.invoke(WINDOW_COMMAND_CHANNELS[command]) as Promise<void>,
