@@ -56,7 +56,7 @@ export function ConversationRow({
             setRenaming(false)
             if (next !== '' && next !== conversation.title) void rename(conversation.id, next)
           }}
-          className="w-full border border-line-strong bg-ink-900 px-2 py-1 text-ui text-parchment focus:outline-none"
+          className="w-full rounded-control border border-line-strong bg-ink-700 px-2 py-1 text-ui text-parchment focus:outline-none"
         />
       </li>
     )
@@ -68,12 +68,10 @@ export function ConversationRow({
         type="button"
         onClick={() => void navigate({ to: '/c/$conversationId', params: { conversationId: conversation.id } })}
         aria-current={conversation.id === activeId}
-        // The current row is marked by a rule in the accent at the rail's own edge, the way a
-        // bookmark is a slip of paper and not a highlight: the row's text does not move for it.
-        className={`flex min-w-0 flex-1 items-center gap-2 border-l-2 py-1.5 pr-2 pl-3 text-left transition-colors ${
+        className={`flex min-w-0 flex-1 items-center gap-2 rounded-control py-1.5 pr-2 pl-3 text-left transition-colors ${
           conversation.id === activeId
-            ? 'border-l-accent text-parchment'
-            : 'border-l-transparent text-parchment-dim hover:bg-ink-600'
+            ? 'bg-ink-700 text-parchment shadow-soft'
+            : 'text-parchment-dim hover:bg-ink-700/60'
         }`}
       >
         <span className="flex w-4 shrink-0 justify-center">
@@ -136,7 +134,7 @@ function RowActions({
 
   return (
     <span ref={container} className="absolute inset-y-0 right-0">
-      <span className="flex h-full items-center bg-ink-600 pr-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+      <span className="flex h-full items-center rounded-control bg-ink-700 pr-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
         <button
           type="button"
           aria-label={t('sidebar.actions', { title: conversation.title })}

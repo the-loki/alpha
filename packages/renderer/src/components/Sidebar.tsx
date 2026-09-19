@@ -145,7 +145,7 @@ function ConversationList({ conversations }: { conversations: ConversationSummar
           type="button"
           onClick={() => setAll((value) => !value)}
           aria-label={all ? t('sidebar.showFewer') : t('sidebar.showAll', { count: conversations.length })}
-          className="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
+          className="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment-dim"
         >
           {all ? t('sidebar.showFewer') : t('sidebar.more', { count: hidden })}
         </button>
@@ -169,7 +169,7 @@ function ArchivedSection({ conversations }: { conversations: ConversationSummary
   const hidden = conversations.length - shown.length
 
   return (
-    <section className="mt-2 border-t border-line pt-1">
+    <section className="mt-2 pt-1">
       <button
         type="button"
         aria-expanded={open}
@@ -199,7 +199,7 @@ function ArchivedSection({ conversations }: { conversations: ConversationSummary
               type="button"
               onClick={() => setAll(true)}
               aria-label={t('sidebar.showAll', { count: conversations.length })}
-              className="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
+              className="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment-dim"
             >
               {t('sidebar.more', { count: hidden })}
             </button>
@@ -228,7 +228,7 @@ function ActionRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-ui text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+      className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-ui text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
     >
       {icon}
       <span className="min-w-0 flex-1">
@@ -258,10 +258,10 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
   const folders = folderTree(recents, withoutRuns(conversations, runs))
 
   return (
-    // A column of the sheet, ruled down its right edge: the workbench's contents, beside the page
-    // they are written on (C5.4). Nothing in it floats and nothing in it is rounded.
-    <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-ink-800 px-2 pb-2">
-      <div className="pt-2">
+    // A soft panel beside the page: the workbench's contents, floating the same distance off the
+    // window's edges as the page does (C5.4).
+    <aside className="flex w-64 shrink-0 flex-col rounded-card bg-ink-800 px-2 pb-2">
+      <div className="pt-1.5">
         <ActionRow
           icon={<PlusIcon />}
           label={t('sidebar.newConversation')}
@@ -286,7 +286,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
 
       {/* A rule between doing something and what you have: the rows above act, the index below is
           the workbench's contents. */}
-      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line pt-3">
+      <div className="mt-2 flex min-h-0 flex-1 flex-col overflow-y-auto pt-1">
         <div className="flex items-center justify-between px-2 pb-1">
           <h2 className="font-mono text-micro tracking-widest text-parchment-faint uppercase">
             {t('sidebar.folders')}
@@ -312,7 +312,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
       </div>
 
       {/* What this window is, at the bottom: the same place the reference puts the account row. */}
-      <div className="mt-1 flex items-center gap-2 border-t border-line px-2 pt-2">
+      <div className="mt-1 flex items-center gap-2 px-2 pt-2">
         <span className="min-w-0 flex-1 truncate font-mono text-micro text-parchment-faint">
           Alpha <span>{version}</span>
         </span>

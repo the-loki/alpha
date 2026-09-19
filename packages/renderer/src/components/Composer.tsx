@@ -7,9 +7,18 @@ import { AttachButton, AttachmentNote, PendingAttachments } from './Attachments.
 import { OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
-import { MARGIN_MARK, PAGE } from './ledger.ts'
+import { PAGE } from './ledger.ts'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
+
+/** The prompt mark: the one mark on the page that is not an entry's number (C5.5). */
+function PromptMark() {
+  return (
+    <span className="pt-0.5 font-mono text-body text-accent select-none" aria-hidden="true">
+      ❯
+    </span>
+  )
+}
 
 /**
  * While a turn is running the send control splits in three, because stopping, steering and
@@ -217,18 +226,18 @@ export function Composer() {
   }
 
   return (
-    // The last rule on the sheet, and the line the next message is written on: a full-bleed band
-    // whose text starts where every entry's text starts, with the prompt mark stamped in the
-    // margin — the one mark that is not a number, on the same column as the numbers (C5.4).
-    <div className="shrink-0 border-t border-line bg-ink-800 pt-2.5 pb-3">
-      <div className={PAGE}>
-        <QueueStrip />
-        <div className="relative flex">
-          <span className={`${MARGIN_MARK} top-1 font-mono text-body text-accent select-none`} aria-hidden="true">
-            ❯
-          </span>
-          <div className="min-w-0 flex-1 flex-col border-l border-line pl-6">
-            <PendingAttachments items={attached} onRemove={(index) => removeAt(index)} />
+    // The line the next message is written on: a soft bar floating at the foot of the page, one
+    // column in from the page's own edge so it starts where every entry's words start, with the
+    // prompt mark at its left — the one mark that is not a number (C5.4).
+    <div className={`shrink-0 pt-2 pb-4 ${PAGE}`}>
+      <QueueStrip />
+      {/* One column in from the page's edge — the width of an entry's number and the gap after it —
+          so the bar lines up with the words above it rather than with the numbers. */}
+      <div className="ml-10">
+        <div className="rounded-card border border-line bg-ink-800 px-4 pt-3 pb-2.5 shadow-soft transition-colors focus-within:border-line-strong">
+          <PendingAttachments items={attached} onRemove={(index) => removeAt(index)} />
+          <div className="flex items-start gap-2.5">
+            <PromptMark />
             <textarea
               ref={field}
               rows={1}
@@ -245,21 +254,21 @@ export function Composer() {
               }
               className="field-sizing-content block max-h-40 min-h-6 w-full resize-none overflow-y-auto bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
             />
-            <ComposerFoot
-              running={running}
-              canSend={canSend}
-              canRedirect={canRedirect}
-              onSend={() => void send()}
-              onStop={() => void stop()}
-              onRedirect={(how) => void redirect(how)}
-              onPicked={(picked, anyRefused) => {
-                setAttached((current) => [...current, ...picked])
-                setRefused(anyRefused)
-              }}
-            />
-            <AttachmentNote refused={refused} />
-            {note !== '' && <p className="mt-1 font-mono text-micro text-parchment-faint">{note}</p>}
           </div>
+          <ComposerFoot
+            running={running}
+            canSend={canSend}
+            canRedirect={canRedirect}
+            onSend={() => void send()}
+            onStop={() => void stop()}
+            onRedirect={(how) => void redirect(how)}
+            onPicked={(picked, anyRefused) => {
+              setAttached((current) => [...current, ...picked])
+              setRefused(anyRefused)
+            }}
+          />
+          <AttachmentNote refused={refused} />
+          {note !== '' && <p className="mt-1 font-mono text-micro text-parchment-faint">{note}</p>}
         </div>
       </div>
     </div>

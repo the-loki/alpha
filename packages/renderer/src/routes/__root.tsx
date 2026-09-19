@@ -52,17 +52,16 @@ function RootLayout() {
   if (locked) return <UnlockScreen />
 
   return (
-    // One sheet, full bleed: the window is the document, so there are no gutters and no card
-    // floating inside it. The rail and the top bar are the sheet's chrome; the page between them
-    // is where the work is read (C5.4).
+    // The window is a page and a rail, both floating: a soft gutter all the way round, one rounded
+    // surface for the workbench's contents and one for the page being worked in (C5.4).
     <div className="flex h-screen flex-col bg-ink-900">
       <TitleBar />
-      {/* The rail is a column of the sheet with a rule down its right edge, and everything to the
-          right of that rule is the page: full height, full width, nothing floating. */}
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 gap-2 px-2 pb-2">
         {!inSettings && <Sidebar onSearch={openPalette} />}
-        <main className="min-w-0 flex-1 bg-ink-700">
-          <Outlet />
+        <main className="min-w-0 flex-1">
+          <div className="flex h-full flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
+            <Outlet />
+          </div>
         </main>
       </div>
       <ConversationPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

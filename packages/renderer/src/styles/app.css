@@ -20,8 +20,8 @@
   --color-ink-800: #f3f3f5;
   --color-ink-700: #ffffff;
   --color-ink-600: #e9e9ec;
-  --color-line: #e2e2e6;
-  --color-line-strong: #c7c7cf;
+  --color-line: #e9e9ee;
+  --color-line-strong: #cdcdd6;
 
   --color-parchment: #17171a;
   --color-parchment-dim: #55555f;
@@ -51,14 +51,22 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Noto Sans Mono CJK SC', monospace;
 
   /*
-   * The sheet is square and only what floats is rounded (C5.4): a control on the page is a stamp
-   * — a square with a hairline around it — and a menu hovering over the page is the one thing
-   * allowed to look like a card. The distance between these two numbers is the distance between
-   * printed and floating.
+   * Soft corners, and generous ones (C5.4): a control is rounded enough to read as a shape rather
+   * than as a box, a card is a full sweep, and a menu is rounder still. The three steps are the
+   * whole scale — nothing in the window is square, and nothing invents a fourth radius.
    */
-  --radius-control: 0;
-  --radius-card: 0;
-  --radius-overlay: 0.5rem;
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-overlay: 1.25rem;
+
+  /*
+   * Two shadows, both soft and both low: `card` is what a panel floating on the page wears, and
+   * `soft` is for what floats a little less — the composer's bar, a row lifted on hover. Neither
+   * is a border: the page has a hairline where it needs an edge, and a shadow where it needs
+   * height.
+   */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 16px rgb(0 0 0 / 0.05);
 
   /*
    * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
@@ -102,8 +110,8 @@
     --color-ink-800: #1d1d20;
     --color-ink-700: #232327;
     --color-ink-600: #2c2c32;
-    --color-line: #33333a;
-    --color-line-strong: #4a4a54;
+    --color-line: #2f2f37;
+    --color-line-strong: #45454f;
 
     --color-parchment: #f4f4f6;
     --color-parchment-dim: #a4a4ae;
@@ -118,6 +126,9 @@
     --color-amber: #dfa947;
     --color-danger: #e46b64;
     --color-info: #7b9ada;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px rgb(0 0 0 / 0.42);
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 18px rgb(0 0 0 / 0.35);
   }
 
   /*

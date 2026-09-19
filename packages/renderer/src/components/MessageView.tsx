@@ -12,7 +12,6 @@ import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { useConversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
 import { TEXT_ACTION } from './controls.ts'
-import { entryNumber, MARGIN_MARK } from './ledger.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -132,13 +131,7 @@ export const MessageView = memo(function MessageView({
 
   if (message.role === 'user') {
     return (
-      <article className="group relative flex flex-col" data-role="user">
-        {/* The entry's number, stamped in the margin: what was asked, in the order it was asked.
-            It is the one thing in the transcript that is numbered, because it is the one thing
-            the work hangs off. */}
-        <span className={`${MARGIN_MARK} top-0 font-mono text-micro text-parchment-faint`} aria-hidden="true">
-          {entryNumber(index)}
-        </span>
+      <article className="group flex flex-col" data-role="user">
         {editing ? (
           <EditBox message={message} index={index} />
         ) : (

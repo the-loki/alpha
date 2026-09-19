@@ -87,7 +87,7 @@ export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 py-2 text-left transition-colors hover:bg-ink-800"
+        className="flex w-full items-center gap-3 rounded-control px-2 py-2 text-left transition-colors hover:bg-ink-800"
       >
         <span
           className={`w-3 shrink-0 text-center font-mono text-micro ${TONE[block.status]}`}
@@ -98,7 +98,9 @@ export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?
         <span className="w-24 shrink-0 truncate font-mono text-code text-parchment">{block.name}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-code text-parchment-dim">{block.summary}</span>
         {mark !== undefined && (
-          <span className={`shrink-0 border px-1.5 font-mono text-micro tracking-wide ${markTone}`}>{t(mark)}</span>
+          <span className={`shrink-0 rounded-full border px-2 font-mono text-micro tracking-wide ${markTone}`}>
+            {t(mark)}
+          </span>
         )}
         <span className={`w-14 shrink-0 text-right font-mono text-micro ${TONE[block.status]}`}>
           {t(STATUS_WORD[block.status])}
@@ -111,7 +113,7 @@ export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?
       {open && (
         // Recessed: the audit of a row belongs to the row, and the surface says so without a box
         // drawn around the whole thing.
-        <div className="mb-2 rounded-control border border-line bg-ink-900/60 px-3 py-2">
+        <div className="mb-2 rounded-card border border-line bg-ink-900/50 px-3 py-2">
           {block.approval !== undefined && (
             <p className="mb-1 font-mono text-micro text-parchment-faint">
               {approvalNote(language, block.approval)}

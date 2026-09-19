@@ -54,6 +54,13 @@ the only screen that has no window around it.
 a shadow is what a menu, a select's popup or the command palette look like, because they are the
 only things that are not on the page.
 
+## Superseded in part
+
+The *material* decided here — square everywhere, rounding only for overlays, a hairline down the
+page's margin — was reversed by [0017](0017-soft-corners-and-the-page-stays.md): it read as crude
+rather than as precise. Everything else stands: the page, the ruled margin as a numbered column,
+the entry as a log line, the ledger as a table, the composer as a command line.
+
 ## Consequences
 
 - The conversation's header moves to being a **page head**: one band with the title at

@@ -82,17 +82,17 @@ function Settings() {
   const { tab } = Route.useSearch()
 
   return (
-    // The same shape as the window: a ruled column of places to go, and the page beside it. The
-    // menu is chrome and the panel is the document, which is the split every other screen uses.
-    <div className="flex h-full">
+    // The same shape as the window: a soft menu panel and the page beside it, which is the split
+    // every other screen uses.
+    <div className="flex h-full gap-2 p-2">
       <nav
         aria-label={t('settings.sections')}
-        className="w-60 shrink-0 overflow-y-auto border-r border-line bg-ink-800 px-2 pt-2 pb-6"
+        className="w-60 shrink-0 overflow-y-auto rounded-card bg-ink-800 px-2 pt-2 pb-6"
       >
         {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
         <Link
           to="/"
-          className="flex items-center gap-2 border-l-2 border-l-transparent px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
+          className="flex items-center gap-2 rounded-control px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment"
         >
           <ArrowLeftIcon /> {t('settings.back')}
         </Link>
@@ -100,7 +100,7 @@ function Settings() {
         <h1 className="mt-5 px-2 text-lg font-semibold text-parchment">{t('settings.title')}</h1>
 
         {TAB_GROUPS.map((group) => (
-          <section key={group.label} className="mt-5 border-t border-line pt-3">
+          <section key={group.label} className="mt-5 pt-2">
             <h2 className="px-2 pb-1 font-mono text-micro tracking-widest text-parchment-faint uppercase">
               {t(group.label)}
             </h2>
@@ -111,12 +111,12 @@ function Settings() {
                     to="/settings"
                     search={{ tab: candidate }}
                     aria-current={candidate === tab ? 'page' : undefined}
-                    // The panel you are on is marked by the accent at the column's own edge, the
-                    // same mark the rail puts on the conversation you are in.
-                    className={`flex items-center gap-2.5 border-l-2 px-2 py-1.5 text-ui transition-colors ${
+                    // The panel you are on is a lifted row, the same mark the rail puts on the
+                    // conversation you are in.
+                    className={`flex items-center gap-2.5 rounded-control px-2 py-1.5 text-ui transition-colors ${
                       candidate === tab
-                        ? 'border-l-accent font-medium text-parchment'
-                        : 'border-l-transparent text-parchment-dim hover:bg-ink-600 hover:text-parchment'
+                        ? 'bg-ink-700 font-medium text-parchment shadow-soft'
+                        : 'text-parchment-dim hover:bg-ink-700/60 hover:text-parchment'
                     }`}
                   >
                     {TAB_ICONS[candidate]}
@@ -129,7 +129,7 @@ function Settings() {
         ))}
       </nav>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-ink-700">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-card border border-line bg-ink-700">
         {/* One rule between one panel section and the next, drawn by the container so a section
             cannot forget it and two of them cannot draw it twice. The heading has none of its
             own: it is the rule's first subject, not a section under it. */}

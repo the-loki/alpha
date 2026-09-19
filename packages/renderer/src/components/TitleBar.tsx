@@ -48,13 +48,13 @@ function WindowControls() {
 
 export function TitleBar() {
   return (
-    <header className="drag-region flex h-9 shrink-0 items-stretch justify-between border-b border-line bg-ink-800 pl-3">
-      {/* The workbench's mark: a stamped square and its name, small enough to read as a publisher's
+    <header className="drag-region flex h-9 shrink-0 items-stretch justify-between pl-4">
+      {/* The workbench's mark: a soft badge and its name, small enough to read as a publisher's
           line rather than as a product name (C5.5). It is the only place the app signs the page. */}
       <span className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="grid h-4 w-4 place-items-center bg-accent font-mono text-micro text-accent-ink"
+          className="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
         >
           A
         </span>

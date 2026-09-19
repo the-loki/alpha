@@ -10,7 +10,7 @@ import {
 import { Fragment, useEffect, useRef } from 'react'
 import { useText } from '../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
-import { PAGE, PAGE_RULE } from './ledger.ts'
+import { BLOCK, entryNumber, MARK_COLUMN, PAGE } from './ledger.ts'
 import { MessageView } from './MessageView.tsx'
 
 /** Which user message this is, counting from the top, which is how an edit names its target. */
@@ -87,29 +87,38 @@ export function MessageList({ transcript }: { transcript: TranscriptState }) {
       className="min-h-0 flex-1 overflow-y-auto"
       data-region="transcript"
     >
-      {/* The page: a ruled margin, then the text block. Tool rows, diffs and code take the width
-          of the block, and prose carries its own reading measure (C5.3) rather than the column
-          being centred and narrow. `min-h-full` is what makes the margin rule run to the foot of
-          the page even when the turns only fill the top of it. */}
-      <div className={`min-h-full py-6 ${PAGE}`}>
-        <div className={`min-h-full ${PAGE_RULE} flex flex-col`}>
+      {/* The page: a leading column carrying the entries' numbers, then the text block. Tool rows,
+          diffs and code take the width of the block, and prose carries its own reading measure
+          (C5.3) rather than the column being centred and narrow. */}
+      <div className={`py-6 ${PAGE}`}>
+        <div className="flex flex-col">
           {messages.map((message, index) => (
             // A turn opens with the reader's own words and everything after it is the work done
             // for them, so the gap inside a turn is smaller than the gap between two of them.
             <Fragment key={message.id}>
-              <div className={index === 0 ? '' : message.role === 'user' ? 'mt-10' : 'mt-4'}>
-                <MessageView
-                  message={message}
-                  index={userIndex(messages, index)}
-                  last={index === messages.length - 1}
-                />
-                <TurnUsageNote turn={turnFor(messages, index, transcript.turns)} />
+              <div className={`${BLOCK} ${index === 0 ? '' : message.role === 'user' ? 'mt-9' : 'mt-4'}`}>
+                {/* Only an entry is numbered: the work that answers it hangs under the same empty
+                    column, which is what keeps every line of the page starting at the same x. */}
+                <span className={MARK_COLUMN} aria-hidden="true">
+                  {message.role === 'user' ? entryNumber(userIndex(messages, index)) : ''}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <MessageView
+                    message={message}
+                    index={userIndex(messages, index)}
+                    last={index === messages.length - 1}
+                  />
+                  <TurnUsageNote turn={turnFor(messages, index, transcript.turns)} />
+                </div>
               </div>
             </Fragment>
           ))}
           {transcript.approvals.map((request) => (
-            <div key={request.requestId} className="mt-4">
-              <ApprovalCard request={request} />
+            <div key={request.requestId} className={`${BLOCK} mt-4`}>
+              <span className={MARK_COLUMN} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <ApprovalCard request={request} />
+              </div>
             </div>
           ))}
         </div>

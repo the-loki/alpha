@@ -136,17 +136,15 @@ test('settings is a menu of panels, one at a time, each with its address', async
   await expect(window.getByRole('group', { name: 'Add a provider' })).toHaveCount(0)
   expect(new URL(window.url()).hash).toContain('tab=permissions')
 
-  // The menu says where you are, with more than the heading: the panel you are on carries the
-  // accent mark at the column's edge and the others do not (C5.4). Asserted on the mark itself,
-  // because that is what the menu now says it with — a fill was the old language.
+  // The menu says where you are, with more than the heading: the panel you are on is the lifted
+  // row and the others are not (C5.4). The fill fades, so the reading waits for the menu to settle
+  // rather than catching it halfway.
   await window.mouse.move(0, 0)
-  const markOf = (name: string) =>
-    window.getByRole('link', { name }).evaluate((element) => getComputedStyle(element).borderLeftColor)
-  // The mark fades in and out, so the reading waits for the menu to settle rather than catching a
-  // colour halfway: the panel that is no longer current ends up with a clear edge.
-  await expect.poll(() => markOf('Providers')).toBe('rgba(0, 0, 0, 0)')
-  const marked = await markOf('Permissions')
-  expect(marked).not.toBe(await markOf('Providers'))
+  const rowFillOf = (name: string) =>
+    window.getByRole('link', { name }).evaluate((element) => getComputedStyle(element).backgroundColor)
+  await expect.poll(() => rowFillOf('Providers')).toBe('rgba(0, 0, 0, 0)')
+  const raised = await rowFillOf('Permissions')
+  expect(raised).not.toBe(await rowFillOf('Providers'))
 
   await window.setViewportSize({ width: 1440, height: 1000 })
   await window.screenshot({ path: join(SHOT_DIR, 'settings-permissions.png') })

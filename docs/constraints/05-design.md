@@ -37,24 +37,23 @@ third palette, and resolving it once keeps the stylesheet to plain selectors.
 | `--danger` | `#B02A25` | `#E46B64` | Denied, failed, destructive |
 | `--info` | `#2F5399` | `#7B9ADA` | Neutral system notices |
 
-The page is the lightest step in both palettes and the chrome is the step away from it, so the
-window reads as a sheet with a frame rather than as a card floating in a grey box (ADR-0016).
-**The accent is the only colour in the chrome** — everything else is the grey scale above plus the
-four semantic tokens.
+The page is the lightest step in both palettes and the rail and the bands are the step away from
+it, so the window reads as a page with chrome around it. **The accent is the only colour in the
+chrome** — everything else is the grey scale above plus the four semantic tokens.
 
 ### The surface ladder
 
 A surface is placed, never picked, and the placement alternates as it nests:
 
-1. **The window** is `--ink-900`, and it is only ever seen as the frame around the sheet: the
-   half-rem margin a floating overlay is offset by, and nothing else.
+1. **The window** is `--ink-900`, and it is seen as the gutter all the way round the two panels
+   that sit in it — a half-rem of it, which is also the offset a floating overlay uses.
 2. **The page** is `--ink-700`: a conversation, the tasks list, the settings panel, anything the
-   reader reads as a document and anything they type into. It is full bleed — it reaches the
-   window's own edges rather than floating inside it.
-3. **Chrome inside the window** is `--ink-800` — the stamp strip, the rail, a page's head band, the
-   band the composer stands on, an overlay, and a block that *groups* rows inside a settings panel.
-   This is why the step exists twice: the second grey is not the window behind the sheet, it is the
-   sheet's own frame.
+   reader reads as a document and anything they type into. It is a rounded panel with a hairline
+   and `--shadow-card`, floating in the window beside the rail.
+3. **Chrome** is `--ink-800` — the rail (a rounded panel of its own), a page's head band, the
+   composer's bar, an overlay, and a block that *groups* rows inside a settings panel. This is why
+   the step exists twice: the second grey is not the window behind the page, it is the page's own
+   furniture.
 4. **An inset inside that** alternates once more: an expanded tool body is `--ink-900/60`, a
    thinking block `--ink-800/60`, a nested model row `--ink-800/60`. Half-alpha rather than a
    fourth token, so an inset is a tint of the surface it sits on in either palette.
@@ -158,53 +157,58 @@ and on an entry's own words — prose is the one thing that reads worse the wide
 ## C5.4 — Space and shape
 
 A 0.25rem base scale, used as `1, 2, 3, 4, 6, 8, 12` (Tailwind's `p-1`…`p-12`). Borders are 1px
-hairlines. **The sheet is square; only what floats is rounded** (ADR-0016). `--radius-control` and
-`--radius-card` are `0`: a control on the page is a stamp, a square with a hairline around it, and
-the only rounded things in the window are the ones that hover over the page — a menu, a popup, the
-command palette — which use `--radius-overlay` and a shadow. A shadow is never used to say "this is
-a card on the page"; the page has no cards. The composer's focused state is a 1px border change,
-not a bloom.
+hairlines. **Soft corners, and nothing is square** (ADR-0017): `--radius-control` `0.625rem` for a
+button, a chip, a field, a row; `--radius-card` `1rem` for a panel, the page, a block in it, the
+composer's bar; `--radius-overlay` `1.25rem` for a menu and the command palette. Chips and state
+dots are pills (`rounded-full`). There are three radii and no fourth: a component that wants a
+different corner wants a different element.
 
-**The window is one sheet, full bleed.** `<main>` reaches the window's own right and bottom edges
-and the rail is a column of the same sheet with a rule down its right edge: no outer margins, no
-card floating inside a grey window. Chrome — the stamp strip, a page's head band, the composer's
-band, the rail — is `--ink-800`; the page is `--ink-700`, and the two steps are the whole depth
-story on a conversation.
+**Height comes from two shadows, edges come from hairlines.** `--shadow-card` lifts the page and
+the rail off the window; `--shadow-soft` lifts what floats a little less — the composer's bar, the
+row you are in, a grouped control inside a form. Both are wide and low-alpha, and the dark palette
+carries the stronger pair because a dark page swallows the first. A shadow is never drawn where a
+hairline would have done, and nothing has both a heavy border and a shadow.
 
-**The page has a ruled margin.** Three columns, imported from `components/ledger.ts` so nothing
-re-derives them: the page edge (`PAGE`), the margin column (3rem), the rule (`PAGE_RULE`'s left
-border), the text block (1.5rem in). An entry's number is stamped in the margin right-aligned
-against the rule, two digits, mono, faint; the composer's `❯` is the same mark in the same column.
-The rule runs unbroken from the first entry to the foot of the composer, and the page carries
-`min-h-full` so it reaches the bottom of the window even when the turns only fill the top.
+**The window has a gutter, and two panels sit in it.** A half-rem all the way round, on
+`--ink-900`. The rail is a rounded panel; the page — the conversation, the tasks list, the settings
+panel — is a rounded panel beside it with a hairline and `--shadow-card`. Nothing is full bleed
+except the window itself, and the strip at the top holds only the app's mark and the window's own
+controls.
 
-**An entry is a ruled log line.** The reader's own words sit in the text block at the same left
-edge and the same size as the answer, opened by the number in the margin and closed by a hairline
-under everything that belongs to the entry. Nothing is filled, outlined, or aligned to the right:
-what tells the request from the work is the number, the rule and the gap between turns. The
-entry's actions (copy, edit) are revealed on hover and on focus, so an entry at rest is its number,
-its words and its rule. The assistant's answer keeps its own action row visible, because that is
-the thing a reader copies.
+**The margin is a column, not a rule.** Two columns, imported from `components/ledger.ts` so
+nothing re-derives them: the leading column (`MARK_COLUMN`, 1.5rem) and the gap after it (1rem),
+then the text block (`PAGE` is the page's own padding). An entry's number sits right-aligned in the
+leading column, two digits, mono, faint; an answer leaves the column empty, which is what keeps
+every line of the page starting at the same x. There is no vertical rule down the page: the number
+says what the column is for.
 
-**The composer is a command line on the same margin.** The prompt mark is in the margin, the words
-start where every entry's words start, and the line grows with what is written into it
-(`field-sizing-content`) rather than being a fixed box. The band across the foot is chrome, ruled
-off from the page above it. Everything the message carries or is allowed to do sits in one row
-under the words: the way in to the file picker and the level chip at the left, the model it will
-run on and the control that sends it at the right. Both chips follow one rule — with a conversation
-open they change that conversation, and with none open they change what the next one starts
-with — and neither is duplicated in the head, because a setting lives where the message that uses
-it is written.
+**An entry is a log line.** The reader's own words sit in the text block at the same left edge and
+the same size as the answer, opened by the number in the margin and closed by a hairline under
+everything that belongs to the entry. Nothing is filled, outlined or aligned to the right: what
+tells the request from the work is the number, the rule and the gap between turns. The entry's
+actions (copy, edit) are revealed on hover and on focus, so an entry at rest is its number, its
+words and its rule. The assistant's answer keeps its own action row visible, because that is the
+thing a reader copies.
 
-**Where a rule goes.** A hairline separates two *different kinds* of thing: the window chrome from
-the page, a page's head from its body, the transcript from the composer's band, the rail's actions
-from the rail's contents, one folder group from the next, one section of the settings panel from
-the next. Two of the same thing repeating get space and nothing else — no rule between two
-conversation rows, which are set apart by their own hover and by the mark on the current one. Two
-repetitions *are* ruled, and both are logs read line by line: the ledger of tool calls, and the
-events inside an expanded row (C5.5). An entry's rule is the one exception that is not a
-separation: it closes what the reader asked, and the work hangs under it. A rule is `--line` at
-full strength and never a shadow: depth in Alpha is a change of surface or a 1px line, not a blur.
+**The composer is a bar, and a command line.** A rounded bar floating at the foot of the page, one
+column in from the page's edge so its words start where every entry's words start, with the prompt
+mark at its left. The line grows with what is written into it (`field-sizing-content`) rather than
+being a fixed box. Everything the message carries or is allowed to do sits in one row under the
+words: the way in to the file picker and the level chip at the left, the model it will run on and
+the control that sends it at the right. Both chips follow one rule — with a conversation open they
+change that conversation, and with none open they change what the next one starts with — and
+neither is duplicated in the head, because a setting lives where the message that uses it is
+written.
+
+**Where a rule goes.** A hairline separates two *different kinds* of thing: the page's head from its
+body, the transcript from the composer's bar, the rail's actions from the rail's contents, one
+folder group from the next, one section of the settings panel from the next. Two of the same thing
+repeating get space and nothing else — no rule between two conversation rows, which are set apart
+by their own hover and by the lifted row the current one is. Two repetitions *are* ruled, and both
+are logs read line by line: the ledger of tool calls, and the events inside an expanded row (C5.5).
+An entry's rule is the one exception that is not a separation: it closes what the reader asked, and
+the work hangs under it. A rule is `--line`, one step lighter than the text around it, and never a
+shadow.
 
 **A turn ends with a line.** The last answer of a turn is closed by a hairline the width of the
 text block with what the turn spent at its right end — mono, faint, one line. It is the one rule in
@@ -214,10 +218,10 @@ one run of prose; the running total stays in the page's head, where it belongs t
 **The rail's columns.** Every row in the rail is built on three x-positions, so a list of folders
 and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder, the icon
 of an action row), the second column at 1.75rem (a folder's glyph, a conversation's status dot,
-centred in its own 1rem box), and the third at 3.25rem (the name). The conversation you are in is
-marked by a 2px rule in the accent at the row's own left edge — a slip of paper in a book, not a
-highlight behind the text, so the row's text never moves for it. A row that puts a name anywhere
-else is the thing that makes a rail look hand-assembled.
+centred in its own 1rem box), and the third at 3.25rem (the name). The conversation you are in is a
+lifted row — the page's own fill, a rounded row, `--shadow-soft` — and the accent is not spent on
+saying where you are. A row that puts a name anywhere else is the thing that makes a rail look
+hand-assembled.
 
 **Lengths are rem, and the checker says so.** `05-design:no-px-lengths` fails `pnpm check` on any
 px length inside `packages/renderer/`, with exactly one exception: `1px` hairlines, which have to
@@ -228,20 +232,20 @@ stay a device pixel to stay crisp.
 Six elements carry the identity. They must be recognisable from a screenshot with the text
 removed:
 
-1. **The sheet and its margin.** One full-bleed page, chrome bands above and below it, a rail
-   column at its left, and a single hairline running the height of the page with numbers stamped
-   against it. This is the thing that says "ledger" before a word is read.
+1. **The page and its numbered column.** A rounded page floating in the window, a rail panel
+   beside it, and a leading column down the page where each entry's number is written and the
+   answers leave it empty. This is the thing that says "ledger" before a word is read.
 2. **The ledger row.** Every tool call is a ruled line rather than a card, with **fixed column
    widths** — risk glyph, mono tool name, argument summary, who let it through, status, duration —
-   so that a stack of rows is a table and not a list of sentences. Opening a row drops a recessed
-   panel under it: arguments, the gate's note, output, diff, each under a mono micro heading.
-3. **The stamp.** A small accent square with an `A` in it, followed by the app's name in mono upper
-   case, at the top left of the window. It is the only place the app signs the page, and the same
-   mark signs the unlock screen.
-4. **The gate.** A pending approval is not a modal and not a card. It is an inset block in the
-   transcript, ruled off at its top and bottom, with a 2px amber rail down its left edge, the exact
-   command, its working directory, and three decisions: Allow once, Always allow (with the scope it
-   will be remembered for), Deny.
+   so that a stack of rows is a table and not a list of sentences. Opening a row drops a rounded
+   filled panel under it: arguments, the gate's note, output, diff, each under a mono micro heading.
+3. **The mark.** A small rounded badge in the accent with an `A` in it, followed by the app's name
+   in mono upper case, at the top left of the window. It is the only place the app signs the page,
+   and the same mark signs the unlock screen.
+4. **The gate.** A pending approval is not a modal and not a card in the transcript's flow. It is a
+   rounded block with an amber tint, a soft shadow and an amber edge, holding the exact command,
+   its working directory, and three decisions: Allow once, Always allow (with the scope it will be
+   remembered for), Deny.
 5. **The ember cursor.** Streaming text is followed by a 0.125rem copper block that pulses at
    1.2s. It is the only animation running in a resting window.
 6. **The two chips at the foot of the composer.** The permission level is a coloured chip with a
@@ -267,8 +271,8 @@ chip pairs its colour with its name, each tool status pairs its colour with a gl
 in pairs its accent rule with `aria-current`, and a chosen option pairs its tint with a check mark
 (the state is also `aria-pressed` / `aria-current`, so a reader that cannot see either still has it).
 
-**Decoration is hidden from a reader.** The margin's entry numbers and the composer's prompt mark
-are `aria-hidden`: they are the page's furniture, and a reader being told "zero one" before every
+**Decoration is hidden from a reader.** The entry numbers and the composer's prompt mark are
+`aria-hidden`: they are the page's furniture, and a reader being told "zero one" before every
 message is being read a layout instead of a transcript. The same goes for a rule drawn as an empty
 `span`, and for the middots that separate a page head's facts.
 

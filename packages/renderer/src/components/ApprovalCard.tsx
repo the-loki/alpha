@@ -44,7 +44,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           deny()
         }
       }}
-      className="overflow-hidden rounded-card border border-line border-l-2 border-l-amber bg-ink-800/80"
+      className="overflow-hidden rounded-card border border-amber/30 bg-amber/5 shadow-soft"
     >
       <header className="flex items-baseline gap-2 px-3.5 pb-1 pt-2.5">
         <span className="font-mono text-micro uppercase tracking-wider text-amber">
@@ -63,7 +63,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
         {request.diff !== undefined && <DiffView diff={request.diff} />}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line px-3.5 py-2.5">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-3.5 py-2.5">
         <button
           type="button"
           onClick={allowOnce}
@@ -73,7 +73,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           {t('approval.allowOnce')}
         </button>
 
-        <div className="flex items-center rounded-control border border-line bg-ink-700">
+        <div className="flex items-center rounded-control border border-line bg-ink-700 shadow-soft">
           <button
             type="button"
             onClick={allowAlways}
@@ -101,7 +101,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           onChange={(event) => setReason(event.target.value)}
           aria-label={t('approval.reasonLabel')}
           placeholder={t('approval.reasonPlaceholder')}
-          className="min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          className="min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-700 px-2.5 py-1.5 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
         <button

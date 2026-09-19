@@ -29,7 +29,7 @@ export function UnlockScreen() {
   return (
     <div className="grid h-screen place-items-center bg-ink-900 px-6">
       <form
-        className="w-full max-w-md border border-line bg-ink-800 p-6"
+        className="w-full max-w-md rounded-card border border-line bg-ink-800 p-6 shadow-card"
         onSubmit={(event) => {
           event.preventDefault()
           void submit()
@@ -40,7 +40,7 @@ export function UnlockScreen() {
         <span className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className="grid h-4 w-4 place-items-center bg-accent font-mono text-micro text-accent-ink"
+            className="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
           >
             A
           </span>
