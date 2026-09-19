@@ -106,7 +106,7 @@ function Settings() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden py-2 pr-2">
         <div className="min-h-0 flex-1 overflow-y-auto rounded-card border border-line bg-ink-700 px-8 py-7">
-          <div className="mx-auto max-w-2xl space-y-8">{PANELS[tab]}</div>
+          <div className="mx-auto max-w-3xl space-y-8">{PANELS[tab]}</div>
         </div>
       </div>
     </div>

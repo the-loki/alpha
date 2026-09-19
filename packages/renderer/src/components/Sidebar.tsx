@@ -1,4 +1,4 @@
-import { type ConversationSummary, groupByWorkspace, type WorkspaceGroup } from '@alpha/core'
+import { type ConversationSummary, formatAge, groupByWorkspace, type WorkspaceGroup } from '@alpha/core'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -57,7 +57,10 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
         }`}
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${state.dot}`} aria-hidden="true" />
-        <span className="truncate text-code">{conversation.title}</span>
+        <span className="min-w-0 flex-1 truncate text-code">{conversation.title}</span>
+        <span className="shrink-0 font-mono text-micro text-parchment-faint group-hover:hidden">
+          {formatAge(conversation.updatedAt, Date.now())}
+        </span>
         <span className="sr-only">{state.word}</span>
       </button>
       <button

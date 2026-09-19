@@ -10,3 +10,18 @@ export function formatDuration(startedAt: Undef<number>, endedAt: Undef<number>)
   const seconds = Math.max(0, (endedAt - startedAt) / 1000)
   return seconds < 1 ? `${Math.round(seconds * 1000)}ms` : `${seconds.toFixed(1)}s`
 }
+
+/**
+ * How long ago something happened, in the one unit a list row needs. It is the age of a
+ * conversation, so it reads as "just now" until a minute has passed and never as a date: the
+ * sidebar is a list of what you were doing, not a log.
+ */
+export function formatAge(at: number, now: number): string {
+  const seconds = Math.max(0, Math.round((now - at) / 1000))
+  if (seconds < 45) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.round(hours / 24)}d`
+}
