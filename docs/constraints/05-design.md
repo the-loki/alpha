@@ -11,6 +11,14 @@ separates Alpha on sight, and it is not decoration: warmer hues at low luminance
 sit in front of for a long session than pure black, and the copper accent reads as a working
 lamp rather than a status LED.
 
+The warmth lives in the **surfaces themselves**, not only in the accent. The light palette is
+paper — an unbleached page, linen chrome, a warm white for what is being read — and the hairlines
+are the colour of a pressed line. The dark palette is the same room with the lamp turned most of
+the way down: warm near-blacks rather than an inversion of the light greys. The warmth is a
+whisper, two to four percent off neutral, because paper that announces itself is beige, and beige
+is the one thing this must not be. The shadows are warm too: a shadow on paper is never pure
+black, it carries the ink's own brown.
+
 ## C5.2 — Tokens
 
 These are the only colours in the app. Components reference tokens, never raw hex.
@@ -22,15 +30,15 @@ third palette, and resolving it once keeps the stylesheet to plain selectors.
 
 | Token | Light (default) | Dark | Use |
 | --- | --- | --- | --- |
-| `--ink-900` | `#F3F3F5` | `#17171A` | The window behind the sheet, and the insets that sit in the page |
-| `--ink-800` | `#F3F3F5` | `#1D1D20` | Chrome: the stamp strip, the rail, a page's head band, the composer's band, a grouped block in a panel, overlays |
-| `--ink-700` | `#FFFFFF` | `#232327` | The page: the transcript, a settings panel, a task list, anything typed into |
-| `--ink-600` | `#E9E9EC` | `#2C2C32` | Hover, and the selected row |
-| `--line` | `#E2E2E6` | `#33333A` | Hairline borders, dividers |
-| `--line-strong` | `#C7C7CF` | `#4A4A54` | Focused input border |
-| `--parchment` | `#17171A` | `#F4F4F6` | Primary text |
-| `--parchment-dim` | `#55555F` | `#A4A4AE` | Secondary text, labels |
-| `--parchment-faint` | `#767680` | `#7D7D87` | Metadata, timestamps |
+| `--ink-900` | `#F6F4F0` | `#12100E` | The window behind the panels, and the insets that sit in the page |
+| `--ink-800` | `#F0EDE6` | `#1A1713` | Chrome: the stamp strip, the rail, a page's head band, the composer's bar, a grouped block in a panel, overlays |
+| `--ink-700` | `#FFFEFB` | `#211D18` | The page: the transcript, a settings panel, a task list, anything typed into |
+| `--ink-600` | `#E9E4DA` | `#2B2620` | Hover, and the selected row |
+| `--line` | `#E5E0D6` | `#363028` | Hairline borders — a pressed line, not a grey divider |
+| `--line-strong` | `#C9C2B4` | `#4D453A` | Focused input border |
+| `--parchment` | `#201B15` | `#F4F1EA` | Primary text |
+| `--parchment-dim` | `#5C554A` | `#ACA394` | Secondary text, labels |
+| `--parchment-faint` | `#7B7365` | `#857C6D` | Metadata, timestamps |
 | `--warm` | `#A8481A` | `#E2762F` | The `full-access` level, and nothing else |
 | `--jade` | `#1F6B4C` | `#56B394` | Success, connected, auto-approved |
 | `--amber` | `#7A520E` | `#DFA947` | Waiting on the user, warnings |
@@ -39,7 +47,7 @@ third palette, and resolving it once keeps the stylesheet to plain selectors.
 
 The page is the lightest step in both palettes and the rail and the bands are the step away from
 it, so the window reads as a page with chrome around it. **The accent is the only colour in the
-chrome** — everything else is the grey scale above plus the four semantic tokens.
+chrome** — everything else is the paper scale above plus the four semantic tokens.
 
 ### The surface ladder
 
@@ -58,12 +66,11 @@ A surface is placed, never picked, and the placement alternates as it nests:
    thinking block `--ink-800/60`, a nested model row `--ink-800/60`. Half-alpha rather than a
    fourth token, so an inset is a tint of the surface it sits on in either palette.
 
-The alternation is what answers "how deep am I" without a border telling the reader: grey, white,
-grey, tinted. It also means one rule holds in both palettes — in light the sequence is
-`#F3F3F5 → #FFF → #F3F3F5`, in dark `#17171A → #232327 → #1D1D20` — and the light palette's first and
-third steps being the same value is not a mistake, because they are never adjacent except where a
-hairline separates them anyway. A surface never blends a colour of its own: these four steps and the
-scrim behind an overlay (`--ink-900` at alpha) are the whole vocabulary.
+The alternation is what answers "how deep am I" without a border telling the reader: linen, white,
+linen, tinted. It also means one rule holds in both palettes — in light the sequence is
+`#F0EDE6 → #FFFEFB → #F0EDE6`, in dark `#1A1713 → #211D18 → #1A1713` — and every step is measured by
+the contrast test against whatever text sits on it. A surface never blends a colour of its own:
+these four steps and the scrim behind an overlay (`--ink-900` at alpha) are the whole vocabulary.
 
 ### The accent is a slot, not a colour
 

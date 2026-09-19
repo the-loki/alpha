@@ -16,16 +16,23 @@
  * redefines — components name the role, never the colour it happens to be.
  */
 @theme {
-  --color-ink-900: #f3f3f5;
-  --color-ink-800: #f3f3f5;
-  --color-ink-700: #ffffff;
-  --color-ink-600: #e9e9ec;
-  --color-line: #e9e9ee;
-  --color-line-strong: #cdcdd6;
+  /*
+   * Paper, not grey. Every surface carries the warmth of the lamp the app is named for: the page
+   * is unbleached paper, the chrome is linen a step darker, the page itself is warm white, and the
+   * hairlines are the colour of a pressed line rather than of a grey divider. Warmth here is a
+   * whisper — two to four percent off neutral — because paper that announces itself is beige, and
+   * beige is the one thing this must not be (C5.1, C5.2).
+   */
+  --color-ink-900: #f6f4f0;
+  --color-ink-800: #f0ede6;
+  --color-ink-700: #fffefb;
+  --color-ink-600: #e9e4da;
+  --color-line: #e5e0d6;
+  --color-line-strong: #c9c2b4;
 
-  --color-parchment: #17171a;
-  --color-parchment-dim: #55555f;
-  --color-parchment-faint: #767680;
+  --color-parchment: #201b15;
+  --color-parchment-dim: #5c554a;
+  --color-parchment-faint: #7b7365;
 
   --color-accent: #a8481a;
   --color-accent-bright: #8f3c13;
@@ -65,14 +72,14 @@
    * is a border: the page has a hairline where it needs an edge, and a shadow where it needs
    * height.
    */
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07);
-  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 16px rgb(0 0 0 / 0.05);
+  --shadow-card: 0 1px 2px rgb(43 33 22 / 0.05), 0 12px 32px rgb(43 33 22 / 0.08);
+  --shadow-soft: 0 1px 2px rgb(43 33 22 / 0.06), 0 6px 16px rgb(43 33 22 / 0.06);
   /*
    * What a menu wears, which is more than a card: it is further off the page than anything else
    * and it has to be read against whatever is under it. Still low-alpha and wide — a menu that
    * casts a black halo is the thing that makes a soft interface look cheap in one screenshot.
    */
-  --shadow-overlay: 0 2px 4px rgb(0 0 0 / 0.04), 0 18px 44px rgb(0 0 0 / 0.13);
+  --shadow-overlay: 0 2px 4px rgb(43 33 22 / 0.05), 0 18px 44px rgb(43 33 22 / 0.16);
 
   /*
    * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
@@ -112,16 +119,21 @@
   :root[data-theme='dark'] {
     color-scheme: dark;
 
-    --color-ink-900: #17171a;
-    --color-ink-800: #1d1d20;
-    --color-ink-700: #232327;
-    --color-ink-600: #2c2c32;
-    --color-line: #2f2f37;
-    --color-line-strong: #45454f;
+    /*
+     * The dark palette is not an inversion: it is the same room with the lamp turned most of the
+     * way down. Warm near-blacks, a page that is one step of ember-glow above the chrome, and text
+     * with the same paper warmth the light mode's ink has.
+     */
+    --color-ink-900: #12100e;
+    --color-ink-800: #1a1713;
+    --color-ink-700: #211d18;
+    --color-ink-600: #2b2620;
+    --color-line: #363028;
+    --color-line-strong: #4d453a;
 
-    --color-parchment: #f4f4f6;
-    --color-parchment-dim: #a4a4ae;
-    --color-parchment-faint: #7d7d87;
+    --color-parchment: #f4f1ea;
+    --color-parchment-dim: #aca394;
+    --color-parchment-faint: #857c6d;
 
     --color-accent: #e2762f;
     --color-accent-bright: #f08a45;
@@ -133,9 +145,9 @@
     --color-danger: #e46b64;
     --color-info: #7b9ada;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px rgb(0 0 0 / 0.42);
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 18px rgb(0 0 0 / 0.35);
-    --shadow-overlay: 0 2px 5px rgb(0 0 0 / 0.45), 0 20px 48px rgb(0 0 0 / 0.55);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px rgb(0 0 0 / 0.45);
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 18px rgb(0 0 0 / 0.38);
+    --shadow-overlay: 0 2px 5px rgb(0 0 0 / 0.5), 0 20px 48px rgb(0 0 0 / 0.6);
   }
 
   /*
