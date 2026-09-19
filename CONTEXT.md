@@ -47,6 +47,14 @@ is a sequence of turns.
 One user-visible unit in a conversation: what the user typed, what the model produced, or what a
 tool returned. Messages are the only thing the transcript stores.
 
+### Attachment
+
+A picture the user sends with a message. It travels as bytes rather than as a path, so the model
+is handed the picture itself and the transcript keeps it: a message means the same thing when it
+is re-read as it did when it was sent. Pictures only — a provider takes images and nothing else —
+and the composer is where they are picked and where a file that is too large is refused. Avoid:
+*file* (an attachment is a picture, and nothing about the folder is involved).
+
 ### Archived Conversation
 
 A conversation that has been put away: it keeps its transcript and stays usable, and it lives in
@@ -101,6 +109,10 @@ The standing answer to "may the agent act without asking?". Exactly four levels 
 | `ask` | Every write and every command asks first. Reading is free. |
 | `accept-edits` | File changes are auto-approved; commands still ask. |
 | `full-access` | Nothing asks. The user has accepted the blast radius. |
+
+The level is chosen per conversation, at the foot of the composer — the chip shows the level in
+force for what is about to be typed, and with no conversation open it sets the default the next
+one starts at.
 
 Avoid: *mode* (that word is for the permission level *and* the thinking effort *and* the theme,
 so it names nothing), *sandbox* (Alpha does not sandbox; it gates).

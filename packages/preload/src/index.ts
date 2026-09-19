@@ -7,6 +7,7 @@ import {
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
+  type Attachment,
   type ConversationSummary,
   type CustomProviderInput,
   type EditEffect,
@@ -53,8 +54,8 @@ const bridge: AlphaBridge = {
   createConversation: (workspacePath: string) =>
     ipcRenderer.invoke(IPC.createConversation, workspacePath) as Promise<OpenedConversation>,
   openConversation: (id: string) => ipcRenderer.invoke(IPC.openConversation, id) as Promise<OpenedConversation>,
-  sendPrompt: (conversationId: string, text: string) =>
-    ipcRenderer.invoke(IPC.sendPrompt, conversationId, text) as Promise<void>,
+  sendPrompt: (conversationId: string, text: string, attachments?: Attachment[]) =>
+    ipcRenderer.invoke(IPC.sendPrompt, conversationId, text, attachments) as Promise<void>,
   abortRun: (conversationId: string) => ipcRenderer.invoke(IPC.abortRun, conversationId) as Promise<void>,
   onRuntimeEvent: (listener: (event: RuntimeEvent) => void) => {
     const handler = (_event: unknown, runtimeEvent: RuntimeEvent) => listener(runtimeEvent)

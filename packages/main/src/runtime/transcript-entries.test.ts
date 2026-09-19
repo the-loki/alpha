@@ -34,6 +34,30 @@ describe('[runtime] entriesToMessages', () => {
     expect(messages[1].blocks).toEqual([{ kind: 'text', text: 'Done.' }])
   })
 
+  it('gives back the picture a user message was sent with', () => {
+    const [message] = entriesToMessages([
+      entry({
+        type: 'message',
+        seq: 1,
+        id: 'e1',
+        parentId: null,
+        timestamp: 1,
+        message: {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'the layout is off' },
+            { type: 'image', data: 'AA==', mimeType: 'image/png' },
+          ],
+          timestamp: 1,
+        },
+      }),
+    ])
+    expect(message.blocks).toEqual([
+      { kind: 'text', text: 'the layout is off' },
+      { kind: 'attachment', mimeType: 'image/png', data: 'AA==' },
+    ])
+  })
+
   it('orders the transcript by sequence, whatever order the session returned', () => {
     const messages = entriesToMessages([
       assistantEntry(2, [{ type: 'text', text: 'Done.' }]),

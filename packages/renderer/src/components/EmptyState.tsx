@@ -1,4 +1,3 @@
-import { levelKey } from '@alpha/core'
 import { composerFolderOf, useShell, useText } from '../stores/shell.ts'
 
 /**
@@ -10,10 +9,6 @@ export function EmptyState() {
   const composerFolder = useShell(composerFolderOf)
   const t = useText()
   const host = useShell((state) => state.host)
-  // A folder's own default wins over the workbench's, exactly as it does when the conversation is
-  // created — the sentence has to be true, not approximately true.
-  const workbenchLevel = useShell((state) => state.permissionLevel)
-  const folderLevels = useShell((state) => state.workspaceLevels)
   const pickWorkspace = useShell((state) => state.pickWorkspace)
 
   if (composerFolder === undefined) {
@@ -41,13 +36,6 @@ export function EmptyState() {
       <h1 className="text-xl font-medium text-parchment">{composerFolder.name}</h1>
       <p className="mt-2 max-w-md font-mono text-xs text-parchment-faint">{composerFolder.path}</p>
       <p className="mt-4 max-w-md text-ui leading-relaxed text-parchment-dim">{t('empty.folder.body')}</p>
-      {/* The one moment the folder's default level is worth saying: before the conversation exists,
-          there is no level chip in the header to show it (ticket #87). */}
-      <p className="mt-2 text-ui text-parchment-faint">
-        {t('empty.startsAt', {
-          level: t(levelKey(folderLevels[composerFolder.path] ?? workbenchLevel)),
-        })}
-      </p>
     </div>
   )
 }

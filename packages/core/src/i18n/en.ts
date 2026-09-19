@@ -88,7 +88,6 @@ export const EN = {
   'empty.noFolder.body':
     'A folder is what the agent reads and edits. Everything you ask for happens inside one, and nothing happens outside it without your say-so.',
   'empty.chooseFolder': 'Choose a folder',
-  'empty.startsAt': 'Starts at {level}',
   'empty.folder.body':
     'Say what you want changed here and this becomes a conversation of its own. The other folders stay in the sidebar, with what was asked in them.',
   'composer.messageLabel': 'Message the agent',
@@ -178,6 +177,11 @@ export const EN = {
   'message.copyOutputLabel': 'Copy output',
   'message.edit': 'Edit',
   'message.editLabel': 'Edit the message',
+  'message.attachment': 'Attached image',
+  'composer.attach': 'Attach a picture',
+  'composer.attached': 'Attached pictures',
+  'composer.removeAttachment': 'Remove {name}',
+  'composer.attachmentRefused': 'Only pictures up to 4 MB can be attached.',
   'message.regenerate': 'Regenerate',
   'message.resend': 'Resend, replacing what followed',
   'message.fork': 'Fork into a new conversation',

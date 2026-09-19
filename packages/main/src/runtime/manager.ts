@@ -9,6 +9,7 @@
 
 import {
   type ApprovalAsk,
+  type Attachment,
   type ChatMessage,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
@@ -160,13 +161,13 @@ export class RuntimeManager {
     return this.#unattended.finish(id)
   }
 
-  async prompt(id: string, text: string): Promise<void> {
+  async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
     const conversation = this.#requireConversation(id)
     if (modelFor(this.#modelRuntime(), conversation) === undefined) {
       throw new Error('No model is configured. Add a provider and a model in Settings first.')
     }
     const runtime = await this.#openFor(id)
-    await runtime.prompt(text)
+    await runtime.prompt(text, attachments)
   }
 
   async steer(id: string, text: string): Promise<void> {

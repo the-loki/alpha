@@ -1,101 +1,15 @@
-import { type Language, type ModelStatus, modelText, type Null, text, type Undef } from '@alpha/core'
+import { type Attachment, type Language, type ModelStatus, modelText, type Null, text } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, languageOf, useShell, useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, OUTLINED_ACTION, TEXT_ACTION } from './controls.ts'
+import { AttachButton, AttachmentNote, PendingAttachments } from './Attachments.tsx'
+import { OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
+import { LevelChip } from './LevelChip.tsx'
+import { QueueStrip } from './QueueStrip.tsx'
 
 /**
- * What is waiting, in the order it will be sent: the steers the runtime is holding for this turn,
- * then the messages the workbench is holding for the next one. A steered message can only be
- * cancelled — it is already in the turn — while a queued one can be edited where it stands, which
- * is the whole reason the workbench owns that queue (ADR-0011). When the queue has stopped, the
- * strip says so and offers the one way to start it again.
- */
-function QueueStrip() {
-  const queued = useConversations((state) => state.transcript.queued)
-  const paused = useConversations((state) => state.transcript.queuedPaused)
-  const editQueued = useConversations((state) => state.editQueued)
-  const cancelQueued = useConversations((state) => state.cancelQueued)
-  const resumeQueue = useConversations((state) => state.resumeQueue)
-  const [editing, setEditing] = useState<Undef<{ entryId: string; text: string }>>(undefined)
-  const t = useText()
-  if (queued.length === 0 && !paused) return null
-
-  const save = async () => {
-    const draft = editing
-    setEditing(undefined)
-    if (draft === undefined || draft.text.trim() === '') return
-    await editQueued(draft.entryId, draft.text)
-  }
-
-  return (
-    <div className="mb-1.5">
-      <ul aria-label={t('composer.queuedList')} className="space-y-1">
-        {queued.map((item) => (
-          <li
-            key={item.entryId}
-            className="flex items-center gap-2 rounded-control border border-line bg-ink-800/70 px-2.5 py-1"
-          >
-            <span className="shrink-0 font-mono text-micro tracking-wider text-parchment-faint uppercase">
-              {t(item.kind === 'steer' ? 'composer.steered' : 'composer.queued')}
-            </span>
-            {editing?.entryId === item.entryId ? (
-              <input
-                // biome-ignore lint/a11y/noAutofocus: editing is deliberate, and the field is the whole act.
-                autoFocus
-                value={editing.text}
-                aria-label={t('composer.editQueued', { text: item.text })}
-                onChange={(event) => setEditing({ entryId: item.entryId, text: event.target.value })}
-                onBlur={() => void save()}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') setEditing(undefined)
-                  if (event.key === 'Enter') void save()
-                }}
-                className="min-w-0 flex-1 rounded-control border border-line-strong bg-ink-900 px-1.5 py-0.5 text-code text-parchment focus:outline-none"
-              />
-            ) : (
-              <span className="min-w-0 flex-1 truncate text-xs text-parchment-dim">{item.text}</span>
-            )}
-            {item.kind === 'queued' && editing?.entryId !== item.entryId && (
-              <button
-                type="button"
-                aria-label={t('composer.editQueued', { text: item.text })}
-                onClick={() => setEditing({ entryId: item.entryId, text: item.text })}
-                className={`shrink-0 ${TEXT_ACTION}`}
-              >
-                {t('composer.edit')}
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label={
-                item.kind === 'queued'
-                  ? t('composer.deleteQueued', { text: item.text })
-                  : t('composer.cancelQueued', { text: item.text })
-              }
-              onClick={() => void cancelQueued(item.entryId)}
-              className={`shrink-0 ${DESTRUCTIVE_ACTION}`}
-            >
-              {t(item.kind === 'queued' ? 'composer.delete' : 'composer.cancel')}
-            </button>
-          </li>
-        ))}
-      </ul>
-      {paused && (
-        <div className="mt-1 flex items-center gap-2 rounded-control border border-amber/40 bg-amber/5 px-2.5 py-1">
-          <span className="min-w-0 flex-1 text-xs text-amber" title={t('composer.queueStoppedWhy')}>
-            {t('composer.queueStopped')}
-          </span>
-          <button type="button" onClick={() => void resumeQueue()} className={`shrink-0 ${TEXT_ACTION}`}>
-            {t('composer.resume')}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
 
 /**
  * While a turn is running the send control splits in three, because stopping, steering and
@@ -131,6 +45,52 @@ function RunningActions({
 }
 
 /**
+ * The foot of the box: what the message carries, what it is allowed to do, and the control that
+ * sends it. One row under the words, so the words keep the whole width to themselves.
+ */
+function ComposerFoot({
+  running,
+  canSend,
+  canRedirect,
+  onSend,
+  onStop,
+  onRedirect,
+  onPicked,
+}: {
+  running: boolean
+  canSend: boolean
+  canRedirect: boolean
+  onSend: () => void
+  onStop: () => void
+  onRedirect: (how: 'steer' | 'queue') => void
+  onPicked: (picked: Attachment[], refused: boolean) => void
+}) {
+  const t = useText()
+  return (
+    <div className="flex items-center gap-2 px-2 py-1.5">
+      <AttachButton onPicked={onPicked} />
+      <LevelChip />
+      <span className="flex-1" />
+      {running ? (
+        <RunningActions canRedirect={canRedirect} onStop={onStop} onRedirect={onRedirect} />
+      ) : (
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={!canSend}
+          aria-label={t('composer.send')}
+          // The accent means "this does something". A disabled send wears the quiet surface
+          // instead, so the ember in the corner always means a message can go.
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
+        >
+          <ArrowUpIcon />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
  * What the composer says under itself. It is the only line of explanation, so it says only what
  * the box itself cannot: with no folder the placeholder has already said that, and repeating it
  * here would be the same sentence twice.
@@ -161,6 +121,8 @@ export interface ComposerNote {
  */
 export function Composer() {
   const [value, setValue] = useState('')
+  const [attached, setAttached] = useState<Attachment[]>([])
+  const [refused, setRefused] = useState(false)
   const composerFolder = useShell(composerFolderOf)
   const language = useShell((state) => languageOf(state.language))
   const t = useText()
@@ -187,9 +149,12 @@ export function Composer() {
     running,
     typed: value.trim() !== '',
   })
-  const writable = hasWorkspace && model.kind !== 'none' && value.trim() !== ''
+  const words = value.trim() !== ''
+  // A picture is a message on its own: "look at this" is often the whole thing being said.
+  const writable = hasWorkspace && model.kind !== 'none' && (words || attached.length > 0)
   const canSend = writable && !running
-  const canRedirect = writable && running
+  // Steering and queueing carry words: a picture waits in the composer for a turn of its own.
+  const canRedirect = writable && running && words
 
   // While a turn is running, Escape stops it: the composer is where the hands already are.
   useEffect(() => {
@@ -208,9 +173,16 @@ export function Composer() {
   const send = async () => {
     if (!canSend || composerFolder === undefined) return
     const message = value
+    const picked = attached
     setValue('')
-    const id = await sendOrCreate(composerFolder.path, message)
+    setAttached([])
+    setRefused(false)
+    const id = await sendOrCreate(composerFolder.path, message, picked)
     void navigate({ to: '/c/$conversationId', params: { conversationId: id } })
+  }
+
+  const removeAt = (index: number) => {
+    setAttached((current) => current.filter((_unused, position) => position !== index))
   }
 
   const redirect = async (how: 'steer' | 'queue') => {
@@ -221,52 +193,49 @@ export function Composer() {
   }
 
   return (
+    // Narrower than the transcript above it: a line of prose wants the whole pane, and a line
+    // being typed wants to stay a line.
     <div className="shrink-0 px-8 pt-2 pb-5">
-      <div>
+      <div className="mx-auto w-full max-w-3xl">
         <QueueStrip />
-        <div className="flex items-end gap-3 rounded-card border border-line bg-ink-800 px-3.5 py-2.5 transition-colors focus-within:border-line-strong">
-          <textarea
-            ref={field}
-            rows={2}
-            aria-label={t('composer.messageLabel')}
-            value={value}
-            placeholder={hasWorkspace ? t('composer.placeholder') : t('composer.placeholderNoFolder')}
-            onChange={(event) => setValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault()
-                void send()
-              }
-              // Cmd/Ctrl+Enter queues, which is the one the user does not want to interrupt with.
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && running) {
-                event.preventDefault()
-                void redirect('queue')
-              }
-            }}
-            className="block min-w-0 flex-1 resize-none bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
-          />
-          {/* Beside the words rather than under them: the control the message goes through belongs
-              on the same line as the message, and the box stays as tall as what is typed. */}
-          {running ? (
-            <RunningActions
-              canRedirect={canRedirect}
-              onStop={() => void stop()}
-              onRedirect={(how) => void redirect(how)}
+        <div className="rounded-card border border-line bg-ink-800 transition-colors focus-within:border-line-strong">
+          <div className="px-3.5 pt-2.5">
+            <PendingAttachments items={attached} onRemove={removeAt} />
+            <textarea
+              ref={field}
+              rows={2}
+              aria-label={t('composer.messageLabel')}
+              value={value}
+              placeholder={hasWorkspace ? t('composer.placeholder') : t('composer.placeholderNoFolder')}
+              onChange={(event) => setValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  void send()
+                }
+                // Cmd/Ctrl+Enter queues, which is the one the user does not want to interrupt with.
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && running) {
+                  event.preventDefault()
+                  void redirect('queue')
+                }
+              }}
+              className="block w-full resize-none bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
             />
-          ) : (
-            <button
-              type="button"
-              onClick={() => void send()}
-              disabled={!canSend}
-              aria-label={t('composer.send')}
-              // The accent means "this does something". A disabled send wears the quiet surface
-              // instead, so the ember in the corner always means a message can go.
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
-            >
-              <ArrowUpIcon />
-            </button>
-          )}
+          </div>
+          <ComposerFoot
+            running={running}
+            canSend={canSend}
+            canRedirect={canRedirect}
+            onSend={() => void send()}
+            onStop={() => void stop()}
+            onRedirect={(how) => void redirect(how)}
+            onPicked={(picked, anyRefused) => {
+              setAttached((current) => [...current, ...picked])
+              setRefused(anyRefused)
+            }}
+          />
         </div>
+        <AttachmentNote refused={refused} />
         {note !== '' && <p className="mt-1.5 px-1 text-micro text-parchment-faint">{note}</p>}
       </div>
     </div>

@@ -39,7 +39,12 @@ export interface RunningServer {
  * one — the address the settings page offers, which is what keeps the two from drifting apart.
  */
 export const BIND_ADDRESS: Record<NetworkBind, string> = { local: '127.0.0.1', network: '0.0.0.0' }
-const BODY_LIMIT = 1024 * 1024
+/**
+ * How large a request body may be. It is generous because a message's pictures travel inside it,
+ * base64 and then JSON-escaped — four thirds and a little on top of the file itself — and the
+ * files' own ceiling is enforced per picture where the attachments are read (channels.ts).
+ */
+const BODY_LIMIT = 16 * 1024 * 1024
 /** A failed unlock waits this long before saying so, which makes guessing pointless. */
 const REFUSAL_DELAY_MS = 200
 

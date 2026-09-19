@@ -94,6 +94,67 @@ describe('[main] the channel table', () => {
     expect(() => CHANNELS.answerApproval(ports(), [{ decision: 'maybe' }])).toThrow(/decision/)
   })
 
+  it('carries a picture through the table to the transcript it belongs to', async () => {
+    const context = ports()
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-shot-'))
+    const created = (await CHANNELS.createConversation(context, [workspace])) as {
+      conversation: { id: string }
+    }
+    await CHANNELS.sendPrompt(context, [
+      created.conversation.id,
+      'what is wrong here',
+      [{ name: 'shot.png', mimeType: 'image/png', data: 'AA==' }],
+    ])
+
+    const opened = (await CHANNELS.openConversation(context, [created.conversation.id])) as {
+      messages: { blocks: unknown[] }[]
+    }
+    expect(opened.messages[0].blocks).toEqual([
+      { kind: 'text', text: 'what is wrong here' },
+      { kind: 'attachment', mimeType: 'image/png', data: 'AA==' },
+    ])
+    await context.runtime.closeAll()
+  })
+
+  it('takes a picture with nothing typed as a message of its own', async () => {
+    const context = ports()
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-shot-only-'))
+    const created = (await CHANNELS.createConversation(context, [workspace])) as {
+      conversation: { id: string }
+    }
+    await CHANNELS.sendPrompt(context, [created.conversation.id, '', [{ mimeType: 'image/png', data: 'AA==' }]])
+
+    const opened = (await CHANNELS.openConversation(context, [created.conversation.id])) as {
+      messages: { blocks: unknown[] }[]
+    }
+    expect(opened.messages[0].blocks).toEqual([{ kind: 'attachment', mimeType: 'image/png', data: 'AA==' }])
+    // And nothing at all is still nothing: an empty message is refused rather than sent.
+    await expect(CHANNELS.sendPrompt(context, [created.conversation.id, '   ', []])).rejects.toThrow(
+      /words or a picture/,
+    )
+    await context.runtime.closeAll()
+  })
+
+  it('refuses an attachment that is not a picture, or is too large to send', async () => {
+    const context = ports()
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-refuse-'))
+    const created = (await CHANNELS.createConversation(context, [workspace])) as {
+      conversation: { id: string }
+    }
+    const id = created.conversation.id
+
+    await expect(
+      CHANNELS.sendPrompt(context, [id, 'hello', [{ mimeType: 'text/html', data: 'AA==' }]]),
+    ).rejects.toThrow(/not a picture/)
+    // Four base64 characters are three bytes, so this is a shade over the ceiling.
+    const huge = 'A'.repeat(Math.ceil(((4 * 1024 * 1024 + 3) / 3) * 4))
+    await expect(CHANNELS.sendPrompt(context, [id, 'hello', [{ mimeType: 'image/png', data: huge }]])).rejects.toThrow(
+      /too large/,
+    )
+    await expect(CHANNELS.sendPrompt(context, [id, 'hello', 'not a list'])).rejects.toThrow(/list/)
+    await context.runtime.closeAll()
+  })
+
   it('asks the window port for a folder, so a client without one can refuse', async () => {
     const context = ports()
     const asked: string[] = []

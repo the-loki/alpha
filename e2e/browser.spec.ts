@@ -156,6 +156,38 @@ test('a browser unlocks into the whole workbench, sidebar included', async () =>
   }
 })
 
+test('a picture picked in a browser crosses the wire and stays in the transcript', async () => {
+  const port = await freePort()
+  const { app, workspace, url } = await launchServing(port)
+  // A real one-pixel PNG: what a browser hands over is the file's own bytes, and they have to
+  // survive the POST, the body limit, and the session on disk.
+  const shot = join(workspace, 'browser-shot.png')
+  writeFileSync(
+    shot,
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  )
+
+  const browser = await chromium.launch()
+  try {
+    const page = await openInBrowser(browser, url, TOKEN)
+    const chooser = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: 'Attach a picture' }).click()
+    await (await chooser).setFiles(shot)
+    await expect(page.getByRole('img', { name: 'browser-shot.png' })).toBeVisible()
+
+    await ask(page, 'what is this')
+    await expect(page.getByRole('main').getByRole('img', { name: 'Attached image' })).toBeVisible({
+      timeout: 20_000,
+    })
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
 test('a browser is offered no folder picker, because it has none', async () => {
   const port = await freePort()
   const { app, url } = await launchServing(port)

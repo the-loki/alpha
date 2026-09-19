@@ -139,6 +139,12 @@ the content card itself, which carries `shadow-card` (weaker on the light palett
 is the lighter of the two surfaces). The composer's focused state is a 1px border change, not a
 bloom.
 
+**The composer is narrower than the pane.** A line being typed wants to stay a line, so the
+composer is capped and centred (48rem, the same measure the settings page uses) while the
+transcript above it takes the whole pane. Everything the message carries or is allowed to do sits
+in one row at the foot of the box: the way in to the file picker, the level chip, and the control
+that sends it. The words keep the width above that row to themselves.
+
 **The rail's columns.** Every row in the sidebar is built on three x-positions, so a list of
 folders and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder,
 the icon of an action row), the second column at 1.75rem (a folder's glyph, a conversation's
@@ -162,8 +168,9 @@ removed:
    Always allow, Deny.
 3. **The ember cursor.** Streaming text is followed by a 0.125rem copper block that pulses at
    1.2s. It is the only animation running in a resting window.
-4. **The level chip.** The permission level sits in the header as a coloured chip with a
-    one-word label. It is never hidden, including in `full-access`.
+4. **The level chip.** The permission level sits at the foot of the composer as a coloured chip
+    with a one-word label: the level in force for what is about to be typed, next to the message
+    it governs. It is never hidden, including in `full-access`.
 
 ## C5.6 — Motion
 

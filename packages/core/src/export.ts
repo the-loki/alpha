@@ -46,6 +46,7 @@ function blockLines(block: ChatBlock): string[] {
   if (block.kind === 'text') return [block.text, '']
   if (block.kind === 'thinking') return ['### Thinking', '', block.text, '']
   if (block.kind === 'compaction') return ['### History summarised here', '', block.summary, '']
+  if (block.kind === 'attachment') return [`![attached image](data:${block.mimeType};base64,${block.data})`, '']
   return toolLines(block)
 }
 

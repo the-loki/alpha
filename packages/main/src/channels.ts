@@ -10,17 +10,9 @@
  * check someone has to remember.
  */
 import {
-  type AppearancePatch,
-  type ApprovalAnswerInput,
   defaultLevelFor,
   type IPC,
-  isAccent,
-  isLanguageSetting,
-  isNetworkBind,
   isPermissionLevel,
-  isPortNumber,
-  isRuleScope,
-  isTheme,
   isThinkingLevel,
   type LaunchState,
   type NetworkPatch,
@@ -34,6 +26,14 @@ import {
   type WorkspaceSelection,
   workspaceFromPath,
 } from '@alpha/core'
+import {
+  readAppearancePatch,
+  readApprovalAnswer,
+  readAttachments,
+  readNetworkPatch,
+  requireLevel,
+  requireString,
+} from './argument-readers.ts'
 import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
 import type { StateStore } from './state-store.ts'
@@ -149,7 +149,15 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   openConversation: ({ runtime }, args) => runtime.open(requireString(args[0], 'conversationId')),
 
   sendPrompt: async ({ runtime }, args) => {
-    await runtime.prompt(requireString(args[0], 'conversationId'), requireString(args[1], 'text'))
+    const conversationId = requireString(args[0], 'conversationId')
+    const attachments = readAttachments(args[2])
+    const words = typeof args[1] === 'string' ? args[1] : ''
+    // A message has to carry something. A picture with nothing typed is a message: "look at this"
+    // is a whole thing to say.
+    if (words.trim() === '' && (attachments ?? []).length === 0) {
+      throw new Error('a message needs words or a picture')
+    }
+    await runtime.prompt(conversationId, words, attachments)
   },
 
   abortRun: async ({ runtime }, args) => {
@@ -264,82 +272,6 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   },
 }
 
-/** What a window opening the workbench is shown. Read fresh every time, because it is all mutable. */
-export function launchState(store: StateStore, runtime: RuntimeManager): LaunchState {
-  return {
-    appVersion: process.env.npm_package_version ?? '0.1.0',
-    platform: process.platform,
-    workspace: store.read().workspace.selection,
-    recents: store.read().workspace.recents,
-    permissionLevel: store.read().permissionLevel,
-    workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
-    workspaceLevels: store.read().workspaceLevels,
-    theme: store.read().theme,
-    accent: store.read().accent,
-    language: store.read().language,
-    model: runtime.modelStatus(),
-    lastConversationId: store.read().lastConversationId,
-  }
-}
-
-/** How it looks and reads: the mode, the accent, the language. Any field may be left out. */
-export function readAppearancePatch(input: unknown): AppearancePatch {
-  if (typeof input !== 'object' || input === null) throw new Error('an appearance patch is required')
-  const record = input as Record<string, unknown>
-  const patch: AppearancePatch = {}
-  if (record.theme !== undefined) {
-    if (!isTheme(record.theme)) throw new Error('theme must be system, light or dark')
-    patch.theme = record.theme
-  }
-  if (record.accent !== undefined) {
-    if (!isAccent(record.accent)) throw new Error('accent must be one of the palettes this app ships')
-    patch.accent = record.accent
-  }
-  if (record.language !== undefined) {
-    if (!isLanguageSetting(record.language)) throw new Error('language must be system, en or zh')
-    patch.language = record.language
-  }
-  return patch
-}
-
-/** A patch from the window: only the fields it may change, and only if they are the right shape. */
-export function readNetworkPatch(input: unknown): NetworkPatch {
-  if (typeof input !== 'object' || input === null) throw new Error('a network patch is required')
-  const record = input as Record<string, unknown>
-  const patch: NetworkPatch = {}
-  if (record.enabled !== undefined) {
-    if (typeof record.enabled !== 'boolean') throw new Error('enabled must be a boolean')
-    patch.enabled = record.enabled
-  }
-  if (record.port !== undefined) {
-    if (!isPortNumber(record.port)) throw new Error('port must be a whole number between 0 and 65535')
-    patch.port = record.port
-  }
-  if (record.bind !== undefined) {
-    if (!isNetworkBind(record.bind)) throw new Error('bind must be local or network')
-    patch.bind = record.bind
-  }
-  return patch
-}
-
-/** The window is the process that could be compromised, so its answer is read defensively. */
-export function readApprovalAnswer(input: unknown): ApprovalAnswerInput {
-  if (typeof input !== 'object' || input === null) throw new Error('an approval answer is required')
-  const record = input as Record<string, unknown>
-  const decision = record.decision
-  if (decision !== 'once' && decision !== 'always' && decision !== 'deny') {
-    throw new Error('decision must be once, always, or deny')
-  }
-  if (record.scope !== undefined && !isRuleScope(record.scope)) throw new Error('scope must be a rule scope')
-  return {
-    conversationId: requireString(record.conversationId, 'conversationId'),
-    requestId: requireString(record.requestId, 'requestId'),
-    decision,
-    scope: isRuleScope(record.scope) ? record.scope : undefined,
-    reason: typeof record.reason === 'string' ? record.reason : undefined,
-  }
-}
-
 /** Remembers what the window picked, and hands the selection back for the reply. */
 export function selectWorkspace(store: StateStore, path: string): WorkspaceSelection {
   const state = store.read()
@@ -366,12 +298,20 @@ export function defaultLevel(store: StateStore): PermissionLevel {
   return path === undefined ? store.read().permissionLevel : defaultLevelFor(store.read(), path)
 }
 
-function requireString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || value === '') throw new Error(`${field} must be a non-empty string`)
-  return value
-}
-
-function requireLevel(value: unknown): PermissionLevel {
-  if (!isPermissionLevel(value)) throw new Error('level must be a permission level')
-  return value
+/** What a window opening the workbench is shown. Read fresh every time, because it is all mutable. */
+export function launchState(store: StateStore, runtime: RuntimeManager): LaunchState {
+  return {
+    appVersion: process.env.npm_package_version ?? '0.1.0',
+    platform: process.platform,
+    workspace: store.read().workspace.selection,
+    recents: store.read().workspace.recents,
+    permissionLevel: store.read().permissionLevel,
+    workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
+    workspaceLevels: store.read().workspaceLevels,
+    theme: store.read().theme,
+    accent: store.read().accent,
+    language: store.read().language,
+    model: runtime.modelStatus(),
+    lastConversationId: store.read().lastConversationId,
+  }
 }

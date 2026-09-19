@@ -10,6 +10,7 @@ import {
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
+  type Attachment,
   type ConversationSummary,
   type CustomProviderInput,
   type EditEffect,
@@ -215,6 +216,18 @@ function attach(channel: string): void {
   })
 }
 
+/** The queue calls, kept out of the table below so that table stays a screen long. */
+const queueCalls = {
+  steer: (conversationId: string, text: string) => invoke('steer', [conversationId, text]) as Promise<void>,
+  queueMessage: (conversationId: string, text: string) =>
+    invoke('queueMessage', [conversationId, text]) as Promise<void>,
+  editQueued: (conversationId: string, entryId: string, text: string) =>
+    invoke('editQueued', [conversationId, entryId, text]) as Promise<void>,
+  resumeQueue: (conversationId: string) => invoke('resumeQueue', [conversationId]) as Promise<void>,
+  cancelQueued: (conversationId: string, entryId: string) =>
+    invoke('cancelQueued', [conversationId, entryId]) as Promise<void>,
+}
+
 /** The task calls, kept out of the table above so that table stays a screen long. */
 const taskCalls = {
   listTasks: () => invoke('listTasks', []) as Promise<TasksSnapshot>,
@@ -244,7 +257,8 @@ export function networkBridge(): AlphaBridge {
     createConversation: (workspacePath: string) =>
       invoke('createConversation', [workspacePath]) as Promise<OpenedConversation>,
     openConversation: (id: string) => invoke('openConversation', [id]) as Promise<OpenedConversation>,
-    sendPrompt: (conversationId: string, text: string) => invoke('sendPrompt', [conversationId, text]) as Promise<void>,
+    sendPrompt: (conversationId: string, text: string, attachments?: Attachment[]) =>
+      invoke('sendPrompt', [conversationId, text, attachments]) as Promise<void>,
     abortRun: (conversationId: string) => invoke('abortRun', [conversationId]) as Promise<void>,
     onRuntimeEvent: (listener: (event: RuntimeEvent) => void) => listen('runtimeEvent', listener),
 
@@ -262,14 +276,7 @@ export function networkBridge(): AlphaBridge {
       invoke('setConversationModel', [id, providerId, modelId]) as Promise<ConversationSummary>,
     setThinkingLevel: (id: string, level: ThinkingLevel) =>
       invoke('setThinkingLevel', [id, level]) as Promise<ConversationSummary>,
-    steer: (conversationId: string, text: string) => invoke('steer', [conversationId, text]) as Promise<void>,
-    queueMessage: (conversationId: string, text: string) =>
-      invoke('queueMessage', [conversationId, text]) as Promise<void>,
-    editQueued: (conversationId: string, entryId: string, text: string) =>
-      invoke('editQueued', [conversationId, entryId, text]) as Promise<void>,
-    resumeQueue: (conversationId: string) => invoke('resumeQueue', [conversationId]) as Promise<void>,
-    cancelQueued: (conversationId: string, entryId: string) =>
-      invoke('cancelQueued', [conversationId, entryId]) as Promise<void>,
+    ...queueCalls,
     regenerate: (conversationId: string) => invoke('regenerate', [conversationId]) as Promise<void>,
     editMessage: (conversationId: string, userMessageIndex: number, text: string, effect: EditEffect) =>
       invoke('editMessage', [conversationId, userMessageIndex, text, effect]) as Promise<OpenedConversation>,

@@ -1,6 +1,5 @@
 import { bridge } from '../lib/bridge.ts'
 import { useShell, useText } from '../stores/shell.ts'
-import { LevelChip } from './LevelChip.tsx'
 
 function WindowControls() {
   const platform = useShell((state) => state.platform)
@@ -54,11 +53,9 @@ export function TitleBar() {
           where they are. This strip names the app and holds the window controls. */}
       <span className="text-ui font-semibold tracking-wide text-parchment">Alpha</span>
 
-      <div className="flex items-center gap-2">
-        {/* Settings is reached from the sidebar, where the reference puts it, and from Ctrl+,. */}
-        <LevelChip />
-        <WindowControls />
-      </div>
+      {/* The window's own chrome and nothing else: the permission level moved down to the foot of
+          the composer, which is where the message it governs is written. */}
+      <WindowControls />
     </header>
   )
 }

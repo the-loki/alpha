@@ -141,3 +141,15 @@ export const BranchIcon = (props: IconProps) => (
     <path d="M4.5 5.6v4.8M6.1 7h3.8" />
   </Glyph>
 )
+
+export const CloseIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+  </Glyph>
+)
+
+export const PaperclipIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <path d="M14 7.7 8.3 13.3a3.7 3.7 0 0 1-5.2-5.2L8.8 2.4a2.3 2.3 0 0 1 3.3 3.3l-5.7 5.7a1 1 0 0 1-1.4-1.4l5-5" />
+  </Glyph>
+)

@@ -18,6 +18,7 @@ import {
   toolOutcomeOf,
   type Undef,
   type UsageTotals,
+  userBlocksOf,
 } from '@alpha/core'
 import type { HarnessEvent } from '@earendil-works/pi-agent-core'
 import { usageOf } from './session-reader.ts'
@@ -186,7 +187,6 @@ function startMessage(state: TranslatorState, conversationId: string, message: S
 
   if (message.role === 'user') {
     const content = 'content' in message ? message.content : ''
-    const text = textOfContent(content)
     return [
       {
         conversationId,
@@ -194,7 +194,7 @@ function startMessage(state: TranslatorState, conversationId: string, message: S
         message: {
           id: messageId,
           role: 'user',
-          blocks: text === '' ? [] : [{ kind: 'text', text }],
+          blocks: userBlocksOf(content),
           createdAt: 'timestamp' in message ? message.timestamp : Date.now(),
           status: 'complete',
         },

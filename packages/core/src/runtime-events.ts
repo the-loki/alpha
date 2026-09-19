@@ -100,7 +100,18 @@ export interface ChatBlockCompaction {
   replaced?: number
 }
 
-export type ChatBlock = ChatBlockText | ChatBlockThinking | ChatBlockTool | ChatBlockCompaction
+export type ChatBlock = ChatBlockText | ChatBlockThinking | ChatBlockTool | ChatBlockCompaction | ChatBlockAttachment
+
+/**
+ * A picture the user attached to a message. It stays in the message's own content, so what the
+ * transcript shows is the same bytes the model was handed.
+ */
+export interface ChatBlockAttachment {
+  kind: 'attachment'
+  mimeType: string
+  /** Base64, with no `data:` prefix. */
+  data: string
+}
 
 export type ChatMessageStatus = 'streaming' | 'complete' | 'interrupted' | 'failed'
 

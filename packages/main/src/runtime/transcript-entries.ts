@@ -8,9 +8,9 @@ import {
   type ChatBlock,
   type ChatBlockTool,
   type ChatMessage,
-  textOfContent,
   toolOutcomeOf,
   toolRowOf,
+  userBlocksOf,
 } from '@alpha/core'
 import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
 import type { DecisionLookup } from './decisions.ts'
@@ -79,7 +79,7 @@ export function entriesToMessages(entries: Entry[], decisions: DecisionLookup = 
       messages.push({
         id: entry.id,
         role: 'user',
-        blocks: [{ kind: 'text', text: textOfContent(message.content) }],
+        blocks: userBlocksOf(message.content),
         createdAt: entry.timestamp,
         status: 'complete',
       })

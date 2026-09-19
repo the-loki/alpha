@@ -26,12 +26,14 @@ const DOT_CLASS: Record<string, string> = {
 }
 
 /**
- * The permission level, always visible. Colour distinguishes the levels, but the label is what
- * carries the meaning, so the chip still reads for someone who cannot tell warm from jade.
+ * The permission level, always visible, at the foot of the composer: what the message about to be
+ * typed is allowed to do, next to the message. Colour distinguishes the levels, but the label is
+ * what carries the meaning, so the chip still reads for someone who cannot tell warm from jade.
  *
  * With a conversation open the chip changes *that conversation's* level, and it shows that
  * conversation's level — a transcript and the level it ran under belong together. With no
- * conversation open it changes the workspace's default for new ones.
+ * conversation open it changes the folder's default, which is the level the next conversation
+ * starts at.
  */
 export function LevelChip() {
   const t = useText()
@@ -85,10 +87,12 @@ export function LevelChip() {
       </button>
 
       {open && (
+        // Opening upwards: the chip sits on the floor of the window, so a menu below it would be
+        // off the bottom of the screen.
         <div
           role="menu"
           aria-label={t('level.chipTitle')}
-          className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
+          className="absolute bottom-full left-0 z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
         >
           {PERMISSION_LEVELS.map((candidate: PermissionLevel) => (
             <button

@@ -70,6 +70,19 @@ describe('[runtime] a conversation turn', () => {
     expect(typesOf(events)).toContain('turn_finished')
   })
 
+  it('sends a picture with the message, and keeps it in the transcript that comes back', async () => {
+    const { runtime } = await openRuntime({ replies: ['I see it.'] })
+
+    await runtime.prompt('what is wrong here', [{ mimeType: 'image/png', data: 'AA==' }])
+    const [first] = await runtime.transcript()
+    await runtime.close()
+
+    expect(first.blocks).toEqual([
+      { kind: 'text', text: 'what is wrong here' },
+      { kind: 'attachment', mimeType: 'image/png', data: 'AA==' },
+    ])
+  })
+
   it('streams the scripted reply as text deltas that add up to the reply', async () => {
     const { runtime, events } = await openRuntime({ replies: ['Hello there.'] })
 

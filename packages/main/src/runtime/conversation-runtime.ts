@@ -6,7 +6,9 @@
 
 import {
   type ApprovalAsk,
+  type Attachment,
   type ChatMessage,
+  imagesOf,
   type PermissionLevel,
   type PermissionRule,
   type RuntimeEvent,
@@ -194,8 +196,8 @@ export class ConversationRuntime {
     return { runtime, conversationId, messages: await reader.transcript() }
   }
 
-  async prompt(text: string): Promise<void> {
-    const result = await this.#lane.prompt(text, undefined, BACKGROUND_CONTEXT)
+  async prompt(text: string, attachments?: Attachment[]): Promise<void> {
+    const result = await this.#lane.prompt(text, imagesOf(attachments), BACKGROUND_CONTEXT)
     if (!result.ok) this.#emitFailure(result.error)
   }
 

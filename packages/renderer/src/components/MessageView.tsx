@@ -1,4 +1,5 @@
 import {
+  type ChatBlockAttachment,
   type ChatBlockCompaction,
   type ChatBlockThinking,
   type ChatMessage,
@@ -13,6 +14,21 @@ import { useText } from '../stores/shell.ts'
 import { TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
+
+/**
+ * A picture the message carried. It is shown rather than named, because it is what the model was
+ * handed: a reader scrolling back sees the same thing the answer was about.
+ */
+function AttachmentThumb({ block }: { block: ChatBlockAttachment }) {
+  const t = useText()
+  return (
+    <img
+      src={`data:${block.mimeType};base64,${block.data}`}
+      alt={t('message.attachment')}
+      className="max-h-48 w-auto rounded-card border border-line object-contain"
+    />
+  )
+}
 
 function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
   const t = useText()
@@ -111,6 +127,7 @@ export const MessageView = memo(function MessageView({
   const regenerate = useConversations((state) => state.regenerate)
   const running = useConversations((state) => state.transcript.status === 'running')
   const [editing, setEditing] = useState(false)
+  const words = message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')
 
   if (message.role === 'user') {
     return (
@@ -118,10 +135,23 @@ export const MessageView = memo(function MessageView({
         {editing ? (
           <EditBox message={message} index={index} />
         ) : (
-          // Filled rather than outlined: the reader's own words are a block of the page, not a
-          // bordered panel, and the fill is what tells the two voices apart at a glance.
-          <div className="max-w-measure rounded-card bg-ink-800 px-3.5 py-2.5 text-body leading-[1.6] whitespace-pre-wrap text-parchment">
-            {message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')}
+          <div className="flex max-w-measure flex-col items-end gap-1.5">
+            {/* The pictures sit above the words they came with, which is the order they were
+                attached in and the order the model read them. */}
+            {message.blocks
+              .filter((block): block is ChatBlockAttachment => block.kind === 'attachment')
+              .map((block, index) => {
+                // Blocks are append-only, so a picture's position among them is its identity.
+                const key = `${message.id}-shot-${index}`
+                return <AttachmentThumb key={key} block={block} />
+              })}
+            {words !== '' && (
+              // Filled rather than outlined: the reader's own words are a block of the page, not a
+              // bordered panel, and the fill is what tells the two voices apart at a glance.
+              <div className="rounded-card bg-ink-800 px-3.5 py-2.5 text-body leading-[1.6] whitespace-pre-wrap text-parchment">
+                {words}
+              </div>
+            )}
           </div>
         )}
         {/* One row of actions, whatever there is to do: stacked one per line they read as three
@@ -163,6 +193,7 @@ export const MessageView = memo(function MessageView({
         if (block.kind === 'thinking') return <ThinkingBlock key={key} block={block} />
         if (block.kind === 'tool') return <ToolRow key={block.callId} block={block} />
         if (block.kind === 'compaction') return <CompactionMarker key={key} block={block} />
+        if (block.kind === 'attachment') return <AttachmentThumb key={key} block={block} />
         return (
           <div key={key} className="relative">
             <Markdown text={block.text} caret={streaming && isLast} />

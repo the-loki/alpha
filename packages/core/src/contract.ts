@@ -4,6 +4,7 @@
  * handler for each. `pnpm check:constraints` is what keeps the three in step.
  */
 
+import type { Attachment } from './attachments.ts'
 import type { LanguageSetting } from './i18n.ts'
 import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { Accent, NetworkBind, Theme } from './persisted-state.ts'
@@ -191,7 +192,7 @@ export interface AlphaBridge {
   listConversations(): Promise<ConversationSummary[]>
   createConversation(workspacePath: string): Promise<OpenedConversation>
   openConversation(id: string): Promise<OpenedConversation>
-  sendPrompt(conversationId: string, text: string): Promise<void>
+  sendPrompt(conversationId: string, text: string, attachments?: Attachment[]): Promise<void>
   abortRun(conversationId: string): Promise<void>
   /** Events arrive as they happen; the returned function stops listening. */
   onRuntimeEvent(listener: (event: RuntimeEvent) => void): () => void

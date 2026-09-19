@@ -180,7 +180,6 @@ ENTRIES: list[tuple[str, str, str]] = [
         '目录是 agent 读取和修改的地方。你要它做的事都发生在某个目录里，未经你同意什么都不会发生在目录之外。',
     ),
     ('empty.chooseFolder', 'Choose a folder', '选择目录'),
-    ('empty.startsAt', 'Starts at {level}', '将以 {level} 开始'),
     (
         'empty.folder.body',
         'Say what you want changed here and this becomes a conversation of its own. The other folders stay in the sidebar, with what was asked in them.',
@@ -298,6 +297,15 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('message.copyOutputLabel', 'Copy output', '复制输出'),
     ('message.edit', 'Edit', '编辑'),
     ('message.editLabel', 'Edit the message', '编辑这条消息'),
+    ('message.attachment', 'Attached image', '附加的图片'),
+    ('composer.attach', 'Attach a picture', '附加图片'),
+    ('composer.attached', 'Attached pictures', '已附加的图片'),
+    ('composer.removeAttachment', 'Remove {name}', '移除 {name}'),
+    (
+        'composer.attachmentRefused',
+        'Only pictures up to 4 MB can be attached.',
+        '只能附加 4 MB 以内的图片。',
+    ),
     ('message.regenerate', 'Regenerate', '重新生成'),
     ('message.resend', 'Resend, replacing what followed', '重发，并替换其后的内容'),
     ('message.fork', 'Fork into a new conversation', '分叉成新会话'),

@@ -1,5 +1,6 @@
 import {
   type ApprovalAnswerInput,
+  type Attachment,
   type ChatMessage,
   type ConversationSummary,
   type EditEffect,
@@ -25,7 +26,7 @@ export interface ConversationStore {
   open: (id: string) => Promise<void>
   send: (text: string) => Promise<void>
   /** First send in a workspace creates the conversation it belongs to. */
-  sendOrCreate: (workspacePath: string, text: string) => Promise<string>
+  sendOrCreate: (workspacePath: string, text: string, attachments?: Attachment[]) => Promise<string>
   /** Every runtime event the window receives passes through here. */
   applyEvent: (event: RuntimeEvent) => void
   setModel: (providerId: string, modelId: string) => Promise<void>
@@ -101,11 +102,11 @@ export const useConversations = create<ConversationStore>((set, get) => ({
     await bridge().sendPrompt(id, text)
   },
 
-  sendOrCreate: async (workspacePath: string, text: string) => {
+  sendOrCreate: async (workspacePath: string, text: string, attachments?: Attachment[]) => {
     let id = get().activeId
     try {
       id = id === '' ? await get().create(workspacePath) : id
-      await bridge().sendPrompt(id, text)
+      await bridge().sendPrompt(id, text, attachments)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       const transcript = get().transcript

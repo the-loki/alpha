@@ -95,6 +95,26 @@ describe('[runtime] createEventTranslator', () => {
     expect(translated?.message.blocks).toEqual([{ kind: 'text', text: 'a\nb' }])
   })
 
+  it('carries a picture the message came with into the blocks the window renders', () => {
+    const withPicture = asHarnessEvent({
+      type: 'message_start',
+      runId: 'r1',
+      message: {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'what is wrong here' },
+          { type: 'image', data: 'AA==', mimeType: 'image/png' },
+        ],
+        timestamp: 10,
+      },
+    })
+    const translated = pick(translateAll([withPicture]), 'user_message')
+    expect(translated?.message.blocks).toEqual([
+      { kind: 'text', text: 'what is wrong here' },
+      { kind: 'attachment', mimeType: 'image/png', data: 'AA==' },
+    ])
+  })
+
   it('names the assistant message that starts streaming, and reuses that name for its deltas', () => {
     const translated = translateAll([assistantStart(), textDelta('Hel'), textDelta('lo')])
     const started = pick(translated, 'assistant_message_started')
