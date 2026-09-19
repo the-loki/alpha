@@ -1,6 +1,6 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { tmpdir } from 'node:os'
+import { networkInterfaces, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Browser, chromium, _electron as electron, expect, test } from '@playwright/test'
 
@@ -71,6 +71,31 @@ async function ask(page: Awaited<ReturnType<Browser['newPage']>>, text: string) 
   await composer.press('Enter')
 }
 
+/** Where another device on this network would reach this machine — not its loopback address. */
+function networkAddress(): string | undefined {
+  for (const addresses of Object.values(networkInterfaces())) {
+    for (const address of addresses ?? []) {
+      if (address.family === 'IPv4' && !address.internal) return address.address
+    }
+  }
+  return undefined
+}
+
+/** Whether a workbench answers there, asked through the one route that takes the token. */
+async function answersAt(origin: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${origin}/api/session`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN }),
+      signal: AbortSignal.timeout(3_000),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
 test('a browser on the machine opens the workbench and runs a turn', async () => {
   const port = await freePort()
   const { app, url, workspace } = await launchServing(port)
@@ -118,6 +143,35 @@ test('a wrong token does not open anything', async () => {
     await page.screenshot({ path: join(SHOT_DIR, 'browser-locked.png') })
   } finally {
     await browser.close()
+    await app.close()
+  }
+})
+
+test('the switch in Settings is what opens this machine to the network', async () => {
+  const address = networkAddress()
+  test.skip(address === undefined, 'this machine is on no network to be reached over')
+
+  const port = await freePort()
+  const { app, window } = await launchServing(port)
+  const origin = `http://${address}:${port}`
+
+  try {
+    // Switched on, but bound where it was asked to bind: another device gets nothing, because
+    // nothing is listening on that address at all.
+    expect(await answersAt(origin)).toBe(false)
+
+    await window.getByRole('link', { name: 'Settings' }).click()
+    await window.getByRole('button', { name: 'Anything on this network' }).click()
+    await expect(window.getByRole('button', { name: 'Anything on this network' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    // The same restart that widened the bind is what makes the address answer, and the token is
+    // accepted there: the whole way in, not just the socket.
+    await expect.poll(() => answersAt(origin), { timeout: 15_000 }).toBe(true)
+    await expect(window.getByText(origin)).toBeVisible()
+  } finally {
     await app.close()
   }
 })
