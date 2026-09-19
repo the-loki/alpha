@@ -47,6 +47,26 @@ is a sequence of turns.
 One user-visible unit in a conversation: what the user typed, what the model produced, or what a
 tool returned. Messages are the only thing the transcript stores.
 
+### Queued Message
+
+What the user typed while the agent was working and meant to send *after* it: it waits in the
+workbench's own queue and becomes a turn of its own when the current one ends. A queued message is
+not yet part of the conversation, so it can still be edited in place or deleted. The queue belongs
+to a conversation and dies with the workbench — it is an intention for the next few minutes, not a
+record. Avoid: *pending* (everything not yet finished is pending; this is one specific thing).
+
+### Steered Message
+
+What the user typed while the agent was working and meant to send *into* it: it goes to the
+running turn at its next checkpoint, and it is the runtime's, not the workbench's. A steered
+message cannot be edited — by the time you would edit it, it belongs to the turn — and it can only
+be cancelled, which the runtime may answer with "too late". Avoid: *interrupt* (that is stopping
+the agent, which is a different action on a different control).
+
+*Queued* and *steered* are the two answers to "what happens to what I type while the agent is
+working?", and they are deliberately not synonyms: one changes the next turn, the other changes
+this one.
+
 ### Tool
 
 A capability the agent can invoke: reading a file, writing a file, running a command. A tool
