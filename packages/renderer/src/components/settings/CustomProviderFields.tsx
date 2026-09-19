@@ -1,4 +1,5 @@
 import { type CustomProviderInput, PROVIDER_APIS, type ProviderApi } from '@alpha/core'
+import { useText } from '../../stores/shell.ts'
 import { DESTRUCTIVE_ACTION } from '../controls.ts'
 
 /** One model as the form holds it: every field is a string until the submit reads it. */
@@ -70,6 +71,7 @@ export function TextField(props: {
 
 /** The models an endpoint serves: at least one, and each with its own limits. */
 export function ModelFields({ models, onChange }: { models: DraftModel[]; onChange: (models: DraftModel[]) => void }) {
+  const t = useText()
   const replace = (index: number, changes: Partial<DraftModel>) =>
     onChange(models.map((model, at) => (at === index ? { ...model, ...changes } : model)))
 
@@ -90,7 +92,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
             <TextField
               label={`Display name ${index + 1}`}
               value={model.name}
-              placeholder="What it is called"
+              placeholder={t('settings.displayNamePlaceholder')}
               onChange={(name) => replace(index, { name })}
             />
             <TextField
@@ -115,7 +117,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                 onChange={(event) => replace(index, { reasoning: event.target.checked })}
                 className="h-3.5 w-3.5 accent-[var(--color-accent)]"
               />
-              Thinks before answering
+              {t('settings.reasoning')}
             </label>
             {models.length > 1 && (
               <button
@@ -124,7 +126,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                 onClick={() => onChange(models.filter((_, at) => at !== index))}
                 className={DESTRUCTIVE_ACTION}
               >
-                Remove
+                {t('settings.removeModel')}
               </button>
             )}
           </div>
@@ -135,7 +137,7 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
         onClick={() => onChange([...models, emptyModel()])}
         className="rounded-control border border-line px-2.5 py-1 text-xs text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment"
       >
-        Add model
+        {t('settings.addModel')}
       </button>
     </div>
   )
@@ -143,11 +145,12 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
 
 /** The protocol picker: it decides how the base URL is read, so it is not a detail. */
 export function ApiField({ api, onChange }: { api: ProviderApi; onChange: (api: ProviderApi) => void }) {
+  const t = useText()
   return (
     <label className="block">
-      <span className="mb-1 block text-micro text-parchment-faint">Wire protocol</span>
+      <span className="mb-1 block text-micro text-parchment-faint">{t('settings.wireProtocol')}</span>
       <select
-        aria-label="Wire protocol"
+        aria-label={t('settings.wireProtocol')}
         value={api}
         onChange={(event) => onChange(event.target.value as ProviderApi)}
         className={FIELD}

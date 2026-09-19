@@ -1,6 +1,6 @@
 import {
-  levelDescription,
-  levelLabel,
+  levelDescriptionKey,
+  levelKey,
   levelTone,
   type Null,
   PERMISSION_LEVELS,
@@ -8,7 +8,7 @@ import {
 } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
-import { useShell } from '../stores/shell.ts'
+import { useShell, useText } from '../stores/shell.ts'
 
 /** How each tone of the permission level reads: the settings page uses the same map. */
 export const TONE_CLASS: Record<string, string> = {
@@ -34,6 +34,7 @@ const DOT_CLASS: Record<string, string> = {
  * conversation open it changes the workspace's default for new ones.
  */
 export function LevelChip() {
+  const t = useText()
   const fallback = useShell((state) => state.workspaceLevel)
   const setWorkspaceLevel = useShell((state) => state.setPermissionLevel)
   const activeId = useConversations((state) => state.activeId)
@@ -71,18 +72,22 @@ export function LevelChip() {
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={inConversation ? `This conversation: ${levelDescription(level)}` : levelDescription(level)}
+        title={
+          inConversation
+            ? t('level.chipTitleHere', { description: t(levelDescriptionKey(level)) })
+            : t('level.chipTitle')
+        }
         onClick={() => setOpen((value) => !value)}
         className={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-xs font-medium transition-colors ${TONE_CLASS[tone]}`}
       >
         <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone]}`} aria-hidden="true" />
-        {levelLabel(level)}
+        {t(levelKey(level))}
       </button>
 
       {open && (
         <div
           role="menu"
-          aria-label="Permission level"
+          aria-label={t('level.chipTitle')}
           className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-xl shadow-black/40"
         >
           {PERMISSION_LEVELS.map((candidate: PermissionLevel) => (
@@ -99,10 +104,10 @@ export function LevelChip() {
             >
               <span className="flex items-center gap-2 text-ui text-parchment">
                 <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[levelTone(candidate)]}`} aria-hidden="true" />
-                {levelLabel(candidate)}
+                {t(levelKey(candidate))}
               </span>
               <span className="mt-0.5 block text-xs leading-snug text-parchment-faint">
-                {levelDescription(candidate)}
+                {t(levelDescriptionKey(candidate))}
               </span>
             </button>
           ))}

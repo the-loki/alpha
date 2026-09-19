@@ -389,6 +389,64 @@ export const RULES = [
   },
 
   {
+    id: '05-design:copy-has-a-key',
+    constraint: '05-design.md',
+    description: 'the interface says what the dictionary says, in the language it is in',
+    /*
+     * Copy is found three ways, because it hides three ways: an attribute (aria-label, placeholder,
+     * title), a JSX text node on one line, and a paragraph wrapped over several. Prose inside a
+     * comment is prose about the code and is skipped; a line with a brace, a quote or an operator
+     * in it is code that happens to have words in it.
+     */
+    check({ path, text }) {
+      if (!path.startsWith('packages/renderer/src/')) return []
+      if (!/\.tsx$/.test(path) || isTest(path)) return []
+      const found = []
+      const lines = text.split('\n')
+      const attribute = /\b(?:aria-label|placeholder|title)="([^"]*\s[^"]*)"/g
+      const singleLine = />\s*([A-Za-z][^<>{}()=;,\n]*?)\s*</g
+      const codeCharacters = /[<>{}()=;'"`\\|&*]/
+      const proseCharacters = /[<>{}()=;'"`\\|&*]/
+      let inComment = false
+
+      lines.forEach((line, index) => {
+        const trimmed = line.trim()
+        const comment = inComment || trimmed.startsWith('//') || trimmed.startsWith('*')
+        // A JSX comment opens with `{/*` and closes with `*/}`; both are comments, and prose
+        // wrapped inside one is prose about the code.
+        const opens = trimmed.startsWith('/*') || trimmed.startsWith('{/*')
+        if (inComment && trimmed.includes('*/')) inComment = false
+        if (opens && !trimmed.includes('*/')) inComment = true
+
+        for (const match of line.matchAll(attribute)) {
+          found.push({ line: index + 1, message: `"${match[1]}" is copy; take it from the dictionary`, text: trimmed })
+        }
+        for (const match of line.matchAll(singleLine)) {
+          if (match[1].split(/\s+/).length >= 2) {
+            found.push({
+              line: index + 1,
+              message: `"${match[1]}" is copy; take it from the dictionary`,
+              text: trimmed,
+            })
+          }
+        }
+        if (comment) return
+        if (codeCharacters.test(trimmed)) return
+        const words = trimmed.split(/\s+/).filter((word) => /[A-Za-z]/.test(word))
+        const long = words.filter((word) => word.replace(/[^A-Za-z]/g, '').length >= 3)
+        if (words.length >= 4 && long.length >= 2 && !proseCharacters.test(trimmed.replace(/[—-]/g, ''))) {
+          found.push({
+            line: index + 1,
+            message: 'a sentence in a component; take it from the dictionary',
+            text: trimmed,
+          })
+        }
+      })
+      return found
+    },
+  },
+
+  {
     id: '02-architecture:contract-channels',
     constraint: '02-architecture.md',
     description: 'the contract, the handlers and the bridge agree',

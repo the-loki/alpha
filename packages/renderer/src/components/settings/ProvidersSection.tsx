@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useProviders } from '../../stores/providers.ts'
+import { useText } from '../../stores/shell.ts'
 import { AddProvider } from './AddProvider.tsx'
 import { ProviderCard } from './ProviderCard.tsx'
 
 export function ProvidersSection() {
+  const t = useText()
   const snapshot = useProviders((state) => state.snapshot)
   const load = useProviders((state) => state.load)
 
@@ -14,21 +16,18 @@ export function ProvidersSection() {
   return (
     <section aria-labelledby="settings-providers">
       <h2 id="settings-providers" className="text-body font-medium text-parchment">
-        Model providers
+        {t('settings.providers')}
       </h2>
-      <p className="mt-1 text-xs text-parchment-dim">
-        Alpha ships no keys. A provider you add here is the only thing it can talk to, and its key is stored on this
-        machine alone.
-      </p>
+      <p className="mt-1 text-xs text-parchment-dim">{t('settings.providersBody')}</p>
 
       {snapshot.protection === 'plaintext' && (
         <p className="mt-2 rounded-card border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
-          This system offers no keychain, so keys are stored in plain text in the app data folder.
+          {t('settings.noKeychain')}
         </p>
       )}
 
       {snapshot.providers.length === 0 ? (
-        <p className="mt-3 text-code text-parchment-faint">No providers yet.</p>
+        <p className="mt-3 text-code text-parchment-faint">{t('settings.noProviders')}</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {snapshot.providers.map((provider) => (

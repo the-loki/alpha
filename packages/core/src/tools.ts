@@ -3,6 +3,9 @@
  * the permission ladder decides on, so it is data here rather than a property of the tool
  * implementation: the gate has to be able to answer "what is this?" before anything runs.
  */
+
+import type { TextKey } from './i18n.ts'
+
 export const TOOL_RISKS = ['read', 'write', 'execute'] as const
 
 export type ToolRisk = (typeof TOOL_RISKS)[number]
@@ -27,6 +30,6 @@ export function isToolRisk(value: unknown): value is ToolRisk {
 }
 
 /** One word for the row's glyph tooltip, so the class is readable and not only coloured. */
-export function riskLabel(risk: ToolRisk): string {
-  return risk === 'read' ? 'Reads' : risk === 'write' ? 'Writes' : 'Runs commands'
+export function riskKey(risk: ToolRisk): TextKey {
+  return risk === 'read' ? 'risk.reads' : risk === 'write' ? 'risk.writes' : 'risk.runs'
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isToolRisk, riskLabel, TOOL_RISKS, toolRiskOf } from './tools.ts'
+import { EN } from './i18n.ts'
+import { isToolRisk, riskKey, TOOL_RISKS, toolRiskOf } from './tools.ts'
 
 describe('[core] toolRiskOf', () => {
   it('classifies reading a file as a read', () => {
@@ -28,8 +29,8 @@ describe('[core] isToolRisk', () => {
   })
 })
 
-describe('[core] riskLabel', () => {
+describe('[core] riskKey', () => {
   it('says what each class does, so the colour is not the only cue', () => {
-    expect(TOOL_RISKS.map(riskLabel)).toEqual(['Reads', 'Writes', 'Runs commands'])
+    expect(TOOL_RISKS.map((risk) => EN[riskKey(risk)])).toEqual(['Reads', 'Writes', 'Runs commands'])
   })
 })

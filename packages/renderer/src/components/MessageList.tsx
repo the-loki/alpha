@@ -8,6 +8,7 @@ import {
   visibleMessages,
 } from '@alpha/core'
 import { Fragment, useEffect, useRef } from 'react'
+import { useText } from '../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { MessageView } from './MessageView.tsx'
 
@@ -28,16 +29,26 @@ const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]
 
 /** What one turn spent, so the header's total can be read back to the turns that made it. */
 function TurnUsageNote({ turn }: { turn: Undef<TurnUsage> }) {
+  const t = useText()
   if (turn === undefined) return null
   const cost = formatCost(turn.usage.cost)
+  const tokens = formatTokens(turn.usage.totalTokens)
+  const earlier = turn.earlier === true
 
   return (
     <p className="mt-1 font-mono text-micro text-parchment-faint">
-      {turn.earlier === true ? 'Earlier turns · ' : 'Turn · '}
-      {formatTokens(turn.usage.totalTokens)} tokens{cost === '' ? '' : ` · ${cost}`}
+      {t(NOTE[cost === '' ? (earlier ? 'earlier' : 'turn') : earlier ? 'earlierCost' : 'turnCost'], { tokens, cost })}
     </p>
   )
 }
+
+/** Which of the four lines a turn note can be: with or without a cost, first or earlier. */
+const NOTE = {
+  turn: 'message.turn',
+  earlier: 'message.turnEarlier',
+  turnCost: 'message.turnCost',
+  earlierCost: 'message.turnEarlierCost',
+} as const
 
 /**
  * The transcript. It sticks to the bottom while the reader is already there, and stops sticking

@@ -35,6 +35,13 @@ language and forgotten in the other is a type error rather than a blank line at 
 lives in `core/src/i18n.ts` with the types that name it, because a type's absence and a label's
 words are both vocabulary — but no React, no store and no side effects, so `core` stays pure.
 
+**Copy in a component is a `pnpm check` failure.** `05-design:copy-has-a-key` reads every `.tsx`
+under `packages/renderer/src/` and flags copy three ways it hides: an `aria-label`, `placeholder` or
+`title` holding more than one word; a JSX text node with more than one word; and a line of prose
+with no code characters in it, which is how a wrapped paragraph reads to a checker. A key
+(`{t('sidebar.search')}`) is what passes, and a single word is left alone — `Alpha` is the app's
+name in both languages.
+
 **No i18n library.** Two languages, ~80 strings, no plural rules worth the name, and no date or
 number formatting that is not already ours (`formatTokens`, `formatAge`). A library would add a
 dependency, a build step and a runtime to save a `Record` and a `replace`.
@@ -52,6 +59,13 @@ and a browser on the far side of the room are not necessarily in the same langua
 them is reading for itself. A machine whose language the interface does not have gets English —
 half a dictionary reads worse than a language you did not pick, and settings fixes it in a click.
 
+**The unlock screen is in the client's language, and that is a security rule.** A browser that has
+not unlocked has not been told the workbench's language — the launch state carries it and the
+launch state needs a session — so the screen asking for the token is written in the language of
+the machine reading it. Telling a client the workbench's settings before it holds the token would
+have to be a second, unauthenticated endpoint, which is a worse trade than one screen in the
+wrong language.
+
 **Errors are cases, not sentences.** Main no longer composes a user-facing sentence. `ModelStatus`
 is `{ kind: 'none' } | { kind: 'configured' }` and the window says "No model configured yet." in
 whatever language it is in. A sentence assembled in the main process would be an English clause in
@@ -65,8 +79,12 @@ Playwright's own default locale.
 
 ## Consequences
 
-- A surface that is not in the dictionary yet shows English inside a Chinese interface. That is
-  the honest intermediate state; the extraction is a mechanical pass over each component.
+- The two dictionaries are generated from one table (`tools/i18n/build-dictionary.py`) so the two
+  cannot drift; hand-editing one of them is how a line ends up in one language only.
+- A string that is the same in both languages (a language's own name, a palette's name, an id)
+  is deliberately not in the dictionary: it is not copy, and translating it would be wrong.
+- The interface is not fully Chinese on a machine with no CJK font installed; that is a font
+  question (`#69`), not a dictionary one.
 - Adding a string means adding it twice, and the compiler says so if you forget.
 - The three classes are a judgement call at the boundary: a sentence that is both "what the user
   reads" and "what the agent is told" has to be split, or the agent's copy stays English.

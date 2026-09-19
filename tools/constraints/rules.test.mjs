@@ -115,6 +115,47 @@ describe('05-design:control-voice', () => {
   })
 })
 
+describe('05-design:copy-has-a-key', () => {
+  const rule = '05-design:copy-has-a-key'
+
+  it('flags copy in an attribute, in a text node, and in a wrapped paragraph', () => {
+    const attribute = violationsFor(rule, file('packages/renderer/src/a.tsx', '<input aria-label="Access token" />'))
+    expect(attribute).toHaveLength(1)
+
+    const text = violationsFor(rule, file('packages/renderer/src/a.tsx', '<p>Allow once</p>'))
+    expect(text).toHaveLength(1)
+
+    const paragraph = violationsFor(
+      rule,
+      file('packages/renderer/src/a.tsx', '<p>\n  Alpha ships no keys. A provider you add is the only one.\n</p>'),
+    )
+    expect(paragraph).toHaveLength(1)
+  })
+
+  it('allows a key, a single word, and prose in a comment', () => {
+    const key = violationsFor(rule, file('packages/renderer/src/a.tsx', "<p>{t('sidebar.search')}</p>"))
+    expect(key).toEqual([])
+
+    const oneWord = violationsFor(rule, file('packages/renderer/src/a.tsx', '<span>Alpha</span>'))
+    expect(oneWord).toEqual([])
+
+    const insideAComment = violationsFor(
+      rule,
+      file(
+        'packages/renderer/src/a.tsx',
+        ["{/* The age is the row's metadata, and the row is the", "    conversation's name and nothing else. */}"].join(
+          '\n',
+        ),
+      ),
+    )
+    expect(insideAComment).toEqual([])
+  })
+
+  it('reads the renderer only', () => {
+    expect(violationsFor(rule, file('packages/main/src/a.tsx', '<p aria-label="Access token" />'))).toEqual([])
+  })
+})
+
 describe('01-typescript:no-null-union', () => {
   const rule = '01-typescript:no-null-union'
 

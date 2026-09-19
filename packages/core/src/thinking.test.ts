@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_THINKING_LEVEL, isThinkingLevel, THINKING_LEVELS, thinkingLabel } from './thinking.ts'
+import { EN } from './i18n.ts'
+import { DEFAULT_THINKING_LEVEL, isThinkingLevel, THINKING_LEVELS, thinkingKey } from './thinking.ts'
 
 describe('[core] the thinking ladder', () => {
   it('runs from off to max, cheapest first', () => {
@@ -11,7 +12,7 @@ describe('[core] the thinking ladder', () => {
   })
 
   it('labels every level', () => {
-    for (const level of THINKING_LEVELS) expect(thinkingLabel(level)).not.toBe('')
+    for (const level of THINKING_LEVELS) expect(EN[thinkingKey(level)]).not.toBe('')
   })
 
   it('rejects anything a renderer or config file might send', () => {

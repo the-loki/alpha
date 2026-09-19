@@ -1,12 +1,14 @@
 import type { ProviderModelDefinition, ProviderView, Undef } from '@alpha/core'
 import { useEffect, useState } from 'react'
 import { type ProviderTestOutcome, useProviders } from '../../stores/providers.ts'
+import { useText } from '../../stores/shell.ts'
 
 /**
  * One configured provider: what it is, whether a key is stored, and the three things a user
  * needs to do to it — replace the key, prove it works, delete it.
  */
 export function ProviderCard({ provider }: { provider: ProviderView }) {
+  const t = useText()
   const setCredential = useProviders((state) => state.setCredential)
   const remove = useProviders((state) => state.remove)
   const loadModels = useProviders((state) => state.loadModels)
@@ -28,7 +30,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           <p className="truncate font-mono text-micro text-parchment-faint">{provider.baseUrl}</p>
         </div>
         <span className={`shrink-0 text-micro ${provider.hasCredential ? 'text-jade' : 'text-amber'}`}>
-          {provider.hasCredential ? 'key stored' : 'no key'}
+          {t(provider.hasCredential ? 'settings.keyStored' : 'settings.noKey')}
         </span>
       </div>
 
@@ -39,7 +41,8 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           className="mt-1.5 truncate font-mono text-micro text-parchment-faint"
           title={models.map((m) => m.id).join(', ')}
         >
-          {models.length} model{models.length === 1 ? '' : 's'} · {models.map((m) => m.id).join(', ')}
+          {t(models.length === 1 ? 'settings.oneModel' : 'settings.models', { count: models.length })} ·{' '}
+          {models.map((m) => m.id).join(', ')}
         </p>
       )}
 
@@ -47,8 +50,8 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
         <input
           type="password"
           value={secret}
-          aria-label={`API key for ${provider.name}`}
-          placeholder="Paste the key"
+          aria-label={t('settings.apiKeyFor', { provider: provider.name })}
+          placeholder={t('settings.pasteKey')}
           onChange={(event) => setSecret(event.target.value)}
           className="min-w-0 flex-1 rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none"
         />
@@ -60,7 +63,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           }}
           className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-accent/25 disabled:text-accent-ink/60"
         >
-          Save key
+          {t('settings.saveKey')}
         </button>
       </div>
 
@@ -71,14 +74,14 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
           onClick={() => void test(provider.id, firstModel).then(setOutcome)}
           className="rounded-control border border-line px-2.5 py-1 text-xs text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment disabled:opacity-40"
         >
-          Test
+          {t('settings.test')}
         </button>
         <button
           type="button"
           onClick={() => void remove(provider.id)}
           className="rounded-control px-2 py-1 text-xs text-parchment-faint transition-colors hover:text-danger"
         >
-          Delete
+          {t('settings.removeProvider')}
         </button>
         {outcome !== undefined && (
           <span className={`min-w-0 flex-1 truncate text-xs ${outcome.ok ? 'text-jade' : 'text-danger'}`}>

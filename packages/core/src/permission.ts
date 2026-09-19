@@ -3,6 +3,7 @@
  * the rules that stand in for a decision the user has already made twice. All of it is pure — the
  * gate asks these functions, and the window only ever sees their answers.
  */
+import type { TextKey } from './i18n.ts'
 import type { Undef } from './maybe.ts'
 import type { ToolRisk } from './tools.ts'
 
@@ -14,11 +15,11 @@ export type LevelTone = 'info' | 'amber' | 'jade' | 'warm'
 
 export const DEFAULT_LEVEL: PermissionLevel = 'ask'
 
-const LABELS: Record<PermissionLevel, string> = {
-  plan: 'Plan',
-  ask: 'Ask',
-  'accept-edits': 'Accept edits',
-  'full-access': 'Full access',
+const LABELS: Record<PermissionLevel, TextKey> = {
+  plan: 'level.plan',
+  ask: 'level.ask',
+  'accept-edits': 'level.acceptEdits',
+  'full-access': 'level.fullAccess',
 }
 
 const TONES: Record<PermissionLevel, LevelTone> = {
@@ -28,18 +29,19 @@ const TONES: Record<PermissionLevel, LevelTone> = {
   'full-access': 'warm',
 }
 
-const DESCRIPTIONS: Record<PermissionLevel, string> = {
-  plan: 'Reads only. The agent proposes changes instead of making them.',
-  ask: 'Asks before every file change and every command.',
-  'accept-edits': 'File changes run without asking. Commands still ask.',
-  'full-access': 'Nothing asks. Every tool call runs immediately.',
+const DESCRIPTIONS: Record<PermissionLevel, TextKey> = {
+  plan: 'level.plan.about',
+  ask: 'level.ask.about',
+  'accept-edits': 'level.acceptEdits.about',
+  'full-access': 'level.fullAccess.about',
 }
 
 export function isPermissionLevel(value: unknown): value is PermissionLevel {
   return typeof value === 'string' && (PERMISSION_LEVELS as readonly string[]).includes(value)
 }
 
-export function levelLabel(level: PermissionLevel): string {
+/** The key the dictionary answers with the level's name. */
+export function levelKey(level: PermissionLevel): TextKey {
   return LABELS[level]
 }
 
@@ -47,7 +49,8 @@ export function levelTone(level: PermissionLevel): LevelTone {
   return TONES[level]
 }
 
-export function levelDescription(level: PermissionLevel): string {
+/** The key the dictionary answers with what the level means. */
+export function levelDescriptionKey(level: PermissionLevel): TextKey {
   return DESCRIPTIONS[level]
 }
 
@@ -91,8 +94,9 @@ export function isRuleScope(value: unknown): value is RuleScope {
   return value === 'conversation' || value === 'workspace'
 }
 
-export function ruleScopeLabel(scope: RuleScope): string {
-  return scope === 'conversation' ? 'This conversation' : 'This workspace'
+/** The key the dictionary answers with how far a remembered rule reaches. */
+export function ruleScopeKey(scope: RuleScope): TextKey {
+  return scope === 'conversation' ? 'rule.conversation' : 'rule.workspace'
 }
 
 export type CallEvaluation =

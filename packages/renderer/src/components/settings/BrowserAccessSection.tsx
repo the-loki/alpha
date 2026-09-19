@@ -1,7 +1,7 @@
 import type { NetworkBind, NetworkPatch, NetworkState, Undef } from '@alpha/core'
 import { useCallback, useEffect, useState } from 'react'
 import { bridge } from '../../lib/bridge.ts'
-import { useShell } from '../../stores/shell.ts'
+import { useShell, useText } from '../../stores/shell.ts'
 
 const BIND_LABELS: Record<NetworkBind, string> = {
   local: 'This machine only',
@@ -13,6 +13,7 @@ const BIND_LABELS: Record<NetworkBind, string> = {
  * settings page is the only place the token is shown, which is why the copy sits next to it.
  */
 export function BrowserAccessSection() {
+  const t = useText()
   const host = useShell((state) => state.host)
   const [state, setState] = useState<Undef<NetworkState>>(undefined)
   const [port, setPort] = useState('')
@@ -36,22 +37,17 @@ export function BrowserAccessSection() {
   }
 
   return (
-    <section aria-label="Browser access">
+    <section aria-label={t('settings.tabBrowserAccess')}>
       {/* The panel's own heading says what this is; saying it again here would make the page read
           as two versions of the same sentence. */}
-      {host === 'browser' && (
-        <p className="text-xs text-parchment-faint">
-          You are reading this in a browser, where the switch is the machine's to hold: a browser cannot add a folder
-          either.
-        </p>
-      )}
+      {host === 'browser' && <p className="text-xs text-parchment-faint">{t('settings.browserHost')}</p>}
 
       <div className="mt-3 space-y-3 rounded-card border border-line bg-ink-800 p-4">
         <label className="flex items-center justify-between gap-4">
-          <span className="text-ui text-parchment">Serve to a browser</span>
+          <span className="text-ui text-parchment">{t('settings.serve')}</span>
           <input
             type="checkbox"
-            aria-label="Serve this workbench to a browser"
+            aria-label={t('settings.serveLabel')}
             checked={state.enabled}
             onChange={(event) => change({ enabled: event.target.checked })}
             className="h-4 w-4 accent-[var(--color-accent)]"
@@ -59,7 +55,7 @@ export function BrowserAccessSection() {
         </label>
 
         <div className="flex items-center justify-between gap-4">
-          <span className="text-ui text-parchment">Who can reach it</span>
+          <span className="text-ui text-parchment">{t('settings.whoCanReach')}</span>
           <div className="flex gap-1.5">
             {(Object.keys(BIND_LABELS) as NetworkBind[]).map((bind) => (
               <button
@@ -91,7 +87,7 @@ export function BrowserAccessSection() {
               onBlur={() => change({ port: Number(port === '' ? 0 : port) })}
               className="w-20 rounded-control border border-line bg-ink-700 px-2 py-1 text-right font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
             />
-            <span className="text-micro text-parchment-faint">0 picks one</span>
+            <span className="text-micro text-parchment-faint">{t('settings.portHint')}</span>
           </span>
         </div>
 
@@ -101,7 +97,7 @@ export function BrowserAccessSection() {
 
         {state.urls.length > 0 && (
           <div>
-            <span className="block text-ui text-parchment">Open it at</span>
+            <span className="block text-ui text-parchment">{t('settings.openAt')}</span>
             <ul className="mt-1 space-y-0.5">
               {state.urls.map((url) => (
                 <li key={url} className="font-mono text-code text-parchment-dim">
@@ -123,14 +119,15 @@ function TokenRow(props: {
   onCopied: (copied: boolean) => void
   copied: boolean
 }) {
+  const t = useText()
   const { state, onChange, copied } = props
   const disabled = state.token === ''
   return (
     <div>
-      <span className="block text-ui text-parchment">Access token</span>
+      <span className="block text-ui text-parchment">{t('unlock.token')}</span>
       <div className="mt-1 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-code text-parchment-dim">
-          {disabled ? 'minted when you switch it on' : state.token}
+          {disabled ? t('settings.tokenMinted') : state.token}
         </code>
         <button
           type="button"
@@ -140,7 +137,7 @@ function TokenRow(props: {
           }}
           className="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
         >
-          {copied ? 'Copied' : 'Copy'}
+          {t(copied ? 'message.copied' : 'message.copy')}
         </button>
         <button
           type="button"
@@ -148,7 +145,7 @@ function TokenRow(props: {
           onClick={() => void bridge().regenerateNetworkToken().then(onChange)}
           className="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
         >
-          Replace
+          {t('settings.replaceToken')}
         </button>
       </div>
     </div>

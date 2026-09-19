@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { EN } from './i18n.ts'
 import {
   DEFAULT_LEVEL,
   decideToolCall,
   evaluateCall,
   isPermissionLevel,
-  levelLabel,
+  levelDescriptionKey,
+  levelKey,
   levelTone,
   PERMISSION_LEVELS,
   type PermissionLevel,
@@ -46,9 +48,30 @@ describe('[core] isPermissionLevel', () => {
   })
 })
 
-describe('[core] levelLabel', () => {
-  it('gives each level the words the UI shows', () => {
-    expect(PERMISSION_LEVELS.map(levelLabel)).toEqual(['Plan', 'Ask', 'Accept edits', 'Full access'])
+describe('[core] levelKey', () => {
+  it('gives each level a word the dictionary has', () => {
+    // The keys, not the words: what a level is called in a given language is the dictionary's
+    // business, and this is the map from the level to the key it is read under.
+    expect(PERMISSION_LEVELS.map(levelKey)).toEqual([
+      'level.plan',
+      'level.ask',
+      'level.acceptEdits',
+      'level.fullAccess',
+    ])
+    expect(PERMISSION_LEVELS.map((level) => EN[levelKey(level)])).toEqual([
+      'Plan',
+      'Ask',
+      'Accept edits',
+      'Full access',
+    ])
+  })
+})
+
+describe('[core] levelDescriptionKey', () => {
+  it('gives every level something to say about itself', () => {
+    for (const level of PERMISSION_LEVELS) {
+      expect(EN[levelDescriptionKey(level)].length).toBeGreaterThan(10)
+    }
   })
 })
 

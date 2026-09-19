@@ -2,6 +2,7 @@ import type { ConversationSummary, Null, Undef } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
+import { useText } from '../stores/shell.ts'
 
 /** How many matches the palette shows at once: more than this is a list, not a shortcut. */
 const SHOWN = 8
@@ -19,6 +20,7 @@ const matches = (conversations: ConversationSummary[], query: string): Conversat
  */
 export function ConversationPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const conversations = useConversations((state) => state.list)
+  const t = useText()
   const openConversation = useConversations((state) => state.open)
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
@@ -47,7 +49,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Switch conversation"
+      aria-label={t('palette.dialog')}
       className="fixed inset-0 z-50 flex items-start justify-center bg-ink-900/60 pt-24"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
@@ -56,8 +58,8 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
       <div className="w-full max-w-xl overflow-hidden rounded-overlay border border-line bg-ink-800 shadow-xl shadow-black/50">
         <input
           ref={field}
-          aria-label="Search conversations"
-          placeholder="Go to a conversation…"
+          aria-label={t('palette.search')}
+          placeholder={t('palette.placeholder')}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value)
@@ -77,7 +79,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
           }}
           className="w-full border-b border-line bg-transparent px-4 py-3 text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
         />
-        <div role="listbox" aria-label="Conversations" className="max-h-80 overflow-y-auto py-1">
+        <div role="listbox" aria-label={t('palette.list')} className="max-h-80 overflow-y-auto py-1">
           {shown.map((conversation, index) => (
             <button
               key={conversation.id}
@@ -94,7 +96,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
           ))}
           {shown.length === 0 && (
             <p className="px-4 py-3 text-ui text-parchment-dim">
-              {conversations.length === 0 ? 'No conversations yet.' : 'Nothing matches that.'}
+              {t(conversations.length === 0 ? 'palette.empty' : 'palette.noMatch')}
             </p>
           )}
         </div>

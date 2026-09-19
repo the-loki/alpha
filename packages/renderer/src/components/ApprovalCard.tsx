@@ -1,6 +1,7 @@
-import { type ApprovalRequest, levelLabel, type Null, type RuleScope, riskLabel } from '@alpha/core'
+import { type ApprovalRequest, levelKey, type Null, type RuleScope, riskKey } from '@alpha/core'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
+import { useText } from '../stores/shell.ts'
 import { DiffView } from './DiffView.tsx'
 
 /**
@@ -10,6 +11,7 @@ import { DiffView } from './DiffView.tsx'
  */
 export function ApprovalCard({ request }: { request: ApprovalRequest }) {
   const answer = useConversations((state) => state.answerApproval)
+  const t = useText()
   const [reason, setReason] = useState('')
   const [scope, setScope] = useState<RuleScope>('conversation')
   const field = useRef<Null<HTMLInputElement>>(null)
@@ -31,7 +33,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
 
   return (
     <section
-      aria-label="Waiting for your decision"
+      aria-label={t('approval.region')}
       onKeyDown={(event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault()
@@ -46,16 +48,18 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
     >
       <header className="flex items-baseline gap-2 px-3.5 pb-1 pt-2.5">
         <span className="font-mono text-micro uppercase tracking-wider text-amber">
-          {request.risk === 'execute' ? 'Wants to run a command' : 'Wants to change a file'}
+          {t(request.risk === 'execute' ? 'approval.command' : 'approval.change')}
         </span>
-        <span className="text-micro text-parchment-faint">· {levelLabel(request.level)}</span>
+        <span className="text-micro text-parchment-faint">· {t(levelKey(request.level))}</span>
       </header>
 
       <div className="px-3.5 pb-1">
         <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment">
-          {request.detail === '' ? riskLabel(request.risk) : request.detail}
+          {request.detail === '' ? t(riskKey(request.risk)) : request.detail}
         </pre>
-        <p className="mt-0.5 font-mono text-micro text-parchment-faint">in {request.cwd}</p>
+        <p className="mt-0.5 font-mono text-micro text-parchment-faint">
+          {t('approval.inFolder', { path: request.cwd })}
+        </p>
         {request.diff !== undefined && <DiffView diff={request.diff} />}
       </div>
 
@@ -66,7 +70,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           disabled={busy}
           className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60"
         >
-          Allow once
+          {t('approval.allowOnce')}
         </button>
 
         <div className="flex items-center rounded-control border border-line bg-ink-700">
@@ -76,16 +80,16 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
             disabled={busy}
             className="px-3 py-1 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
           >
-            Always allow
+            {t('approval.alwaysAllow')}
           </button>
           <select
-            aria-label="Remember this for"
+            aria-label={t('approval.rememberFor')}
             value={scope}
             onChange={(event) => setScope(event.target.value as RuleScope)}
             className="border-l border-line bg-transparent px-1.5 py-1 text-micro text-parchment-dim focus:outline-none"
           >
-            <option value="conversation">this conversation</option>
-            <option value="workspace">this workspace</option>
+            <option value="conversation">{t('approval.scopeConversation')}</option>
+            <option value="workspace">{t('approval.scopeWorkspace')}</option>
           </select>
         </div>
 
@@ -95,8 +99,8 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           ref={field}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          aria-label="Reason for denying"
-          placeholder="Reason (optional)"
+          aria-label={t('approval.reasonLabel')}
+          placeholder={t('approval.reasonPlaceholder')}
           className="min-w-40 max-w-80 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
@@ -106,7 +110,7 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           disabled={busy}
           className="rounded-control border border-danger/40 px-3 py-1 text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
         >
-          Deny
+          {t('approval.deny')}
         </button>
       </div>
     </section>

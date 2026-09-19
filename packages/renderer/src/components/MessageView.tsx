@@ -1,17 +1,27 @@
-import { type ChatBlockCompaction, type ChatBlockThinking, type ChatMessage, formatDuration } from '@alpha/core'
+import {
+  type ChatBlockCompaction,
+  type ChatBlockThinking,
+  type ChatMessage,
+  formatDuration,
+  type TextKey,
+  type TextParams,
+} from '@alpha/core'
 import { memo, useState } from 'react'
 import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { useConversations } from '../stores/conversations.ts'
+import { useText } from '../stores/shell.ts'
 import { TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
 function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
+  const t = useText()
   const elapsed = formatDuration(block.startedAt, block.endedAt)
   return (
     <details className="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
       <summary className="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
-        Thinking{elapsed === '' ? '' : ` · ${elapsed}`}
+        {t('message.thinking')}
+        {elapsed === '' ? '' : ` · ${elapsed}`}
       </summary>
       <p className="mt-2 whitespace-pre-wrap font-mono text-code leading-[1.6] text-parchment-dim">{block.text}</p>
     </details>
@@ -20,11 +30,13 @@ function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
 
 /** Where the runtime summarised the history, with the summary readable rather than folded away. */
 function CompactionMarker({ block }: { block: ChatBlockCompaction }) {
+  const t = useText()
   return (
     <details className="mb-3 rounded-card border border-dashed border-line bg-ink-800/50 px-3 py-2">
       <summary className="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
-        History summarised here
-        {block.replaced === undefined ? '' : ` · ${block.replaced} messages`}
+        {t(block.replaced === undefined ? 'message.compacted' : 'message.compactedCount', {
+          count: block.replaced ?? 0,
+        })}
       </summary>
       <p className="mt-2 whitespace-pre-wrap text-code leading-[1.6] text-parchment-dim">{block.summary}</p>
     </details>
@@ -36,6 +48,7 @@ function CompactionMarker({ block }: { block: ChatBlockCompaction }) {
  * outcomes are named here rather than one of them being the silent default.
  */
 function EditBox({ message, index }: { message: ChatMessage; index: number }) {
+  const t = useText()
   const editMessage = useConversations((state) => state.editMessage)
   const [text, setText] = useState(message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n'))
 
@@ -44,7 +57,7 @@ function EditBox({ message, index }: { message: ChatMessage; index: number }) {
       <textarea
         rows={3}
         value={text}
-        aria-label="Edit the message"
+        aria-label={t('message.editLabel')}
         onChange={(event) => setText(event.target.value)}
         className="block w-full resize-none rounded-control border border-line bg-ink-900 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
       />
@@ -54,36 +67,30 @@ function EditBox({ message, index }: { message: ChatMessage; index: number }) {
           onClick={() => void editMessage(index, text, 'replace')}
           className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
         >
-          Resend, replacing what followed
+          {t('message.resend')}
         </button>
         <button
           type="button"
           onClick={() => void editMessage(index, text, 'fork')}
           className="rounded-control border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
         >
-          Fork into a new conversation
+          {t('message.fork')}
         </button>
       </div>
-      <p className="mt-1.5 text-micro text-parchment-faint">
-        Replacing drops the messages after this one. Forking copies them to a new conversation and leaves this one
-        alone.
-      </p>
+      <p className="mt-1.5 text-micro text-parchment-faint">{t('message.editNote')}</p>
     </div>
   )
 }
 
 function StatusNote({ message }: { message: ChatMessage }) {
+  const t = useText()
   if (message.status === 'interrupted') {
-    return (
-      <p className="mt-2 font-mono text-micro uppercase tracking-wider text-amber">
-        Stopped — what arrived before the stop is kept
-      </p>
-    )
+    return <p className="mt-2 font-mono text-micro uppercase tracking-wider text-amber">{t('message.stopped')}</p>
   }
   if (message.status === 'failed') {
     return (
       <p className="mt-2 rounded-card border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
-        {message.error ?? 'The turn failed.'}
+        {message.error ?? t('message.failed')}
       </p>
     )
   }
@@ -100,6 +107,7 @@ export const MessageView = memo(function MessageView({
   /** The last message in the transcript, which is the only one with anything to regenerate. */
   last?: boolean
 }) {
+  const t = useText()
   const regenerate = useConversations((state) => state.regenerate)
   const running = useConversations((state) => state.transcript.status === 'running')
   const [editing, setEditing] = useState(false)
@@ -120,14 +128,19 @@ export const MessageView = memo(function MessageView({
             separate remarks under the message. */}
         {!editing && (
           <div className="flex items-center gap-3">
-            <CopyButton what="message" text={markdownOf(message.blocks)} className="group-hover:opacity-100" />
+            <CopyButton
+              what="message.copyMessage"
+              label="message.copy"
+              text={markdownOf(message.blocks)}
+              className="group-hover:opacity-100"
+            />
             {!running && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
                 className={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${TEXT_ACTION}`}
               >
-                Edit
+                {t('message.edit')}
               </button>
             )}
           </div>
@@ -160,12 +173,12 @@ export const MessageView = memo(function MessageView({
       <StatusNote message={message} />
       {spoken && (
         <div className="mt-1.5 flex items-center gap-3">
-          <CopyButton what="answer" text={markdownOf(message.blocks)} />
+          <CopyButton what="message.copyAnswer" label="message.copy" text={markdownOf(message.blocks)} />
           {/* Only the last answer can be regenerated: it re-runs the last question, so offering
               it under every answer would replace a different one than the reader is pointing at. */}
           {last && !streaming && !running && (
             <button type="button" onClick={() => void regenerate()} className={TEXT_ACTION}>
-              Regenerate
+              {t('message.regenerate')}
             </button>
           )}
         </div>
@@ -174,31 +187,38 @@ export const MessageView = memo(function MessageView({
   )
 })
 
-/** Copies what is on screen: a message as markdown, a tool row as its output. */
+/**
+ * Copies what is on screen: a message as markdown, a tool row as its output. Its words are keys,
+ * not strings: this button is used in three places and the three say different things.
+ */
 export function CopyButton({
   what,
   text,
-  label = 'Copy',
+  label,
+  params,
   className = '',
 }: {
-  what: string
+  /** What the accessible name says it copies. */
+  what: TextKey
   text: string
-  /** What the button says, when "Copy" alone would not say what it copies. */
-  label?: string
+  /** What the button itself says. */
+  label: TextKey
+  params?: TextParams
   className?: string
 }) {
+  const t = useText()
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
 
   return (
     <button
       type="button"
-      aria-label={`Copy ${what}`}
+      aria-label={t(what, params)}
       onClick={() => {
         void copyText(text).then((ok) => setState(ok ? 'done' : 'failed'))
       }}
       className={`${TEXT_ACTION} ${state === 'done' ? 'text-jade' : ''} ${state === 'failed' ? 'text-danger' : ''} ${className}`}
     >
-      {state === 'done' ? 'Copied' : state === 'failed' ? 'Copy failed' : label}
+      {t(state === 'done' ? 'message.copied' : state === 'failed' ? 'message.copyFailed' : label, params)}
     </button>
   )
 }

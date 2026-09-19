@@ -1,22 +1,20 @@
-import { levelDescription, levelLabel, levelTone, PERMISSION_LEVELS } from '@alpha/core'
-import { useShell } from '../../stores/shell.ts'
+import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/core'
+import { useShell, useText } from '../../stores/shell.ts'
 import { CheckIcon } from '../icons.tsx'
 import { TONE_CLASS } from '../LevelChip.tsx'
 
 /** The level a new conversation in this workspace starts at. */
 export function PermissionSection() {
+  const t = useText()
   const level = useShell((state) => state.workspaceLevel)
   const setPermissionLevel = useShell((state) => state.setPermissionLevel)
 
   return (
     <section aria-labelledby="settings-level">
       <h2 id="settings-level" className="text-body font-medium text-parchment">
-        Default permission level
+        {t('settings.defaultLevel')}
       </h2>
-      <p className="mt-1 text-xs text-parchment-dim">
-        New conversations in this workspace start here. An open conversation keeps its own level — change that from the
-        chip in the header.
-      </p>
+      <p className="mt-1 text-xs text-parchment-dim">{t('settings.defaultLevelNote')}</p>
       <ul className="mt-3 space-y-1.5">
         {PERMISSION_LEVELS.map((candidate) => (
           <li key={candidate}>
@@ -29,8 +27,8 @@ export function PermissionSection() {
               }`}
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-ui font-medium">{levelLabel(candidate)}</span>
-                <span className="mt-0.5 block text-xs text-parchment-faint">{levelDescription(candidate)}</span>
+                <span className="block text-ui font-medium">{t(levelKey(candidate))}</span>
+                <span className="mt-0.5 block text-xs text-parchment-faint">{t(levelDescriptionKey(candidate))}</span>
               </span>
               {/* The chosen level is marked, not only tinted: the tints are the level's own colours
                   and someone who cannot tell them apart still has to see which one is on. */}

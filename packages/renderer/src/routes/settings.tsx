@@ -1,3 +1,4 @@
+import type { TextKey } from '@alpha/core'
 import { createFileRoute, Link, type SearchSchemaInput } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
@@ -6,6 +7,7 @@ import { BrowserAccessSection } from '../components/settings/BrowserAccessSectio
 import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
+import { useText } from '../stores/shell.ts'
 
 /**
  * Settings is a menu, not a scroll: one panel at a time, and each panel has an address of its own
@@ -15,11 +17,11 @@ const SETTING_TABS = ['providers', 'permissions', 'appearance', 'browser-access'
 
 type SettingTab = (typeof SETTING_TABS)[number]
 
-const TAB_LABELS: Record<SettingTab, string> = {
-  providers: 'Providers',
-  permissions: 'Permissions',
-  appearance: 'Appearance',
-  'browser-access': 'Browser access',
+const TAB_LABELS: Record<SettingTab, TextKey> = {
+  providers: 'settings.tabProviders',
+  permissions: 'settings.tabPermissions',
+  appearance: 'settings.tabAppearance',
+  'browser-access': 'settings.tabBrowserAccess',
 }
 
 const TAB_ICONS: Record<SettingTab, ReactNode> = {
@@ -30,18 +32,17 @@ const TAB_ICONS: Record<SettingTab, ReactNode> = {
 }
 
 /** The menu, grouped the way the reference groups it: what the agent may do, then how it looks. */
-const TAB_GROUPS: { label: string; tabs: SettingTab[] }[] = [
-  { label: 'The agent', tabs: ['providers', 'permissions'] },
-  { label: 'This app', tabs: ['appearance', 'browser-access'] },
+const TAB_GROUPS: { label: TextKey; tabs: SettingTab[] }[] = [
+  { label: 'settings.groupAgent', tabs: ['providers', 'permissions'] },
+  { label: 'settings.groupApp', tabs: ['appearance', 'browser-access'] },
 ]
 
 /** What each panel is about, said once at the top of it rather than inferred from its controls. */
-const TAB_NOTES: Record<SettingTab, string> = {
-  providers: 'Where the models come from. Keys are held in the OS keychain and never leave this process.',
-  permissions: 'What the agent may do on its own, and what it has to ask about.',
-  appearance: 'Which palette the workbench is drawn in, and in which colour.',
-  'browser-access':
-    'Serve this workbench to a browser on another device. Whoever holds the token can read every conversation and answer every approval — it is a remote control for this machine, not a viewer.',
+const TAB_NOTES: Record<SettingTab, TextKey> = {
+  providers: 'settings.providersNote',
+  permissions: 'settings.permissionsNote',
+  appearance: 'settings.appearanceNote',
+  'browser-access': 'settings.browserAccessNote',
 }
 
 /** What each panel holds. Providers is first because it is what a person comes here to change. */
@@ -72,24 +73,25 @@ const validateSearch = (input: { tab?: unknown } & SearchSchemaInput): { tab: Se
 })
 
 function Settings() {
+  const t = useText()
   const { tab } = Route.useSearch()
 
   return (
     <div className="flex h-full bg-ink-800">
-      <nav aria-label="Settings sections" className="w-60 shrink-0 overflow-y-auto px-3 pt-3 pb-6">
+      <nav aria-label={t('settings.sections')} className="w-60 shrink-0 overflow-y-auto px-3 pt-3 pb-6">
         {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
         <Link
           to="/"
           className="flex items-center gap-2 rounded-control px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
         >
-          <ArrowLeftIcon /> Back to the workbench
+          <ArrowLeftIcon /> {t('settings.back')}
         </Link>
 
-        <h1 className="mt-5 px-2 text-xl font-semibold text-parchment">Settings</h1>
+        <h1 className="mt-5 px-2 text-xl font-semibold text-parchment">{t('settings.title')}</h1>
 
         {TAB_GROUPS.map((group) => (
           <section key={group.label} className="mt-5">
-            <h2 className="px-2 pb-1 text-micro font-medium tracking-wide text-parchment-faint">{group.label}</h2>
+            <h2 className="px-2 pb-1 text-micro font-medium tracking-wide text-parchment-faint">{t(group.label)}</h2>
             <ul className="space-y-0.5">
               {group.tabs.map((candidate) => (
                 <li key={candidate}>
@@ -104,7 +106,7 @@ function Settings() {
                     }`}
                   >
                     {TAB_ICONS[candidate]}
-                    {TAB_LABELS[candidate]}
+                    {t(TAB_LABELS[candidate])}
                   </Link>
                 </li>
               ))}
@@ -119,8 +121,8 @@ function Settings() {
             {/* The panel says what it is before it says anything else: the menu on the left names it
                 too, but a heading you had to click to reach is not a heading. */}
             <header className="border-b border-line pb-4">
-              <h1 className="text-lg font-semibold text-parchment">{TAB_LABELS[tab]}</h1>
-              <p className="mt-1 text-xs text-parchment-dim">{TAB_NOTES[tab]}</p>
+              <h1 className="text-lg font-semibold text-parchment">{t(TAB_LABELS[tab])}</h1>
+              <p className="mt-1 text-xs text-parchment-dim">{t(TAB_NOTES[tab])}</p>
             </header>
             {PANELS[tab]}
           </div>

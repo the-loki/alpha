@@ -1,5 +1,16 @@
-import { type ApprovalRecord, type ChatBlockTool, formatDuration, levelLabel, riskLabel } from '@alpha/core'
+import {
+  type ApprovalRecord,
+  type ChatBlockTool,
+  formatDuration,
+  type Language,
+  levelKey,
+  riskKey,
+  type TextKey,
+  text,
+  type Undef,
+} from '@alpha/core'
 import { useState } from 'react'
+import { languageOf, useShell, useText } from '../stores/shell.ts'
 import { DiffView } from './DiffView.tsx'
 import { CopyButton } from './MessageView.tsx'
 
@@ -10,13 +21,23 @@ const GLYPH: Record<ChatBlockTool['risk'], string> = { read: '◇', write: '◆'
  * line — the header chip already says which level is in force — but every kind is named in the
  * expanded panel, because "why did this run?" is a question the ledger has to answer later.
  */
-const MARK: Record<ApprovalRecord['kind'], string> = {
-  auto: '',
-  rule: 'rule',
-  once: 'allowed once',
-  always: 'always allowed',
-  denied: 'denied',
-  blocked: 'blocked',
+const MARK: Record<ApprovalRecord['kind'], Undef<TextKey>> = {
+  auto: undefined,
+  rule: 'tool.markRule',
+  once: 'tool.markOnce',
+  always: 'tool.markAlways',
+  denied: 'tool.markDenied',
+  blocked: 'tool.markBlocked',
+}
+
+/** What the panel says happened to this call, one sentence per kind. */
+const APPROVAL_NOTE: Record<ApprovalRecord['kind'], TextKey> = {
+  auto: 'gate.auto',
+  rule: 'gate.allowedByRule',
+  once: 'gate.once',
+  always: 'gate.always',
+  denied: 'gate.denied',
+  blocked: 'gate.blocked',
 }
 
 const MARK_TONE: Record<ApprovalRecord['kind'], string> = {
@@ -29,24 +50,29 @@ const MARK_TONE: Record<ApprovalRecord['kind'], string> = {
 }
 
 /** The full sentence, for the panel: the level at the time, then what decided it. */
-function approvalNote(approval: ApprovalRecord): string {
-  const level = levelLabel(approval.level)
-  if (approval.kind === 'auto') return `Allowed automatically by the ${level} level.`
-  if (approval.kind === 'rule') return `Allowed by a remembered rule, at the ${level} level.`
-  if (approval.kind === 'once') return `Allowed once by you, at the ${level} level.`
-  if (approval.kind === 'always') return `Allowed by a new rule, at the ${level} level.`
-  if (approval.kind === 'denied') return `Denied by you, at the ${level} level.`
-  return `Blocked by the ${level} level.`
+function approvalNote(language: Language, approval: ApprovalRecord): string {
+  const level = text(language, levelKey(approval.level))
+  return text(language, APPROVAL_NOTE[approval.kind], { level })
 }
 const TONE: Record<ChatBlockTool['status'], string> = { running: 'text-amber', ok: 'text-jade', failed: 'text-danger' }
-const STATUS_WORD: Record<ChatBlockTool['status'], string> = { running: 'running', ok: 'done', failed: 'failed' }
+const STATUS_WORD: Record<ChatBlockTool['status'], TextKey> = {
+  running: 'tool.running',
+  ok: 'tool.done',
+  failed: 'tool.failed',
+}
 
 /**
  * One line per tool call: what ran, on what, for how long. Expanding shows the arguments the
  * model sent and the output the tool produced, because a ledger you cannot audit is decoration.
  */
 export function ToolRow({ block }: { block: ChatBlockTool }) {
+  const t = useText()
+  const language = useShell((state) => languageOf(state.language))
   const [open, setOpen] = useState(block.status === 'failed')
+  // An automatic approval shows no chip: the header's own chip already says which level is on.
+  const approval = block.approval
+  const mark = approval === undefined ? undefined : MARK[approval.kind]
+  const markTone = approval === undefined ? '' : MARK_TONE[approval.kind]
 
   return (
     <article className="rounded-card border border-line bg-ink-800/70" data-role="tool" data-tool={block.name}>
@@ -56,19 +82,17 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
         aria-expanded={open}
         className="flex w-full items-center gap-2 px-3 py-1.5 text-left"
       >
-        <span className={`font-mono text-micro ${TONE[block.status]}`} title={riskLabel(block.risk)}>
+        <span className={`font-mono text-micro ${TONE[block.status]}`} title={t(riskKey(block.risk))}>
           {GLYPH[block.risk]}
         </span>
         <span className="shrink-0 font-mono text-code text-parchment">{block.name}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-code text-parchment-dim">{block.summary}</span>
-        {block.approval !== undefined && MARK[block.approval.kind] !== '' && (
-          <span
-            className={`shrink-0 rounded-control border px-1.5 text-micro font-mono tracking-wide ${MARK_TONE[block.approval.kind]}`}
-          >
-            {MARK[block.approval.kind]}
+        {mark !== undefined && (
+          <span className={`shrink-0 rounded-control border px-1.5 text-micro font-mono tracking-wide ${markTone}`}>
+            {t(mark)}
           </span>
         )}
-        <span className={`shrink-0 font-mono text-micro ${TONE[block.status]}`}>{STATUS_WORD[block.status]}</span>
+        <span className={`shrink-0 font-mono text-micro ${TONE[block.status]}`}>{t(STATUS_WORD[block.status])}</span>
         <span className="w-14 shrink-0 text-right font-mono text-micro text-parchment-faint">
           {formatDuration(block.startedAt, block.endedAt)}
         </span>
@@ -78,11 +102,11 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
         <div className="border-t border-line px-3 py-2">
           {block.approval !== undefined && (
             <p className="mb-1 font-mono text-micro text-parchment-faint">
-              {approvalNote(block.approval)}
+              {approvalNote(language, block.approval)}
               {block.approval.reason === undefined ? '' : ` Reason: ${block.approval.reason}`}
             </p>
           )}
-          <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">Arguments</p>
+          <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">{t('tool.arguments')}</p>
           <pre className="mt-1 overflow-x-auto font-mono text-code text-parchment-dim">{block.raw}</pre>
           {block.details?.diff !== undefined && <DiffView diff={block.details.diff} />}
           {block.output !== '' && (
@@ -91,9 +115,15 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
                   an output, and "copy" alone would not say which one it takes. */}
               <div className="mt-2 flex items-center justify-between">
                 <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">
-                  Output{block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
+                  {t('tool.output')}
+                  {block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
                 </p>
-                <CopyButton what={`the output of ${block.name}`} text={block.output} label="Copy output" />
+                <CopyButton
+                  what="message.copyOutput"
+                  params={{ tool: block.name }}
+                  text={block.output}
+                  label="message.copyOutputLabel"
+                />
               </div>
               <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
                 {block.output}
@@ -102,7 +132,7 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
           )}
           {block.details?.fullOutputPath !== undefined && (
             <p className="mt-1 font-mono text-micro text-parchment-faint">
-              Truncated. Full output: {block.details.fullOutputPath}
+              {t('tool.truncated', { path: block.details.fullOutputPath })}
             </p>
           )}
         </div>
