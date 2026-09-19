@@ -10,6 +10,7 @@
  * check someone has to remember.
  */
 import {
+  type Absent,
   type ApprovalAnswerInput,
   defaultLevelFor,
   type IPC,
@@ -290,7 +291,7 @@ export function setWorkspaceLevel(store: StateStore, runtime: RuntimeManager, le
 }
 
 /** The folder this window is working in, when one has been chosen. */
-export function currentWorkspace(store: StateStore): string | undefined {
+export function currentWorkspace(store: StateStore): Absent<string> {
   const selection = store.read().workspace.selection
   return selection.kind === 'selected' ? selection.workspace.path : undefined
 }

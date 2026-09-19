@@ -1,4 +1,4 @@
-import type { NetworkBind, NetworkPatch, NetworkState } from '@alpha/core'
+import type { Absent, NetworkBind, NetworkPatch, NetworkState } from '@alpha/core'
 import { useCallback, useEffect, useState } from 'react'
 import { bridge } from '../../lib/bridge.ts'
 import { useShell } from '../../stores/shell.ts'
@@ -14,7 +14,7 @@ const BIND_LABELS: Record<NetworkBind, string> = {
  */
 export function BrowserAccessSection() {
   const host = useShell((state) => state.host)
-  const [state, setState] = useState<NetworkState | undefined>(undefined)
+  const [state, setState] = useState<Absent<NetworkState>>(undefined)
   const [port, setPort] = useState('')
   const [copied, setCopied] = useState(false)
 

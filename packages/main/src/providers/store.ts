@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  type Absent,
   emptyProviderIndex,
   type ProviderIndex,
   type ProviderView,
@@ -34,7 +35,7 @@ export class ProviderStore {
     return this.#index.providers.map((provider) => ({ ...provider, hasCredential: this.#vault.has(provider.id) }))
   }
 
-  find(id: string): StoredProvider | undefined {
+  find(id: string): Absent<StoredProvider> {
     return this.#index.providers.find((provider) => provider.id === id)
   }
 
@@ -59,7 +60,7 @@ export class ProviderStore {
   }
 
   /** Main-process only: the model runtime is the one caller. */
-  credential(id: string): string | undefined {
+  credential(id: string): Absent<string> {
     return this.#vault.credential(id)
   }
 

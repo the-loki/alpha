@@ -3,6 +3,9 @@
  * reads its endpoint, key and model from the environment. No credential is committed, and the
  * default test run makes no network request.
  */
+
+import type { Absent } from '@alpha/core'
+
 export interface LiveEnv {
   baseUrl: string
   apiKey: string
@@ -11,7 +14,7 @@ export interface LiveEnv {
 }
 
 /** Returns undefined, with the reason printed, when the live test is not configured. */
-export function requireLiveEnv(env: NodeJS.ProcessEnv, log: (message: string) => void): LiveEnv | undefined {
+export function requireLiveEnv(env: NodeJS.ProcessEnv, log: (message: string) => void): Absent<LiveEnv> {
   if (env.ALPHA_LIVE_TEST !== '1') {
     log('[live] skipped: set ALPHA_LIVE_TEST=1 to run it against a real provider.')
     return undefined

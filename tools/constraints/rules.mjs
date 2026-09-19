@@ -205,6 +205,16 @@ export const RULES = [
   }),
 
   lineRule({
+    id: '01-typescript:absence-is-named',
+    constraint: '01-typescript.md',
+    description: 'absence is Absent<T>, not a union spelled out',
+    applies: (path) => isTs(path) && !isDeclaration(path) && !isTest(path),
+    pattern: /\|\s*undefined\b/,
+    message:
+      'a bare union with undefined; name it Absent<T> from core, or use ? on a property or an omittable parameter (C1.2)',
+  }),
+
+  lineRule({
     id: '01-typescript:no-default-export',
     constraint: '01-typescript.md',
     description: 'named exports only',

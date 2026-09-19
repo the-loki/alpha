@@ -12,17 +12,30 @@ packages, so there is no per-package escape.
 
 ## C1.2 — `undefined` is the absence value; `null` is not
 
-Do not write `T | null`. A value that can be absent is `T | undefined`, and a property that can
-be absent is `foo?: T`. `null` appears only where a foreign system produced it — a JSON payload,
-a vendor SDK, an IPC frame — and is converted to `undefined` at the boundary that received it,
-so `null` never travels into the domain.
+Do not write `T | null`. The absence value is `undefined`; `null` appears only where a foreign
+system produced it — a JSON payload, a vendor SDK, an IPC frame — and is converted at the boundary
+that received it, so `null` never travels into the domain. The point is to have one absence value,
+not two: the moment both are legal, every check has to be written twice and one of them is
+eventually forgotten.
 
-The point is to have one absence value, not two: the moment both are legal, every check has to
-be written twice and one of them is eventually forgotten.
+Absence is *named*, and the name is `Absent<T>` (from `core`) — a generic alias for `T | undefined`,
+so a signature reads `findCatalogEntry(id): Absent<CatalogEntry>` rather than a union spelled out. It
+is for the places a `?` cannot speak for: a return type, a generic argument, an element of a
+collection, a parameter the caller has to pass either way.
 
-**Enforcement:** `pnpm check:constraints` rule `01-typescript:no-null-union` scans
-`packages/*/src/**/*.{ts,tsx}` for `| null`. A `constraints-ignore 01-typescript` marker on the
-line is required to pass. Declaration files are exempt: vendored types are not ours to fix.
+- An **optional property** or an **omittable parameter** keeps its `?`. `foo?: T` already means
+  `T | undefined`, and it lets the caller leave the name out instead of writing `undefined` into the
+  call — which is the ugliness `Absent<T>` exists to keep out of the rest of the code.
+- A parameter the caller **must pass**, absence and all, is `Absent<T>`, not `T | undefined` and not
+  a `?` (that would let them omit it and change what the function promises).
+
+There is no `Null<T>`. A second alias would be a second absence value wearing a name.
+
+**Enforcement:** `pnpm check:constraints` rules `01-typescript:no-null-union` and
+`01-typescript:absence-is-named` scan `packages/*/src/**/*.{ts,tsx}` for `| null` and for a bare
+`| undefined`. A `constraints-ignore 01-typescript` marker on the line is required to pass.
+Declaration files and test files are exempt: vendored types are not ours to fix, and a fixture has
+to be able to show the banned form.
 
 ## C1.3 — `any` is a boundary word
 

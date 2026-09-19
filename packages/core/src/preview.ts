@@ -4,6 +4,8 @@
  * so the card describes the proposal rather than the current state.
  */
 
+import type { Absent } from './absence.ts'
+
 const PREVIEW_LIMIT = 40
 
 const PATH_TOOLS = ['write', 'edit']
@@ -13,7 +15,7 @@ interface Edit {
   newText?: unknown
 }
 
-export function changePreview(toolName: string, args: Record<string, unknown>): string | undefined {
+export function changePreview(toolName: string, args: Record<string, unknown>): Absent<string> {
   if (!PATH_TOOLS.includes(toolName)) return undefined
   const path = typeof args.path === 'string' ? args.path : undefined
   if (path === undefined) return undefined
@@ -25,13 +27,13 @@ export function changePreview(toolName: string, args: Record<string, unknown>): 
 }
 
 /** A write replaces the whole file, so every line of it is an addition. */
-function addedLines(content: unknown): string[] | undefined {
+function addedLines(content: unknown): Absent<string[]> {
   if (typeof content !== 'string') return undefined
   return content.split('\n').map((line) => `+${line}`)
 }
 
 /** An edit says what it removes and what it puts in its place; both sides are shown. */
-function editLines(edits: unknown): string[] | undefined {
+function editLines(edits: unknown): Absent<string[]> {
   if (!Array.isArray(edits)) return undefined
   const lines: string[] = []
   for (const raw of edits) {

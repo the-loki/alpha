@@ -91,7 +91,7 @@ describe('01-typescript:no-null-union', () => {
     expect(found).toHaveLength(1)
   })
 
-  it('passes an undefined union, which is how absence is expressed', () => {
+  it('leaves an undefined union to the absence rule, which is the one that owns its spelling', () => {
     expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | undefined {}'))).toEqual([])
   })
 
@@ -120,6 +120,48 @@ describe('01-typescript:no-null-union', () => {
     const found = violationsFor(rule, file('packages/core/src/a.ts', text))
     expect(found).toHaveLength(1)
     expect(found[0].line).toBe(2)
+  })
+})
+
+describe('01-typescript:absence-is-named', () => {
+  const rule = '01-typescript:absence-is-named'
+
+  it('flags a union spelled out in a return type', () => {
+    const found = violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | undefined {}'))
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('Absent<T>')
+  })
+
+  it('flags a union inside a generic argument', () => {
+    expect(violationsFor(rule, file('packages/main/src/a.ts', 'let p: Promise<Thing | undefined>'))).toHaveLength(1)
+  })
+
+  it('flags a parameter the caller has to pass either way', () => {
+    expect(
+      violationsFor(rule, file('packages/core/src/a.ts', 'function f(a: string | undefined, b: string) {}')),
+    ).toHaveLength(1)
+  })
+
+  it('passes the named form, which is what the rule is for', () => {
+    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Absent<Thing> {}'))).toEqual([])
+  })
+
+  it('passes an optional property and an omittable parameter, which keep their question mark', () => {
+    expect(violationsFor(rule, file('packages/core/src/a.ts', 'interface A { foo?: string }'))).toEqual([])
+    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(a?: string) {}'))).toEqual([])
+  })
+
+  it('passes a fixture that has to show the banned form', () => {
+    expect(violationsFor(rule, file('packages/core/src/a.test.ts', 'const x: string | undefined = y'))).toEqual([])
+  })
+
+  it('flags the double union too, which the null rule also answers for', () => {
+    expect(violationsFor(rule, file('packages/core/src/a.ts', 'let a: Foo | null | undefined'))).toHaveLength(1)
+  })
+
+  it('passes a line carrying the escape hatch', () => {
+    const text = 'const x: Foo | undefined = y // constraints-ignore 01-typescript: vendor signature'
+    expect(violationsFor(rule, file('packages/core/src/a.ts', text))).toEqual([])
   })
 })
 

@@ -6,7 +6,7 @@
  * back to the root — and that rule lives here rather than at every call site. Three readers with
  * two rules is how a discarded answer comes back after a relaunch (#60).
  */
-import { type ChatMessage, EMPTY_USAGE, type UsageTotals } from '@alpha/core'
+import { type Absent, type ChatMessage, EMPTY_USAGE, type UsageTotals } from '@alpha/core'
 import {
   BACKGROUND_CONTEXT,
   type Entry,
@@ -85,7 +85,7 @@ export class SessionReader {
   }
 
   /** The entry a compaction wrote its summary into, for the marker the window shows. */
-  async entry(entryId: string): Promise<Entry | undefined> {
+  async entry(entryId: string): Promise<Absent<Entry>> {
     return this.#session.getEntry(entryId, BACKGROUND_CONTEXT)
   }
 
@@ -103,7 +103,7 @@ const repoAt = (location: SessionLocation): JsonlSessionRepo =>
   })
 
 /** Finds the session a conversation is stored in, so it can be reopened after a restart. */
-export async function findSessionMetadata(location: SessionLocation): Promise<JsonlSessionMetadata | undefined> {
+export async function findSessionMetadata(location: SessionLocation): Promise<Absent<JsonlSessionMetadata>> {
   const repo = repoAt(location)
   const sessions = await repo.list({ cwd: location.workspacePath }, BACKGROUND_CONTEXT)
   return sessions.find((metadata) => metadata.id === location.conversationId)
@@ -118,7 +118,7 @@ export async function findSessionMetadata(location: SessionLocation): Promise<Js
 export async function openSession(
   location: SessionLocation,
   options: { create?: boolean; decisions?: DecisionLookup } = {},
-): Promise<SessionReader | undefined> {
+): Promise<Absent<SessionReader>> {
   const repo = repoAt(location)
   const metadata = await findSessionMetadata(location)
   if (metadata !== undefined) {

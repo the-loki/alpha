@@ -7,6 +7,7 @@
  */
 
 import {
+  type Absent,
   credentialRequirement,
   customProvider,
   findCatalogEntry,
@@ -87,7 +88,7 @@ export class ProviderService {
       return { ok: false, message: credentialRequirement({ hasCredential: false }).reason }
 
     const runtime = createProviderModelRuntime(this.#store)
-    const model: Model<Api> | undefined = runtime.models.getModel(providerId, modelId)
+    const model: Absent<Model<Api>> = runtime.models.getModel(providerId, modelId)
     if (model === undefined) return { ok: false, message: `${providerId} does not serve ${modelId}` }
 
     try {

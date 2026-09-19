@@ -1,4 +1,4 @@
-import type { ProviderModelDefinition, ProviderView } from '@alpha/core'
+import type { Absent, ProviderModelDefinition, ProviderView } from '@alpha/core'
 import { useEffect, useState } from 'react'
 import { type ProviderTestOutcome, useProviders } from '../../stores/providers.ts'
 
@@ -12,7 +12,7 @@ export function ProviderCard({ provider }: { provider: ProviderView }) {
   const loadModels = useProviders((state) => state.loadModels)
   const test = useProviders((state) => state.test)
   const [secret, setSecret] = useState('')
-  const [outcome, setOutcome] = useState<ProviderTestOutcome | undefined>(undefined)
+  const [outcome, setOutcome] = useState<Absent<ProviderTestOutcome>>(undefined)
   const [models, setModels] = useState<ProviderModelDefinition[]>([])
 
   useEffect(() => {

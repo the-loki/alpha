@@ -5,6 +5,7 @@
  */
 
 import {
+  type Absent,
   type ApprovalAsk,
   type ChatMessage,
   type PermissionLevel,
@@ -270,7 +271,7 @@ export class ConversationRuntime {
   }
 
   /** The id of the nth user message, so the manager can fork at it. */
-  async userEntryId(userMessageIndex: number): Promise<string | undefined> {
+  async userEntryId(userMessageIndex: number): Promise<Absent<string>> {
     const entry = await this.#userEntry(userMessageIndex)
     return entry?.id
   }
@@ -295,7 +296,7 @@ export class ConversationRuntime {
     return result.ok
   }
 
-  async #userEntry(index: number): Promise<Entry | undefined> {
+  async #userEntry(index: number): Promise<Absent<Entry>> {
     const users = userEntries(await tipPathOf(this.#session))
     return users[index]
   }
@@ -342,7 +343,7 @@ const userEntries = (entries: Entry[]): Entry[] =>
 async function compactionSummary(
   session: Session<JsonlSessionMetadata>,
   entryId: string,
-): Promise<{ summary: string; replaced: number | undefined }> {
+): Promise<{ summary: string; replaced: Absent<number> }> {
   const entry = await session.getEntry(entryId, BACKGROUND_CONTEXT)
   if (entry === undefined) return { summary: '', replaced: undefined }
   if (entry.type === 'compaction') return { summary: entry.summary, replaced: undefined }

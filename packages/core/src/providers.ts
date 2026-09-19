@@ -3,8 +3,10 @@
  * serves. The credential is never part of this — a provider here is the shape of the connection,
  * and whether a key is stored is a separate fact the UI asks for.
  */
+
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
+import type { Absent } from './absence.ts'
 import { type CatalogEntry, PROVIDER_CATALOG } from './providers/templates.ts'
 
 export const PROVIDER_APIS = ['openai-completions', 'anthropic-messages'] as const
@@ -78,7 +80,7 @@ export function parseProviders(raw: unknown): ProviderIndex {
   return { version: 1, providers: index.providers }
 }
 
-export function findCatalogEntry(id: string): CatalogEntry | undefined {
+export function findCatalogEntry(id: string): Absent<CatalogEntry> {
   return PROVIDER_CATALOG.find((entry) => entry.id === id)
 }
 

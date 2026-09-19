@@ -10,6 +10,7 @@
  */
 
 import {
+  type Absent,
   type ApprovalRecord,
   outputTextOf,
   type QueuedMessage,
@@ -45,7 +46,7 @@ function usageTotals(usage: {
 }
 
 /** How a row learns why its call got past the gate. */
-export type ApprovalLookup = (callId: string) => ApprovalRecord | undefined
+export type ApprovalLookup = (callId: string) => Absent<ApprovalRecord>
 
 interface TranslatorState {
   counter: number

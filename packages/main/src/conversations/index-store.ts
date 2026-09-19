@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  type Absent,
   type ConversationIndex,
   type ConversationSummary,
   emptyConversationIndex,
@@ -33,7 +34,7 @@ export class ConversationIndexStore {
     return listForWorkspace(this.#index, workspacePath)
   }
 
-  find(id: string): ConversationSummary | undefined {
+  find(id: string): Absent<ConversationSummary> {
     return findConversation(this.#index, id)
   }
 

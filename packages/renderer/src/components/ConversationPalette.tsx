@@ -1,4 +1,4 @@
-import type { ConversationSummary } from '@alpha/core'
+import type { Absent, ConversationSummary } from '@alpha/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
@@ -35,7 +35,7 @@ export function ConversationPalette({ open, onClose }: { open: boolean; onClose:
   if (!open) return null
   const shown = matches(conversations, query)
 
-  const go = (conversation: ConversationSummary | undefined) => {
+  const go = (conversation: Absent<ConversationSummary>) => {
     if (conversation === undefined) return
     onClose()
     void openConversation(conversation.id).then(() =>

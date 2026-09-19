@@ -1,4 +1,11 @@
-import { formatCost, formatTokens, type TranscriptState, type TurnUsage, visibleMessages } from '@alpha/core'
+import {
+  type Absent,
+  formatCost,
+  formatTokens,
+  type TranscriptState,
+  type TurnUsage,
+  visibleMessages,
+} from '@alpha/core'
 import { Fragment, useEffect, useRef } from 'react'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { MessageView } from './MessageView.tsx'
@@ -11,7 +18,7 @@ const userIndex = (messages: { role: string }[], index: number): number =>
  * The usage row belongs to the end of a turn, so it is drawn under the last message of the turn —
  * which is the last assistant message before the next user message.
  */
-const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]): TurnUsage | undefined => {
+const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]): Absent<TurnUsage> => {
   const isLastOfTurn = messages[index]?.role === 'assistant' && messages[index + 1]?.role !== 'assistant'
   if (!isLastOfTurn) return undefined
   const finished = messages.slice(0, index + 1).filter((message) => message.role === 'user').length - 1
@@ -19,7 +26,7 @@ const turnFor = (messages: { role: string }[], index: number, turns: TurnUsage[]
 }
 
 /** What one turn spent, so the header's total can be read back to the turns that made it. */
-function TurnUsageNote({ turn }: { turn: TurnUsage | undefined }) {
+function TurnUsageNote({ turn }: { turn: Absent<TurnUsage> }) {
   if (turn === undefined) return null
   const cost = formatCost(turn.usage.cost)
 

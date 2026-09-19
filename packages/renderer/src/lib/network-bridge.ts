@@ -7,6 +7,7 @@
  * cookie once (see `unlock`) and keeps it in local storage so a reload does not ask again.
  */
 import {
+  type Absent,
   type AlphaBridge,
   type ApprovalAnswerInput,
   type ConversationSummary,
@@ -139,7 +140,7 @@ async function invoke(name: keyof typeof IPC, args: unknown[]): Promise<unknown>
 /** Which payload type arrives per channel is the contract's promise; this moves the bytes. */
 const listeners = new Map<string, Set<(payload: unknown) => void>>()
 const attached = new Set<string>()
-let stream: EventSource | undefined
+let stream: Absent<EventSource>
 
 function listen<T>(channel: keyof typeof IPC, listener: (payload: T) => void): () => void {
   const set = listeners.get(channel) ?? new Set<(payload: unknown) => void>()

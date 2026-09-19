@@ -4,6 +4,7 @@
  * last word. Everything the window sees in the sidebar comes from here.
  */
 import {
+  type Absent,
   type ConversationSummary,
   DEFAULT_THINKING_LEVEL,
   type PermissionLevel,
@@ -62,7 +63,7 @@ export class ConversationBookkeeper {
     return this.#store.all()
   }
 
-  find(id: string): ConversationSummary | undefined {
+  find(id: string): Absent<ConversationSummary> {
     return this.#store.find(id)
   }
 

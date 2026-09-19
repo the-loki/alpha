@@ -4,8 +4,10 @@
  * this index is the cheap read that makes the sidebar a single file read instead of one session
  * open per conversation.
  */
+
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
+import type { Absent } from './absence.ts'
 import { PERMISSION_LEVELS } from './permission.ts'
 import type { ConversationSummary } from './runtime-events.ts'
 import { THINKING_LEVELS } from './thinking.ts'
@@ -95,7 +97,7 @@ export function removeConversation(index: ConversationIndex, id: string): Conver
   return { version: 1, conversations: index.conversations.filter((conversation) => conversation.id !== id) }
 }
 
-export function findConversation(index: ConversationIndex, id: string): ConversationSummary | undefined {
+export function findConversation(index: ConversationIndex, id: string): Absent<ConversationSummary> {
   return index.conversations.find((conversation) => conversation.id === id)
 }
 
