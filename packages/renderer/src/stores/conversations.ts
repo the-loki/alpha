@@ -36,6 +36,10 @@ export interface ConversationStore {
   /** A message for the running turn, or one queued behind it. */
   steer: (text: string) => Promise<void>
   queueMessage: (text: string) => Promise<void>
+  /** Changing a message that has not been sent yet, where it stands. */
+  editQueued: (entryId: string, text: string) => Promise<void>
+  /** Starting a queue that a failed turn or a Stop stopped. */
+  resumeQueue: () => Promise<void>
   cancelQueued: (entryId: string) => Promise<void>
   stop: () => Promise<void>
   regenerate: () => Promise<void>
@@ -136,6 +140,16 @@ export const useConversations = create<ConversationStore>((set, get) => ({
   queueMessage: async (text) => {
     const id = get().activeId
     if (id !== '') await bridge().queueMessage(id, text)
+  },
+
+  editQueued: async (entryId, text) => {
+    const id = get().activeId
+    if (id !== '') await bridge().editQueued(id, entryId, text)
+  },
+
+  resumeQueue: async () => {
+    const id = get().activeId
+    if (id !== '') await bridge().resumeQueue(id)
   },
 
   cancelQueued: async (entryId) => {

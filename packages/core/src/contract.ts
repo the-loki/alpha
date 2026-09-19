@@ -51,6 +51,8 @@ export const IPC = {
   setThinkingLevel: 'alpha:set-thinking-level',
   steer: 'alpha:steer',
   queueMessage: 'alpha:queue-message',
+  editQueued: 'alpha:edit-queued',
+  resumeQueue: 'alpha:resume-queue',
   cancelQueued: 'alpha:cancel-queued',
   regenerate: 'alpha:regenerate',
   editMessage: 'alpha:edit-message',
@@ -200,6 +202,10 @@ export interface AlphaBridge {
   /** A message for the running turn, or one queued behind it. */
   steer(conversationId: string, text: string): Promise<void>
   queueMessage(conversationId: string, text: string): Promise<void>
+  /** Changing a message that has not been sent, without moving it in the queue. */
+  editQueued(conversationId: string, entryId: string, text: string): Promise<void>
+  /** Starting a stopped queue again, after a failed turn or a Stop. */
+  resumeQueue(conversationId: string): Promise<void>
   cancelQueued(conversationId: string, entryId: string): Promise<void>
   regenerate(conversationId: string): Promise<void>
   /** What to do with the messages that came after the one being edited. */

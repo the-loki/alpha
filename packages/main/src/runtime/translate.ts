@@ -75,7 +75,9 @@ function translateEvent(
       return [{ conversationId, type: 'turn_started' }]
 
     case 'queue_update':
-      return [{ conversationId, type: 'queue_updated', queued: queuedItems(event.queues) }]
+      // The manager replaces this with the composed one (the lane's steers plus the workbench's own
+      // queue); the flag here is the runtime's, which never pauses.
+      return [{ conversationId, type: 'queue_updated', queued: queuedItems(event.queues), paused: false }]
 
     case 'usage':
       return [{ conversationId, type: 'usage_recorded', usage: usageTotals(event.row.usage) }]
@@ -113,15 +115,13 @@ function translateEvent(
 }
 
 /**
- * What the composer shows while it waits: the messages behind the turn, in the order they will be
- * sent. A steer is already in the transcript by the time it queues, so only the waiting ones are
- * listed — which is exactly the difference between steering and queueing.
+ * The steers the lane is still holding. They are the only kind it carries now: a message that
+ * waits for the turn to end is the workbench's own queue (ADR-0011), and it is added to this list
+ * where the two are put together.
  */
 function queuedItems(queues: readonly { entryId: string; kind: string; message?: unknown }[]): QueuedMessage[] {
   return queues.flatMap((item) =>
-    item.kind === 'followUp'
-      ? [{ entryId: item.entryId, kind: 'followUp' as const, text: messageText(item.message) }]
-      : [],
+    item.kind === 'steer' ? [{ entryId: item.entryId, kind: 'steer' as const, text: messageText(item.message) }] : [],
   )
 }
 

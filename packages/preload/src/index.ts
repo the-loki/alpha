@@ -76,6 +76,9 @@ const bridge: AlphaBridge = {
   steer: (conversationId: string, text: string) => ipcRenderer.invoke(IPC.steer, conversationId, text) as Promise<void>,
   queueMessage: (conversationId: string, text: string) =>
     ipcRenderer.invoke(IPC.queueMessage, conversationId, text) as Promise<void>,
+  editQueued: (conversationId: string, entryId: string, text: string) =>
+    ipcRenderer.invoke(IPC.editQueued, conversationId, entryId, text) as Promise<void>,
+  resumeQueue: (conversationId: string) => ipcRenderer.invoke(IPC.resumeQueue, conversationId) as Promise<void>,
   cancelQueued: (conversationId: string, entryId: string) =>
     ipcRenderer.invoke(IPC.cancelQueued, conversationId, entryId) as Promise<void>,
   regenerate: (conversationId: string) => ipcRenderer.invoke(IPC.regenerate, conversationId) as Promise<void>,

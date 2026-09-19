@@ -36,6 +36,8 @@ export interface TranscriptState {
   approvals: ApprovalRequest[]
   /** Messages waiting behind the running turn, oldest first. */
   queued: QueuedMessage[]
+  /** Whether the queue is stopped: a failed turn and a Stop both stop it, Resume starts it. */
+  queuedPaused: boolean
   /**
    * What each turn spent, so a review can see where the tokens went. This is the session's
    * spending: `totalUsage` sums it rather than keeping a second copy that could drift.
@@ -53,6 +55,7 @@ export function emptyTranscript(conversationId: string): TranscriptState {
     messages: [],
     approvals: [],
     queued: [],
+    queuedPaused: false,
     turns: [],
     turnUsage: EMPTY_USAGE,
     status: 'idle',
@@ -103,7 +106,15 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return { ...state, summary: event.conversation }
 
     case 'transcript_replaced':
-      return { ...state, messages: event.messages, streaming: undefined, queued: [], status: 'idle', error: undefined }
+      return {
+        ...state,
+        messages: event.messages,
+        streaming: undefined,
+        queued: [],
+        queuedPaused: false,
+        status: 'idle',
+        error: undefined,
+      }
 
     case 'turn_started':
       return { ...state, status: 'running', error: undefined }
@@ -168,7 +179,7 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
       return { ...state, approvals: state.approvals.filter((request) => request.requestId !== event.requestId) }
 
     case 'queue_updated':
-      return { ...state, queued: event.queued }
+      return { ...state, queued: event.queued, queuedPaused: event.paused }
 
     case 'usage_recorded':
       return { ...state, turnUsage: addUsage(state.turnUsage, event.usage) }

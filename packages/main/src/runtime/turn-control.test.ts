@@ -120,7 +120,7 @@ describe('[runtime] closing a conversation', () => {
   })
 })
 
-describe('[runtime] steering and queueing', () => {
+describe('[runtime] steering a turn', () => {
   it('delivers a steer while a tool is running, and it changes what happens next', async () => {
     const { runtime, events } = await open({
       replies: [{ tool: { name: 'bash', args: { command: 'sleep 0.6' } } }, 'Redirected answer.'],
@@ -146,57 +146,6 @@ describe('[runtime] steering and queueing', () => {
       'assistant:Redirected answer.',
     ])
     expect(events.filter((event) => event.type === 'turn_finished')).toHaveLength(1)
-  })
-
-  it('holds a queued message until the turn it was queued behind ends', async () => {
-    const { runtime, events } = await open({
-      replies: [{ tool: { name: 'bash', args: { command: 'sleep 0.4' } } }, 'The first answer.', 'The queued answer.'],
-    })
-
-    const running = runtime.prompt('first task')
-    await waitFor(() => events.some((event) => event.type === 'tool_started'))
-    await runtime.followUp('then do this')
-    await waitFor(() => events.some((event) => event.type === 'queue_updated' && event.queued.length === 1))
-
-    const pending = events.flatMap((event) => (event.type === 'queue_updated' ? event.queued : []))
-    expect(pending.some((item) => item.text === 'then do this')).toBe(true)
-
-    await running
-    const transcript = await runtime.transcript()
-    await runtime.close()
-
-    // Unlike a steer, the queued message waits: the answer to the first task is written first.
-    const shape = transcript.map(
-      (message) =>
-        `${message.role}:${message.blocks.map((block) => ('text' in block ? block.text : block.kind)).join(',')}`,
-    )
-    expect(shape).toEqual([
-      'user:first task',
-      'assistant:tool',
-      'assistant:The first answer.',
-      'user:then do this',
-      'assistant:The queued answer.',
-    ])
-  })
-
-  it('takes a queued message back when it is cancelled before the turn ends', async () => {
-    const { runtime, events } = await open({
-      replies: [{ tool: { name: 'bash', args: { command: 'sleep 0.6' } } }, 'The only answer.'],
-    })
-
-    const running = runtime.prompt('first task')
-    await waitFor(() => events.some((event) => event.type === 'tool_started'))
-    await runtime.followUp('never mind this')
-    await waitFor(() => events.some((event) => event.type === 'queue_updated' && event.queued.length === 1))
-    const queued = events.find((event) => event.type === 'queue_updated' && event.queued.length === 1)
-    await runtime.cancelQueued(queued?.type === 'queue_updated' ? queued.queued[0].entryId : '')
-    await waitFor(() => events.some((event) => event.type === 'queue_updated' && event.queued.length === 0))
-
-    await running
-    const transcript = await runtime.transcript()
-    await runtime.close()
-
-    expect(userTexts(transcript)).toEqual(['first task'])
   })
 })
 

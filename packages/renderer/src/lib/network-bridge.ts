@@ -254,6 +254,9 @@ export function networkBridge(): AlphaBridge {
     steer: (conversationId: string, text: string) => invoke('steer', [conversationId, text]) as Promise<void>,
     queueMessage: (conversationId: string, text: string) =>
       invoke('queueMessage', [conversationId, text]) as Promise<void>,
+    editQueued: (conversationId: string, entryId: string, text: string) =>
+      invoke('editQueued', [conversationId, entryId, text]) as Promise<void>,
+    resumeQueue: (conversationId: string) => invoke('resumeQueue', [conversationId]) as Promise<void>,
     cancelQueued: (conversationId: string, entryId: string) =>
       invoke('cancelQueued', [conversationId, entryId]) as Promise<void>,
     regenerate: (conversationId: string) => invoke('regenerate', [conversationId]) as Promise<void>,

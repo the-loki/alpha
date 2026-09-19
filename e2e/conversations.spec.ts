@@ -145,7 +145,10 @@ test('deleting a conversation takes its transcript off the disk', async () => {
   await expect(window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
   expect(sessionsHaveTranscripts(dataDirectory)).toBe(true)
 
-  await window.getByRole('button', { name: /this will be deleted/ }).first().hover()
+  await window
+    .getByRole('button', { name: /this will be deleted/ })
+    .first()
+    .hover()
   await window.getByRole('button', { name: 'Actions for this will be deleted' }).click()
   await window.getByRole('menuitem', { name: 'Delete' }).click()
 

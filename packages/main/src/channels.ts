@@ -165,6 +165,18 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
     await runtime.queueMessage(requireString(args[0], 'conversationId'), requireString(args[1], 'text'))
   },
 
+  editQueued: async ({ runtime }, args) => {
+    await runtime.editQueued(
+      requireString(args[0], 'conversationId'),
+      requireString(args[1], 'entryId'),
+      requireString(args[2], 'text'),
+    )
+  },
+
+  resumeQueue: async ({ runtime }, args) => {
+    await runtime.resumeQueue(requireString(args[0], 'conversationId'))
+  },
+
   cancelQueued: async ({ runtime }, args) => {
     await runtime.cancelQueued(requireString(args[0], 'conversationId'), requireString(args[1], 'entryId'))
   },

@@ -117,7 +117,11 @@ export interface ChatMessage {
 export interface QueuedMessage {
   entryId: string
   text: string
-  kind: 'steer' | 'followUp'
+  /**
+   * `steer` is on its way into the running turn and belongs to the runtime; `queued` waits for the
+   * turn to end and belongs to the workbench, which is what lets it be edited (ADR-0011).
+   */
+  kind: 'steer' | 'queued'
 }
 
 export interface ConversationModel {
@@ -194,7 +198,11 @@ export type RuntimeEvent =
       scope?: RuleScope
       reason?: string
     }
-  | { conversationId: string; type: 'queue_updated'; queued: QueuedMessage[] }
+  /**
+   * Everything waiting, oldest first, and whether the queue is stopped — a failure and a Stop both
+   * stop it, and one Resume starts it again.
+   */
+  | { conversationId: string; type: 'queue_updated'; queued: QueuedMessage[]; paused: boolean }
   | { conversationId: string; type: 'usage_recorded'; usage: UsageTotals }
   | { conversationId: string; type: 'history_compacted'; summary: string; replaced?: number; at: number }
   /** The conversation's path changed under it: an answer was replaced, so the list is replaced too. */

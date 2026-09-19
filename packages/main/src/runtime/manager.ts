@@ -10,7 +10,6 @@
 import {
   type ChatMessage,
   type ConversationSummary,
-  canArchive,
   DEFAULT_THINKING_LEVEL,
   defaultLevelFor,
   type EditEffect,
@@ -34,6 +33,7 @@ import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
 import { createPermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
+import { QueueRunner } from './queue.ts'
 import { readSessionTranscript, sessionLocation, usageFor, writeSessionMarkdown } from './session-files.ts'
 import { deleteSession } from './session-reader.ts'
 import { buildSystemPrompt } from './system-prompt.ts'
@@ -56,12 +56,19 @@ export class RuntimeManager {
   readonly #open = new Map<string, ConversationRuntime>()
   readonly #approvals: ApprovalBroker
   readonly #decisions: DecisionLog
+  /** Messages waiting for a turn of their own, and what the lane is holding for this one. */
+  readonly #queue: QueueRunner
 
   constructor(options: RuntimeManagerOptions) {
     this.#options = options
     this.#books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
     this.#approvals = new ApprovalBroker({ emit: options.emit })
     this.#decisions = new DecisionLog(options.dataDirectory)
+    this.#queue = new QueueRunner({
+      statusOf: (id) => this.#books.find(id)?.status,
+      send: (id, text) => this.prompt(id, text),
+      emit: options.emit,
+    })
   }
 
   permissionRules(): PermissionRule[] {
@@ -93,7 +100,6 @@ export class RuntimeManager {
       workspacePath,
       model,
       thinkingLevel: DEFAULT_THINKING_LEVEL,
-      emit: (event: RuntimeEvent) => this.#books.observe(event),
     })
 
     const conversation = newConversation({
@@ -124,7 +130,6 @@ export class RuntimeManager {
       workspacePath: conversation.workspacePath,
       model: modelFor(this.#modelRuntime(), conversation),
       thinkingLevel: conversation.thinkingLevel,
-      emit: (event: RuntimeEvent) => this.#books.observe(event),
     })
     if (opened.runtime !== undefined) this.#open.set(id, opened.runtime)
     if (conversation.title !== DEFAULT_TITLE) this.#books.markNamed(id)
@@ -149,12 +154,33 @@ export class RuntimeManager {
     await (await this.#openFor(id)).steer(text)
   }
 
+  /**
+   * Waiting for the turn to end is the workbench's own business (ADR-0011): the message goes into
+   * our list, where it can be edited, and a new turn picks it up when the current one finishes.
+   */
   async queueMessage(id: string, text: string): Promise<void> {
-    await (await this.#openFor(id)).followUp(text)
+    this.#requireConversation(id)
+    await this.#queue.add(id, text)
   }
 
+  /** Editing one where it stands: same position, new words. */
+  async editQueued(id: string, entryId: string, text: string): Promise<void> {
+    this.#queue.edit(id, entryId, text)
+  }
+
+  /**
+   * Taking back a message that has not been sent. The lane's queue holds steers; ours holds what is
+   * waiting for the next turn, and which one an id belongs to is not the window's problem.
+   */
   async cancelQueued(id: string, entryId: string): Promise<void> {
+    if (this.#queue.cancel(id, entryId)) return
     await (await this.#openFor(id)).cancelQueued(entryId)
+  }
+
+  /** Starting a stopped queue again: pressing Stop, or a failed turn, is what stopped it. */
+  async resumeQueue(id: string): Promise<void> {
+    this.#requireConversation(id)
+    await this.#queue.resume(id)
   }
 
   /** Both of these move the branch tip, and the editing module replaces the window's copy. */
@@ -175,6 +201,7 @@ export class RuntimeManager {
   async abort(id: string): Promise<void> {
     // An aborted run leaves nothing to decide, and a promise nobody will answer is a hang.
     this.#approvals.abandon(id, 'The run was stopped before this call was answered.')
+    this.#queue.stop(id)
     await this.#open.get(id)?.abort()
   }
 
@@ -182,14 +209,8 @@ export class RuntimeManager {
     return this.#books.rename(id, title)
   }
 
-  /**
-   * Archiving is refused for a conversation that is working or waiting on an approval: the card
-   * asking for an answer is inside its transcript, and folding that away hides the one thing that
-   * needs a person (ticket #79). The window greys the action out for the same reason.
-   */
   archive(id: string): ConversationSummary[] {
-    const conversation = this.#requireConversation(id)
-    if (canArchive(conversation)) this.#books.archive(id, Date.now())
+    this.#books.archive(id)
     return this.list()
   }
 
@@ -212,6 +233,7 @@ export class RuntimeManager {
     }
     await deleteSession(sessionLocation(this.#options.sessionsRoot, conversation))
     this.#decisions.forget(id)
+    this.#queue.forget(id)
     this.#books.forget(id)
     if (this.#options.store.read().lastConversationId === id) this.#options.store.rememberConversation('')
     return this.list()
@@ -229,6 +251,22 @@ export class RuntimeManager {
     if (runtime !== undefined) return runtime.transcript()
     const conversation = this.#requireConversation(id)
     return readSessionTranscript(sessionLocation(this.#options.sessionsRoot, conversation), this.#decisions.opened(id))
+  }
+
+  /**
+   * The runtime's events, and the two moments the queue changes because of them: a turn that
+   * finished sends the next message, and a turn that failed stops the queue.
+   */
+  #observe(event: RuntimeEvent): void {
+    if (event.type === 'queue_updated') {
+      this.#books.observe(event)
+      this.#queue.rememberSteers(event.conversationId, event.queued)
+      return
+    }
+
+    this.#books.observe(event)
+    if (event.type === 'run_failed') this.#queue.stop(event.conversationId)
+    if (event.type === 'turn_finished') void this.#queue.flush(event.conversationId)
   }
 
   #editPorts(): EditingPorts {
@@ -258,17 +296,17 @@ export class RuntimeManager {
   }
 
   async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
-    const conversation = this.#requireConversation(id)
+    this.#requireConversation(id)
     const model = this.#modelRuntime().models.getModel(providerId, modelId)
     if (model === undefined) throw new Error(`${providerId} does not serve ${modelId}`)
     await this.#open.get(id)?.setModel(model)
-    return this.#books.update(conversation.id, { model: { providerId, modelId }, updatedAt: Date.now() })
+    return this.#books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
   async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {
-    const conversation = this.#requireConversation(id)
+    this.#requireConversation(id)
     await this.#open.get(id)?.setThinkingLevel(level)
-    return this.#books.update(conversation.id, { thinkingLevel: level, updatedAt: Date.now() })
+    return this.#books.update(id, { thinkingLevel: level, updatedAt: Date.now() })
   }
 
   async closeAll(): Promise<void> {
@@ -302,7 +340,6 @@ export class RuntimeManager {
     workspacePath: string
     model?: Model<Api>
     thinkingLevel: ThinkingLevel
-    emit: (event: RuntimeEvent) => void
   }): Promise<{ runtime?: ConversationRuntime; conversationId: string; messages: OpenedConversation['messages'] }> {
     const modelRuntime = this.#modelRuntime()
     const model = options.model ?? modelRuntime.defaultModel
@@ -328,10 +365,10 @@ export class RuntimeManager {
       sessionsRoot: this.#options.sessionsRoot,
       modelRuntime,
       model,
+      emit: (event) => this.#observe(event),
       systemPrompt: buildSystemPrompt({ workspacePath: options.workspacePath }),
       permissions: this.#permissionPorts(),
       decisions: this.#decisions.opened(options.conversationId),
-      emit: options.emit,
     })
     await opened.runtime.setThinkingLevel(options.thinkingLevel)
     return { runtime: opened.runtime, conversationId: opened.conversationId, messages: opened.messages }

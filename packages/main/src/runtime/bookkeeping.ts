@@ -5,6 +5,7 @@
  */
 import {
   type ConversationSummary,
+  canArchive,
   DEFAULT_THINKING_LEVEL,
   type PermissionLevel,
   type RuntimeEvent,
@@ -89,9 +90,16 @@ export class ConversationBookkeeper {
     return this.#update(conversation, { title: title.trim() })
   }
 
-  /** Putting a conversation away. Which section it lands in is the window's business (#79). */
-  archive(id: string, at: number): ConversationSummary {
-    return this.update(id, { archivedAt: at })
+  /**
+   * Putting a conversation away. Which section it lands in is the window's business (#79), but the
+   * refusal is not: a conversation that is working or waiting on an approval is not archived,
+   * because the card asking for that answer lives inside its transcript and folding it away hides
+   * the one thing that needs a person. The window greys the action out for the same reason.
+   */
+  archive(id: string): Undef<ConversationSummary> {
+    const conversation = this.#store.find(id)
+    if (conversation === undefined || !canArchive(conversation)) return undefined
+    return this.update(id, { archivedAt: Date.now() })
   }
 
   /**

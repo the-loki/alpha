@@ -148,14 +148,16 @@ test('a message typed while the agent works can be queued, and taken back', asyn
 
   const composer = window.getByRole('textbox', { name: 'Message the agent' })
   await composer.fill('then do this')
-  await window.getByRole('button', { name: 'Queue' }).click()
+  await window.getByRole('button', { name: 'Queue', exact: true }).click()
 
   const queued = window.getByRole('list', { name: 'Queued messages' })
   await expect(queued).toContainText('then do this')
   await window.screenshot({ path: join(SHOT_DIR, 'turn-queued.png') })
 
-  // Take it back before the turn ends, so the queue empties and nothing was sent.
-  await window.getByRole('button', { name: /Cancel the queued message/ }).click()
+  // Take it back before the turn ends, so the queue empties and nothing was sent. A message that
+  // has not been sent yet is deleted rather than cancelled — cancelling is for a steer, which the
+  // running turn is already holding (ADR-0011).
+  await window.getByRole('button', { name: /Delete the queued message/ }).click()
   await expect(queued).toHaveCount(0)
   await expect(window.getByRole('main').getByText('then do this')).toHaveCount(0)
 
