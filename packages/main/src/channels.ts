@@ -30,6 +30,7 @@ import {
   readAppearancePatch,
   readApprovalAnswer,
   readAttachments,
+  readDefaultModel,
   readNetworkPatch,
   requireLevel,
   requireString,
@@ -241,19 +242,16 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
 
   providersSnapshot: ({ providers }) => providers.snapshot(),
 
-  saveCatalogProvider: ({ providers }, args) => providers.saveFromCatalog(requireString(args[0], 'providerId'), []),
+  saveProvider: ({ providers }, args) => providers.save(args[0]),
 
-  saveCustomProvider: ({ providers }, args) => providers.saveCustom(args[0]),
+  saveProviderModels: ({ providers }, args) => providers.saveModels(requireString(args[0], 'providerId'), args[1]),
 
-  removeProvider: ({ providers }, args) => {
-    providers.remove(requireString(args[0], 'providerId'))
-    return providers.snapshot()
-  },
+  setDefaultModel: ({ providers }, args) => providers.setDefaultModel(readDefaultModel(args[0])),
+
+  removeProvider: ({ providers }, args) => providers.remove(requireString(args[0], 'providerId')),
 
   setCredential: ({ providers }, args) =>
     providers.setCredential(requireString(args[0], 'providerId'), requireString(args[1], 'secret')),
-
-  providerModels: ({ providers }, args) => providers.models(requireString(args[0], 'providerId')),
 
   testProvider: ({ providers }, args) =>
     providers.test(requireString(args[0], 'providerId'), requireString(args[1], 'modelId')),

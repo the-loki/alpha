@@ -13,7 +13,9 @@ deleted when the user deletes the provider. Nothing about the user's usage is re
 
 **Enforcement:** no network call may be made to a host that is not a configured provider, the
 app's own update check, or a documented documentation link. `pnpm check:constraints` scans for
-hard-coded hosts outside the provider templates module.
+hard-coded hosts anywhere in `packages/`, with one exemption for the module that listens on this
+machine's own address. There is no provider catalog to make an exception for: the user types the
+base URL, and the only address Alpha knows is the one it binds ([ADR-0015](../adr/0015-three-protocols-and-no-catalog.md)).
 
 ## C3.2 — No worktree support
 
@@ -61,7 +63,21 @@ for each tool risk class, and the UI has a visible level chip in every conversat
 **Enforcement:** [05-design.md](./05-design.md) turns the borrowed column into tokens and
 components.
 
-## C3.6 — Explicit non-goals for the first release
+## C3.6 — Three wire protocols, and no catalog
+
+Alpha speaks exactly three protocols — `openai-completions`, `anthropic-messages`,
+`google-generative-ai` — and ships no catalog of providers. A person adds a connection by naming
+its base URL and picking one of the three; there is no "add Anthropic" button, because that button
+is a host, a logo and a key format that have to be maintained forever, and because the list of
+OpenAI-compatible endpoints is longer than any catalog can track.
+
+The three are the mainstream, and the first covers most of the rest: a gateway, a local server and
+a hosted provider that "speaks OpenAI" all take the same request.
+
+**Enforcement:** `PROVIDER_APIS` is a closed union in `core`, `pnpm check:constraints` scans for
+hosts, and no settings copy names a provider as a thing to add.
+
+## C3.7 — Explicit non-goals for the first release
 
 Each of these is a deliberate cut, not an oversight:
 

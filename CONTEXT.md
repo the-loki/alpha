@@ -131,9 +131,11 @@ level — including in Plan, where a rule approves what the level would block.
 
 ### Provider
 
-An upstream model API the workbench can talk to, identified by base URL and wire protocol.
-A provider is either built-in (shipped catalog, the user supplies a key) or custom (the user
-supplies everything). Avoid: *backend*, *vendor*.
+A connection to an upstream model API: a base URL, one of the three wire protocols Alpha speaks
+(OpenAI chat completions, Anthropic messages, Google generative AI), and the credential that goes
+with it. Alpha ships no catalog and no hosts, so every provider is one the user described. Which
+models travel over it is a separate fact, kept in the model settings. Avoid: *backend*, *vendor*,
+*endpoint* (a provider is the connection, not the address).
 
 ### Credential
 
@@ -143,8 +145,10 @@ provider they belong to. Avoid: *token* (confusable with model tokens), *passwor
 
 ### Model
 
-A specific model id served by a provider, with the context window and token limits the
-workbench needs to run it. A model is always addressed as provider + id.
+A specific model id served by a provider, with the context window and token limits the workbench
+needs to run it. A model is always addressed as provider + id, and the list of them is a model
+setting rather than a fact about the connection. One of them is the **default model**: what a new
+conversation starts on, and what a run with nobody watching uses.
 
 ### Thinking Effort
 

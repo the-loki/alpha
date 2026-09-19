@@ -1,4 +1,4 @@
-import type { CustomProviderInput, ProviderModelDefinition, ProvidersSnapshotMessage } from '@alpha/core'
+import type { DefaultModelInput, ProviderInput, ProviderModelInput, ProvidersSnapshotMessage } from '@alpha/core'
 import { create } from 'zustand'
 import { bridge } from '../lib/bridge.ts'
 
@@ -9,48 +9,35 @@ export interface ProviderTestOutcome {
 
 export interface ProvidersStore {
   snapshot: ProvidersSnapshotMessage
-  /** Models per provider, fetched once each: the catalog's list can be long. */
-  models: Record<string, ProviderModelDefinition[]>
   load: () => Promise<void>
-  addFromCatalog: (id: string) => Promise<void>
-  addCustom: (input: CustomProviderInput) => Promise<void>
+  save: (input: ProviderInput) => Promise<void>
+  saveModels: (id: string, models: ProviderModelInput[]) => Promise<void>
+  setDefaultModel: (chosen: DefaultModelInput) => Promise<void>
   remove: (id: string) => Promise<void>
   setCredential: (id: string, secret: string) => Promise<void>
-  loadModels: (providerId: string) => Promise<ProviderModelDefinition[]>
   test: (id: string, modelId: string) => Promise<ProviderTestOutcome>
 }
 
-const emptySnapshot: ProvidersSnapshotMessage = { providers: [], protection: 'os', catalog: [] }
+const emptySnapshot: ProvidersSnapshotMessage = { providers: [], protection: 'os' }
 
-export const useProviders = create<ProvidersStore>((set, get) => ({
+/**
+ * One rule for every change: the main process answers with the whole snapshot, so the window keeps
+ * one state and never has to ask again after an edit.
+ */
+export const useProviders = create<ProvidersStore>((set) => ({
   snapshot: emptySnapshot,
-  models: {},
 
   load: async () => set({ snapshot: await bridge().providers() }),
 
-  addFromCatalog: async (id: string) => {
-    await bridge().saveCatalogProvider(id)
-    await get().load()
-  },
+  save: async (input) => set({ snapshot: await bridge().saveProvider(input) }),
 
-  addCustom: async (input: CustomProviderInput) => {
-    await bridge().saveCustomProvider(input)
-    await get().load()
-  },
+  saveModels: async (id, models) => set({ snapshot: await bridge().saveProviderModels(id, models) }),
 
-  remove: async (id: string) => {
-    set({ snapshot: await bridge().removeProvider(id) })
-  },
+  setDefaultModel: async (chosen) => set({ snapshot: await bridge().setDefaultModel(chosen) }),
 
-  setCredential: async (id: string, secret: string) => {
-    set({ snapshot: await bridge().setCredential(id, secret) })
-  },
+  remove: async (id) => set({ snapshot: await bridge().removeProvider(id) }),
 
-  loadModels: async (providerId: string) => {
-    const models = await bridge().providerModels(providerId)
-    set({ models: { ...get().models, [providerId]: models } })
-    return models
-  },
+  setCredential: async (id, secret) => set({ snapshot: await bridge().setCredential(id, secret) }),
 
-  test: async (id: string, modelId: string) => bridge().testProvider(id, modelId),
+  test: async (id, modelId) => bridge().testProvider(id, modelId),
 }))

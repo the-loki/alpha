@@ -16,6 +16,8 @@ const isTs = (path) => /\.tsx?$/.test(path)
 const isDeclaration = (path) => /\.d\.ts$/.test(path)
 const isTest = (path) => /\.(test|spec)\.[cm]?tsx?$/.test(path)
 const isCheckerSource = (path) => path.startsWith('tools/constraints/')
+/** Machine-written tables: the dictionary, which has one line per string and no thoughts to fit. */
+const isGenerated = (path) => /^packages\/core\/src\/i18n(\/|\/i18n\.ts)/.test(path)
 
 const stripStrings = (line) =>
   line
@@ -307,7 +309,9 @@ export const RULES = [
     constraint: '02-architecture.md',
     description: 'a file fits in a head',
     check({ path, text }) {
-      if (!isSource(path) || isTest(path) || isCheckerSource(path) || isDeclaration(path)) return []
+      if (!isSource(path) || isTest(path) || isCheckerSource(path) || isDeclaration(path) || isGenerated(path)) {
+        return []
+      }
       if (!/\.(ts|tsx|mjs|js)$/.test(path)) return []
       const count = countCodeLines(text.split('\n'))
       if (count <= 300) return []
@@ -556,9 +560,8 @@ export const RULES = [
         path.startsWith('docs/') ||
         path.startsWith('e2e/') ||
         isTest(path) ||
-        path.includes('/providers/templates') ||
         // The server's own address is what that one module is about: it listens, and it has to
-        // say where. A provider host is still a violation anywhere a model client is built.
+        // say where. A provider host is a violation everywhere, including there.
         path === 'packages/main/src/server/http.ts' ||
         isCheckerSource(path)
       if (exempt || !/\.(ts|tsx|mjs|js|json)$/.test(path)) return []
@@ -570,7 +573,7 @@ export const RULES = [
         if (ignoredFor(line, { id: '03-product-scope:no-hardcoded-hosts', constraint: '03-product-scope.md' })) return
         found.push({
           line: index + 1,
-          message: 'hard-coded host; provider hosts belong in the provider templates module',
+          message: 'hard-coded host; a host is something the user types or an address the server listens on',
           text: line.trim(),
         })
       })

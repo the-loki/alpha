@@ -40,7 +40,8 @@ test('the packaged app opens, remembers its workspace, and keeps a credential', 
   await window.waitForSelector('#root > *')
 
   // The packaged app starts on the workspace it was told about, and writes its state where asked.
-  await expect(window.getByRole('button', { name: 'Ask' })).toBeVisible()
+  // Exact, because the sidebar's own "Tasks" row matches "Ask" as a case-insensitive substring.
+  await expect(window.getByRole('button', { name: 'Ask', exact: true })).toBeVisible()
   writeFileSync(join(dataDirectory, '.probe'), 'written', 'utf-8')
 
   // A key is the one thing that must never be readable on disk; the packaged build has to be able
@@ -49,12 +50,17 @@ test('the packaged app opens, remembers its workspace, and keeps a credential', 
     const bridge = (
       globalThis as unknown as {
         alpha: {
-          saveCatalogProvider: (id: string) => Promise<unknown>
+          saveProvider: (input: { id: string; name: string; api: string; baseUrl: string }) => Promise<unknown>
           setCredential: (id: string, secret: string) => Promise<{ protection: string }>
         }
       }
     ).alpha
-    await bridge.saveCatalogProvider('anthropic')
+    await bridge.saveProvider({
+      id: 'anthropic',
+      name: 'Anthropic',
+      api: 'anthropic-messages',
+      baseUrl: 'https://api.anthropic.com',
+    })
     return bridge.setCredential('anthropic', 'sk-packaged-test-key')
   })
   expect(['os', 'plaintext']).toContain(saved.protection)

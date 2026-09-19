@@ -12,7 +12,7 @@ import {
   type ApprovalAnswerInput,
   type Attachment,
   type ConversationSummary,
-  type CustomProviderInput,
+  type DefaultModelInput,
   type EditEffect,
   IPC,
   type LaunchState,
@@ -22,7 +22,8 @@ import {
   type PermissionLevel,
   type PermissionRule,
   type PickWorkspaceResult,
-  type ProviderModelDefinition,
+  type ProviderInput,
+  type ProviderModelInput,
   type ProvidersSnapshotMessage,
   type RuntimeEvent,
   type ScheduledTask,
@@ -263,13 +264,14 @@ export function networkBridge(): AlphaBridge {
     onRuntimeEvent: (listener: (event: RuntimeEvent) => void) => listen('runtimeEvent', listener),
 
     providers: () => invoke('providersSnapshot', []) as Promise<ProvidersSnapshotMessage>,
-    saveCatalogProvider: (id: string) => invoke('saveCatalogProvider', [id]) as Promise<ProvidersSnapshotMessage>,
-    saveCustomProvider: (input: CustomProviderInput) =>
-      invoke('saveCustomProvider', [input]) as Promise<ProvidersSnapshotMessage>,
+    saveProvider: (input: ProviderInput) => invoke('saveProvider', [input]) as Promise<ProvidersSnapshotMessage>,
+    saveProviderModels: (id: string, models: ProviderModelInput[]) =>
+      invoke('saveProviderModels', [id, models]) as Promise<ProvidersSnapshotMessage>,
+    setDefaultModel: (chosen: DefaultModelInput) =>
+      invoke('setDefaultModel', [chosen]) as Promise<ProvidersSnapshotMessage>,
     removeProvider: (id: string) => invoke('removeProvider', [id]) as Promise<ProvidersSnapshotMessage>,
     setCredential: (id: string, secret: string) =>
       invoke('setCredential', [id, secret]) as Promise<ProvidersSnapshotMessage>,
-    providerModels: (id: string) => invoke('providerModels', [id]) as Promise<ProviderModelDefinition[]>,
     testProvider: (id: string, modelId: string) =>
       invoke('testProvider', [id, modelId]) as Promise<{ ok: boolean; message: string }>,
     setConversationModel: (id: string, providerId: string, modelId: string) =>

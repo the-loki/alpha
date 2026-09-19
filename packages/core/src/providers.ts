@@ -1,15 +1,21 @@
 /**
- * Providers as data: which endpoints the workbench may talk to, and which models each one
- * serves. The credential is never part of this — a provider here is the shape of the connection,
- * and whether a key is stored is a separate fact the UI asks for.
+ * Providers as data: an endpoint the workbench may talk to, the protocol it speaks, and the models
+ * it serves. The credential is never part of this — whether a key is stored is a separate fact the
+ * settings screen asks for.
+ *
+ * There is no catalog. Alpha ships no host and no model id, so a provider is always something the
+ * user described themselves; what it does ship is the three wire protocols that cover the
+ * mainstream — OpenAI's chat completions (which most gateways also speak), Anthropic's messages,
+ * and Google's generative AI (ADR-0015). A model list is not part of the connection either: which
+ * models an endpoint serves is a model setting, not a fact about the endpoint.
  */
 
 import { type Static, Type } from 'typebox'
 import { Value } from 'typebox/value'
 import type { Undef } from './maybe.ts'
-import { type CatalogEntry, PROVIDER_CATALOG } from './providers/templates.ts'
+import type { ConversationModel } from './runtime-events.ts'
 
-export const PROVIDER_APIS = ['openai-completions', 'anthropic-messages'] as const
+export const PROVIDER_APIS = ['openai-completions', 'anthropic-messages', 'google-generative-ai'] as const
 
 export type ProviderApi = (typeof PROVIDER_APIS)[number]
 
@@ -27,9 +33,6 @@ export interface StoredProvider {
   api: ProviderApi
   baseUrl: string
   models: ProviderModelDefinition[]
-  /** Where this provider came from, so settings can explain it and offer the right edits. */
-  source: 'catalog' | 'custom'
-  catalogId?: string
 }
 
 /** A provider as the settings screen sees it: the definition plus whether a key is stored. */
@@ -40,6 +43,11 @@ export interface ProviderView extends StoredProvider {
 export interface ProviderIndex {
   version: 1
   providers: StoredProvider[]
+  /**
+   * What a new conversation starts on, and what a run with nobody watching uses. Absent means the
+   * first model of the first provider that has one, which is what a single-provider setup wants.
+   */
+  defaultModel?: ConversationModel
 }
 
 export function isProviderApi(value: unknown): value is ProviderApi {
@@ -54,19 +62,20 @@ const ModelSchema = Type.Object({
   reasoning: Type.Boolean(),
 })
 
+const ModelRefSchema = Type.Object({ providerId: Type.String(), modelId: Type.String() })
+
 const ProviderSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
   api: Type.Union(PROVIDER_APIS.map((api) => Type.Literal(api))),
   baseUrl: Type.String(),
   models: Type.Array(ModelSchema),
-  source: Type.Union([Type.Literal('catalog'), Type.Literal('custom')]),
-  catalogId: Type.Optional(Type.String()),
 })
 
 const ProviderIndexSchema = Type.Object({
   version: Type.Literal(1),
   providers: Type.Array(ProviderSchema),
+  defaultModel: Type.Optional(ModelRefSchema),
 })
 
 export function emptyProviderIndex(): ProviderIndex {
@@ -77,32 +86,28 @@ export function parseProviders(raw: unknown): ProviderIndex {
   const candidate = typeof raw === 'string' ? parseJson(raw) : raw
   if (!Value.Check(ProviderIndexSchema, candidate)) return emptyProviderIndex()
   const index: Static<typeof ProviderIndexSchema> = candidate
-  return { version: 1, providers: index.providers }
-}
-
-export function findCatalogEntry(id: string): Undef<CatalogEntry> {
-  return PROVIDER_CATALOG.find((entry) => entry.id === id)
-}
-
-export function providerFromCatalog(entry: CatalogEntry, models: ProviderModelDefinition[]): StoredProvider {
   return {
-    id: entry.id,
-    name: entry.name,
-    api: entry.api,
-    baseUrl: entry.baseUrl,
-    models,
-    source: 'catalog',
-    catalogId: entry.id,
+    version: 1,
+    providers: index.providers.map((provider) => ({ ...provider, models: provider.models })),
+    defaultModel: index.defaultModel,
   }
 }
 
-export interface CustomProviderResult {
-  provider?: StoredProvider
+/** What the provider form sends: the connection, and nothing about models. */
+export interface ProviderInput {
+  id: string
+  name: string
+  api: ProviderApi
+  baseUrl: string
+}
+
+export interface ProviderResult {
+  provider?: ProviderInput
   error?: string
 }
 
-/** Validates a hand-written provider definition, naming the first thing that is wrong. */
-export function customProvider(input: unknown): CustomProviderResult {
+/** Validates a hand-written provider, naming the first thing that is wrong. */
+export function readProvider(input: unknown): ProviderResult {
   if (typeof input !== 'object' || input === null) return { error: 'a provider must be an object' }
   const candidate = input as Record<string, unknown>
 
@@ -118,12 +123,23 @@ export function customProvider(input: unknown): CustomProviderResult {
   const baseUrl = typeof candidate.baseUrl === 'string' ? candidate.baseUrl.trim() : ''
   if (!/^https?:\/\/[^\s]+$/.test(baseUrl)) return { error: 'the base url must be an http(s) address' }
 
-  if (!Array.isArray(candidate.models) || candidate.models.length === 0) {
-    return { error: 'a provider needs at least one model' }
-  }
+  return { provider: { id, name, api: candidate.api, baseUrl } }
+}
 
+export interface ModelsResult {
+  models?: ProviderModelDefinition[]
+  error?: string
+}
+
+/**
+ * Validates a model list. Models are added, removed and corrected as a list, so this is one rule
+ * with two callers: a provider written down for the first time, and a list edited later. An empty
+ * list is a provider that serves nothing yet — a state to be shown, not an error to be refused.
+ */
+export function readModels(input: unknown): ModelsResult {
+  if (!Array.isArray(input)) return { error: 'models must be a list' }
   const models: ProviderModelDefinition[] = []
-  for (const entry of candidate.models) {
+  for (const entry of input) {
     if (typeof entry !== 'object' || entry === null) return { error: 'every model must be an object' }
     const model = entry as Record<string, unknown>
     const modelId = typeof model.id === 'string' ? model.id.trim() : ''
@@ -138,8 +154,7 @@ export function customProvider(input: unknown): CustomProviderResult {
       reasoning: model.reasoning === true,
     })
   }
-
-  return { provider: { id, name, api: candidate.api, baseUrl, models, source: 'custom' } }
+  return { models }
 }
 
 export interface CredentialRequirement {
@@ -153,8 +168,17 @@ export function credentialRequirement(input: { hasCredential: boolean }): Creden
     : { kind: 'missing', reason: 'No key is stored yet. Add one to use this provider.' }
 }
 
-export function providerLabel(provider: StoredProvider): string {
-  return `${provider.name} · ${provider.models.length} ${provider.models.length === 1 ? 'model' : 'models'}`
+/**
+ * The stored default, when it still points at a model some provider actually serves. This is the
+ * one guard: the choice is written down once and checked every time it is read, so removing a
+ * model or a provider cannot leave the workbench pointing at nothing.
+ */
+export function defaultModelOf(index: ProviderIndex): Undef<ConversationModel> {
+  const chosen = index.defaultModel
+  if (chosen === undefined) return undefined
+  const provider = index.providers.find((candidate) => candidate.id === chosen.providerId)
+  if (provider === undefined) return undefined
+  return provider.models.some((model) => model.id === chosen.modelId) ? chosen : undefined
 }
 
 function parseJson(text: string): unknown {

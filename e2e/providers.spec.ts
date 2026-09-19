@@ -12,7 +12,10 @@ async function launch(dataDirectory?: string) {
   writeFileSync(
     join(directory, 'workbench-state.json'),
     JSON.stringify({
-      workspace: { selection: { kind: 'none' }, recents: [] },
+      workspace: {
+        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
+        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
+      },
       language: 'en',
       permissionLevel: 'ask',
     }),
@@ -28,21 +31,77 @@ async function launch(dataDirectory?: string) {
   return { app, window, directory, workspace }
 }
 
-async function openSettings(window: Page) {
+async function openSettings(window: Page, tab: string) {
   await window.getByRole('link', { name: 'Settings' }).click()
-  await expect(window.getByRole('heading', { name: 'Model providers' })).toBeVisible()
+  await window.getByRole('link', { name: tab, exact: true }).click()
 }
 
-test('a provider can be added from the catalog, given a key, and deleted', async () => {
+/** A connection is described by hand: there is no catalog to pick one from. */
+async function describeProvider(window: Page, options: { id: string; baseUrl: string; name?: string }) {
+  await window.getByRole('textbox', { name: 'Id', exact: true }).fill(options.id)
+  if (options.name !== undefined) {
+    await window.getByRole('textbox', { name: 'Name', exact: true }).fill(options.name)
+  }
+  await window.getByRole('textbox', { name: 'Base URL', exact: true }).fill(options.baseUrl)
+  await window.getByRole('button', { name: 'Add a provider' }).click()
+}
+
+/** One model on the models panel, in the box for the given provider: the row just added. */
+async function addModel(
+  window: Page,
+  provider: string,
+  model: { id: string; name?: string; context?: string; max?: string; reasoning?: boolean },
+) {
+  const box = window.getByRole('region', { name: provider })
+  await box.getByRole('button', { name: 'Add model' }).click()
+  // The rows are positional, and a model is always added at the end of them.
+  await box
+    .getByRole('textbox', { name: /^Model id / })
+    .last()
+    .fill(model.id)
+  if (model.name !== undefined)
+    await box
+      .getByRole('textbox', { name: /^Display name / })
+      .last()
+      .fill(model.name)
+  if (model.context !== undefined) {
+    await box
+      .getByRole('textbox', { name: /^Context window / })
+      .last()
+      .fill(model.context)
+  }
+  if (model.max !== undefined)
+    await box
+      .getByRole('textbox', { name: /^Max output / })
+      .last()
+      .fill(model.max)
+  if (model.reasoning === true)
+    await box
+      .getByRole('checkbox', { name: /^Reasoning / })
+      .last()
+      .check()
+  await box.getByRole('button', { name: 'Save models' }).click()
+}
+
+/** The card for one provider on the providers panel. */
+const card = (window: Page, name: string) => window.locator('li').filter({ hasText: name })
+
+test('a connection is described by hand, given a key, and deleted', async () => {
   const { app, window, directory } = await launch()
-  await openSettings(window)
+  await openSettings(window, 'Providers')
 
-  await window.getByLabel('Add a provider from the catalog').selectOption('deepseek')
-  await window.getByRole('button', { name: 'Add', exact: true }).click()
-  await expect(window.getByText('DeepSeek', { exact: true })).toBeVisible()
+  await describeProvider(window, {
+    id: 'internal-llm',
+    name: 'Internal LLM',
+    baseUrl: 'https://llm.internal.example/v1',
+  })
+  await expect(window.getByText('Internal LLM', { exact: true })).toBeVisible()
   await expect(window.getByText('no key', { exact: true })).toBeVisible()
+  // A connection alone says what it speaks, and how many models travel over it — none, yet.
+  await expect(card(window, 'Internal LLM').getByText('OpenAI Chat Completions')).toBeVisible()
+  await expect(card(window, 'Internal LLM').getByText('0 models')).toBeVisible()
 
-  await window.getByLabel('API key for DeepSeek').fill('sk-test-not-a-real-key')
+  await window.getByLabel('API key for Internal LLM').fill('sk-test-not-a-real-key')
   await window.getByRole('button', { name: 'Save key' }).click()
   await expect(window.getByText('key stored', { exact: true })).toBeVisible()
 
@@ -64,64 +123,88 @@ test('a provider can be added from the catalog, given a key, and deleted', async
   await app.close()
 })
 
-test('a custom endpoint is refused when it is not filled in', async () => {
+test('a connection that was not filled in is refused, naming what is missing', async () => {
   const { app, window } = await launch()
-  await openSettings(window)
+  await openSettings(window, 'Providers')
 
-  await window.getByRole('button', { name: 'Add custom provider' }).click()
+  await window.getByRole('button', { name: 'Add a provider' }).click()
   await expect(window.getByText(/the id must be/i)).toBeVisible()
 
   await window.getByRole('textbox', { name: 'Id', exact: true }).fill('local-endpoint')
-  await window.getByRole('textbox', { name: 'Base URL', exact: true }).fill('https://llm.internal.example/v1')
-  await window.getByRole('textbox', { name: 'Model id 1', exact: true }).fill('local-7b')
-  await window.getByRole('button', { name: 'Add custom provider' }).click()
-  await expect(window.getByText('llm.internal.example/v1')).toBeVisible()
+  await window.getByRole('textbox', { name: 'Base URL', exact: true }).fill('ftp://example.com')
+  await window.getByRole('button', { name: 'Add a provider' }).click()
+  await expect(window.getByText(/must be an http/i)).toBeVisible()
 
   await app.close()
 })
 
-test('a custom endpoint takes a wire protocol and as many models as it serves', async () => {
+test('the protocol is chosen from the three Alpha speaks, and it is what gets stored', async () => {
   const { app, window, directory } = await launch()
-  await openSettings(window)
+  await openSettings(window, 'Providers')
 
-  await window.getByRole('textbox', { name: 'Id', exact: true }).fill('local-endpoint')
-  await window.getByRole('textbox', { name: 'Base URL', exact: true }).fill('https://llm.internal.example/v1')
-  await window.getByLabel('Wire protocol').selectOption('anthropic-messages')
+  // The three, by the names their own documentation uses, and the line that says who speaks it.
+  await expect(window.getByLabel('Wire protocol').locator('option')).toHaveText([
+    'OpenAI Chat Completions',
+    'Anthropic Messages',
+    'Google Generative AI',
+  ])
+  await window.getByLabel('Wire protocol').selectOption('google-generative-ai')
+  await expect(window.getByText(/gateway root/)).toBeVisible()
 
-  // The first model arrives with the form; the second is added by hand.
-  await window.getByRole('textbox', { name: 'Model id 1', exact: true }).fill('local-7b')
-  await window.getByRole('textbox', { name: 'Context window 1', exact: true }).fill('64000')
-  await window.getByRole('textbox', { name: 'Max output 1', exact: true }).fill('4096')
-  await window.getByRole('button', { name: 'Add model' }).click()
-  await window.getByRole('textbox', { name: 'Model id 2', exact: true }).fill('local-70b')
-  await window.getByRole('textbox', { name: 'Display name 2', exact: true }).fill('Local 70B')
-  await window.getByRole('checkbox', { name: 'Reasoning 2' }).check()
-
-  await window.getByRole('button', { name: 'Add custom provider' }).click()
-  await expect(window.getByText('2 models · local-7b, local-70b')).toBeVisible()
-
-  // What was typed is what was stored: the protocol reaches the runtime, and each model keeps
-  // its own window and output limit.
+  await describeProvider(window, { id: 'gemini', baseUrl: 'https://gemini.internal.example' })
   const stored = JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8'))
-  const provider = stored.providers.find((entry: { id: string }) => entry.id === 'local-endpoint')
-  expect(provider.api).toBe('anthropic-messages')
-  expect(provider.models).toEqual([
-    { id: 'local-7b', name: 'local-7b', contextWindow: 64000, maxTokens: 4096, reasoning: false },
-    { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: true },
+  expect(stored.providers).toEqual([
+    {
+      id: 'gemini',
+      name: 'gemini',
+      api: 'google-generative-ai',
+      baseUrl: 'https://gemini.internal.example',
+      models: [],
+    },
   ])
   await app.close()
 })
 
-test('a provider with no key leaves sending blocked with a reason', async () => {
+test('the models a connection serves are a setting of their own', async () => {
   const { app, window, directory } = await launch()
-  await openSettings(window)
-  await window.getByLabel('Add a provider from the catalog').selectOption('groq')
-  await window.getByRole('button', { name: 'Add', exact: true }).click()
+  await openSettings(window, 'Providers')
+  await describeProvider(window, { id: 'local-endpoint', name: 'Local', baseUrl: 'https://llm.internal.example/v1' })
+
+  // Nothing to send a request to yet, and the models panel is what says so.
+  await window.getByRole('link', { name: 'Models', exact: true }).click()
+  await expect(window.getByText('No models yet. Add the ones this provider serves.')).toBeVisible()
+
+  await addModel(window, 'Local', { id: 'local-7b', context: '64000', max: '4096' })
+  await addModel(window, 'Local', { id: 'local-70b', name: 'Local 70B', reasoning: true })
+
+  const stored = JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8'))
+  expect(stored.providers[0].models).toEqual([
+    { id: 'local-7b', name: 'local-7b', contextWindow: 64000, maxTokens: 4096, reasoning: false },
+    { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: true },
+  ])
+
+  // The default model is a choice among exactly those, and it is written down where it was made.
+  const picker = window.getByLabel('New conversations start on')
+  await expect(picker.locator('option')).toHaveText(['The first model there is', 'local-7b', 'Local 70B'])
+  await picker.selectOption('local-endpoint::local-70b')
+  expect(JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8')).defaultModel).toEqual({
+    providerId: 'local-endpoint',
+    modelId: 'local-70b',
+  })
+
+  await window.screenshot({ path: join(SHOT_DIR, 'settings-models.png') })
+  await app.close()
+})
+
+test('a connection with no key says so, and survives a relaunch', async () => {
+  const { app, window, directory } = await launch()
+  await openSettings(window, 'Providers')
+  await describeProvider(window, { id: 'unkeyed', baseUrl: 'https://llm.internal.example/v1' })
   await expect(window.getByText('no key', { exact: true })).toBeVisible()
   await app.close()
 
   const reopened = await launch(directory)
   await reopened.window.getByRole('link', { name: 'Settings' }).click()
-  await expect(reopened.window.getByText('Groq', { exact: true })).toBeVisible()
+  await expect(reopened.window.getByText('unkeyed', { exact: true })).toBeVisible()
   await reopened.app.close()
 })

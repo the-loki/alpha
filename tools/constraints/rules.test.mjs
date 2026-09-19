@@ -428,9 +428,9 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
     expect(violationsFor(rule, file('packages/main/src/a.ts', 'const u = "https://example.com/v1"'))).toHaveLength(1)
   })
 
-  it('passes a URL in the provider templates module', () => {
+  it('flags a provider host in the module that used to be allowed to hold one', () => {
     const text = 'const u = "https://api.anthropic.com"'
-    expect(violationsFor(rule, file('packages/core/src/providers/templates.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/core/src/providers.ts', text))).toHaveLength(1)
   })
 
   it('passes the module that owns the workbench its own address', () => {

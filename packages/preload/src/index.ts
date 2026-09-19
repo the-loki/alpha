@@ -9,7 +9,7 @@ import {
   type ApprovalAnswerInput,
   type Attachment,
   type ConversationSummary,
-  type CustomProviderInput,
+  type DefaultModelInput,
   type EditEffect,
   IPC,
   type LaunchState,
@@ -19,7 +19,8 @@ import {
   type PermissionLevel,
   type PermissionRule,
   type PickWorkspaceResult,
-  type ProviderModelDefinition,
+  type ProviderInput,
+  type ProviderModelInput,
   type ProvidersSnapshotMessage,
   type RuntimeEvent,
   type ScheduledTask,
@@ -64,12 +65,15 @@ const bridge: AlphaBridge = {
   },
 
   providers: () => ipcRenderer.invoke(IPC.providersSnapshot) as Promise<ProvidersSnapshotMessage>,
-  saveCatalogProvider: (id: string) => ipcRenderer.invoke(IPC.saveCatalogProvider, id),
-  saveCustomProvider: (input: CustomProviderInput) => ipcRenderer.invoke(IPC.saveCustomProvider, input),
+  saveProvider: (input: ProviderInput) =>
+    ipcRenderer.invoke(IPC.saveProvider, input) as Promise<ProvidersSnapshotMessage>,
+  saveProviderModels: (id: string, models: ProviderModelInput[]) =>
+    ipcRenderer.invoke(IPC.saveProviderModels, id, models) as Promise<ProvidersSnapshotMessage>,
+  setDefaultModel: (chosen: DefaultModelInput) =>
+    ipcRenderer.invoke(IPC.setDefaultModel, chosen) as Promise<ProvidersSnapshotMessage>,
   removeProvider: (id: string) => ipcRenderer.invoke(IPC.removeProvider, id) as Promise<ProvidersSnapshotMessage>,
   setCredential: (id: string, secret: string) =>
     ipcRenderer.invoke(IPC.setCredential, id, secret) as Promise<ProvidersSnapshotMessage>,
-  providerModels: (id: string) => ipcRenderer.invoke(IPC.providerModels, id) as Promise<ProviderModelDefinition[]>,
   testProvider: (id: string, modelId: string) =>
     ipcRenderer.invoke(IPC.testProvider, id, modelId) as Promise<{ ok: boolean; message: string }>,
   setConversationModel: (id: string, providerId: string, modelId: string) =>

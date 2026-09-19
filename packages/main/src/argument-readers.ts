@@ -9,6 +9,7 @@ import {
   type ApprovalAnswerInput,
   type Attachment,
   byteLengthOf,
+  type ConversationModel,
   isAccent,
   isImageMime,
   isLanguageSetting,
@@ -111,4 +112,19 @@ export function readAttachments(value: unknown): Undef<Attachment[]> {
 export function requireLevel(value: unknown): PermissionLevel {
   if (!isPermissionLevel(value)) throw new Error('level must be a permission level')
   return value
+}
+
+/**
+ * What a new conversation should start on, or nothing at all to hand the choice back to the first
+ * model there is. Two ids, and no reason for the boundary to know what they name: the store is
+ * what checks that the model exists.
+ */
+export function readDefaultModel(value: unknown): Undef<ConversationModel> {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'object') throw new Error('a default model must be a provider and a model')
+  const record = value as Record<string, unknown>
+  return {
+    providerId: requireString(record.providerId, 'providerId'),
+    modelId: requireString(record.modelId, 'modelId'),
+  }
 }

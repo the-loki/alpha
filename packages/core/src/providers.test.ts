@@ -1,104 +1,93 @@
 import { describe, expect, it } from 'vitest'
-import { catalogEntry, PROVIDER_CATALOG } from './providers/templates.ts'
 import {
   credentialRequirement,
-  customProvider,
+  defaultModelOf,
   emptyProviderIndex,
-  findCatalogEntry,
   isProviderApi,
+  PROVIDER_APIS,
   parseProviders,
-  providerFromCatalog,
-  providerLabel,
+  readModels,
+  readProvider,
 } from './providers.ts'
 
-describe('[core] the catalog', () => {
-  it('offers the providers a developer is most likely to already have a key for', () => {
-    expect(PROVIDER_CATALOG.map((entry) => entry.id)).toEqual([
-      'anthropic',
-      'openai',
-      'deepseek',
-      'openrouter',
-      'groq',
-      'mistral',
-      'xai',
-    ])
-  })
+const model = { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false }
 
-  it('gives every entry an https base url, a wire protocol, and a hint about its key', () => {
-    for (const entry of PROVIDER_CATALOG) {
-      expect(entry.baseUrl.startsWith('https://')).toBe(true)
-      expect(isProviderApi(entry.api)).toBe(true)
-      expect(entry.keyHint).not.toBe('')
-    }
-  })
+const input = {
+  id: 'my-endpoint',
+  name: 'My endpoint',
+  api: 'openai-completions',
+  baseUrl: 'https://llm.internal.example/v1',
+}
 
-  it('finds an entry by id, and reports nothing for an unknown one', () => {
-    expect(findCatalogEntry('anthropic')?.name).toBe('Anthropic')
-    expect(findCatalogEntry('nope')).toBeUndefined()
-  })
-})
+const stored = {
+  version: 1 as const,
+  providers: [
+    {
+      id: 'my-endpoint',
+      name: 'My endpoint',
+      api: 'openai-completions' as const,
+      baseUrl: input.baseUrl,
+      models: [model],
+    },
+  ],
+}
 
-describe('[core] providerFromCatalog', () => {
-  const models = [{ id: 'some-model', name: 'Some model', contextWindow: 128_000, maxTokens: 8_192, reasoning: false }]
-
-  it('copies the catalog connection facts and the models it was given', () => {
-    const entry = catalogEntry('deepseek')
-    const provider = providerFromCatalog(entry, models)
-    expect(provider).toMatchObject({
-      id: 'deepseek',
-      name: entry.name,
-      api: entry.api,
-      baseUrl: entry.baseUrl,
-      source: 'catalog',
-      catalogId: 'deepseek',
-    })
-    expect(provider.models).toEqual(models)
-  })
-
-  it('keeps the model list empty when none were supplied, rather than inventing ids', () => {
-    expect(providerFromCatalog(catalogEntry('groq'), []).models).toEqual([])
+describe('[core] the wire protocols', () => {
+  it('ships the three a person is likely to have: OpenAI, Anthropic, Google', () => {
+    expect([...PROVIDER_APIS]).toEqual(['openai-completions', 'anthropic-messages', 'google-generative-ai'])
+    expect(isProviderApi('google-generative-ai')).toBe(true)
+    expect(isProviderApi('carrier-pigeon')).toBe(false)
   })
 })
 
-describe('[core] customProvider', () => {
-  const input = {
-    id: 'my-endpoint',
-    name: 'My endpoint',
-    api: 'openai-completions',
-    baseUrl: 'https://llm.internal.example/v1',
-    models: [{ id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false }],
-  }
+describe('[core] readProvider', () => {
+  it('accepts a well-formed connection', () => {
+    expect(readProvider(input).provider).toEqual({ ...input })
+  })
 
-  it('accepts a well-formed custom provider', () => {
-    expect(customProvider(input).provider).toMatchObject({ id: 'my-endpoint', source: 'custom' })
+  it('names the connection after itself when it was given no name', () => {
+    expect(readProvider({ ...input, name: '' }).provider?.name).toBe('my-endpoint')
   })
 
   it('refuses an id that is empty or has spaces', () => {
-    expect(customProvider({ ...input, id: '' }).error).toContain('id')
-    expect(customProvider({ ...input, id: 'my endpoint' }).error).toContain('id')
+    expect(readProvider({ ...input, id: '' }).error).toContain('id')
+    expect(readProvider({ ...input, id: 'my endpoint' }).error).toContain('id')
   })
 
   it('refuses a base url that is not http(s)', () => {
-    expect(customProvider({ ...input, baseUrl: 'ftp://example.com' }).error).toContain('url')
+    expect(readProvider({ ...input, baseUrl: 'ftp://example.com' }).error).toContain('url')
   })
 
-  it('refuses an unknown wire protocol', () => {
-    expect(customProvider({ ...input, api: 'carrier-pigeon' }).error).toContain('protocol')
+  it('refuses a protocol Alpha cannot speak', () => {
+    expect(readProvider({ ...input, api: 'carrier-pigeon' }).error).toContain('protocol')
   })
 
-  it('refuses a provider with no models', () => {
-    expect(customProvider({ ...input, models: [] }).error).toContain('model')
+  it('says nothing about models: a connection is not a model list', () => {
+    expect(readProvider({ ...input, models: 'whatever' }).provider).toBeDefined()
+    expect(Object.keys(readProvider(input).provider ?? {})).toEqual(['id', 'name', 'api', 'baseUrl'])
+  })
+})
+
+describe('[core] readModels', () => {
+  it('reads a list and fills in what was left out', () => {
+    expect(readModels([{ id: 'local-7b', contextWindow: 128_000 }]).models).toEqual([
+      { id: 'local-7b', name: 'local-7b', contextWindow: 128_000, maxTokens: 4096, reasoning: false },
+    ])
+    expect(readModels([model]).models).toEqual([model])
   })
 
-  it('refuses a model without a positive context window', () => {
-    const models = [{ ...input.models[0], contextWindow: 0 }]
-    expect(customProvider({ ...input, models }).error).toContain('context')
+  it('refuses a model with no id, and one with no room in it', () => {
+    expect(readModels([{ ...model, id: '  ' }]).error).toContain('id')
+    expect(readModels([{ id: 'm', contextWindow: 0 }]).error).toContain('context')
+    expect(readModels([{ id: 'm' }]).error).toContain('context')
   })
 
-  it('returns the provider under the key the caller reads', () => {
-    const result = customProvider(input)
-    expect(result.provider?.name).toBe('My endpoint')
-    expect(result.error).toBeUndefined()
+  it('refuses something that is not a list at all', () => {
+    expect(readModels('local-7b').error).toContain('list')
+  })
+
+  it('takes an empty list: a provider that serves nothing yet is a state, not a mistake', () => {
+    expect(readModels([]).models).toEqual([])
   })
 })
 
@@ -112,36 +101,30 @@ describe('[core] credentialRequirement', () => {
   })
 })
 
-describe('[core] providerLabel', () => {
-  const model = { id: 'm', name: 'M', contextWindow: 1000, maxTokens: 100, reasoning: false }
-
-  it('names the provider and its model count for the settings list', () => {
-    expect(providerLabel(providerFromCatalog(catalogEntry('groq'), [model]))).toBe('Groq · 1 model')
-  })
-
-  it('pluralises when there is more than one model', () => {
-    expect(providerLabel(providerFromCatalog(catalogEntry('groq'), [model, model]))).toBe('Groq · 2 models')
-  })
-})
-
 describe('[core] parseProviders', () => {
-  const stored = {
-    id: 'openai',
-    name: 'OpenAI',
-    api: 'openai-completions' as const,
-    baseUrl: 'https://api.openai.com/v1',
-    source: 'catalog' as const,
-    catalogId: 'openai',
-    models: [{ id: 'gpt-4o', name: 'GPT-4o', contextWindow: 128_000, maxTokens: 16_384, reasoning: false }],
-  }
-
-  it('round-trips a stored provider', () => {
-    const index = { version: 1 as const, providers: [stored] }
+  it('round-trips a stored provider and the default model', () => {
+    const index = { ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
     expect(parseProviders(JSON.parse(JSON.stringify(index)))).toEqual(index)
   })
 
   it('treats a file it cannot trust as empty', () => {
     expect(parseProviders('{oops')).toEqual(emptyProviderIndex())
     expect(parseProviders({ version: 1, providers: [{ id: 'x' }] })).toEqual(emptyProviderIndex())
+    expect(parseProviders({ ...stored, defaultModel: { providerId: 'my-endpoint' } })).toEqual(emptyProviderIndex())
+  })
+})
+
+describe('[core] defaultModelOf', () => {
+  it('answers with the stored default when a provider still serves it', () => {
+    const index = { ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
+    expect(defaultModelOf(index)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+  })
+
+  it('answers with nothing when it was never chosen, or the model is gone', () => {
+    expect(defaultModelOf(stored)).toBeUndefined()
+    expect(
+      defaultModelOf({ ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'deleted' } }),
+    ).toBeUndefined()
+    expect(defaultModelOf({ ...stored, defaultModel: { providerId: 'gone', modelId: 'local-7b' } })).toBeUndefined()
   })
 })

@@ -6,22 +6,27 @@
 
 import type { Attachment } from './attachments.ts'
 import type { LanguageSetting } from './i18n.ts'
+import type { Undef } from './maybe.ts'
 import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { Accent, NetworkBind, Theme } from './persisted-state.ts'
-import type { ProviderModelDefinition, ProviderView } from './providers.ts'
-import type { ChatMessage, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
+import type { ProviderInput, ProviderView } from './providers.ts'
+import type { ChatMessage, ConversationModel, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ScheduledTask } from './task.ts'
 import type { TasksSnapshot } from './tasks-snapshot.ts'
 import type { ThinkingLevel } from './thinking.ts'
 import type { UsageTotals } from './usage.ts'
 
-export interface CustomProviderInput {
+/** A model as the models panel sends it, before the boundary reads the fields one by one. */
+export interface ProviderModelInput {
   id: string
   name: string
-  api: string
-  baseUrl: string
-  models: ProviderModelDefinition[]
+  contextWindow: number
+  maxTokens: number
+  reasoning: boolean
 }
+
+/** Which model new conversations start on. Absent clears the choice, so the first model wins. */
+export type DefaultModelInput = Undef<ConversationModel>
 
 import type { RuleScope } from './permission.ts'
 import type { WorkspaceRef, WorkspaceSelection } from './workspace.ts'
@@ -44,11 +49,11 @@ export const IPC = {
   abortRun: 'alpha:abort-run',
   runtimeEvent: 'alpha:runtime-event',
   providersSnapshot: 'alpha:providers-snapshot',
-  saveCatalogProvider: 'alpha:save-catalog-provider',
-  saveCustomProvider: 'alpha:save-custom-provider',
+  saveProvider: 'alpha:save-provider',
+  saveProviderModels: 'alpha:save-provider-models',
+  setDefaultModel: 'alpha:set-default-model',
   removeProvider: 'alpha:remove-provider',
   setCredential: 'alpha:set-credential',
-  providerModels: 'alpha:provider-models',
   testProvider: 'alpha:test-provider',
   setConversationModel: 'alpha:set-conversation-model',
   setThinkingLevel: 'alpha:set-thinking-level',
@@ -135,7 +140,8 @@ export interface OpenedConversation {
 export interface ProvidersSnapshotMessage {
   providers: ProviderView[]
   protection: 'os' | 'plaintext'
-  catalog: { id: string; name: string; api: string; baseUrl: string; keyHint: string }[]
+  /** What new conversations start on. Absent means the first model of the first provider. */
+  defaultModel?: ConversationModel
 }
 
 /** Browser access as the settings page shows it: what is stored, and what the server makes of it. */
@@ -198,12 +204,13 @@ export interface AlphaBridge {
   onRuntimeEvent(listener: (event: RuntimeEvent) => void): () => void
 
   providers(): Promise<ProvidersSnapshotMessage>
-  saveCatalogProvider(id: string): Promise<unknown>
-  saveCustomProvider(input: CustomProviderInput): Promise<unknown>
+  /** A connection: protocol, base url, name. Its models are a separate call and a separate panel. */
+  saveProvider(input: ProviderInput): Promise<ProvidersSnapshotMessage>
+  saveProviderModels(id: string, models: ProviderModelInput[]): Promise<ProvidersSnapshotMessage>
+  setDefaultModel(chosen: DefaultModelInput): Promise<ProvidersSnapshotMessage>
   removeProvider(id: string): Promise<ProvidersSnapshotMessage>
   /** The one direction a credential travels: towards the main process. */
   setCredential(id: string, secret: string): Promise<ProvidersSnapshotMessage>
-  providerModels(id: string): Promise<ProviderModelDefinition[]>
   testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
   setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary>
   setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary>

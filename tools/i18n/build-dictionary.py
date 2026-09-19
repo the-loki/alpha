@@ -40,7 +40,8 @@ export function isLanguageSetting(value: unknown): value is LanguageSetting {
 export type TextParams = Record<string, string | number>
 '''
 
-FOOTER = '''import { EN } from './i18n/en.ts'
+FOOTER = '''
+import { EN } from './i18n/en.ts'
 import { ZH } from './i18n/zh.ts'
 
 export type TextKey = keyof typeof EN
@@ -378,8 +379,13 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.tabBrowserAccess', 'Browser access', '浏览器访问'),
     (
         'settings.providersNote',
-        'Where the models come from. Keys are held in the OS keychain and never leave this process.',
-        '模型从哪来。密钥存在系统钥匙串里，不离开这个进程。',
+        'Where the workbench may reach, and with which key. Keys are held in the OS keychain and never leave this process.',
+        '工作台能连到哪里、用哪把密钥。密钥存在系统钥匙串里，不离开这个进程。',
+    ),
+    (
+        'settings.modelsNote',
+        "Which model new conversations start on, and which models each connection serves. The limits are the ones the provider documents; only a model listed here appears in a conversation's picker.",
+        '新会话默认用哪个模型，以及每个连接提供哪些模型。限额按供应商文档填写；只有列在这里的模型，才会出现在会话的模型选择里。',
     ),
     ('settings.permissionsNote', 'What the agent may do on its own, and what it has to ask about.', 'agent 可以自己做什么，什么必须先问。'),
     ('settings.appearanceNote', 'Which palette the workbench is drawn in, and in which colour.', '工作台用哪套调色板、哪种颜色。'),
@@ -397,11 +403,29 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.replaceToken', 'Replace', '更换'),
     ('settings.tokenMinted', 'minted when you switch it on', '打开时生成'),
 
-    ('settings.providers', 'Model providers', '模型供应商'),
     (
         'settings.providersBody',
-        'Alpha ships no keys. A provider you add here is the only thing it can talk to, and its key is stored on this machine alone.',
-        'Alpha 不内置任何密钥。你在这里加的供应商是它唯一能对话的对象，密钥只存在这台机器上。',
+        'A connection, and nothing else: where it is, which of the three protocols it speaks, and the key that goes with it. Alpha ships no hosts of its own, so every provider here is one you described.',
+        '这里只管连接本身：地址、三种协议中的哪一种、以及配套的密钥。Alpha 不内置任何主机，所以每个供应商都是你自己写的。',
+    ),
+    ('settings.addProvider', 'Add a provider', '添加供应商'),
+    ('settings.apiOpenai', 'OpenAI Chat Completions', 'OpenAI Chat Completions'),
+    ('settings.apiAnthropic', 'Anthropic Messages', 'Anthropic Messages'),
+    ('settings.apiGoogle', 'Google Generative AI', 'Google Generative AI'),
+    (
+        'settings.apiOpenaiNote',
+        'OpenAI itself, and the many endpoints that copy it: most gateways, and anything running locally. This is the one to try first.',
+        'OpenAI 本身，以及大量照抄它的端点：多数网关、本地推理服务都属此类。不确定时先选这个。',
+    ),
+    (
+        'settings.apiAnthropicNote',
+        'The Claude API, and the proxies that speak it.',
+        'Claude 的 API，以及兼容它的代理。',
+    ),
+    (
+        'settings.apiGoogleNote',
+        "Gemini's own API: the base url is the gateway root, not a /v1 path.",
+        'Gemini 自己的 API：base url 填网关根地址，不是 /v1 路径。',
     ),
     (
         'settings.noKeychain',
@@ -418,17 +442,24 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.saveKey', 'Save key', '保存密钥'),
     ('settings.test', 'Test', '测试'),
     ('settings.removeProvider', 'Delete', '删除'),
-    ('settings.catalog', 'Add a provider from the catalog', '从目录里添加供应商'),
-    ('settings.addKnown', 'Add a known provider…', '添加已知供应商…'),
-    ('settings.add', 'Add', '添加'),
-    ('settings.customEndpoint', 'Custom endpoint', '自定义端点'),
     ('settings.fieldId', 'Id', 'Id'),
     ('settings.fieldName', 'Name', '名称'),
     ('settings.fieldBaseUrl', 'Base URL', 'Base URL'),
     ('settings.fieldIdPlaceholder', 'my-endpoint', 'my-endpoint'),
     ('settings.fieldNamePlaceholder', 'My endpoint', '我的端点'),
     ('settings.fieldBaseUrlPlaceholder', 'the provider base url', '供应商的 base url'),
-    ('settings.addCustom', 'Add custom provider', '添加自定义供应商'),
+    ('settings.tabModels', 'Models', '模型'),
+    ('settings.modelsNoProviders', 'Add a provider first, on the Providers panel.', '先在"供应商"页添加一个供应商。'),
+    ('settings.noModels', 'No models yet. Add the ones this provider serves.', '还没有模型。把这个供应商提供的模型加进来。'),
+    ('settings.defaultModel', 'New conversations start on', '新会话默认使用'),
+    ('settings.defaultModelAuto', 'The first model there is', '第一个可用的模型'),
+    (
+        'settings.defaultModelNote',
+        'Falls back to the first model of the first provider that has one. A conversation can change its own model from the header at any time.',
+        '没选时用第一个有模型的供应商的第一个模型。单个会话随时可以在顶部换自己的模型。',
+    ),
+    ('settings.saveModels', 'Save models', '保存模型'),
+    ('settings.reset', 'Reset', '重置'),
     ('settings.reasoning', 'Thinks before answering', '回答前先思考'),
     ('settings.addModel', 'Add model', '添加模型'),
     ('settings.removeModel', 'Remove', '移除'),
@@ -437,8 +468,8 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.defaultLevel', 'Default permission level', '默认权限级别'),
     (
         'settings.defaultLevelNote',
-        'New conversations in this workspace start here. An open conversation keeps its own level — change that from the chip in the header.',
-        '这个目录里的新会话从这里开始。已打开的会话保留它自己的级别——在顶部的级别标签里改。',
+        'New conversations in this workspace start here. An open conversation keeps its own level — change that at the foot of its composer.',
+        '这个目录里的新会话从这里开始。已打开的会话保留它自己的级别——在它输入框底部改。',
     ),
     ('settings.remembered', 'Remembered approvals', '记住的批准'),
     (
@@ -479,12 +510,36 @@ ENTRIES: list[tuple[str, str, str]] = [
 ]
 
 
+def quoted(value: str) -> str:
+    """A line of copy as a TypeScript string literal, in whichever quote costs nothing.
+
+    Copy is prose: it contains "don't", "the model's own name", and the occasional backslash. Picked
+    per line so the generated file is what the formatter would have written — the alternative is a
+    file that fails `pnpm check` until somebody runs the formatter over generated code.
+    """
+    if '\\' not in value and "'" not in value:
+        return f"'{value}'"
+    if '\\' not in value and '"' not in value:
+        return f'"{value}"'
+    escaped = value.replace('\\', '\\\\').replace("'", "\\'")
+    return f"'{escaped}'"
+
+
+def display_width(text: str) -> int:
+    """How many columns a line takes, which is what the formatter measures.
+
+    A Chinese character is two columns wide, so a line that is 118 characters of Chinese is not
+    the 118-column line an English one is, and the formatter wraps it.
+    """
+    return sum(2 if ord(character) > 0x2E80 else 1 for character in text)
+
+
 def entry(key: str, value: str, indent: str = '  ') -> str:
     """One line, wrapping long prose the way the formatter would."""
-    single = f"{indent}'{key}': '{value}',"
-    if len(single) <= 120:
+    single = f"{indent}{quoted(key)}: {quoted(value)},"
+    if display_width(single) <= 120:
         return single
-    return f"{indent}'{key}':\n{indent}  '{value}',"
+    return f"{indent}{quoted(key)}:\n{indent}  {quoted(value)},"
 
 
 EN_HEADER = """/**

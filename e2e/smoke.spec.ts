@@ -122,8 +122,9 @@ test('settings is a menu of panels, one at a time, each with its address', async
   await window.getByRole('link', { name: 'Settings' }).click()
 
   // Providers is where Settings lands, because that is what a person comes here to change, and
-  // it is the panel the providers suite drives.
-  await expect(window.getByRole('heading', { name: 'Model providers' })).toBeVisible()
+  // it is the panel the providers suite drives. The form is the marker: the panel's name is in the
+  // band above, where a heading would only repeat it.
+  await expect(window.getByRole('group', { name: 'Add a provider' })).toBeVisible()
   await expect(window.getByRole('heading', { name: 'Default permission level' })).toHaveCount(0)
 
   await window.getByRole('link', { name: 'Permissions' }).click()
@@ -132,7 +133,7 @@ test('settings is a menu of panels, one at a time, each with its address', async
   await expect(window.getByRole('heading', { name: 'Default permission level' })).toBeVisible()
   await expect(window.getByRole('heading', { name: 'Remembered approvals' })).toBeVisible()
   // One at a time: the panel that was showing is gone, not scrolled past.
-  await expect(window.getByRole('heading', { name: 'Model providers' })).toHaveCount(0)
+  await expect(window.getByRole('group', { name: 'Add a provider' })).toHaveCount(0)
   expect(new URL(window.url()).hash).toContain('tab=permissions')
 
   // The menu says where you are, with more than the heading: the panel you are on is raised.

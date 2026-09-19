@@ -6,8 +6,11 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  type ConversationModel,
+  defaultModelOf,
   emptyProviderIndex,
   type ProviderIndex,
+  type ProviderModelDefinition,
   type ProviderView,
   parseProviders,
   type StoredProvider,
@@ -41,12 +44,30 @@ export class ProviderStore {
 
   save(provider: StoredProvider): void {
     const others = this.#index.providers.filter((existing) => existing.id !== provider.id)
-    this.#index = { version: 1, providers: [...others, provider] }
+    this.#index = { ...this.#index, providers: [...others, provider] }
+    this.#flush()
+  }
+
+  /** The model list of one provider, which is the models panel's whole job. */
+  saveModels(id: string, models: ProviderModelDefinition[]): void {
+    const provider = this.find(id)
+    if (provider === undefined) throw new Error(`No provider ${id}`)
+    // The chosen default is not touched: it is checked where it is read, so a model that goes
+    // away cannot leave the workbench pointing at nothing (defaultModelOf).
+    this.save({ ...provider, models })
+  }
+
+  defaultModel(): Undef<ConversationModel> {
+    return defaultModelOf(this.#index)
+  }
+
+  setDefaultModel(chosen: Undef<ConversationModel>): void {
+    this.#index = { ...this.#index, defaultModel: chosen }
     this.#flush()
   }
 
   remove(id: string): void {
-    this.#index = { version: 1, providers: this.#index.providers.filter((provider) => provider.id !== id) }
+    this.#index = { ...this.#index, providers: this.#index.providers.filter((provider) => provider.id !== id) }
     this.#flush()
     this.#vault.remove(id)
   }

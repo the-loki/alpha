@@ -8,7 +8,7 @@ import {
   thinkingKey,
   totalUsage,
 } from '@alpha/core'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useProviders } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
@@ -66,14 +66,6 @@ export function ConversationHeader() {
   const setModel = useConversations((state) => state.setModel)
   const setThinkingLevel = useConversations((state) => state.setThinkingLevel)
   const snapshot = useProviders((state) => state.snapshot)
-  const models = useProviders((state) => state.models)
-  const loadModels = useProviders((state) => state.loadModels)
-
-  useEffect(() => {
-    for (const provider of snapshot.providers) {
-      if (models[provider.id] === undefined) void loadModels(provider.id)
-    }
-  }, [snapshot.providers, models, loadModels])
 
   if (summary === undefined) return null
   const chosen = `${summary.model.providerId}::${summary.model.modelId}`
@@ -110,7 +102,7 @@ export function ConversationHeader() {
           {snapshot.providers.length === 0 && <option value="">{t('header.noProvider')}</option>}
           {snapshot.providers.map((provider) => (
             <optgroup key={provider.id} label={provider.name}>
-              {(models[provider.id] ?? []).map((model) => (
+              {provider.models.map((model) => (
                 <option key={model.id} value={`${provider.id}::${model.id}`}>
                   {model.name}
                 </option>
