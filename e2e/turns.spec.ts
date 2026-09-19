@@ -26,7 +26,7 @@ async function launch(
   )
 
   const app = await electron.launch({
-    args: [REPO_ROOT],
+    args: [REPO_ROOT, `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,

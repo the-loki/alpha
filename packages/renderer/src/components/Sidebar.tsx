@@ -22,6 +22,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(conversation.title)
   const state = STATE[conversation.status]
+  const age = formatAge(conversation.updatedAt, Date.now())
 
   if (renaming) {
     return (
@@ -58,11 +59,11 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${state.dot}`} aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate text-code">{conversation.title}</span>
-        <span className="shrink-0 font-mono text-micro text-parchment-faint group-hover:hidden">
-          {formatAge(conversation.updatedAt, Date.now())}
-        </span>
         <span className="sr-only">{state.word}</span>
       </button>
+      {/* The age is the row's metadata, not part of what the button is: inside it, it would read
+          as part of the conversation's name and bury it under "just now". */}
+      <span className="shrink-0 font-mono text-micro text-parchment-faint group-hover:hidden">{age}</span>
       <button
         type="button"
         aria-label={`Rename ${conversation.title}`}
