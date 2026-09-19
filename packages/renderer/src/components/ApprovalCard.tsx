@@ -89,13 +89,15 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           </select>
         </div>
 
+        {/* A reason is a sentence, not a column: it takes a share of the row and then stops,
+            and the space it leaves is what keeps Deny next to the decision it belongs to. */}
         <input
           ref={field}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           aria-label="Reason for denying"
           placeholder="Reason (optional)"
-          className="min-w-40 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 font-mono text-code text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          className="min-w-40 max-w-80 flex-1 rounded-control border border-line bg-ink-900 px-2.5 py-1 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
         <button

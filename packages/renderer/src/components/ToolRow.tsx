@@ -54,7 +54,7 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left"
+        className="flex w-full items-center gap-2 px-3 py-1.5 text-left"
       >
         <span className={`font-mono text-micro ${TONE[block.status]}`} title={riskLabel(block.risk)}>
           {GLYPH[block.risk]}
@@ -93,7 +93,7 @@ export function ToolRow({ block }: { block: ChatBlockTool }) {
                 <p className="font-mono text-micro uppercase tracking-wider text-parchment-faint">
                   Output{block.details?.exitCode === undefined ? '' : ` · exit ${block.details.exitCode}`}
                 </p>
-                <CopyButton what={`the output of ${block.name}`} text={block.output} label="copy output" />
+                <CopyButton what={`the output of ${block.name}`} text={block.output} label="Copy output" />
               </div>
               <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
                 {block.output}

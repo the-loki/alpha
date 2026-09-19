@@ -366,6 +366,29 @@ export const RULES = [
   },
 
   {
+    id: '05-design:control-voice',
+    constraint: '05-design.md',
+    description: 'a control is set in sans; mono is the voice of data',
+    // The rule is about the button's own className, not about everything inside it: a mono span
+    // inside a button is data the button carries (a path, a count), and that is the distinction
+    // the design draws. The whole tag is read at once because a className is allowed to wrap.
+    check({ path, text }) {
+      if (!path.startsWith('packages/renderer/')) return []
+      if (!/\.tsx$/.test(path)) return []
+      const found = []
+      for (const tag of text.matchAll(/<button\b[^>]*>/gs)) {
+        if (!/font-mono/.test(tag[0])) continue
+        found.push({
+          line: text.slice(0, tag.index).split('\n').length,
+          message: 'a button set in mono: actions are sans, and mono is reserved for data',
+          text: tag[0].split('\n')[0].trim(),
+        })
+      }
+      return found
+    },
+  },
+
+  {
     id: '02-architecture:contract-channels',
     constraint: '02-architecture.md',
     description: 'the contract, the handlers and the bridge agree',

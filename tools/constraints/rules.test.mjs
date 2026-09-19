@@ -72,6 +72,49 @@ describe('05-design:no-px-lengths', () => {
   })
 })
 
+describe('05-design:control-voice', () => {
+  const rule = '05-design:control-voice'
+
+  it('flags a button that sets itself in mono, however the className is wrapped', () => {
+    const oneLine = violationsFor(
+      rule,
+      file('packages/renderer/src/a.tsx', '<button className="font-mono text-micro">copy</button>'),
+    )
+    expect(oneLine).toHaveLength(1)
+
+    const wrapped = violationsFor(
+      rule,
+      file(
+        'packages/renderer/src/a.tsx',
+        ['<button', '  type="button"', '  className="font-mono text-micro"', '>'].join('\n'),
+      ),
+    )
+    expect(wrapped).toHaveLength(1)
+    expect(wrapped[0].line).toBe(1)
+  })
+
+  it('allows a button whose data is mono, and mono that is not a button', () => {
+    const data = violationsFor(
+      rule,
+      file(
+        'packages/renderer/src/a.tsx',
+        '<button className="text-xs text-parchment"><span className="font-mono">Ctrl+N</span></button>',
+      ),
+    )
+    expect(data).toEqual([])
+
+    const notAButton = violationsFor(
+      rule,
+      file('packages/renderer/src/a.tsx', '<span className="font-mono text-micro">/dev/alpha</span>'),
+    )
+    expect(notAButton).toEqual([])
+  })
+
+  it('says nothing about the main process', () => {
+    expect(violationsFor(rule, file('packages/main/src/a.tsx', '<button className="font-mono">x</button>'))).toEqual([])
+  })
+})
+
 describe('01-typescript:no-null-union', () => {
   const rule = '01-typescript:no-null-union'
 

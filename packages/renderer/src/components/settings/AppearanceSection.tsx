@@ -1,5 +1,6 @@
 import { ACCENTS, type Accent, THEMES, type Theme } from '@alpha/core'
 import { useShell } from '../../stores/shell.ts'
+import { CheckIcon } from '../icons.tsx'
 
 const THEME_LABELS: Record<Theme, string> = { system: 'Follow the system', dark: 'Dark', light: 'Light' }
 
@@ -25,7 +26,7 @@ export function AppearanceSection() {
           Light is what a new workbench opens on. The dark palette is its own set of colours rather than an inversion,
           and following the system switches between the two as the machine does.
         </p>
-        <div className="mt-3 flex gap-1.5">
+        <div className="mt-3 flex gap-2">
           {THEMES.map((candidate) => (
             <button
               key={candidate}
@@ -38,6 +39,7 @@ export function AppearanceSection() {
                   : 'border-line text-parchment-dim hover:bg-ink-600'
               }`}
             >
+              {candidate === theme && <CheckIcon />}
               {THEME_LABELS[candidate]}
             </button>
           ))}
@@ -59,7 +61,7 @@ export function AppearanceSection() {
               onClick={() => void setAppearance({ accent: candidate })}
               className={`flex items-center gap-2 rounded-control border py-1.5 pr-3 pl-2 text-xs transition-colors ${
                 candidate === accent
-                  ? 'border-line-strong text-parchment'
+                  ? 'border-line-strong bg-ink-600 font-medium text-parchment'
                   : 'border-line text-parchment-dim hover:bg-ink-600'
               }`}
             >

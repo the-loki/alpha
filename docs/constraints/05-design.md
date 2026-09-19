@@ -83,11 +83,19 @@ own scale.
 | UI labels, buttons, panel headings, sidebar labels | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 |
 | Conversation titles in the sidebar | JetBrains Mono | `text-code` | 0.78125rem / 1.55 |
 | Metadata, chips | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 |
+| Actions that are words: Copy, Rename, Export, Delete | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 |
 | Code, tool output, diffs, inline code | JetBrains Mono | `text-code` | 0.78125rem / 1.55 |
 | Mono metadata: paths, counts, editable fields | JetBrains Mono | `text-xs` | 0.75rem / 1.3 |
-| Micro-labels: block markers, status words, action links | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase, tracking wider |
+| Micro-labels: block markers, status words, shortcuts | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase, tracking wider |
 
 Both families are bundled with the app; there is no runtime font fetch.
+
+**Two voices, never swapped.** Sans speaks: every control, every label, every sentence. Mono
+measures: paths, counts, tokens, shortcuts, identifiers, code. So an action is set in sans
+wherever it appears — as a word under a message, a row in the sidebar, or a button in a toolbar —
+and mono inside a button is data the button is carrying (the shortcut it answers to), not the
+button's own voice. `05-design:control-voice` fails `pnpm check` on a `<button>` whose own
+className says `font-mono`.
 
 The token carries the leading for its role; a paragraph of UI text that wraps anyway (empty
 states, the sentence under a control) may add `leading-relaxed` on top of it.
@@ -100,9 +108,17 @@ and the user's bubble — the assistant's prose is the one thing that reads wors
 ## C5.4 — Space and shape
 
 A 0.25rem base scale, used as `1, 2, 3, 4, 6, 8, 12` (Tailwind's `p-1`…`p-12`). Radii:
-`0.375rem` for controls, `0.625rem` for cards and the composer, `0.875rem` for overlays. Borders
-are 1px hairlines; there are no drop shadows except on overlays and the composer's focused state
-(a 1px ember ring plus a soft warm bloom).
+`0.375rem` for controls, `0.75rem` for cards, `1rem` for the content surface and overlays.
+Borders are 1px hairlines. Shadows are for things that float over other things — overlays, and
+the content card itself, which carries `shadow-card` (weaker on the light palette, where the page
+is the lighter of the two surfaces). The composer's focused state is a 1px border change, not a
+bloom.
+
+**The rail's columns.** Every row in the sidebar is built on three x-positions, so a list of
+folders and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder,
+the icon of an action row), the second column at 1.75rem (a folder's glyph, a conversation's
+status dot, centred in its own 1rem box), and the third at 3.25rem (the name). A row that puts a
+name anywhere else is the thing that makes a rail look hand-assembled.
 
 **Lengths are rem, and the checker says so.** `05-design:no-px-lengths` fails `pnpm check` on any
 px length inside `packages/renderer/`, with exactly one exception: `1px` hairlines, which have to
@@ -127,7 +143,9 @@ removed:
 ## C5.6 — Motion
 
 150–220ms, `ease-out`, and only for: message arrival (6px rise, fade), tool row state change,
-overlay entry, and the ember cursor. Nothing animates on hover except colour and border.
+overlay entry, and the ember cursor. On hover, only two things change: colour and border — plus the
+one deliberate exception, a row's own actions fading in over the row (`opacity`, and `focus-within`
+reveals them for the keyboard as well, so nothing is hover-only). Nothing moves on hover.
 `prefers-reduced-motion: reduce` collapses every transition to 0ms and freezes the ember cursor.
 
 ## C5.7 — Accessibility floor
@@ -135,7 +153,9 @@ overlay entry, and the ember cursor. Nothing animates on hover except colour and
 Keyboard reachable: every control, including the approval buttons, with a visible 0.125rem ember focus
 ring that is never removed. The approval prompt takes focus when it appears and is operable with
 `Enter` (allow once) and `Escape` (deny). Colour is never the only carrier of meaning: each level
-chip pairs its colour with its name, and each tool status pairs its colour with a glyph.
+chip pairs its colour with its name, each tool status pairs its colour with a glyph, and a chosen
+option pairs its tint with a check mark (the state is also `aria-pressed` / `aria-current`, so a
+reader that cannot see either still has it).
 
 ## C5.8 — Copy
 

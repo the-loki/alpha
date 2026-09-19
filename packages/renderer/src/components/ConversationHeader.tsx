@@ -1,5 +1,6 @@
 import {
   folderName,
+  formatAge,
   formatCost,
   formatTokens,
   THINKING_LEVELS,
@@ -10,6 +11,11 @@ import {
 import { useEffect, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { useProviders } from '../stores/providers.ts'
+import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+
+/** The two choices in the header are controls, and they read as controls rather than as text. */
+const SELECT_CLASS =
+  'rounded-control border border-line bg-ink-800 px-2 py-1 text-xs text-parchment-dim transition-colors hover:text-parchment focus:border-line-strong focus:outline-none'
 
 /** What the session has spent. Cost is shown only when the model's own cost data is non-zero. */
 function UsageReadout() {
@@ -33,20 +39,12 @@ function ConversationActions() {
   const [written, setWritten] = useState('')
 
   return (
-    <span className="flex shrink-0 items-center gap-2">
+    <span className="flex shrink-0 items-center gap-3">
       {written !== '' && <span className="font-mono text-micro text-jade">Exported to {written}</span>}
-      <button
-        type="button"
-        onClick={() => void exportMarkdown(activeId).then(setWritten)}
-        className="font-mono text-micro text-parchment-faint transition-colors hover:text-parchment"
-      >
+      <button type="button" onClick={() => void exportMarkdown(activeId).then(setWritten)} className={TEXT_ACTION}>
         Export
       </button>
-      <button
-        type="button"
-        onClick={() => void remove(activeId)}
-        className="font-mono text-micro text-parchment-faint transition-colors hover:text-danger"
-      >
+      <button type="button" onClick={() => void remove(activeId)} className={DESTRUCTIVE_ACTION}>
         Delete
       </button>
     </span>
@@ -77,16 +75,23 @@ export function ConversationHeader() {
   return (
     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-8 py-2">
       {/* Which folder this conversation belongs to is part of what it is, now that several are in
-          play at once; the sidebar shows the same name. */}
+          play at once; the sidebar shows the same name. Its age is here rather than in the sidebar,
+          where the row belongs to the name. */}
       <span className="flex min-w-0 items-baseline gap-2">
         <h1 className="min-w-0 truncate text-ui font-medium text-parchment">{summary.title}</h1>
-        <span className="shrink-0 truncate font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
+        <span className="shrink-0 font-mono text-micro text-parchment-faint" title={summary.workspacePath}>
           {folderName(summary.workspacePath)}
         </span>
+        <span className="shrink-0 font-mono text-micro text-parchment-faint">
+          updated {formatAge(summary.updatedAt, Date.now())}
+        </span>
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-3">
         <UsageReadout />
         <ConversationActions />
+        {/* What this conversation is, and what it runs on: two groups, told apart by a rule rather
+            than by five controls of equal weight sitting in a row. */}
+        <span className="h-4 w-px bg-line" aria-hidden="true" />
         <select
           aria-label="Model"
           value={chosen}
@@ -94,7 +99,7 @@ export function ConversationHeader() {
             const [providerId, modelId] = event.target.value.split('::')
             void setModel(providerId, modelId)
           }}
-          className="max-w-[22rem] rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment-dim focus:border-line-strong focus:outline-none"
+          className={`max-w-[22rem] ${SELECT_CLASS}`}
         >
           {snapshot.providers.length === 0 && <option value="">No provider configured</option>}
           {snapshot.providers.map((provider) => (
@@ -112,7 +117,7 @@ export function ConversationHeader() {
           aria-label="Thinking effort"
           value={summary.thinkingLevel}
           onChange={(event) => void setThinkingLevel(event.target.value as ThinkingLevel)}
-          className="rounded-control border border-line bg-ink-700 px-2 py-1 text-xs text-parchment-dim focus:border-line-strong focus:outline-none"
+          className={SELECT_CLASS}
         >
           {THINKING_LEVELS.map((level) => (
             <option key={level} value={level}>

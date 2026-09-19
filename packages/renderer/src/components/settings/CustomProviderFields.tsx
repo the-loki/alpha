@@ -1,4 +1,5 @@
 import { type CustomProviderInput, PROVIDER_APIS, type ProviderApi } from '@alpha/core'
+import { DESTRUCTIVE_ACTION } from '../controls.ts'
 
 /** One model as the form holds it: every field is a string until the submit reads it. */
 export interface DraftModel {
@@ -121,9 +122,9 @@ export function ModelFields({ models, onChange }: { models: DraftModel[]; onChan
                 type="button"
                 aria-label={`Remove model ${index + 1}`}
                 onClick={() => onChange(models.filter((_, at) => at !== index))}
-                className="font-mono text-micro text-parchment-faint transition-colors hover:text-danger"
+                className={DESTRUCTIVE_ACTION}
               >
-                remove
+                Remove
               </button>
             )}
           </div>

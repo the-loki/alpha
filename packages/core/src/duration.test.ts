@@ -22,13 +22,13 @@ describe('[core] how long ago something was', () => {
   })
 
   it('counts minutes, then hours, then days', () => {
-    expect(formatAge(now - 5 * 60_000, now)).toBe('5m')
-    expect(formatAge(now - 3 * 3_600_000, now)).toBe('3h')
-    expect(formatAge(now - 2 * 86_400_000, now)).toBe('2d')
+    expect(formatAge(now - 5 * 60_000, now)).toBe('5m ago')
+    expect(formatAge(now - 3 * 3_600_000, now)).toBe('3h ago')
+    expect(formatAge(now - 2 * 86_400_000, now)).toBe('2d ago')
   })
 
   it('never counts backwards, whatever the clock says', () => {
-    // A file touched by a clock that is ahead of ours is "just now", not "-3m".
+    // A file touched by a clock that is ahead of ours is "just now", not "-3m ago".
     expect(formatAge(now + 60_000, now)).toBe('just now')
   })
 })

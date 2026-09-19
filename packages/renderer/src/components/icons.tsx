@@ -93,6 +93,13 @@ export const ChevronDownIcon = (props: IconProps) => (
   </Glyph>
 )
 
+/** The mark of the chosen one: a choice is not only a colour. */
+export const CheckIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <path d="M3.5 8.5 6.5 11.5 12.5 5" />
+  </Glyph>
+)
+
 export const ArrowLeftIcon = (props: IconProps) => (
   <Glyph {...props}>
     <path d="M12.5 8h-9M7 4.5 3.5 8 7 11.5" />

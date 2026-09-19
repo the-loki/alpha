@@ -37,14 +37,12 @@ export function BrowserAccessSection() {
 
   return (
     <section aria-label="Browser access">
-      <h2 className="text-body font-medium text-parchment">Browser access</h2>
-      <p className="mt-1 text-xs text-parchment-dim">
-        Serve this workbench to a browser on another device. Whoever holds the token can read every conversation and
-        answer every approval — it is a remote control for this machine, not a viewer.
-      </p>
+      {/* The panel's own heading says what this is; saying it again here would make the page read
+          as two versions of the same sentence. */}
       {host === 'browser' && (
-        <p className="mt-2 text-xs text-parchment-faint">
-          You are reading this in a browser: a browser cannot pick a folder, so use the recent list.
+        <p className="text-xs text-parchment-faint">
+          You are reading this in a browser, where the switch is the machine's to hold: a browser cannot add a folder
+          either.
         </p>
       )}
 

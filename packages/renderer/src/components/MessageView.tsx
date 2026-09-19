@@ -2,6 +2,7 @@ import { type ChatBlockCompaction, type ChatBlockThinking, type ChatMessage, for
 import { memo, useState } from 'react'
 import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { useConversations } from '../stores/conversations.ts'
+import { TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -109,21 +110,27 @@ export const MessageView = memo(function MessageView({
         {editing ? (
           <EditBox message={message} index={index} />
         ) : (
-          <div className="max-w-measure rounded-card border border-line bg-ink-700 px-3.5 py-2.5 text-body leading-[1.6] whitespace-pre-wrap text-parchment">
+          // Filled rather than outlined: the reader's own words are a block of the page, not a
+          // bordered panel, and the fill is what tells the two voices apart at a glance.
+          <div className="max-w-measure rounded-card bg-ink-800 px-3.5 py-2.5 text-body leading-[1.6] whitespace-pre-wrap text-parchment">
             {message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')}
           </div>
         )}
+        {/* One row of actions, whatever there is to do: stacked one per line they read as three
+            separate remarks under the message. */}
         {!editing && (
-          <CopyButton what="message" text={markdownOf(message.blocks)} className="group-hover:opacity-100" />
-        )}
-        {!editing && !running && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="font-mono text-micro text-parchment-faint opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-          >
-            Edit
-          </button>
+          <div className="flex items-center gap-3">
+            <CopyButton what="message" text={markdownOf(message.blocks)} className="group-hover:opacity-100" />
+            {!running && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${TEXT_ACTION}`}
+              >
+                Edit
+              </button>
+            )}
+          </div>
         )}
       </article>
     )
@@ -157,11 +164,7 @@ export const MessageView = memo(function MessageView({
           {/* Only the last answer can be regenerated: it re-runs the last question, so offering
               it under every answer would replace a different one than the reader is pointing at. */}
           {last && !streaming && !running && (
-            <button
-              type="button"
-              onClick={() => void regenerate()}
-              className="font-mono text-micro text-parchment-faint transition-colors hover:text-parchment"
-            >
+            <button type="button" onClick={() => void regenerate()} className={TEXT_ACTION}>
               Regenerate
             </button>
           )}
@@ -175,12 +178,12 @@ export const MessageView = memo(function MessageView({
 export function CopyButton({
   what,
   text,
-  label = 'copy',
+  label = 'Copy',
   className = '',
 }: {
   what: string
   text: string
-  /** What the button says, when "copy" alone would not say what it copies. */
+  /** What the button says, when "Copy" alone would not say what it copies. */
   label?: string
   className?: string
 }) {
@@ -193,11 +196,9 @@ export function CopyButton({
       onClick={() => {
         void copyText(text).then((ok) => setState(ok ? 'done' : 'failed'))
       }}
-      className={`font-mono text-micro text-parchment-faint transition-opacity transition-colors hover:text-parchment ${
-        state === 'done' ? 'text-jade' : ''
-      } ${state === 'failed' ? 'text-danger' : ''} ${className}`}
+      className={`${TEXT_ACTION} ${state === 'done' ? 'text-jade' : ''} ${state === 'failed' ? 'text-danger' : ''} ${className}`}
     >
-      {state === 'done' ? 'copied' : state === 'failed' ? 'copy failed' : label}
+      {state === 'done' ? 'Copied' : state === 'failed' ? 'Copy failed' : label}
     </button>
   )
 }

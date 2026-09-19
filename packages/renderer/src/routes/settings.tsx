@@ -35,6 +35,15 @@ const TAB_GROUPS: { label: string; tabs: SettingTab[] }[] = [
   { label: 'This app', tabs: ['appearance', 'browser-access'] },
 ]
 
+/** What each panel is about, said once at the top of it rather than inferred from its controls. */
+const TAB_NOTES: Record<SettingTab, string> = {
+  providers: 'Where the models come from. Keys are held in the OS keychain and never leave this process.',
+  permissions: 'What the agent may do on its own, and what it has to ask about.',
+  appearance: 'Which palette the workbench is drawn in, and in which colour.',
+  'browser-access':
+    'Serve this workbench to a browser on another device. Whoever holds the token can read every conversation and answer every approval — it is a remote control for this machine, not a viewer.',
+}
+
 /** What each panel holds. Providers is first because it is what a person comes here to change. */
 const PANELS: Record<SettingTab, ReactNode> = {
   providers: <ProvidersSection />,
@@ -91,7 +100,7 @@ function Settings() {
                     className={`flex items-center gap-2.5 rounded-control px-2 py-1.5 text-ui transition-colors ${
                       candidate === tab
                         ? 'bg-ink-600 font-medium text-parchment'
-                        : 'text-parchment-dim hover:bg-ink-600/60 hover:text-parchment'
+                        : 'text-parchment-dim hover:bg-ink-600 hover:text-parchment'
                     }`}
                   >
                     {TAB_ICONS[candidate]}
@@ -105,8 +114,16 @@ function Settings() {
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden py-2 pr-2">
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-card border border-line bg-ink-700 px-8 py-7">
-          <div className="mx-auto max-w-3xl space-y-8">{PANELS[tab]}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-overlay border border-line bg-ink-700 px-8 py-7 shadow-card">
+          <div className="mx-auto max-w-3xl space-y-8">
+            {/* The panel says what it is before it says anything else: the menu on the left names it
+                too, but a heading you had to click to reach is not a heading. */}
+            <header className="border-b border-line pb-4">
+              <h1 className="text-lg font-semibold text-parchment">{TAB_LABELS[tab]}</h1>
+              <p className="mt-1 text-xs text-parchment-dim">{TAB_NOTES[tab]}</p>
+            </header>
+            {PANELS[tab]}
+          </div>
         </div>
       </div>
     </div>

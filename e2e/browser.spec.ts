@@ -288,7 +288,7 @@ test('the served workbench has no window chrome, and says what a browser cannot 
     // The settings page carries the same switch, and says where the token lives.
     await page.goto(`${url}/#/settings?tab=browser-access`)
     await expect(page.getByRole('heading', { name: 'Browser access' })).toBeVisible()
-    await expect(page.getByText(/a browser cannot pick a folder/i)).toBeVisible()
+    await expect(page.getByText(/a browser cannot add a folder/i)).toBeVisible()
   } finally {
     await browser.close()
     await app.close()

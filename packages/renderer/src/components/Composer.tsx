@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useConversations } from '../stores/conversations.ts'
 import { composerFolderOf, useShell } from '../stores/shell.ts'
+import { DESTRUCTIVE_ACTION, OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 
 /** The messages behind the running turn, each with the way to take it back. */
@@ -24,7 +25,7 @@ function QueueStrip() {
             type="button"
             aria-label={`Cancel the queued message: ${item.text}`}
             onClick={() => void cancelQueued(item.entryId)}
-            className="shrink-0 font-mono text-micro text-parchment-faint transition-colors hover:text-danger"
+            className={`shrink-0 ${DESTRUCTIVE_ACTION}`}
           >
             Cancel
           </button>
@@ -33,13 +34,6 @@ function QueueStrip() {
     </ul>
   )
 }
-
-/**
- * The secondary actions are outlined, not filled: while a turn runs the accent belongs to the one
- * primary control, and a filled button that cannot be pressed reads as a button that can.
- */
-const SECONDARY =
-  'rounded-control border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-40'
 
 /**
  * While a turn is running the send control splits in three, because stopping, steering and
@@ -63,10 +57,10 @@ function RunningActions({
       >
         Stop
       </button>
-      <button type="button" onClick={() => onRedirect('queue')} disabled={!canRedirect} className={SECONDARY}>
+      <button type="button" onClick={() => onRedirect('queue')} disabled={!canRedirect} className={OUTLINED_ACTION}>
         Queue
       </button>
-      <button type="button" onClick={() => onRedirect('steer')} disabled={!canRedirect} className={SECONDARY}>
+      <button type="button" onClick={() => onRedirect('steer')} disabled={!canRedirect} className={OUTLINED_ACTION}>
         Steer
       </button>
     </div>
@@ -74,7 +68,29 @@ function RunningActions({
 }
 
 /**
- * The composer sends; everything about whether it *may* send is stated in the hint under it
+ * What the composer says under itself. It is the only line of explanation, so it says only what
+ * the box itself cannot: with no folder the placeholder has already said that, and repeating it
+ * here would be the same sentence twice.
+ */
+export function composerNote(state: {
+  hasFolder: boolean
+  modelDescription: string
+  modelConfigured: boolean
+  running: boolean
+  typed: boolean
+}): string {
+  if (!state.hasFolder) return ''
+  if (!state.modelConfigured) return `No model configured yet: ${state.modelDescription}`
+  if (state.running) {
+    return state.typed
+      ? 'Steer changes what it does next. Queue waits until this turn is done.'
+      : 'The agent is working. Escape stops it.'
+  }
+  return 'Enter sends, Shift+Enter starts a new line.'
+}
+
+/**
+ * The composer sends; everything about whether it *may* send is stated in the note under it
  * rather than left to a disabled button with no explanation.
  */
 export function Composer() {
@@ -97,6 +113,13 @@ export function Composer() {
 
   const hasWorkspace = composerFolder !== undefined
   const running = status === 'running'
+  const note = composerNote({
+    hasFolder: hasWorkspace,
+    modelConfigured: model.configured,
+    modelDescription: model.description,
+    running,
+    typed: text.trim() !== '',
+  })
   const writable = hasWorkspace && model.configured && text.trim() !== ''
   const canSend = writable && !running
   const canRedirect = writable && running
@@ -130,22 +153,11 @@ export function Composer() {
     await (how === 'steer' ? steer(message) : queueMessage(message))
   }
 
-  const hint = () => {
-    if (!hasWorkspace) return 'A folder is what the agent works in. Add one from the sidebar.'
-    if (!model.configured) return `No model configured yet: ${model.description}`
-    if (running) {
-      return text.trim() === ''
-        ? 'The agent is working. Escape stops it.'
-        : 'Steer changes what it does next. Queue waits until this turn is done.'
-    }
-    return 'Enter sends, Shift+Enter starts a new line.'
-  }
-
   return (
-    <div className="shrink-0 px-6 pt-2 pb-5">
+    <div className="shrink-0 px-8 pt-2 pb-5">
       <div>
         <QueueStrip />
-        <div className="rounded-card border border-line bg-ink-800 px-3.5 py-2.5 transition-colors focus-within:border-line-strong">
+        <div className="flex items-end gap-3 rounded-card border border-line bg-ink-800 px-3.5 py-2.5 transition-colors focus-within:border-line-strong">
           <textarea
             ref={field}
             rows={2}
@@ -164,29 +176,31 @@ export function Composer() {
                 void redirect('queue')
               }
             }}
-            className="block w-full resize-none bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
+            className="block min-w-0 flex-1 resize-none bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
           />
-          <div className="mt-1.5 flex items-center justify-between gap-4">
-            <span className="min-w-0 truncate text-micro text-parchment-faint">{hint()}</span>
-            {running ? (
-              <RunningActions
-                canRedirect={canRedirect}
-                onStop={() => void stop()}
-                onRedirect={(how) => void redirect(how)}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => void send()}
-                disabled={!canSend}
-                aria-label="Send"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-30"
-              >
-                <ArrowUpIcon />
-              </button>
-            )}
-          </div>
+          {/* Beside the words rather than under them: the control the message goes through belongs
+              on the same line as the message, and the box stays as tall as what is typed. */}
+          {running ? (
+            <RunningActions
+              canRedirect={canRedirect}
+              onStop={() => void stop()}
+              onRedirect={(how) => void redirect(how)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={!canSend}
+              aria-label="Send"
+              // The accent means "this does something". A disabled send wears the quiet surface
+              // instead, so the ember in the corner always means a message can go.
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
+            >
+              <ArrowUpIcon />
+            </button>
+          )}
         </div>
+        {note !== '' && <p className="mt-1.5 px-1 text-micro text-parchment-faint">{note}</p>}
       </div>
     </div>
   )

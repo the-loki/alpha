@@ -50,7 +50,7 @@ function RootLayout() {
       <div className="flex min-h-0 flex-1 gap-2 px-2 pb-2">
         {!inSettings && <Sidebar onSearch={openPalette} />}
         <main className="min-w-0 flex-1">
-          <div className="flex h-full flex-col overflow-hidden rounded-overlay border border-line bg-ink-700">
+          <div className="flex h-full flex-col overflow-hidden rounded-overlay border border-line bg-ink-700 shadow-card">
             <Outlet />
           </div>
         </main>

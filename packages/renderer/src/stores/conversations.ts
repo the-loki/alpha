@@ -16,6 +16,8 @@ import { bridge } from '../lib/bridge.ts'
 
 export interface ConversationStore {
   list: ConversationSummary[]
+  /** Whether the list has been read once: "no conversations" and "not read yet" look the same. */
+  listed: boolean
   activeId: string
   transcript: TranscriptState
   loadList: () => Promise<void>
@@ -54,11 +56,12 @@ const listWithUpdated = (list: ConversationSummary[], updated: ConversationSumma
 
 export const useConversations = create<ConversationStore>((set, get) => ({
   list: [],
+  listed: false,
   activeId: '',
   transcript: emptyTranscript(''),
   composerFocus: 0,
 
-  loadList: async () => set({ list: await bridge().listConversations() }),
+  loadList: async () => set({ list: await bridge().listConversations(), listed: true }),
 
   // Forgetting the open conversation is what makes the next message a new one: without it the
   // pane kept the old transcript and the composer went on talking to the old conversation.
