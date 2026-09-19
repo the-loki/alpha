@@ -25,9 +25,13 @@ export function ProvidersSection() {
       )}
 
       {snapshot.providers.length === 0 ? (
-        <p className="text-code text-parchment-faint">{t('settings.noProviders')}</p>
+        // The empty state is a sentence in the panel's own voice, not a bare line: it says what
+        // the list is empty of and points at the form under it, which is the next action.
+        <p className="mt-4 rounded-card border border-dashed border-line px-3 py-3 text-xs leading-relaxed text-parchment-faint">
+          {t('settings.noProviders')}
+        </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="mt-4 space-y-3">
           {snapshot.providers.map((provider) => (
             <ProviderCard key={provider.id} provider={provider} />
           ))}

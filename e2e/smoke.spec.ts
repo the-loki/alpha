@@ -124,7 +124,7 @@ test('settings is a menu of panels, one at a time, each with its address', async
   // Providers is where Settings lands, because that is what a person comes here to change, and
   // it is the panel the providers suite drives. The form is the marker: the panel's name is in the
   // band above, where a heading would only repeat it.
-  await expect(window.getByRole('group', { name: 'Add a provider' })).toBeVisible()
+  await expect(window.getByRole('region', { name: 'Add a provider' })).toBeVisible()
   await expect(window.getByRole('heading', { name: 'Default permission level' })).toHaveCount(0)
 
   await window.getByRole('link', { name: 'Permissions' }).click()

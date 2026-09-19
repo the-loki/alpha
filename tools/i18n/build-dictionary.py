@@ -131,8 +131,10 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('tasks.levelFull', 'It will do anything while nobody is watching.', '它会在你不在的时候做任何事。'),
     ('tasks.openRun', 'Open the conversation from {when}', '打开 {when} 那次运行的会话'),
     ('tasks.open', 'Open', '打开'),
-    ('tasks.minutes', 'Every so many minutes', '每隔几分钟'),
-    ('tasks.time', 'Every day at a time', '每天某个时刻'),
+    # The two field labels beside the schedule's inputs: short, because the pill to their left
+    # already carries the sentence.
+    ('tasks.minutes', 'Minutes', '分钟数'),
+    ('tasks.time', 'At', '于'),
     ('tasks.kindEvery', 'Interval', '间隔'),
     ('tasks.kindDaily', 'Daily', '每天'),
     ('settings.open', 'Settings', '设置'),

@@ -133,47 +133,61 @@ export function TaskForm({
   const schedule: TaskSchedule = form.schedule ?? DEFAULT_SCHEDULE
   const ready = (form.name ?? '').trim() !== '' && (form.prompt ?? '').trim() !== '' && form.workspacePath !== ''
 
+  // Three groups, separated by the rules the rest of the app separates with: what the task asks,
+  // where and at what level it runs, and when. Five fields of the same size in one block read as
+  // a list; the rules are what make it a form with a shape.
   return (
     <section aria-label={t('tasks.new')} className="mt-5 rounded-card border border-line bg-ink-800 p-4">
-      <div className="grid gap-3">
-        <label>
-          <span className={LABEL}>{t('tasks.name')}</span>
-          <input
-            value={form.name ?? ''}
-            onChange={(event) => onChange({ name: event.target.value })}
-            className={`mt-1 ${FIELD}`}
+      <div className="grid gap-4 divide-y divide-line [&>*]:pt-4 first:[&>*]:pt-0">
+        <div className="grid gap-3">
+          <label>
+            <span className={LABEL}>{t('tasks.name')}</span>
+            <input
+              value={form.name ?? ''}
+              onChange={(event) => onChange({ name: event.target.value })}
+              className={`mt-1 ${FIELD}`}
+            />
+            <span className="mt-1 block text-micro leading-relaxed text-parchment-faint">{t('tasks.nameHint')}</span>
+          </label>
+
+          <label>
+            <span className={LABEL}>{t('tasks.prompt')}</span>
+            <textarea
+              rows={3}
+              value={form.prompt ?? ''}
+              onChange={(event) => onChange({ prompt: event.target.value })}
+              className={`mt-1 ${FIELD}`}
+            />
+            <span className="mt-1 block text-micro leading-relaxed text-parchment-faint">{t('tasks.promptHint')}</span>
+          </label>
+        </div>
+
+        <div className="grid gap-3">
+          <label>
+            <span className={LABEL}>{t('tasks.folder')}</span>
+            <select
+              value={form.workspacePath ?? ''}
+              onChange={(event) => onChange({ workspacePath: event.target.value })}
+              className={`mt-1 ${FIELD}`}
+            >
+              {folders.map((folder) => (
+                <option key={folder.path} value={folder.path}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <LevelField
+            level={form.permissionLevel ?? 'ask'}
+            onChange={(level) => onChange({ permissionLevel: level })}
           />
-          <span className="mt-1 block text-micro text-parchment-faint">{t('tasks.nameHint')}</span>
-        </label>
-
-        <label>
-          <span className={LABEL}>{t('tasks.prompt')}</span>
-          <textarea
-            rows={3}
-            value={form.prompt ?? ''}
-            onChange={(event) => onChange({ prompt: event.target.value })}
-            className={`mt-1 ${FIELD}`}
-          />
-          <span className="mt-1 block text-micro text-parchment-faint">{t('tasks.promptHint')}</span>
-        </label>
-
-        <label>
-          <span className={LABEL}>{t('tasks.folder')}</span>
-          <select
-            value={form.workspacePath ?? ''}
-            onChange={(event) => onChange({ workspacePath: event.target.value })}
-            className={`mt-1 ${FIELD}`}
-          >
-            {folders.map((folder) => (
-              <option key={folder.path} value={folder.path}>
-                {folder.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <LevelField level={form.permissionLevel ?? 'ask'} onChange={(level) => onChange({ permissionLevel: level })} />
-        {note !== undefined && <p className="text-micro text-amber">{note}</p>}
+          {note !== undefined && (
+            <p className="rounded-control border border-amber/30 bg-amber/10 px-3 py-2 text-micro leading-relaxed text-amber">
+              {note}
+            </p>
+          )}
+        </div>
 
         <div>
           <span className={LABEL}>{t('tasks.schedule')}</span>
@@ -183,12 +197,13 @@ export function TaskForm({
         </div>
       </div>
 
-      <div className="mt-4 flex gap-3">
-        <button type="button" disabled={!ready} onClick={() => void onSave()} className={PRIMARY_ACTION}>
-          {t('tasks.save')}
-        </button>
+      {/* The form ends the way the gate ends: a rule, then the decision, at the right end. */}
+      <div className="mt-4 flex items-center justify-end gap-3 border-t border-line pt-3">
         <button type="button" onClick={onCancel} className={OUTLINED_ACTION}>
           {t('tasks.cancel')}
+        </button>
+        <button type="button" disabled={!ready} onClick={() => void onSave()} className={PRIMARY_ACTION}>
+          {t('tasks.save')}
         </button>
       </div>
     </section>

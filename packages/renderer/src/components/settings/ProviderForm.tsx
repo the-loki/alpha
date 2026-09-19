@@ -36,11 +36,14 @@ export function ProviderForm() {
   }
 
   return (
-    <fieldset className="mt-4 rounded-card border border-line p-3">
-      <legend className="px-1 text-micro tracking-wider text-parchment-faint uppercase">
+    // A section of the panel, not a box with a legend on its border: the label is a heading, the
+    // fields sit under it in the panel's own grid, and the one primary action is in the footer the
+    // section ends with — where every form in the app ends.
+    <section aria-label={t('settings.addProvider')} className="mt-4 rounded-card border border-line bg-ink-800/50 p-4">
+      <h3 className="font-mono text-micro tracking-widest text-parchment-faint uppercase">
         {t('settings.addProvider')}
-      </legend>
-      <div className="grid grid-cols-2 gap-2">
+      </h3>
+      <div className="mt-3 grid grid-cols-2 gap-3">
         <TextField
           label={t('settings.fieldId')}
           value={draft.id}
@@ -62,13 +65,17 @@ export function ProviderForm() {
           />
         </div>
         <ApiField api={draft.api} onChange={(api) => setDraft({ ...draft, api })} />
-        <div className="flex items-end">
-          <button type="button" onClick={() => void add()} className={PRIMARY_ACTION}>
-            {t('settings.addProvider')}
-          </button>
-        </div>
       </div>
-      {error !== '' && <p className="mt-2 text-xs text-danger">{error}</p>}
-    </fieldset>
+      {error !== '' && (
+        <p className="mt-3 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+          {error}
+        </p>
+      )}
+      <div className="mt-4 flex items-center justify-end gap-3 border-t border-line pt-3">
+        <button type="button" onClick={() => void add()} className={PRIMARY_ACTION}>
+          {t('settings.addProvider')}
+        </button>
+      </div>
+    </section>
   )
 }

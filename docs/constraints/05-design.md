@@ -219,6 +219,13 @@ text block with what the turn spent at its right end — mono, faint, one line. 
 the app that carries text, and it is what lets a long conversation be read as turns rather than as
 one run of prose; the running total stays in the page's head, where it belongs to the conversation.
 
+**A form is a panel of groups.** The fields of one concern stand together, the groups are separated
+by hairlines, and the form ends the way the gate ends: a rule, then the actions at the right end,
+primary last. A field's own label sits above it in `text-xs`, and the line that explains it is
+`text-micro`, faint, with room to wrap. A section's name is set in the mono micro upper case the
+column labels use — the same voice that says `Folders` and `Gate` — because a form's groups and a
+record's fields are the same kind of thing: parts of one thing, named.
+
 **The rail's columns.** Every row in the rail is built on three x-positions, so a list of folders
 and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder, the icon
 of an action row), the second column at 1.75rem (a folder's glyph, a conversation's status dot,
