@@ -1,5 +1,8 @@
+import { Link, useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import { bridge } from '../lib/bridge.ts'
-import { useShell, useText } from '../stores/shell.ts'
+import { composerFolderOf, useShell, useText } from '../stores/shell.ts'
+import { ClockIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
 
 function WindowControls() {
   const platform = useShell((state) => state.platform)
@@ -46,24 +49,103 @@ function WindowControls() {
   )
 }
 
-export function TitleBar() {
+/**
+ * One command in the strip: a glyph, named for a reader and said again in a tooltip, and separated
+ * from its neighbours by a hairline — a strip of glyph buttons is a toolbar, and a toolbar without
+ * rules between its items is a row of unlabelled glyphs.
+ */
+function Command({
+  icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  hint?: string
+  onClick: () => void
+}) {
   return (
-    <header className="drag-region flex h-9 shrink-0 items-stretch justify-between pl-4">
-      {/* The workbench's mark: a soft badge and its name, small enough to read as a publisher's
-          line rather than as a product name (C5.5). It is the only place the app signs the page. */}
-      <span className="flex items-center gap-2">
-        <span
-          aria-hidden="true"
-          className="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
-        >
-          A
-        </span>
-        <span className="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
-      </span>
+    <button
+      type="button"
+      aria-label={label}
+      title={hint ?? label}
+      onClick={onClick}
+      className="no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
+    >
+      {icon}
+    </button>
+  )
+}
 
-      {/* The window's own chrome and nothing else: the permission level lives at the foot of the
-          composer, which is where the message it governs is written. */}
-      <WindowControls />
+/** A hairline between two commands of the strip. */
+function Rule() {
+  return <span aria-hidden="true" className="mx-1 h-4 w-px bg-line-strong/40" />
+}
+
+/**
+ * The strip at the top of the window, and the workbench's global commands live here: the mark, then
+ * the three things one does from anywhere — start a conversation, search, see the tasks — each in
+ * its own ruled place, then the workbench's settings beside the window's own controls. The rail
+ * below is the index; this strip is what one does about it.
+ */
+export function TitleBar({ onSearch, inSettings }: { onSearch: () => void; inSettings: boolean }) {
+  const t = useText()
+  const navigate = useNavigate()
+  const platform = useShell((state) => state.platform)
+  const version = useShell((state) => state.appVersion)
+  const composerFolder = useShell(composerFolderOf)
+  const modifier = platform === 'darwin' ? '⌘' : 'Ctrl+'
+
+  const newConversationHint = composerFolder
+    ? `${t('sidebar.newConversationIn', { folder: composerFolder.name })} · ${modifier}N`
+    : `${t('sidebar.newConversationNowhere')} · ${modifier}N`
+
+  return (
+    <header className="drag-region flex h-10 shrink-0 items-center justify-between pl-2.5">
+      <div className="flex items-center">
+        <span className="drag-region flex items-center gap-2 pr-1.5" title={`Alpha ${version}`}>
+          <span
+            aria-hidden="true"
+            className="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
+          >
+            A
+          </span>
+          <span className="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
+        </span>
+
+        <Rule />
+        <Command
+          icon={<PlusIcon />}
+          label={t('sidebar.newConversation')}
+          hint={newConversationHint}
+          onClick={() => void navigate({ to: '/' })}
+        />
+        <Rule />
+        <Command
+          icon={<SearchIcon />}
+          label={t('sidebar.search')}
+          hint={`${t('sidebar.search')} · ${modifier}K`}
+          onClick={onSearch}
+        />
+        <Rule />
+        <Command icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => void navigate({ to: '/tasks' })} />
+        <Rule />
+      </div>
+
+      <div className="flex items-center">
+        {!inSettings && (
+          <Link
+            to="/settings"
+            aria-label={t('settings.open')}
+            title={t('settings.open')}
+            className="no-drag mr-1 grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
+          >
+            <GearIcon />
+          </Link>
+        )}
+        <WindowControls />
+      </div>
     </header>
   )
 }

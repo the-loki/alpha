@@ -57,9 +57,10 @@ test('the interface is written in the language the workbench was told to use', a
   // the whole point of having one.
   const { app, window } = await launch('zh')
 
+  // Starting a conversation is a strip command now; the index and the picker stayed in the rail.
   const sidebar = window.getByRole('complementary')
   await expect(sidebar.getByRole('button', { name: '添加目录' })).toBeVisible()
-  await expect(sidebar.getByRole('button', { name: /^新建会话/ })).toBeVisible()
+  await expect(window.getByRole('button', { name: /^新建会话/ })).toBeVisible()
   await expect(sidebar.getByRole('heading', { name: '目录' })).toBeVisible()
   await expect(sidebar.getByRole('heading', { name: 'sandbox' })).toBeVisible()
   await expect(window.getByRole('link', { name: '设置' })).toBeVisible()

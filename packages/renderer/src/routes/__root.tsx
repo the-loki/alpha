@@ -55,9 +55,9 @@ function RootLayout() {
     // The window is a page and a rail, both floating: a soft gutter all the way round, one rounded
     // surface for the workbench's contents and one for the page being worked in (C5.4).
     <div className="flex h-screen flex-col bg-ink-900">
-      <TitleBar />
+      <TitleBar onSearch={openPalette} inSettings={inSettings} />
       <div className="flex min-h-0 flex-1 gap-2 px-2 pb-2">
-        {!inSettings && <Sidebar onSearch={openPalette} />}
+        {!inSettings && <Sidebar />}
         <main className="min-w-0 flex-1">
           <div className="flex h-full flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
             <Outlet />
