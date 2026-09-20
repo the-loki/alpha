@@ -12,7 +12,7 @@ import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { runsOf, taskActions, taskOf, tasks } from '../../stores/tasks.ts'
-import { DESTRUCTIVE_ACTION, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
+import { DESTRUCTIVE_ACTION, GROUP_LABEL, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
 import { ClockIcon } from '../icons.tsx'
 import { BAND, PAGE, SCROLLS } from '../ledger.ts'
 import { TaskForm } from './TaskForm.tsx'
@@ -178,7 +178,7 @@ export function TasksPage() {
         <Show when={current()}>
           {(task) => (
             <section aria-labelledby="task-history" class="mt-6">
-              <h2 id="task-history" class="text-body font-medium text-parchment">
+              <h2 id="task-history" class={GROUP_LABEL}>
                 {t('tasks.history')}
               </h2>
               <RunList runs={runsOf(task().id)} />

@@ -15,7 +15,7 @@ import { createSignal, For, Index, Match, Show, Switch } from 'solid-js'
 import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { FIELD_FRAME, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
+import { FIELD_FRAME, GROUP_LABEL, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -39,7 +39,7 @@ function ThinkingBlock(props: { block: ChatBlockThinking }) {
   const elapsed = () => formatDuration(props.block.startedAt, props.block.endedAt)
   return (
     <details class="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
-      <summary class="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
+      <summary class={`cursor-pointer list-none ${GROUP_LABEL}`}>
         {t('message.thinking')}
         {elapsed() === '' ? '' : ` · ${elapsed()}`}
       </summary>
@@ -53,7 +53,7 @@ function CompactionMarker(props: { block: ChatBlockCompaction }) {
   const t = useText()
   return (
     <details class="mb-3 rounded-card border border-dashed border-line bg-ink-800/50 px-3 py-2">
-      <summary class="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
+      <summary class={`cursor-pointer list-none ${GROUP_LABEL}`}>
         {t(props.block.replaced === undefined ? 'message.compacted' : 'message.compactedCount', {
           count: props.block.replaced ?? 0,
         })}

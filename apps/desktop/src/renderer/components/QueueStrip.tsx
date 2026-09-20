@@ -2,7 +2,7 @@ import type { Undef } from '@alpha/core'
 import { createSignal, For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { DESTRUCTIVE_ACTION, GROUP_LABEL, TEXT_ACTION } from './controls.ts'
 
 /**
  * What is waiting, in the order it will be sent: the steers the runtime is holding for this turn,
@@ -32,7 +32,7 @@ export function QueueStrip() {
           <For each={conversations.transcript.queued}>
             {(item) => (
               <li class="flex items-center gap-2 rounded-control border border-line bg-ink-800/70 px-2.5 py-1">
-                <span class="shrink-0 font-mono text-micro tracking-wider text-parchment-faint uppercase">
+                <span class={`shrink-0 ${GROUP_LABEL}`}>
                   {t(item.kind === 'steer' ? 'composer.steered' : 'composer.queued')}
                 </span>
                 <Show

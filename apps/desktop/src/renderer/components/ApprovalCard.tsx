@@ -2,7 +2,7 @@ import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/
 import { createSignal, onMount, Show } from 'solid-js'
 import { conversationActions } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON, FIELD_FRAME } from './controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON, FIELD_FRAME, PRIMARY_ACTION } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
 
 /**
@@ -66,12 +66,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
           remembered for, a reason, and Deny. The reason field is the same height as the buttons —
           a field that is taller than the decision beside it is the row reading as two rows. */}
       <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-3.5 py-2.5">
-        <button
-          type="button"
-          onClick={allowOnce}
-          disabled={busy()}
-          class={`${CONTROL_HEIGHT} inline-flex items-center rounded-control bg-accent px-3 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60`}
-        >
+        <button type="button" onClick={allowOnce} disabled={busy()} class={PRIMARY_ACTION}>
           {t('approval.allowOnce')}
         </button>
 

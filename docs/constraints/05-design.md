@@ -125,25 +125,26 @@ own scale.
 
 | Role | Family | Token | Size / line-height | Weight |
 | --- | --- | --- | --- | --- |
-| Page title, section title | IBM Plex Sans | `text-xl`, `text-lg` | 1.25, 1.125rem / 1.4 | semibold |
 | Body, message text | IBM Plex Sans | `text-body` | 0.9375rem / 1.65 | regular |
 | Markdown headings inside a message | IBM Plex Sans | `text-lg`, `text-base`, `text-body` | 1.125, 1, 0.9375rem / 1.4 | semibold |
-| The name of a thing: a conversation's title in the header, a provider, a sidebar row, a field label | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | medium |
+| The name of a thing: a provider, a sidebar row, a task, a chip, the word on a control | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | medium |
 | Prose in the interface: an empty state, the sentence under a control | IBM Plex Sans | `text-ui` | 0.8125rem / 1.4 | regular |
 | Metadata, chips | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 | regular |
 | Actions that are words: Copy, Rename, Export, Delete | IBM Plex Sans | `text-xs` | 0.75rem / 1.3 | regular (the one primary action on a surface: medium) |
 | Code, tool output, diffs, inline code | JetBrains Mono | `text-code` | 0.78125rem / 1.55 | regular |
 | Mono metadata: paths, counts, editable fields | JetBrains Mono | `text-xs` | 0.75rem / 1.3 | regular |
-| Micro-labels: block markers, status words, shortcuts | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase, tracking wider | regular |
+| Micro-labels: block markers, status words, shortcuts | JetBrains Mono | `text-micro` | 0.6875rem / 1.3, uppercase | regular |
 
-**Two weights exist, and only two.** `font-medium` marks *the name of a thing* and *the word on a
-control*; `font-semibold` marks *titles* — the app's own name, a page's title, a heading. Nothing
+**Two weights exist, and only two.** `font-medium` marks *the name of a thing*, *the word on a
+control* and *a screen's own name* — a page's title in its band is the display voice at medium;
+`font-semibold` marks a *heading inside a message*, where the words are the person's or the agent's
+own prose and a weight is all the Markdown has to say "this is a heading". Nothing
 here is bold, light or black: hierarchy comes from size, colour and space, and a third weight would
 be a way of shouting what the layout should have said. `05-design:no-other-weights` fails
 `pnpm check` on `font-bold`, `font-extrabold`, `font-black`, `font-light` or `font-thin` anywhere
 under `apps/desktop/src/renderer/`.
 
-| The display voice: a page's title, an entry's question, the title page | Newsreader | `font-display text-xl`–`text-3xl` | 1.125–1.875rem / 1.4–1.2 | medium (the sentence under it: regular, italic) |
+| The display voice: a page's title in its band, the name a screen with no page gives itself, an entry's question, the title page | Newsreader | `font-display text-xl`–`text-3xl` | 1.25–1.875rem / 1.4–1.2 | medium (the title page and the sentence under an entry: regular; the sentence under the title page: italic) |
 
 **`text-ui` and `text-xs` are one pixel apart and are not interchangeable.** The boundary is the
 two voices again: `text-ui` is what a thing *is* (a name, a label, a sentence in the interface);
@@ -351,8 +352,14 @@ sight.
 `e2e/design.spec.ts` measures the insets, the nested one, a notice's shape and padding, and the
 prompt field's three rows. A field's own label sits above it in `text-xs`, and the line that explains it is
 `text-micro`, faint, with room to wrap. A section's name is set in the mono micro upper case the
-column labels use — the same voice that says `Folders` and `Gate` — because a form's groups and a
-record's fields are the same kind of thing: parts of one thing, named.
+column labels use — the same voice that says `Folders` and `Gate`, tracking and all — because a form's
+groups and a record's fields are the same kind of thing: parts of one thing, named. One token says it,
+`GROUP_LABEL`, in the control vocabulary, and every one of those places wears it, so the voice cannot
+be retyped with a narrower tracking. A screen's own name is the other end of the same rule:
+the display voice, wherever the name is set. `e2e/design.spec.ts` measures both — every settings
+panel's parts in one voice, every page's title in the other — and the table above keeps one row per
+thing, because a second row for the page title is how three panels came to name their sections in the
+sans voice at 15px while the card beside them used the label voice.
 
 **The rail's columns.** Every row in the rail is built on three x-positions, so a list of folders
 and their conversations reads as one grid: the glyph at 0.5rem (an action row's icon; a folder

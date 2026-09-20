@@ -57,6 +57,13 @@ export const ROW_CURRENT = 'bg-parchment/16'
 export const ROW_HOVER = 'hover:bg-parchment/8'
 
 /**
+ * The name of a part of one thing: a panel's section, a group inside a card, the index's own headings,
+ * a record's fields (C5.4). Mono, micro, upper case, faint — the voice that says `Folders` and `Gate`,
+ * because a form's groups and a record's fields are the same kind of thing: parts of one thing, named.
+ */
+export const GROUP_LABEL = 'font-mono text-micro tracking-widest text-parchment-faint uppercase'
+
+/**
  * A name with a state on it: the permission level, the model a message will run on. Same height as
  * a button, because with one open they stand in the same row.
  */

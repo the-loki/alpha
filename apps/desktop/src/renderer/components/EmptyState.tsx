@@ -1,5 +1,6 @@
 import { Show } from 'solid-js'
 import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
+import { PRIMARY_ACTION } from './controls.ts'
 import { BLOCK, entryNumber, MARK_COLUMN, PAGE, SCROLLS } from './ledger.ts'
 
 /**
@@ -17,16 +18,12 @@ export function EmptyState() {
       when={composerFolder()}
       fallback={
         <div class="flex h-full flex-col items-center justify-center px-8 text-center">
-          <h1 class="text-xl font-semibold text-parchment">{t('empty.noFolder.title')}</h1>
+          <h1 class="font-display text-2xl font-medium text-parchment">{t('empty.noFolder.title')}</h1>
           <p class="mt-2 max-w-md text-ui leading-relaxed text-parchment-dim">{t('empty.noFolder.body')}</p>
           <Show
             when={shell.host === 'browser'}
             fallback={
-              <button
-                type="button"
-                onClick={() => void shellActions.pickWorkspace()}
-                class="mt-5 rounded-control bg-accent px-4 py-2 text-ui font-medium text-accent-ink shadow-soft transition-colors hover:bg-accent-bright"
-              >
+              <button type="button" onClick={() => void shellActions.pickWorkspace()} class={`mt-5 ${PRIMARY_ACTION}`}>
                 {t('empty.chooseFolder')}
               </button>
             }

@@ -1,6 +1,7 @@
 import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { shell, shellActions, useText } from '../../stores/shell.ts'
+import { GROUP_LABEL } from '../controls.ts'
 import { CheckIcon } from '../icons.tsx'
 import { TONE_CLASS } from '../LevelChip.tsx'
 
@@ -10,7 +11,7 @@ export function PermissionSection() {
 
   return (
     <section aria-labelledby="settings-level">
-      <h2 id="settings-level" class="text-body font-medium text-parchment">
+      <h2 id="settings-level" class={GROUP_LABEL}>
         {t('settings.defaultLevel')}
       </h2>
       <p class="mt-1 text-xs text-parchment-dim">{t('settings.defaultLevelNote')}</p>

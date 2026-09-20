@@ -9,6 +9,7 @@ import {
 } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { shell, shellActions, useText } from '../../stores/shell.ts'
+import { GROUP_LABEL } from '../controls.ts'
 import { CheckIcon } from '../icons.tsx'
 
 const THEME_LABELS: Record<Theme, TextKey> = {
@@ -47,7 +48,7 @@ export function AppearanceSection() {
   return (
     <>
       <section aria-labelledby="settings-theme">
-        <h2 id="settings-theme" class="text-body font-medium text-parchment">
+        <h2 id="settings-theme" class={GROUP_LABEL}>
           {t('settings.theme')}
         </h2>
         <p class="mt-1 text-xs text-parchment-dim">{t('settings.themeNote')}</p>
@@ -71,7 +72,7 @@ export function AppearanceSection() {
       </section>
 
       <section aria-labelledby="settings-accent">
-        <h2 id="settings-accent" class="text-body font-medium text-parchment">
+        <h2 id="settings-accent" class={GROUP_LABEL}>
           {t('settings.accent')}
         </h2>
         <p class="mt-1 text-xs text-parchment-dim">{t('settings.accentNote')}</p>
@@ -102,7 +103,7 @@ export function AppearanceSection() {
       </section>
 
       <section aria-labelledby="settings-language">
-        <h2 id="settings-language" class="text-body font-medium text-parchment">
+        <h2 id="settings-language" class={GROUP_LABEL}>
           {t('settings.language')}
         </h2>
         <p class="mt-1 text-xs text-parchment-dim">{t('settings.languageNote')}</p>

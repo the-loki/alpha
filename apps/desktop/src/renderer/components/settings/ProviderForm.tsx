@@ -2,7 +2,7 @@ import type { ProviderApi } from '@alpha/core'
 import { createSignal, Show } from 'solid-js'
 import { providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
-import { PRIMARY_ACTION } from '../controls.ts'
+import { GROUP_LABEL, PRIMARY_ACTION } from '../controls.ts'
 import { ApiField, TextField } from './Fields.tsx'
 
 interface Draft {
@@ -39,7 +39,7 @@ export function ProviderForm() {
     // fields sit under it in the panel's own grid, and the one primary action is in the footer the
     // section ends with — where every form in the app ends.
     <section aria-label={t('settings.addProvider')} class="mt-4 rounded-card border border-line bg-ink-800/50 p-4">
-      <h3 class="font-mono text-micro tracking-widest text-parchment-faint uppercase">{t('settings.addProvider')}</h3>
+      <h3 class={GROUP_LABEL}>{t('settings.addProvider')}</h3>
       <div class="mt-3 grid grid-cols-2 gap-3">
         <TextField
           label={t('settings.fieldId')}

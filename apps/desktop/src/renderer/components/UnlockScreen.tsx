@@ -1,7 +1,7 @@
 import { createSignal, Show } from 'solid-js'
 import { rememberedToken } from '../lib/network-bridge.ts'
 import { shellActions, useText } from '../stores/shell.ts'
-import { FIELD_FRAME } from './controls.ts'
+import { FIELD_FRAME, PRIMARY_ACTION } from './controls.ts'
 
 /**
  * What a browser sees before it holds a session. One field, one button, and where to find the
@@ -69,7 +69,7 @@ export function UnlockScreen() {
         <button
           type="submit"
           disabled={busy() || token().trim() === ''}
-          class="mt-5 w-full bg-accent px-4 py-2 text-ui font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-40"
+          class={`mt-5 w-full justify-center ${PRIMARY_ACTION}`}
         >
           {t(busy() ? 'unlock.opening' : 'unlock.submit')}
         </button>

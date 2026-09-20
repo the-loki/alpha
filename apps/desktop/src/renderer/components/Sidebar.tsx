@@ -3,6 +3,7 @@ import { For, type JSX, Show } from 'solid-js'
 import { conversations } from '../stores/conversations.ts'
 import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
 import { tasks } from '../stores/tasks.ts'
+import { GROUP_LABEL } from './controls.ts'
 import { ArchivedSection, FolderSection } from './FolderTree.tsx'
 import { PlusIcon } from './icons.tsx'
 import { PANEL, SCROLLS } from './ledger.ts'
@@ -46,9 +47,7 @@ export function Sidebar() {
         {/* The index's own row: what it holds, how much of it, and the one action that belongs to
             the index itself — adding another folder to it. */}
         <div class="flex items-center gap-1 px-2 pb-1">
-          <h2 class="min-w-0 flex-1 truncate font-mono text-micro tracking-widest text-parchment-faint uppercase">
-            {t('sidebar.folders')}
-          </h2>
+          <h2 class={`min-w-0 flex-1 truncate ${GROUP_LABEL}`}>{t('sidebar.folders')}</h2>
           <span class="font-mono text-micro text-parchment-faint">{folders().length}</span>
           <Show when={shell.host !== 'browser'}>
             <IconAction

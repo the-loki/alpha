@@ -11,6 +11,7 @@ import {
 } from '@alpha/core'
 import { createEffect, createSignal, type JSX, Show } from 'solid-js'
 import { languageOf, shell, useText } from '../stores/shell.ts'
+import { GROUP_LABEL } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
 import { CopyButton } from './MessageView.tsx'
 
@@ -187,9 +188,7 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
 function AuditRow(props: { label: string; action?: JSX.Element; children: JSX.Element }) {
   return (
     <div class="mt-1.5 flex gap-3 first:mt-0">
-      <span class="w-16 shrink-0 pt-0.5 font-mono text-micro tracking-wider text-parchment-faint uppercase">
-        {props.label}
-      </span>
+      <span class={`w-16 shrink-0 pt-0.5 ${GROUP_LABEL}`}>{props.label}</span>
       <div class="min-w-0 flex-1">
         <div class="flex items-start gap-3">
           <div class="min-w-0 flex-1 font-mono text-micro leading-relaxed text-parchment-faint">{props.children}</div>

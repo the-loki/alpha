@@ -2,7 +2,14 @@ import type { ProviderApi, ProviderView, TextKey, Undef } from '@alpha/core'
 import { createSignal, Show } from 'solid-js'
 import { type ProviderTestOutcome, providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, FIELD_FRAME, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
+import {
+  CONTROL_HEIGHT,
+  DESTRUCTIVE_ACTION,
+  FIELD_FRAME,
+  GROUP_LABEL,
+  OUTLINED_ACTION,
+  PRIMARY_ACTION,
+} from '../controls.ts'
 import { asDraft, type DraftModel, ModelFields, modelInput } from './ModelFields.tsx'
 
 const API_NAMES: Record<ProviderApi, TextKey> = {
@@ -38,7 +45,7 @@ function ModelSubList(props: { provider: ProviderView }) {
   return (
     <section aria-label={props.provider.name} class="mt-3 border-t border-line pt-3">
       <div class="flex items-center gap-2">
-        <h3 class="font-mono text-micro tracking-widest text-parchment-faint uppercase">{t('settings.modelsLabel')}</h3>
+        <h3 class={GROUP_LABEL}>{t('settings.modelsLabel')}</h3>
         <span class="font-mono text-micro text-parchment-faint">{props.provider.models.length}</span>
         <span class="flex-1" />
         <Show when={dirty()}>

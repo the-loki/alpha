@@ -2,6 +2,7 @@ import { type PermissionRule, ruleScopeKey, toolRiskOf } from '@alpha/core'
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { useText } from '../../stores/shell.ts'
+import { GROUP_LABEL } from '../controls.ts'
 
 /**
  * The rules the user has stopped wanting to be asked about. They are listed here so they can be
@@ -29,7 +30,7 @@ export function RememberedRules() {
 
   return (
     <section aria-labelledby="settings-rules">
-      <h2 id="settings-rules" class="text-body font-medium text-parchment">
+      <h2 id="settings-rules" class={GROUP_LABEL}>
         {t('settings.remembered')}
       </h2>
       <p class="mt-1 text-xs text-parchment-dim">

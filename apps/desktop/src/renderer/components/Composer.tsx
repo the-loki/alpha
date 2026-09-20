@@ -78,7 +78,7 @@ function ComposerFoot(props: {
             aria-label={t('composer.send')}
             // The accent means "this does something". A disabled send wears the quiet surface
             // instead, so the ember in the corner always means a message can go.
-            class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
+            class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-gradient-to-b from-accent to-accent-bright text-accent-ink shadow-glow transition-all hover:brightness-110 disabled:bg-none disabled:bg-ink-600 disabled:text-parchment-faint disabled:shadow-none"
           >
             <ArrowUpIcon />
           </button>

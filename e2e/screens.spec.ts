@@ -25,17 +25,24 @@ const SCRIPT = [
   'The last one failed; the file does not exist.',
 ]
 
-async function launch(options: { level?: string; replies?: unknown[] } = {}) {
+async function launch(options: { level?: string; replies?: unknown[]; noFolder?: boolean } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   writeFileSync(join(workspace, 'notes.txt'), 'hello from the ledger')
   writeFileSync(
     join(dataDirectory, 'workbench-state.json'),
     JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
+      // A workbench that has never been given a folder: the first screen a person ever sees.
+      workspace:
+        options.noFolder === true
+          ? { selection: { kind: 'none' }, recents: [] }
+          : {
+              selection: {
+                kind: 'selected',
+                workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() },
+              },
+              recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
+            },
       ...scriptedAgent,
       language: 'en',
       permissionLevel: options.level ?? 'full-access',
@@ -211,5 +218,13 @@ test('the gate card and the dark palette draw as well as the rest', async () => 
   await expect(window.getByRole('menuitem', { name: 'Archive' })).toBeVisible()
   await picture(window, 'dark-rail-menu')
 
+  await app.close()
+})
+
+test('the screen a person sees before they have a folder draws too', async () => {
+  test.setTimeout(60_000)
+  const { app, window } = await launch({ noFolder: true })
+  await expect(window.getByRole('button', { name: 'Choose a folder', exact: true })).toBeVisible()
+  await picture(window, 'first-run')
   await app.close()
 })

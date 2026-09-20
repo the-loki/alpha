@@ -1,6 +1,7 @@
 import type { TextKey } from '@alpha/core'
 import { useSearchParams } from '@solidjs/router'
 import { For, type JSX } from 'solid-js'
+import { GROUP_LABEL } from '../components/controls.ts'
 import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
 import { BAND, PAGE, PANEL, SCROLLS } from '../components/ledger.ts'
 import { AgentSection } from '../components/settings/AgentSection.tsx'
@@ -139,9 +140,7 @@ export function SettingsNav() {
       <For each={TAB_GROUPS}>
         {(group) => (
           <section class="mt-5 pt-2">
-            <h3 class="px-2 pb-1 font-mono text-micro tracking-widest text-parchment-faint uppercase">
-              {t(group.label)}
-            </h3>
+            <h3 class={`px-2 pb-1 ${GROUP_LABEL}`}>{t(group.label)}</h3>
             <ul>
               <For each={group.tabs}>
                 {(candidate) => (
