@@ -5,6 +5,8 @@
  * no figure.
  */
 
+import { recordOf } from './text.ts'
+
 export interface UsageTotals {
   input: number
   output: number
@@ -32,6 +34,31 @@ export function addUsage(left: UsageTotals, right: UsageTotals): UsageTotals {
     cacheWrite: left.cacheWrite + right.cacheWrite,
     totalTokens: left.totalTokens + right.totalTokens,
     cost: left.cost + right.cost,
+  }
+}
+
+/**
+ * An amount, or nothing. A provider reports numbers in its own shape and a reply can leave one out,
+ * send it as a string, or send a number that is not an amount at all — and a NaN that reaches the
+ * header makes every turn under it unreadable.
+ */
+const amountOf = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
+
+/**
+ * A provider's usage payload in the workbench's terms. One reading for both ends of the runtime —
+ * the event translator's totals and the session reader's totals — so the header's sum and the turn
+ * rows under it are the same arithmetic rather than two that agree today.
+ */
+export function usageTotals(usage: unknown): UsageTotals {
+  const numbers = recordOf(usage)
+  const cost = recordOf(numbers.cost)
+  return {
+    input: amountOf(numbers.input),
+    output: amountOf(numbers.output),
+    cacheRead: amountOf(numbers.cacheRead),
+    cacheWrite: amountOf(numbers.cacheWrite),
+    totalTokens: amountOf(numbers.totalTokens),
+    cost: amountOf(cost.total),
   }
 }
 

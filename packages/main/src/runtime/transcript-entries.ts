@@ -9,6 +9,7 @@ import {
   type ChatBlock,
   type ChatBlockTool,
   type ChatMessage,
+  listOf,
   type Null,
   toolOutcomeOf,
   toolRowOf,
@@ -134,6 +135,5 @@ export function entriesToMessages(entries: AgentEntry[], decisions: DecisionLook
   return messages
 }
 
-const listOf = (content: unknown): unknown[] => (Array.isArray(content) ? content : [])
 const at = (timestamp: number | string): number =>
   typeof timestamp === 'number' ? timestamp : Date.parse(timestamp) || Date.now()

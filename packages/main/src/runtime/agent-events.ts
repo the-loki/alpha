@@ -22,11 +22,14 @@
 
 import {
   EMPTY_USAGE,
+  listOf,
   type RuntimeEvent,
+  recordOf,
   type ToolDetails,
   type ToolStatus,
   type Undef,
   type UsageTotals,
+  usageTotals,
   userBlocksOf,
 } from '@alpha/core'
 
@@ -36,33 +39,13 @@ export interface RpcLikeEvent {
   [field: string]: unknown
 }
 
-const record = (value: unknown): Record<string, unknown> =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
-
-const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
-
 const textOfPart = (part: unknown): string => {
-  const block = record(part)
+  const block = recordOf(part)
   return block.type === 'text' && typeof block.text === 'string' ? block.text : ''
 }
 
 /** The text of a tool result, which is what the row and the model both read. */
-const textOfResult = (result: unknown): string => list(record(result).content).map(textOfPart).join('')
-
-/** The provider's numbers in the workbench's terms: one total and one cost. */
-function totalsOf(raw: unknown): UsageTotals {
-  const usage = record(raw)
-  const cost = record(usage.cost)
-  const numbers = {
-    input: typeof usage.input === 'number' ? usage.input : 0,
-    output: typeof usage.output === 'number' ? usage.output : 0,
-    cacheRead: typeof usage.cacheRead === 'number' ? usage.cacheRead : 0,
-    cacheWrite: typeof usage.cacheWrite === 'number' ? usage.cacheWrite : 0,
-    totalTokens: typeof usage.totalTokens === 'number' ? usage.totalTokens : 0,
-    cost: typeof cost.total === 'number' ? cost.total : 0,
-  }
-  return numbers
-}
+const textOfResult = (result: unknown): string => listOf(recordOf(result).content).map(textOfPart).join('')
 
 /** What one report adds to the last one: pi counts up, the window counts the difference. */
 function difference(now: UsageTotals, before: UsageTotals): UsageTotals {
@@ -80,15 +63,15 @@ function difference(now: UsageTotals, before: UsageTotals): UsageTotals {
 const isNothing = (usage: UsageTotals): boolean => usage.totalTokens === 0 && usage.cost === 0
 
 /** Where pi's cumulative numbers ride: on the message being streamed (and on the run's own report). */
-const reportedUsage = (event: RpcLikeEvent): UsageTotals => totalsOf(record(event.message).usage ?? event.usage)
+const reportedUsage = (event: RpcLikeEvent): UsageTotals => usageTotals(recordOf(event.message).usage ?? event.usage)
 
 /**
  * Why the run failed, if it did. pi has no failure event: it ends the run with an assistant
  * message that says so, so the last one it produced is what is read here.
  */
 function failureOf(event: RpcLikeEvent): Undef<string> {
-  const messages = list(event.messages)
-  const last = record(messages[messages.length - 1])
+  const messages = listOf(event.messages)
+  const last = recordOf(messages[messages.length - 1])
   if (!Array.isArray(event.messages) || last.role !== 'assistant') return undefined
   if (last.stopReason !== 'error') return undefined
   const message = last.errorMessage
@@ -151,7 +134,7 @@ export class AgentEventTranslator {
   }
 
   #startMessage(event: RpcLikeEvent): RuntimeEvent[] {
-    const message = record(event.message)
+    const message = recordOf(event.message)
     if (message.role !== 'assistant') return []
     const opened = {
       conversationId: this.#conversationId,
@@ -165,7 +148,7 @@ export class AgentEventTranslator {
 
   #update(event: RpcLikeEvent): RuntimeEvent[] {
     const events: RuntimeEvent[] = []
-    const delta = record(event.assistantMessageEvent)
+    const delta = recordOf(event.assistantMessageEvent)
     const at = Date.now()
     const text = typeof delta.delta === 'string' ? delta.delta : ''
     if (this.#openMessageId !== undefined && delta.type === 'text_delta' && text !== '') {
@@ -196,7 +179,7 @@ export class AgentEventTranslator {
   }
 
   #endMessage(event: RpcLikeEvent): RuntimeEvent[] {
-    const message = record(event.message)
+    const message = recordOf(event.message)
     if (message.role !== 'assistant' || this.#openMessageId === undefined) return []
     const finished: RuntimeEvent = {
       conversationId: this.#conversationId,
@@ -218,8 +201,8 @@ export class AgentEventTranslator {
    * was added to the session, complete, and it is what the window draws on the left.
    */
   #appended(event: RpcLikeEvent): RuntimeEvent[] {
-    const entry = record(event.entry)
-    const message = record(entry.message)
+    const entry = recordOf(event.entry)
+    const message = recordOf(entry.message)
     if (entry.type !== 'message' || message.role !== 'user') return []
     return [
       {
@@ -260,7 +243,7 @@ export class AgentEventTranslator {
   }
 
   #toolFinished(event: RpcLikeEvent): RuntimeEvent {
-    const details = record(event.result).details
+    const details = recordOf(event.result).details
     return {
       conversationId: this.#conversationId,
       type: 'tool_finished',
@@ -273,7 +256,7 @@ export class AgentEventTranslator {
   }
 
   #queue(event: RpcLikeEvent): RuntimeEvent {
-    const steered = list(event.steering).flatMap((text) =>
+    const steered = listOf(event.steering).flatMap((text) =>
       typeof text === 'string' ? [{ entryId: crypto.randomUUID(), text, kind: 'steer' as const }] : [],
     )
     return { conversationId: this.#conversationId, type: 'queue_updated', queued: steered, paused: false }
@@ -281,7 +264,7 @@ export class AgentEventTranslator {
 
   /** A compaction is a structural change: the summary stands in for what came before it. */
   #compacted(event: RpcLikeEvent): RuntimeEvent[] {
-    const result = record(event.result)
+    const result = recordOf(event.result)
     const summary = typeof result.summary === 'string' ? result.summary : ''
     if (summary === '') return []
     return [{ conversationId: this.#conversationId, type: 'history_compacted', summary, at: Date.now() }]

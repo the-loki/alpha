@@ -1,7 +1,6 @@
 import type { Null } from '@alpha/core'
+import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
-import remarkParse from 'remark-parse'
-import { unified } from 'unified'
 
 /**
  * The markdown syntax tree, and the little that has to be known about its shape.
@@ -10,7 +9,7 @@ import { unified } from 'unified'
  * and every node carries `position.end.offset`, which is what tells the streaming caret which block
  * the last character landed in.
  */
-const parser = unified().use(remarkParse).use(remarkGfm)
+const parser = remark().use(remarkGfm)
 
 /** The parts of a mdast node the renderer reads. */
 export interface MdNode {
@@ -55,7 +54,7 @@ export const childrenOf = (one: MdNode): MdNode[] => one.children ?? []
 export const isTaskItem = (one: MdNode): boolean => typeof one.checked === 'boolean'
 
 /** Whether a list has a checklist in it, which is what decides which shape it wears. */
-export const hasTasks = (list: MdNode): boolean => childrenOf(list).some(isTaskItem)
+const hasTasks = (list: MdNode): boolean => childrenOf(list).some(isTaskItem)
 
 /**
  * What a list's class is. A checklist is not a bulleted list: the pipeline that drew these before

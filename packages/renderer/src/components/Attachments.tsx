@@ -5,7 +5,7 @@ import { useText } from '../stores/shell.ts'
 import { CloseIcon, PaperclipIcon } from './icons.tsx'
 
 /** A quiet glyph button in the composer's foot, the shape the rest of the window's icons wear. */
-export const FOOT_BUTTON =
+const FOOT_BUTTON =
   'no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment'
 
 /**

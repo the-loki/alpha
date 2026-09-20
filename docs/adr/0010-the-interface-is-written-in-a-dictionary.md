@@ -5,6 +5,15 @@ than from the places that draw them. What the agent is told stays in the convers
 language, and so does anything a vendor or the operating system said: those are not the
 interface's words, and translating them would change what a conversation is.
 
+## Superseded in part
+
+The tooling has moved. The dictionaries were once generated from one table
+(`tools/i18n/build-dictionary.py`), and the generator is gone. It was not what prevented drift:
+`ZH`'s `satisfies Record<TextKey, string>` already makes a key present in one language and missing
+in the other a type error, and `i18n.test.ts` pins the rest. The side-by-side table the generator
+bought was not worth a Python toolchain inside a TypeScript repo. What stands is the decision: one
+dictionary of keys, two languages, and the compiler reading both.
+
 ## Context
 
 Nothing here was translated before: every string lived where it was rendered, in nineteen
@@ -79,8 +88,9 @@ Playwright's own default locale.
 
 ## Consequences
 
-- The two dictionaries are generated from one table (`tools/i18n/build-dictionary.py`) so the two
-  cannot drift; hand-editing one of them is how a line ends up in one language only.
+- The two dictionaries are hand-written, and the compiler is what keeps them in step: `ZH` is
+  `satisfies Record<TextKey, string>`, so a key added to one language and not the other is a type
+  error, and `i18n.test.ts` pins the rest.
 - A string that is the same in both languages (a language's own name, a palette's name, an id)
   is deliberately not in the dictionary: it is not copy, and translating it would be wrong.
 - The interface is not fully Chinese on a machine with no CJK font installed; that is a font

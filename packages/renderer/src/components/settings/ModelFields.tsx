@@ -14,7 +14,7 @@ export interface DraftModel {
   images: boolean
 }
 
-export const emptyModel = (): DraftModel => ({
+const emptyModel = (): DraftModel => ({
   id: '',
   name: '',
   contextWindow: '128000',

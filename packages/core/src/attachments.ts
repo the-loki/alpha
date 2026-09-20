@@ -15,7 +15,7 @@ export interface Attachment {
 }
 
 /** What every provider that takes pictures takes. Anything else is refused rather than guessed at. */
-export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
 /** One file's ceiling. The bytes themselves, not the base64 that carries them. */
 export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024

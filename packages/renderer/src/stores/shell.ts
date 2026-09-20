@@ -103,7 +103,7 @@ const applyLaunchState = (state: LaunchState) => ({
  * "system" is a choice about which palette to use, not a third palette, and resolving it in one
  * place is what lets the light/dark blocks stay plain selectors (C5.2).
  */
-export function applyAppearance(theme: Theme, accent: Accent): void {
+function applyAppearance(theme: Theme, accent: Accent): void {
   const root = document.documentElement
   const mode = theme === 'system' ? systemMode() : theme
   // Both are written out rather than left to the stylesheet's defaults: the document says what it

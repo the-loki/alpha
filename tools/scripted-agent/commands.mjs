@@ -71,15 +71,6 @@ export async function runCommand(command, ports) {
       succeed(id, 'get_entries', { entries: entries.slice(since + 1), leafId: session.leafId() })
       return
     }
-    case 'get_messages': {
-      succeed(id, 'get_messages', {
-        messages: session
-          .all()
-          .filter((entry) => entry.type === 'message')
-          .map((entry) => entry.message),
-      })
-      return
-    }
     case 'get_session_stats': {
       const messages = session.all().filter((entry) => entry.type === 'message').length
       succeed(id, 'get_session_stats', {
@@ -105,15 +96,6 @@ export async function runCommand(command, ports) {
     case 'set_thinking_level': {
       ports.setThinkingLevel(command.level)
       succeed(id, 'set_thinking_level')
-      return
-    }
-    case 'get_available_models': {
-      succeed(id, 'get_available_models', { models: [ports.model()] })
-      return
-    }
-    case 'set_session_name': {
-      session.setName(command.name)
-      succeed(id, 'set_session_name')
       return
     }
     default: {

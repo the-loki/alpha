@@ -19,6 +19,7 @@ import {
   type PermissionLevel,
   type PermissionRule,
   type RuntimeEvent,
+  recordOf,
   type ThinkingLevel,
   type Undef,
   type UsageTotals,
@@ -275,7 +276,7 @@ export class ConversationRuntime {
     const verdict = await gate({
       toolCallId: callId,
       toolName: typeof call.toolName === 'string' ? call.toolName : '',
-      args: record(call.args),
+      args: recordOf(call.args),
     })
     // The row is already on screen — the agent announced the call before it asked — so how it got
     // through lands on it now.
@@ -293,14 +294,11 @@ export class ConversationRuntime {
   }
 }
 
-const record = (value: unknown): Record<string, unknown> =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
-
 /** The call the agent asked about: it travels as JSON in a field that is only a string. */
 function callIn(placeholder: unknown): Record<string, unknown> {
   if (typeof placeholder !== 'string') return {}
   try {
-    return record(JSON.parse(placeholder))
+    return recordOf(JSON.parse(placeholder))
   } catch {
     return {}
   }

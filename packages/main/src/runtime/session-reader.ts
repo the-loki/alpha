@@ -8,7 +8,16 @@
  * rule lives here rather than at every call site (#60).
  */
 
-import { type ChatMessage, EMPTY_USAGE, type Null, type Undef, type UsageTotals } from '@alpha/core'
+import {
+  type ChatMessage,
+  EMPTY_USAGE,
+  listOf,
+  type Null,
+  recordOf,
+  type Undef,
+  type UsageTotals,
+  usageTotals,
+} from '@alpha/core'
 import type { AgentRpc } from '../agent-cli/rpc.ts'
 import type { DecisionLookup } from './decisions.ts'
 import { type AgentEntry, entriesToMessages } from './transcript-entries.ts'
@@ -19,20 +28,15 @@ interface EntriesAnswer {
   leafId: Null<string>
 }
 
-const record = (value: unknown): Record<string, unknown> =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
-
-const listOf = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
-
 const entryOf = (raw: unknown): AgentEntry => {
-  const entry = record(raw)
+  const entry = recordOf(raw)
   return {
     type: typeof entry.type === 'string' ? entry.type : '',
     id: typeof entry.id === 'string' ? entry.id : '',
     parentId: typeof entry.parentId === 'string' ? entry.parentId : null,
     timestamp:
       typeof entry.timestamp === 'string' || typeof entry.timestamp === 'number' ? entry.timestamp : Date.now(),
-    ...(record(entry.message).role === undefined ? {} : { message: entry.message as AgentEntry['message'] }),
+    ...(recordOf(entry.message).role === undefined ? {} : { message: entry.message as AgentEntry['message'] }),
     ...(typeof entry.summary === 'string' ? { summary: entry.summary } : {}),
     ...(typeof entry.firstKeptEntryId === 'string' ? { firstKeptEntryId: entry.firstKeptEntryId } : {}),
   }
@@ -91,7 +95,7 @@ export class SessionReader {
   async usage(): Promise<UsageTotals> {
     const outcome = await this.#rpc.send({ type: 'get_session_stats' })
     if (!outcome.ok) return EMPTY_USAGE
-    return usageOf(record(outcome.data).usage)
+    return usageTotals(recordOf(outcome.data).usage)
   }
 
   /** The user's own messages, in order: what a resend or a fork works from. */
@@ -127,7 +131,7 @@ export class SessionReader {
 
   async #state(): Promise<{ sessionId: string; file: string }> {
     const outcome = await this.#rpc.send({ type: 'get_state' })
-    const data = record(outcome.data)
+    const data = recordOf(outcome.data)
     return {
       sessionId: typeof data.sessionId === 'string' ? data.sessionId : '',
       file: typeof data.sessionFile === 'string' ? data.sessionFile : '',
@@ -141,25 +145,10 @@ export class SessionReader {
 
   async #entries(): Promise<EntriesAnswer> {
     const outcome = await this.#rpc.send({ type: 'get_entries' })
-    const data = record(outcome.data)
+    const data = recordOf(outcome.data)
     return {
       entries: listOf(data.entries).map(entryOf),
       leafId: typeof data.leafId === 'string' ? data.leafId : null,
     }
-  }
-}
-
-/** pi's numbers in the workbench's terms: the shape is core's, the mapping is this file's. */
-export function usageOf(usage: unknown): UsageTotals {
-  const numbers = record(usage)
-  const cost = record(numbers.cost)
-  const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
-  return {
-    input: count(numbers.input),
-    output: count(numbers.output),
-    cacheRead: count(numbers.cacheRead),
-    cacheWrite: count(numbers.cacheWrite),
-    totalTokens: count(numbers.totalTokens),
-    cost: count(cost.total),
   }
 }

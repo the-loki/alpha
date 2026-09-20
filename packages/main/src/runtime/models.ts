@@ -6,7 +6,7 @@
  * whether that choice is still one Alpha can serve.
  */
 
-import type { ConversationModel, ConversationSummary, ModelStatus, Undef } from '@alpha/core'
+import type { ConversationModel, ModelStatus, Undef } from '@alpha/core'
 import type { ProviderStore } from '../providers/store.ts'
 
 /**
@@ -49,6 +49,3 @@ function modelDefinition(store: ProviderStore, chosen: ConversationModel) {
 export function describeRuntime(store: ProviderStore): ModelStatus {
   return defaultModel(store) === undefined ? { kind: 'none' } : { kind: 'configured' }
 }
-
-/** The model a conversation is recorded as using, so the window can name it. */
-export const modelOf = (conversation: ConversationSummary): ConversationModel => conversation.model

@@ -249,8 +249,6 @@ export const EN = {
     'Alpha runs the pi you installed, so your conversations use your pi, your providers and your own settings. Alpha keeps the window, the permission ladder and the ledger.',
   'settings.providersNote':
     'Where the workbench may reach, and with which key. Keys are held in the OS keychain and handed only to the agent\u0027s environment, for the calls it makes itself.',
-  'settings.modelsNote':
-    "Which model new conversations start on, and which models each connection serves. The limits are the ones the provider documents; only a model listed here appears in a conversation's picker. Whether a model takes pictures is on this panel too, because nothing else can know it.",
   'settings.permissionsNote': 'What the agent may do on its own, and what it has to ask about.',
   'settings.appearanceNote': 'Which palette the workbench is drawn in, and in which colour.',
   'settings.browserAccessNote':
@@ -264,8 +262,6 @@ export const EN = {
   'settings.portHint': '0 picks one',
   'settings.replaceToken': 'Replace',
   'settings.tokenMinted': 'minted when you switch it on',
-  'settings.providersBody':
-    'A connection, and nothing else: where it is, which of the three protocols it speaks, and the key that goes with it. Alpha ships no hosts of its own, so every provider here is one you described.',
   'settings.addProvider': 'Add a provider',
   'settings.apiOpenai': 'OpenAI Chat Completions',
   'settings.apiAnthropic': 'Anthropic Messages',
@@ -292,7 +288,6 @@ export const EN = {
   'settings.fieldIdPlaceholder': 'my-endpoint',
   'settings.fieldNamePlaceholder': 'My endpoint',
   'settings.fieldBaseUrlPlaceholder': 'the provider base url',
-  'settings.modelsNoProviders': 'Add a provider first, on the Providers panel.',
   'settings.noModels': 'No models yet. Add the ones this provider serves.',
   'settings.defaultModel': 'New conversations start on',
   'settings.defaultModelAuto': 'The first model there is',

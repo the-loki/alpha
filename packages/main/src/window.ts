@@ -60,6 +60,6 @@ export function createMainWindow(options: {
   return window
 }
 
-export function currentWindowState(window: BrowserWindow): WindowState {
+function currentWindowState(window: BrowserWindow): WindowState {
   return { maximized: window.isMaximized(), fullScreen: window.isFullScreen() }
 }

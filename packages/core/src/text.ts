@@ -46,3 +46,17 @@ export function parseJson(text: string): unknown {
     return undefined
   }
 }
+
+/**
+ * An object to look a field up in, from a value that is `unknown` because it came off the wire.
+ *
+ * Replies from the agent are read through this and `listOf`: the protocol promises a shape and a
+ * reply is still unknown until something reads a field off it, so the read is total rather than a
+ * cast — and in one place, so a guard that changes changes for every reader instead of for two of
+ * the three.
+ */
+export const recordOf = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+
+/** A list to walk, from the same kind of value. Anything that is not an array is the empty one. */
+export const listOf = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])

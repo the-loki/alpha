@@ -244,8 +244,6 @@ export const ZH = {
     'Alpha 跑的是你装好的 pi：会话用你的 pi、你的供应商和你自己的设置；窗口、权限梯队和账本仍然由 Alpha 管。',
   'settings.providersNote':
     '工作台能连到哪里、用哪把密钥。密钥存在系统钥匙串里，只在对话发起调用时交给 agent 自己的环境。',
-  'settings.modelsNote':
-    '新会话默认用哪个模型，以及每个连接提供哪些模型。限额按供应商文档填写；只有列在这里的模型，才会出现在会话的模型选择里。"能不能看图"也在这里设置——因为除了你，没有别的东西知道。',
   'settings.permissionsNote': 'agent 可以自己做什么，什么必须先问。',
   'settings.appearanceNote': '工作台用哪套调色板、哪种颜色。',
   'settings.browserAccessNote':
@@ -258,8 +256,6 @@ export const ZH = {
   'settings.portHint': '0 表示自动选',
   'settings.replaceToken': '更换',
   'settings.tokenMinted': '打开时生成',
-  'settings.providersBody':
-    '这里只管连接本身：地址、三种协议中的哪一种、以及配套的密钥。Alpha 不内置任何主机，所以每个供应商都是你自己写的。',
   'settings.addProvider': '添加供应商',
   'settings.apiOpenai': 'OpenAI Chat Completions',
   'settings.apiAnthropic': 'Anthropic Messages',
@@ -284,7 +280,6 @@ export const ZH = {
   'settings.fieldIdPlaceholder': 'my-endpoint',
   'settings.fieldNamePlaceholder': '我的端点',
   'settings.fieldBaseUrlPlaceholder': '供应商的 base url',
-  'settings.modelsNoProviders': '先在"供应商"页添加一个供应商。',
   'settings.noModels': '还没有模型。把这个供应商提供的模型加进来。',
   'settings.defaultModel': '新会话默认使用',
   'settings.defaultModelAuto': '第一个可用的模型',

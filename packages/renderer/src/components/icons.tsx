@@ -122,12 +122,6 @@ export const ArrowUpIcon = (props: IconProps) => (
   </Glyph>
 )
 
-export const StopIcon = (props: IconProps) => (
-  <Glyph {...props}>
-    <rect x="4.5" y="4.5" width="7" height="7" rx="1.2" fill="currentColor" stroke="none" />
-  </Glyph>
-)
-
 export const ClockIcon = (props: IconProps) => (
   <Glyph {...props}>
     <circle cx="8" cy="8" r="5.5" />
@@ -140,15 +134,6 @@ export const MoreIcon = (props: IconProps) => (
     <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
     <circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" />
     <circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
-  </Glyph>
-)
-
-export const BranchIcon = (props: IconProps) => (
-  <Glyph {...props}>
-    <circle cx="4.5" cy="4" r="1.6" />
-    <circle cx="4.5" cy="12" r="1.6" />
-    <circle cx="11.5" cy="7" r="1.6" />
-    <path d="M4.5 5.6v4.8M6.1 7h3.8" />
   </Glyph>
 )
 

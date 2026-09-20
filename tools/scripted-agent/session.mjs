@@ -19,7 +19,7 @@ const fileName = (timestamp, id) => `${timestamp.replace(/[:.]/g, '-')}_${id}.js
 export function createSession(options) {
   const { cwd, directory, send } = options
   let sessionId = options.sessionId ?? randomId()
-  let name = options.name
+  const name = options.name
   let file = join(directory, fileName(new Date().toISOString(), sessionId))
   let flushed = false
   let leaf = null
@@ -89,12 +89,8 @@ export function createSession(options) {
     },
     all: () => entries,
     leafId: () => leaf,
-    now: () => new Date().toISOString(),
     file: () => file,
     id: () => sessionId,
-    setName(next) {
-      name = next
-    },
     /** What the agent says about itself: what `get_state` answers with. */
     state(extra) {
       return {

@@ -24,7 +24,7 @@ export const GATE_TITLE = 'alpha:gate'
 const UNANSWERED = 'Alpha did not answer, so this call did not run.'
 
 /** The extension itself: small on purpose, because the policy it asks about lives in Alpha. */
-export const GATE_EXTENSION_SOURCE = `/**
+const GATE_EXTENSION_SOURCE = `/**
  * Alpha's gate: every tool call goes past the workbench before it runs.
  *
  * Written by Alpha, in Alpha's own agent directory. Edits to this file are overwritten on start.

@@ -156,7 +156,7 @@ function composerKeys(
  * the box itself cannot: with no folder the placeholder has already said that, and repeating it
  * here would be the same sentence twice.
  */
-export function composerNote(language: Language, state: ComposerNote): string {
+function composerNote(language: Language, state: ComposerNote): string {
   if (!state.hasFolder) return ''
   // The model's own line comes first: with nothing to talk to, what the keyboard does is not the
   // thing the reader needs to know.
@@ -169,7 +169,7 @@ export function composerNote(language: Language, state: ComposerNote): string {
 }
 
 /** Everything the composer's one line of explanation depends on. */
-export interface ComposerNote {
+interface ComposerNote {
   hasFolder: boolean
   model: ModelStatus
   running: boolean
