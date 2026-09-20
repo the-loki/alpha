@@ -1,5 +1,8 @@
 # The renderer routes with TanStack Router's file-based routes
 
+> **Superseded by [0021](0021-the-window-is-solid.md).** The router went with the framework it was
+> chosen for; the addresses this decision protected are unchanged.
+
 Alpha's renderer uses TanStack Router with the Vite file-route plugin: `src/routes/` is the
 source of truth for navigation, and every screen is addressable.
 

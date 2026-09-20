@@ -1,14 +1,7 @@
-import {
-  levelDescriptionKey,
-  levelKey,
-  levelTone,
-  type Null,
-  PERMISSION_LEVELS,
-  type PermissionLevel,
-} from '@alpha/core'
-import { useEffect, useRef, useState } from 'react'
-import { useConversations } from '../stores/conversations.ts'
-import { useShell, useText } from '../stores/shell.ts'
+import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS, type PermissionLevel } from '@alpha/core'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
+import { conversationActions, conversations } from '../stores/conversations.ts'
+import { shell, shellActions, useText } from '../stores/shell.ts'
 import { CheckIcon } from './icons.tsx'
 
 /** How each tone of the permission level reads: the settings page uses the same map. */
@@ -38,91 +31,90 @@ const DOT_CLASS: Record<string, string> = {
  */
 export function LevelChip() {
   const t = useText()
-  const fallback = useShell((state) => state.workspaceLevel)
-  const setWorkspaceLevel = useShell((state) => state.setPermissionLevel)
-  const activeId = useConversations((state) => state.activeId)
-  const summary = useConversations((state) => state.transcript.summary)
-  const setLevel = useConversations((state) => state.setLevel)
-  const inConversation = activeId !== '' && summary !== undefined
-  const level = inConversation ? summary.permissionLevel : fallback
-  const setPermissionLevel = async (next: PermissionLevel) => {
-    if (inConversation) await setLevel(next)
-    else await setWorkspaceLevel(next)
+  const [open, setOpen] = createSignal(false)
+  let container!: HTMLDivElement
+  const inConversation = () => conversations.activeId !== '' && conversations.transcript.summary !== undefined
+  const level = (): PermissionLevel => {
+    const summary = conversations.transcript.summary
+    return conversations.activeId !== '' && summary !== undefined ? summary.permissionLevel : shell.workspaceLevel
   }
-  const [open, setOpen] = useState(false)
-  const container = useRef<Null<HTMLDivElement>>(null)
+  const setPermissionLevel = async (next: PermissionLevel) => {
+    if (inConversation()) await conversationActions.setLevel(next)
+    else await shellActions.setPermissionLevel(next)
+  }
 
-  useEffect(() => {
-    if (!open) return
+  createEffect(() => {
+    if (!open()) return
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (container.current && !container.current.contains(event.target as Node)) setOpen(false)
+      if (container && !container.contains(event.target as Node)) setOpen(false)
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
     document.addEventListener('mousedown', closeOnOutsideClick)
     document.addEventListener('keydown', closeOnEscape)
-    return () => {
+    onCleanup(() => {
       document.removeEventListener('mousedown', closeOnOutsideClick)
       document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [open])
+    })
+  })
 
-  const tone = levelTone(level)
+  const tone = () => levelTone(level())
   return (
-    <div className="relative no-drag" ref={container}>
+    <div class="relative no-drag" ref={container}>
       <button
         type="button"
         aria-haspopup="listbox"
-        aria-expanded={open}
+        aria-expanded={open()}
         title={
-          inConversation
-            ? t('level.chipTitleHere', { description: t(levelDescriptionKey(level)) })
+          inConversation()
+            ? t('level.chipTitleHere', { description: t(levelDescriptionKey(level())) })
             : t('level.chipTitle')
         }
         onClick={() => setOpen((value) => !value)}
-        className={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-xs font-medium transition-colors ${TONE_CLASS[tone]}`}
+        class={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-xs font-medium transition-colors ${TONE_CLASS[tone()]}`}
       >
-        <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone]}`} aria-hidden="true" />
-        {t(levelKey(level))}
+        <span class={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone()]}`} aria-hidden="true" />
+        {t(levelKey(level()))}
       </button>
 
-      {open && (
-        // Opening upwards: the chip sits on the floor of the window, so a menu below it would be
-        // off the bottom of the screen.
+      <Show when={open()}>
+        {/* Opening upwards: the chip sits on the floor of the window, so a menu below it would be
+            off the bottom of the screen. */}
         <div
           role="menu"
           aria-label={t('level.chipTitle')}
-          className="absolute bottom-full left-0 overlay-in z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
+          class="absolute bottom-full left-0 overlay-in z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
         >
-          {PERMISSION_LEVELS.map((candidate: PermissionLevel) => (
-            <button
-              key={candidate}
-              type="button"
-              role="menuitemradio"
-              aria-checked={candidate === level}
-              onClick={() => {
-                void setPermissionLevel(candidate)
-                setOpen(false)
-              }}
-              className={`block w-full px-3 py-2 text-left transition-colors ${
-                candidate === level ? 'bg-ink-700' : 'hover:bg-ink-600'
-              }`}
-            >
-              <span className="flex items-center gap-2 text-ui text-parchment">
-                <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[levelTone(candidate)]}`} aria-hidden="true" />
-                {t(levelKey(candidate))}
-                {/* The mark of the one in force, in the place every menu in the app puts it: the
-                    dot says which level it is, the check says that it is the one being used. */}
-                <CheckIcon className={`ml-auto ${candidate === level ? 'text-accent' : 'invisible'}`} />
-              </span>
-              <span className="mt-0.5 block text-xs leading-snug text-parchment-faint">
-                {t(levelDescriptionKey(candidate))}
-              </span>
-            </button>
-          ))}
+          <For each={PERMISSION_LEVELS}>
+            {(candidate) => (
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={candidate === level()}
+                onClick={() => {
+                  void setPermissionLevel(candidate)
+                  setOpen(false)
+                }}
+                class={`block w-full px-3 py-2 text-left transition-colors ${
+                  candidate === level() ? 'bg-ink-700' : 'hover:bg-ink-600'
+                }`}
+              >
+                <span class="flex items-center gap-2 text-ui text-parchment">
+                  <span class={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[levelTone(candidate)]}`} aria-hidden="true" />
+                  {t(levelKey(candidate))}
+                  {/* The mark of the one in force, in the place every menu in the app puts it: the
+                      dot says which level it is, the check says that it is the one being used. */}
+                  <CheckIcon class={`ml-auto ${candidate === level() ? 'text-accent' : 'invisible'}`} />
+                </span>
+                <span class="mt-0.5 block text-xs leading-snug text-parchment-faint">
+                  {t(levelDescriptionKey(candidate))}
+                </span>
+              </button>
+            )}
+          </For>
         </div>
-      )}
+      </Show>
     </div>
   )
 }

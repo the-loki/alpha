@@ -1,6 +1,6 @@
 /**
  * The renderer's projection of a conversation. A pure reducer over runtime events, so the whole
- * streaming story is testable without React, without Electron, and without a model.
+ * streaming story is testable without a window, without Electron, and without a model.
  *
  * The one rule that shapes this module: a streaming message is held apart from the transcript,
  * in `streaming`. The transcript array is replaced only when a message is appended — once for

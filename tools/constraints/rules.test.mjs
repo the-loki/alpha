@@ -367,6 +367,33 @@ describe('02-architecture:renderer-has-no-model-client', () => {
   })
 })
 
+describe('02-architecture:renderer-is-solid', () => {
+  const rule = '02-architecture:renderer-is-solid'
+
+  it('flags each framework the window left behind', () => {
+    for (const text of [
+      'import { useState } from "react"',
+      'import { createRoot } from "react-dom/client"',
+      'import { create } from "zustand"',
+      'import { createRouter } from "@tanstack/react-router"',
+      'import Markdown from "react-markdown"',
+    ]) {
+      expect(violationsFor(rule, file('packages/renderer/src/a.tsx', text))).toHaveLength(1)
+    }
+  })
+
+  it('passes the same imports in the main process, where none of them belong either', () => {
+    expect(violationsFor(rule, file('packages/main/src/a.ts', 'import { useState } from "react"'))).toEqual([])
+  })
+
+  it('passes Solid, and a comment that names what was left behind', () => {
+    expect(violationsFor(rule, file('packages/renderer/src/a.tsx', 'import { createSignal } from "solid-js"'))).toEqual(
+      [],
+    )
+    expect(violationsFor(rule, file('packages/renderer/src/a.ts', '// React used to draw this window'))).toEqual([])
+  })
+})
+
 describe('02-architecture:max-file-lines', () => {
   const rule = '02-architecture:max-file-lines'
 

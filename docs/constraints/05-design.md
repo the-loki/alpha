@@ -154,7 +154,7 @@ durations, shortcuts, identifiers, code. So a question in the transcript is seri
 under it is sans — the one voice is the person's, the other is the machine's — and the rule is
 visible in every turn without being explained. An action is set in sans wherever it appears, and
 mono inside a button is data the button is carrying (the shortcut it answers to), not the button's
-own voice. `05-design:control-voice` fails `pnpm check` on a `<button>` whose own className says
+own voice. `05-design:control-voice` fails `pnpm check` on a `<button>` whose own class says
 `font-mono`. A sidebar row is the place the rule is easiest to get wrong: it is a list of names, so
 it is sans, and the counts and ages beside those names are the measurement that stays mono.
 

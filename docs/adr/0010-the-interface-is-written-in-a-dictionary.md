@@ -33,7 +33,7 @@ with the code.
 of `key: string`; `ZH` is declared `satisfies Record<TextKey, string>`, so a key added to one
 language and forgotten in the other is a type error rather than a blank line at runtime. Prose
 lives in `core/src/i18n.ts` with the types that name it, because a type's absence and a label's
-words are both vocabulary — but no React, no store and no side effects, so `core` stays pure.
+words are both vocabulary — but no framework, no store and no side effects, so `core` stays pure.
 
 **Copy in a component is a `pnpm check` failure.** `05-design:copy-has-a-key` reads every `.tsx`
 under `packages/renderer/src/` and flags copy three ways it hides: an `aria-label`, `placeholder` or

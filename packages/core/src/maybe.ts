@@ -7,7 +7,8 @@
  * this and lets the caller leave the name out instead of writing `undefined` into the call.
  *
  * `Null<T>` is the boundary's absence: the one a foreign system speaks — a parsed JSON payload, a
- * vendor return, `document.querySelector`, a React ref. It is named so the boundary is visible, and
+ * vendor return, `document.querySelector`, an element a framework hands a ref to. It is named so the
+ * boundary is visible, and
  * the module that received it converts the value to `undefined` before it travels any further
  * (C1.2). Neither alias is ever spelled as a bare union at a use site: the name is the point.
  */

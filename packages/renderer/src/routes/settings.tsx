@@ -1,6 +1,6 @@
 import type { TextKey } from '@alpha/core'
-import { createFileRoute, Link, type SearchSchemaInput } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useSearchParams } from '@solidjs/router'
+import { For, type JSX } from 'solid-js'
 import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
 import { AgentSection } from '../components/settings/AgentSection.tsx'
 import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
@@ -26,14 +26,14 @@ const TAB_LABELS: Record<SettingTab, TextKey> = {
   'browser-access': 'settings.tabBrowserAccess',
 }
 
-const TAB_ICONS: Record<SettingTab, ReactNode> = {
+const TAB_ICONS: Record<SettingTab, () => JSX.Element> = {
   // The agent is the workbench's engine, so it is where the sliders would be if it had a panel of
   // its own; providers is the connection it runs over.
-  agent: <SlidersIcon />,
-  providers: <SlidersIcon />,
-  permissions: <ShieldIcon />,
-  appearance: <PaletteIcon />,
-  'browser-access': <GlobeIcon />,
+  agent: () => <SlidersIcon />,
+  providers: () => <SlidersIcon />,
+  permissions: () => <ShieldIcon />,
+  appearance: () => <PaletteIcon />,
+  'browser-access': () => <GlobeIcon />,
 }
 
 /** The menu, grouped the way the reference groups it: what the agent may do, then how it looks. */
@@ -51,100 +51,101 @@ const TAB_NOTES: Record<SettingTab, TextKey> = {
   'browser-access': 'settings.browserAccessNote',
 }
 
-/** What each panel holds. Providers is first because it is what a person comes here to change. */
-const PANELS: Record<SettingTab, ReactNode> = {
-  agent: <AgentSection />,
-  providers: <ProvidersSection />,
-  permissions: (
-    <>
-      <PermissionSection />
-      <RememberedRules />
-    </>
-  ),
-  appearance: <AppearanceSection />,
-  'browser-access': <BrowserAccessSection />,
-}
-
 function isSettingTab(value: unknown): value is SettingTab {
   return typeof value === 'string' && (SETTING_TABS as readonly string[]).includes(value)
 }
 
-/**
- * A tab in the URL, defaulted rather than optional: the panel is a complete value by the time a
- * screen reads it, so nothing downstream narrows a union. The `SearchSchemaInput` label is what
- * keeps the write side honest — without it every `Link` in the app would have to be handed a
- * `search`, including the ones with nothing to do with settings.
- */
-const validateSearch = (input: { tab?: unknown } & SearchSchemaInput): { tab: SettingTab } => ({
-  tab: isSettingTab(input.tab) ? input.tab : 'providers',
-})
+/** What a panel holds. Providers is first because it is what a person comes here to change. */
+function panelOf(tab: SettingTab): JSX.Element {
+  switch (tab) {
+    case 'agent':
+      return <AgentSection />
+    case 'permissions':
+      return (
+        <>
+          <PermissionSection />
+          <RememberedRules />
+        </>
+      )
+    case 'appearance':
+      return <AppearanceSection />
+    case 'browser-access':
+      return <BrowserAccessSection />
+    default:
+      return <ProvidersSection />
+  }
+}
 
-function Settings() {
+export function Settings() {
   const t = useText()
-  const { tab } = Route.useSearch()
+  // The tab is a value by the time a screen reads it — the URL keeps whatever was typed, and what
+  // the page draws is always one of the five.
+  const [search] = useSearchParams()
+  const tab = (): SettingTab => (isSettingTab(search.tab) ? search.tab : 'providers')
 
   return (
     // The same shape as the window: a soft menu panel and the page beside it, which is the split
     // every other screen uses.
-    <div className="flex h-full gap-2 p-2">
+    <div class="flex h-full gap-2 p-2">
       <nav
         aria-label={t('settings.sections')}
-        className="w-60 shrink-0 overflow-y-auto rounded-card bg-ink-800 px-2 pt-2 pb-6"
+        class="w-60 shrink-0 overflow-y-auto rounded-card bg-ink-800 px-2 pt-2 pb-6"
       >
         {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
-        <Link
-          to="/"
-          className="flex items-center gap-2 rounded-control px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment"
+        <a
+          href="#/"
+          class="flex items-center gap-2 rounded-control px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment"
         >
           <ArrowLeftIcon /> {t('settings.back')}
-        </Link>
+        </a>
 
-        <h1 className="mt-5 px-2 font-display text-xl font-medium text-parchment">{t('settings.title')}</h1>
+        <h1 class="mt-5 px-2 font-display text-xl font-medium text-parchment">{t('settings.title')}</h1>
 
-        {TAB_GROUPS.map((group) => (
-          <section key={group.label} className="mt-5 pt-2">
-            <h2 className="px-2 pb-1 font-mono text-micro tracking-widest text-parchment-faint uppercase">
-              {t(group.label)}
-            </h2>
-            <ul>
-              {group.tabs.map((candidate) => (
-                <li key={candidate}>
-                  <Link
-                    to="/settings"
-                    search={{ tab: candidate }}
-                    aria-current={candidate === tab ? 'page' : undefined}
-                    // The panel you are on is a lifted row, the same mark the rail puts on the
-                    // conversation you are in.
-                    className={`flex items-center gap-2.5 rounded-control px-2 py-1.5 text-ui transition-colors ${
-                      candidate === tab
-                        ? 'bg-ink-700 font-medium text-parchment shadow-soft'
-                        : 'text-parchment-dim hover:bg-ink-700/60 hover:text-parchment'
-                    }`}
-                  >
-                    {TAB_ICONS[candidate]}
-                    {t(TAB_LABELS[candidate])}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+        <For each={TAB_GROUPS}>
+          {(group) => (
+            <section class="mt-5 pt-2">
+              <h2 class="px-2 pb-1 font-mono text-micro tracking-widest text-parchment-faint uppercase">
+                {t(group.label)}
+              </h2>
+              <ul>
+                <For each={group.tabs}>
+                  {(candidate) => (
+                    <li>
+                      <a
+                        href={`#/settings?tab=${candidate}`}
+                        aria-current={candidate === tab() ? 'page' : undefined}
+                        // The panel you are on is a lifted row, the same mark the rail puts on the
+                        // conversation you are in.
+                        class={`flex items-center gap-2.5 rounded-control px-2 py-1.5 text-ui transition-colors ${
+                          candidate === tab()
+                            ? 'bg-ink-700 font-medium text-parchment shadow-soft'
+                            : 'text-parchment-dim hover:bg-ink-700/60 hover:text-parchment'
+                        }`}
+                      >
+                        {TAB_ICONS[candidate]()}
+                        {t(TAB_LABELS[candidate])}
+                      </a>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </section>
+          )}
+        </For>
       </nav>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-card border border-line bg-ink-700">
+      <div class="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-card border border-line bg-ink-700">
         {/* One rule between one panel section and the next, drawn by the container so a section
             cannot forget it and two of them cannot draw it twice. The heading has none of its
             own: it is the rule's first subject, not a section under it. */}
-        <div className="mx-auto max-w-3xl divide-y divide-line px-8 py-6 [&>*]:pt-8">
-          <header className="pb-4">
-            <h1 className="font-display text-xl font-medium text-parchment">{t(TAB_LABELS[tab])}</h1>
-            <p className="mt-1 text-xs text-parchment-dim">{t(TAB_NOTES[tab])}</p>
+        <div class="mx-auto max-w-3xl divide-y divide-line px-8 py-6 [&>*]:pt-8">
+          <header class="pb-4">
+            <h1 class="font-display text-xl font-medium text-parchment">{t(TAB_LABELS[tab()])}</h1>
+            <p class="mt-1 text-xs text-parchment-dim">{t(TAB_NOTES[tab()])}</p>
           </header>
-          {PANELS[tab]}
+          {panelOf(tab())}
         </div>
       </div>
     </div>
   )
 }
-
-export const Route = createFileRoute('/settings')({ validateSearch, component: Settings })

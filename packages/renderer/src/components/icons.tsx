@@ -5,13 +5,16 @@
  * They are decorative by default (`aria-hidden`): every one of them sits next to a label or inside
  * a button that has one. An icon that carries meaning on its own takes a `title` instead.
  */
+import type { JSX } from 'solid-js'
+
 interface IconProps {
   /** Shown as the accessible name; without it the glyph is decoration. */
   title?: string
-  className?: string
+  class?: string
 }
 
-function Glyph({ title, className = '', children }: IconProps & { children: React.ReactNode }) {
+function Glyph(props: IconProps & { children: JSX.Element }) {
+  const named = () => props.title !== undefined
   return (
     <svg
       viewBox="0 0 16 16"
@@ -19,15 +22,15 @@ function Glyph({ title, className = '', children }: IconProps & { children: Reac
       height="1rem"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`shrink-0 ${className}`}
-      role={title === undefined ? undefined : 'img'}
-      aria-hidden={title === undefined ? true : undefined}
-      aria-label={title}
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class={`shrink-0 ${props.class ?? ''}`}
+      role={named() ? 'img' : undefined}
+      aria-hidden={named() ? undefined : true}
+      aria-label={props.title}
     >
-      {children}
+      {props.children}
     </svg>
   )
 }
@@ -74,10 +77,17 @@ export const GlobeIcon = (props: IconProps) => (
   </Glyph>
 )
 
-export const GearIcon = (props: IconProps) => (
+/**
+ * The workbench's settings: three tracks with their stops at different heights. A knob on a track
+ * is a thing you set — unlike the cog it replaces, it does not read as machinery, and unlike the
+ * two-track sliders the panels below use, it is the mark of the room the panels are in.
+ */
+export const TuneIcon = (props: IconProps) => (
   <Glyph {...props}>
-    <circle cx="8" cy="8" r="2.1" />
-    <path d="M8 1.9v1.6M8 12.5v1.6M1.9 8h1.6M12.5 8h1.6M3.7 3.7l1.1 1.1M11.2 11.2l1.1 1.1M12.3 3.7l-1.1 1.1M4.8 11.2l-1.1 1.1" />
+    <path d="M4 13.5V2.5M8 13.5V2.5M12 13.5V2.5" />
+    <circle cx="4" cy="10.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="5.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none" />
   </Glyph>
 )
 

@@ -1,36 +1,42 @@
 import type { ScheduledTask, TaskRun, TasksSnapshot, Undef } from '@alpha/core'
-import { create } from 'zustand'
+import { createStore } from 'solid-js/store'
 import { bridge } from '../lib/bridge.ts'
 
-interface TaskStore {
+export interface TasksState {
   tasks: ScheduledTask[]
   runs: TaskRun[]
   /** Whether the window has heard from main yet: before that, "no tasks" would be a guess. */
   listed: boolean
-  /** Every task the workbench knows, and the runs they remember. */
-  apply: (snapshot: TasksSnapshot) => void
-  save: (input: Partial<ScheduledTask>) => Promise<void>
-  remove: (id: string) => Promise<void>
-  runNow: (id: string) => Promise<void>
-  /** The runs of one task, newest first, which is what its own page lists. */
-  runsOf: (id: string) => TaskRun[]
 }
 
-export const useTasks = create<TaskStore>((set, get) => ({
-  tasks: [],
-  runs: [],
-  listed: false,
+/** Every task the workbench knows, and the runs they remember. */
+const [tasks, setTasks] = createStore<TasksState>({ tasks: [], runs: [], listed: false })
 
-  apply: (snapshot) => set({ tasks: snapshot.tasks, runs: snapshot.runs, listed: true }),
+export { tasks }
 
-  save: async (input) => set({ ...(await bridge().saveTask(input)), listed: true }),
+const apply = (snapshot: TasksSnapshot): void => {
+  setTasks({ tasks: snapshot.tasks, runs: snapshot.runs, listed: true })
+}
 
-  remove: async (id) => set({ ...(await bridge().deleteTask(id)), listed: true }),
+export const taskActions = {
+  /** The whole list, as main pushes it: the window never assembles one of its own. */
+  apply,
 
-  runNow: async (id) => set({ ...(await bridge().runTaskNow(id)), listed: true }),
+  save: async (input: Partial<ScheduledTask>): Promise<void> => {
+    apply(await bridge().saveTask(input))
+  },
 
-  runsOf: (id) => get().runs.filter((run) => run.taskId === id),
-}))
+  remove: async (id: string): Promise<void> => {
+    apply(await bridge().deleteTask(id))
+  },
+
+  runNow: async (id: string): Promise<void> => {
+    apply(await bridge().runTaskNow(id))
+  },
+}
+
+/** The runs of one task, newest first, which is what its own page lists. */
+export const runsOf = (id: string): TaskRun[] => tasks.runs.filter((run) => run.taskId === id)
 
 /** One task by id, for a page that was opened on it. */
-export const taskOf = (tasks: ScheduledTask[], id: string): Undef<ScheduledTask> => tasks.find((task) => task.id === id)
+export const taskOf = (id: string): Undef<ScheduledTask> => tasks.tasks.find((task) => task.id === id)

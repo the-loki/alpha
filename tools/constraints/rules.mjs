@@ -305,6 +305,30 @@ export const RULES = [
   },
 
   {
+    id: '02-architecture:renderer-is-solid',
+    constraint: '02-architecture.md',
+    description: 'the window is drawn by Solid, and React does not come back',
+    check({ path, text }) {
+      if (!path.startsWith('packages/renderer/') || !/\.(ts|tsx)$/.test(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        if (isComment(line)) return
+        for (const specifier of importSpecifiers(line)) {
+          const react = specifier === 'react' || specifier === 'react-dom' || specifier === 'zustand'
+          if (react || specifier.startsWith('@tanstack/') || /^react-(dom|markdown)/.test(specifier)) {
+            found.push({
+              line: index + 1,
+              message: 'the window is Solid: a React package here means the migration grew back',
+              text: line.trim(),
+            })
+          }
+        }
+      })
+      return found
+    },
+  },
+
+  {
     id: '02-architecture:no-agent-dependency',
     constraint: '02-architecture.md',
     description: 'the agent is a program Alpha runs, not a library it links',
@@ -397,9 +421,9 @@ export const RULES = [
     id: '05-design:control-voice',
     constraint: '05-design.md',
     description: 'a control is set in sans; mono is the voice of data',
-    // The rule is about the button's own className, not about everything inside it: a mono span
+    // The rule is about the button's own class, not about everything inside it: a mono span
     // inside a button is data the button carries (a path, a count), and that is the distinction
-    // the design draws. The whole tag is read at once because a className is allowed to wrap.
+    // the design draws. The whole tag is read at once because a class list is allowed to wrap.
     check({ path, text }) {
       if (!path.startsWith('packages/renderer/')) return []
       if (!/\.tsx$/.test(path)) return []
@@ -420,7 +444,7 @@ export const RULES = [
     id: '05-design:no-other-weights',
     constraint: '05-design.md',
     description: 'two weights exist: medium and semibold',
-    // Read whole lines rather than stripped ones: a weight lives inside a className, and stripping
+    // Read whole lines rather than stripped ones: a weight lives inside a class list, and stripping
     // quoted text is exactly how it would hide. Hierarchy comes from size, colour and space, so the
     // rule names the forbidden weights rather than letting a new one arrive by accident.
     check({ path, text }) {

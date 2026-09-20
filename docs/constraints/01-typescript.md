@@ -26,9 +26,10 @@ says where it came from:
   for the places a `?` cannot speak for: a return type, a generic argument, an element of a
   collection, a parameter the caller has to pass either way.
 - **`Null<T>`** — `T | null`, the boundary's absence: a parsed JSON payload, a vendor return,
-  `document.querySelector`, a React ref. It is named so the boundary is visible, and the module that
-  received it converts the value to `undefined` before it travels any further, which is the rule at
-  the top of this section. A ref is the everyday case: `useRef<Null<HTMLDivElement>>(null)`.
+  `document.querySelector`, an element Solid hands a `ref` to. It is named so the boundary is visible,
+  and the module that received it converts the value to `undefined` before it travels any further,
+  which is the rule at the top of this section. A ref is the everyday case, and the cheap one:
+  `let container: Undef<HTMLDivElement>`.
 
 An **optional property** or an **omittable parameter** keeps its `?` rather than either alias:
 `foo?: T` already means `T | undefined`, and it lets the caller leave the name out instead of
@@ -85,7 +86,7 @@ Every exported function annotates its return type. Inference is welcome inside a
 at a module boundary it hides accidental widening, and it is exactly where a `Promise<Result<T>>`
 becomes `Promise<any>` by accident.
 
-Components in `.tsx` are exempt: a React component returns JSX, and the annotation says nothing.
+Components in `.tsx` are exempt: a component returns JSX, and the annotation says nothing.
 
 **Enforcement:** review. Biome's equivalent rule lives in `nursery` and fires on every inline
 callback, a noise-to-value trade this project does not take.

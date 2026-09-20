@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useNavigate } from '@solidjs/router'
+import { createEffect, onMount } from 'solid-js'
 import { ConversationPane } from '../components/ConversationPane.tsx'
-import { useConversations } from '../stores/conversations.ts'
-import { useShell } from '../stores/shell.ts'
+import { conversationActions, conversations } from '../stores/conversations.ts'
+import { shell, shellActions } from '../stores/shell.ts'
 
 /**
  * Comes back to the conversation that was open when the window last closed. The conversation
@@ -10,33 +10,25 @@ import { useShell } from '../stores/shell.ts'
  * navigation (T2).
  */
 function useResumeLastConversation(): void {
-  const remembered = useShell((state) => state.lastConversationId)
-  const clearResume = useShell((state) => state.clearResume)
-  const list = useConversations((state) => state.list)
   const navigate = useNavigate()
 
-  useEffect(() => {
+  createEffect(() => {
+    const remembered = shell.lastConversationId
     if (remembered === '') return
-    if (!list.some((conversation) => conversation.id === remembered)) return
-    // The memory is spent here rather than in a ref: a ref would re-arm every time this route
-    // mounts, and "New conversation" would keep bouncing back to the one that was open.
-    clearResume()
-    void navigate({ to: '/c/$conversationId', params: { conversationId: remembered } })
-  }, [remembered, list, navigate, clearResume])
+    if (!conversations.list.some((conversation) => conversation.id === remembered)) return
+    // The memory is spent here rather than kept until the route next mounts: a memory that stayed
+    // would bounce "New conversation" back to the one that was open.
+    shellActions.clearResume()
+    navigate(`/c/${remembered}`)
+  })
 }
 
 /** The "no conversation yet" state: the composer here starts one. */
-function NewConversation() {
-  const startNew = useConversations((state) => state.startNew)
-
+export function NewConversation() {
   // This route is "no conversation": whatever was open stays in the sidebar, and the next message
   // starts something else.
-  useEffect(() => {
-    startNew()
-  }, [startNew])
+  onMount(() => conversationActions.startNew())
 
   useResumeLastConversation()
   return <ConversationPane />
 }
-
-export const Route = createFileRoute('/')({ component: NewConversation })

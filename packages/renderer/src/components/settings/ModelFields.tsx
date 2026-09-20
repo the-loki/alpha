@@ -1,3 +1,4 @@
+import { Index } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, OUTLINED_ACTION } from '../controls.ts'
 import { entryNumber, MARK_COLUMN } from '../ledger.ts'
@@ -52,96 +53,96 @@ export const modelInput = (models: DraftModel[]) =>
   }))
 
 /** The models an endpoint serves, as rows being edited. Rows are positional until they are saved. */
-export function ModelFields({ models, onChange }: { models: DraftModel[]; onChange: (models: DraftModel[]) => void }) {
+export function ModelFields(props: { models: DraftModel[]; onChange: (models: DraftModel[]) => void }) {
   const t = useText()
   const replace = (index: number, changes: Partial<DraftModel>) =>
-    onChange(models.map((model, at) => (at === index ? { ...model, ...changes } : model)))
+    props.onChange(props.models.map((model, at) => (at === index ? { ...model, ...changes } : model)))
 
   return (
-    <div className="space-y-2">
-      {models.map((model, index) => {
-        // A row has no identity of its own until it is saved, so the position is the identity:
-        // it is the row's number, and a reader who cannot see it is told it on each field.
-        const key = `model-${index}`
-        const nth = index + 1
-        return (
-          // A named group per row — a fieldset, since that is what a set of controls with one name
-          // is: the labels are the same in every row, and the number that tells them apart belongs
-          // to the group rather than being repeated as a suffix on four fields.
-          <fieldset
-            key={key}
-            className="m-0 flex min-w-0 gap-3 border-0 p-0"
-            aria-label={t('settings.modelRow', { index: String(nth) })}
-          >
-            {/* The row's number, in the page's own language: a column of ordinal marks beside the
-                rows they number, so the fields themselves stay unlabelled by position. */}
-            <span className={MARK_COLUMN}>{entryNumber(index)}</span>
-            <div className="min-w-0 flex-1 rounded-control border border-line bg-ink-700 p-2">
-              <div className="grid grid-cols-2 gap-2">
-                <TextField
-                  label={t('settings.modelId')}
-                  value={model.id}
-                  placeholder="model-id"
-                  onChange={(id) => replace(index, { id })}
-                />
-                <TextField
-                  label={t('settings.modelName')}
-                  value={model.name}
-                  placeholder={t('settings.displayNamePlaceholder')}
-                  onChange={(name) => replace(index, { name })}
-                />
-                <TextField
-                  label={t('settings.modelContext')}
-                  value={model.contextWindow}
-                  placeholder="128000"
-                  onChange={(contextWindow) => replace(index, { contextWindow })}
-                />
-                <TextField
-                  label={t('settings.modelMaxTokens')}
-                  value={model.maxTokens}
-                  placeholder="8192"
-                  onChange={(maxTokens) => replace(index, { maxTokens })}
-                />
-              </div>
-              <div className="mt-2 flex items-center gap-4">
-                <label className="flex items-center gap-2 text-xs text-parchment-dim">
-                  <input
-                    type="checkbox"
-                    aria-label={t('settings.reasoning')}
-                    checked={model.reasoning}
-                    onChange={(event) => replace(index, { reasoning: event.target.checked })}
-                    className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+    <div class="space-y-2">
+      <Index each={props.models}>
+        {(model, index) => {
+          // A row has no identity of its own until it is saved, so the position is the identity:
+          // it is the row's number, and a reader who cannot see it is told it on each field.
+          const nth = index + 1
+          return (
+            // A named group per row — a fieldset, since that is what a set of controls with one name
+            // is: the labels are the same in every row, and the number that tells them apart belongs
+            // to the group rather than being repeated as a suffix on four fields.
+            <fieldset
+              class="m-0 flex min-w-0 gap-3 border-0 p-0"
+              aria-label={t('settings.modelRow', { index: String(nth) })}
+            >
+              {/* The row's number, in the page's own language: a column of ordinal marks beside the
+                  rows they number, so the fields themselves stay unlabelled by position. */}
+              <span class={MARK_COLUMN}>{entryNumber(index)}</span>
+              <div class="min-w-0 flex-1 rounded-control border border-line bg-ink-700 p-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <TextField
+                    label={t('settings.modelId')}
+                    value={model().id}
+                    placeholder="model-id"
+                    onChange={(id) => replace(index, { id })}
                   />
-                  {t('settings.reasoning')}
-                </label>
-                {/* What the model can be handed. It is a setting because nothing here can know it:
-                    no catalog ships with the app, and only the person who typed the model id knows
-                    what is behind it (ADR-0018). */}
-                <label className="flex items-center gap-2 text-xs text-parchment-dim">
-                  <input
-                    type="checkbox"
-                    aria-label={t('settings.takesPictures')}
-                    checked={model.images}
-                    onChange={(event) => replace(index, { images: event.target.checked })}
-                    className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                  <TextField
+                    label={t('settings.modelName')}
+                    value={model().name}
+                    placeholder={t('settings.displayNamePlaceholder')}
+                    onChange={(name) => replace(index, { name })}
                   />
-                  {t('settings.takesPictures')}
-                </label>
-                <span className="flex-1" />
-                <button
-                  type="button"
-                  aria-label={t('settings.removeModel')}
-                  onClick={() => onChange(models.filter((_unused, at) => at !== index))}
-                  className={DESTRUCTIVE_ACTION}
-                >
-                  {t('settings.removeModel')}
-                </button>
+                  <TextField
+                    label={t('settings.modelContext')}
+                    value={model().contextWindow}
+                    placeholder="128000"
+                    onChange={(contextWindow) => replace(index, { contextWindow })}
+                  />
+                  <TextField
+                    label={t('settings.modelMaxTokens')}
+                    value={model().maxTokens}
+                    placeholder="8192"
+                    onChange={(maxTokens) => replace(index, { maxTokens })}
+                  />
+                </div>
+                <div class="mt-2 flex items-center gap-4">
+                  <label class="flex items-center gap-2 text-xs text-parchment-dim">
+                    <input
+                      type="checkbox"
+                      aria-label={t('settings.reasoning')}
+                      checked={model().reasoning}
+                      onInput={(event) => replace(index, { reasoning: event.target.checked })}
+                      class="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                    />
+                    {t('settings.reasoning')}
+                  </label>
+                  {/* What the model can be handed. It is a setting because nothing here can know it:
+                      no catalog ships with the app, and only the person who typed the model id knows
+                      what is behind it (ADR-0018). */}
+                  <label class="flex items-center gap-2 text-xs text-parchment-dim">
+                    <input
+                      type="checkbox"
+                      aria-label={t('settings.takesPictures')}
+                      checked={model().images}
+                      onInput={(event) => replace(index, { images: event.target.checked })}
+                      class="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                    />
+                    {t('settings.takesPictures')}
+                  </label>
+                  <span class="flex-1" />
+                  <button
+                    type="button"
+                    aria-label={t('settings.removeModel')}
+                    onClick={() => props.onChange(props.models.filter((_unused, at) => at !== index))}
+                    class={DESTRUCTIVE_ACTION}
+                  >
+                    {t('settings.removeModel')}
+                  </button>
+                </div>
               </div>
-            </div>
-          </fieldset>
-        )
-      })}
-      <button type="button" onClick={() => onChange([...models, emptyModel()])} className={OUTLINED_ACTION}>
+            </fieldset>
+          )
+        }}
+      </Index>
+      <button type="button" onClick={() => props.onChange([...props.models, emptyModel()])} class={OUTLINED_ACTION}>
         {t('settings.addModel')}
       </button>
     </div>

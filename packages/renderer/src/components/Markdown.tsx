@@ -1,80 +1,240 @@
-import type { Undef } from '@alpha/core'
-import { memo, type ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { For, type JSX, Show } from 'solid-js'
+import {
+  childrenOf,
+  endsHere,
+  isLoose,
+  isTaskItem,
+  listClassOf,
+  type MdNode,
+  safeUrl,
+  treeOf,
+} from './markdown-tree.ts'
 
 /**
- * Message text renders as markdown, built from React elements rather than injected HTML, so a
- * model that writes a script tag gets a script tag printed rather than a script tag run.
+ * Message text renders as markdown, built from elements rather than injected HTML, so a model that
+ * writes a script tag gets a script tag printed rather than a script tag run: the tree is walked
+ * here, each node becomes a real element, and raw HTML is one of the things printed.
  */
-/** Where a markdown node ends, in characters from the start of the message. */
-type Positioned = { position?: { end?: { offset?: number } } }
+const CARET = () => <span class="caret ml-0.5" aria-hidden="true" />
 
-export const Markdown = memo(function Markdown({ text, caret = false }: { text: string; caret?: boolean }) {
-  // The caret goes inside whatever block the last character is in, at the end of it: as a sibling
-  // after the block it would sit on a line of its own and read as a stray bar. A stream can stop
-  // inside a paragraph, a list item or a code fence, so each of those carries it.
-  const endsHere = (node: Undef<Positioned>): boolean => {
-    const end = node?.position?.end?.offset
-    return caret && end !== undefined && end >= text.trimEnd().length
+/** The caret, when this node is where the text stops. */
+const Tail = (props: { node: MdNode; caret: boolean; end: number; children?: JSX.Element }) => (
+  <>
+    {props.children}
+    <Show when={endsHere(props.node, props.caret, props.end)}>{CARET()}</Show>
+  </>
+)
+
+/** Inline content: the marks inside a line of prose. */
+function Inline(props: { node: MdNode }): JSX.Element {
+  const children = () => <For each={props.node.children ?? []}>{(child) => <Inline node={child} />}</For>
+
+  switch (props.node.type) {
+    // Raw HTML is text here, never markup: this is the promise the whole file is built on.
+    case 'text':
+    case 'html':
+      return <>{props.node.value ?? ''}</>
+    case 'emphasis':
+      return <em>{children()}</em>
+    case 'strong':
+      return <strong>{children()}</strong>
+    case 'delete':
+      return <del>{children()}</del>
+    case 'inlineCode':
+      return (
+        <code class="rounded bg-ink-600 px-1 py-0.5 font-mono text-code text-parchment">{props.node.value ?? ''}</code>
+      )
+    case 'link':
+      return (
+        <a
+          class="text-accent underline underline-offset-2 hover:text-accent-bright"
+          href={safeUrl(props.node.url ?? '')}
+          title={props.node.title}
+        >
+          {children()}
+        </a>
+      )
+    case 'image':
+      return <img src={safeUrl(props.node.url ?? '')} alt={props.node.alt ?? ''} title={props.node.title} />
+    case 'break':
+      return <br />
+    default:
+      return children()
   }
-  const tail = (node: Undef<Positioned>, children: ReactNode): ReactNode => (
-    <>
-      {children}
-      {endsHere(node) && <span className="caret ml-0.5" aria-hidden="true" />}
-    </>
+}
+
+/** A heading, in the three sizes the window sets prose in. */
+const Heading = (props: { children: JSX.Element; depth: number }): JSX.Element => {
+  switch (props.depth) {
+    case 1:
+      return <h1 class="mb-2 mt-4 max-w-measure text-lg font-semibold">{props.children}</h1>
+    case 2:
+      return <h2 class="mb-2 mt-4 max-w-measure text-base font-semibold">{props.children}</h2>
+    case 3:
+      return <h3 class="mb-1.5 mt-3 max-w-measure text-body font-semibold">{props.children}</h3>
+    case 4:
+      return <h4>{props.children}</h4>
+    case 5:
+      return <h5>{props.children}</h5>
+    default:
+      return <h6>{props.children}</h6>
+  }
+}
+
+/**
+ * A list. A list of checkboxes is not a bulleted list: the pipeline that drew these before named it
+ * `contains-task-list`, and that name took the place of the list's own styling (as did the item's
+ * `task-list-item`), which is what the window has always shown.
+ */
+function List(props: { node: MdNode; caret: boolean; end: number }): JSX.Element {
+  const rows = () => (
+    <For each={childrenOf(props.node)}>
+      {(item) => <Item node={item} caret={props.caret} end={props.end} loose={isLoose(props.node)} />}
+    </For>
   )
 
   return (
-    <div className="text-body text-parchment">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          // Prose carries the reading measure (C5.3); code, tables and tool rows take the pane.
-          p: (props) => (
-            <p className="mb-3 max-w-measure last:mb-0 whitespace-pre-wrap" {...props}>
-              {tail(props.node, props.children)}
-            </p>
-          ),
-          h1: (props) => <h1 className="mb-2 mt-4 max-w-measure text-lg font-semibold" {...props} />,
-          h2: (props) => <h2 className="mb-2 mt-4 max-w-measure text-base font-semibold" {...props} />,
-          h3: (props) => <h3 className="mb-1.5 mt-3 max-w-measure text-body font-semibold" {...props} />,
-          ul: (props) => <ul className="mb-3 max-w-measure list-disc space-y-1 pl-5" {...props} />,
-          ol: (props) => <ol className="mb-3 max-w-measure list-decimal space-y-1 pl-5" {...props} />,
-          li: (props) => (
-            <li className="leading-[1.6]" {...props}>
-              {tail(props.node, props.children)}
-            </li>
-          ),
-          a: (props) => <a className="text-accent underline underline-offset-2 hover:text-accent-bright" {...props} />,
-          blockquote: (props) => (
-            <blockquote className="mb-3 max-w-measure border-l-2 border-line-strong pl-3 text-parchment-dim" {...props}>
-              {tail(props.node, props.children)}
-            </blockquote>
-          ),
-          code: (props) => (
-            <code className="rounded bg-ink-600 px-1 py-0.5 font-mono text-code text-parchment" {...props} />
-          ),
-          pre: (props) => (
-            <pre
-              className="mb-3 overflow-x-auto rounded-card border border-line bg-ink-800 p-3 font-mono text-code"
-              {...props}
-            >
-              {tail(props.node, props.children)}
-            </pre>
-          ),
-          table: (props) => (
-            <div className="mb-3 overflow-x-auto">
-              <table className="w-full border-collapse text-ui" {...props} />
-            </div>
-          ),
-          th: (props) => <th className="border border-line px-2 py-1 text-left font-medium" {...props} />,
-          td: (props) => <td className="border border-line px-2 py-1 align-top" {...props} />,
-          hr: () => <hr className="my-4 border-line" />,
-        }}
+    <Show when={props.node.ordered === true} fallback={<ul class={listClassOf(props.node, false)}>{rows()}</ul>}>
+      <ol
+        class={listClassOf(props.node, true)}
+        start={props.node.start === undefined || props.node.start === 1 ? undefined : props.node.start}
       >
-        {text}
-      </ReactMarkdown>
+        {rows()}
+      </ol>
+    </Show>
+  )
+}
+
+/**
+ * What an item holds. A tight item is text and marks, so its paragraph is not drawn — the item is
+ * the paragraph; a loose one, or one with a list inside it, holds blocks the way any other place
+ * does. That distinction is the markdown's own (the list's `spread`), and it is what keeps a nested
+ * list from printing as run-on text.
+ */
+const Contents = (props: { node: MdNode; caret: boolean; end: number; loose: boolean }): JSX.Element => (
+  <For each={childrenOf(props.node)}>
+    {(child) =>
+      props.loose || child.type !== 'paragraph' ? (
+        <Block node={child} caret={props.caret} end={props.end} />
+      ) : (
+        <For each={childrenOf(child)}>{(part) => <Inline node={part} />}</For>
+      )
+    }
+  </For>
+)
+
+const Item = (props: { node: MdNode; caret: boolean; end: number; loose: boolean }): JSX.Element => (
+  <Show
+    when={isTaskItem(props.node)}
+    fallback={
+      <li class="leading-[1.6]">
+        <Tail node={props.node} caret={props.caret} end={props.end}>
+          <Contents node={props.node} caret={props.caret} end={props.end} loose={props.loose} />
+        </Tail>
+      </li>
+    }
+  >
+    <li class="task-list-item">
+      <input type="checkbox" disabled checked={props.node.checked === true} />{' '}
+      <Tail node={props.node} caret={props.caret} end={props.end}>
+        <Contents node={props.node} caret={props.caret} end={props.end} loose={props.loose} />
+      </Tail>
+    </li>
+  </Show>
+)
+
+/** A table, with the header row as headers and each column's alignment carried from the source. */
+function Table(props: { node: MdNode }): JSX.Element {
+  const styleOf = (column: number) => {
+    const align = props.node.align?.[column]
+    return align === undefined ? undefined : `text-align: ${align}`
+  }
+
+  return (
+    <div class="mb-3 overflow-x-auto">
+      <table class="w-full border-collapse text-ui">
+        <For each={props.node.children ?? []}>
+          {(row, index) => (
+            <tr>
+              <For each={row.children ?? []}>
+                {(cell, column) => (
+                  <Show
+                    when={index() === 0}
+                    fallback={
+                      <td class="border border-line px-2 py-1 align-top" style={styleOf(column())}>
+                        <For each={cell.children ?? []}>{(child) => <Inline node={child} />}</For>
+                      </td>
+                    }
+                  >
+                    <th class="border border-line px-2 py-1 text-left font-medium" style={styleOf(column())}>
+                      <For each={cell.children ?? []}>{(child) => <Inline node={child} />}</For>
+                    </th>
+                  </Show>
+                )}
+              </For>
+            </tr>
+          )}
+        </For>
+      </table>
     </div>
   )
-})
+}
+
+/** A block: the shapes prose is set in, and the marks that carry the reading measure (C5.3). */
+function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Element {
+  const children = () => <For each={props.node.children ?? []}>{(child) => <Inline node={child} />}</For>
+  switch (props.node.type) {
+    case 'paragraph':
+      return (
+        <p class="mb-3 max-w-measure last:mb-0 whitespace-pre-wrap">
+          <Tail node={props.node} caret={props.caret} end={props.end}>
+            {children()}
+          </Tail>
+        </p>
+      )
+    case 'blockquote':
+      return (
+        <blockquote class="mb-3 max-w-measure border-l-2 border-line-strong pl-3 text-parchment-dim">
+          <Tail node={props.node} caret={props.caret} end={props.end}>
+            {children()}
+          </Tail>
+        </blockquote>
+      )
+    case 'code':
+      return (
+        <pre class="mb-3 overflow-x-auto rounded-card border border-line bg-ink-800 p-3 font-mono text-code">
+          {/* The block's own code element wears the inline pill's classes, which is what it looked
+              like before and is not this file's business to change. */}
+          <code class="rounded bg-ink-600 px-1 py-0.5 font-mono text-code text-parchment">
+            {props.node.value ?? ''}
+          </code>
+          <Show when={endsHere(props.node, props.caret, props.end)}>{CARET()}</Show>
+        </pre>
+      )
+    case 'heading':
+      return <Heading depth={props.node.depth ?? 1}>{children()}</Heading>
+    case 'list':
+      return <List node={props.node} caret={props.caret} end={props.end} />
+    case 'table':
+      return <Table node={props.node} />
+    case 'thematicBreak':
+      return <hr class="my-4 border-line" />
+    // A block of raw HTML, printed the way an inline one is.
+    case 'html':
+      return <p class="mb-3 max-w-measure last:mb-0 whitespace-pre-wrap">{props.node.value ?? ''}</p>
+    default:
+      return children()
+  }
+}
+
+export function Markdown(props: { text: string; caret?: boolean }) {
+  const tree = () => treeOf(props.text)
+  const end = () => props.text.trimEnd().length
+  const caret = () => props.caret === true
+
+  return (
+    <div class="text-body text-parchment">
+      <For each={tree().children ?? []}>{(one) => <Block node={one} caret={caret()} end={end()} />}</For>
+    </div>
+  )
+}

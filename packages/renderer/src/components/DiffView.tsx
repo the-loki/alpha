@@ -1,3 +1,5 @@
+import { For } from 'solid-js'
+
 /**
  * A diff as the tool reported it. Parsing is line-level on purpose: the point is to make added
  * and removed lines distinguishable, not to reimplement a diff algorithm over text that already
@@ -21,22 +23,20 @@ const keyedLines = (lines: string[]): { key: string; line: string }[] => {
   })
 }
 
-export function DiffView({ diff }: { diff: string }) {
-  const lines = diff.split('\n')
-  const added = lines.filter((line) => line.startsWith('+') && !line.startsWith('+++')).length
-  const removed = lines.filter((line) => line.startsWith('-') && !line.startsWith('---')).length
+export function DiffView(props: { diff: string }) {
+  const lines = () => props.diff.split('\n')
+  const added = () => lines().filter((line) => line.startsWith('+') && !line.startsWith('+++')).length
+  const removed = () => lines().filter((line) => line.startsWith('-') && !line.startsWith('---')).length
 
   return (
-    <div className="mt-1.5">
-      <p className="mb-1 font-mono text-micro text-parchment-faint">
-        <span className="text-jade">+{added}</span> <span className="text-danger">−{removed}</span>
+    <div class="mt-1.5">
+      <p class="mb-1 font-mono text-micro text-parchment-faint">
+        <span class="text-jade">+{added()}</span> <span class="text-danger">−{removed()}</span>
       </p>
-      <pre className="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-code">
-        {keyedLines(lines).map(({ key, line }) => (
-          <span key={key} className={`block ${LINE_CLASS(line)}`}>
-            {line === '' ? ' ' : line}
-          </span>
-        ))}
+      <pre class="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-code">
+        <For each={keyedLines(lines())}>
+          {(entry) => <span class={`block ${LINE_CLASS(entry.line)}`}>{entry.line === '' ? ' ' : entry.line}</span>}
+        </For>
       </pre>
     </div>
   )

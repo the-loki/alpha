@@ -1,51 +1,50 @@
-import { Link, useNavigate } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useNavigate } from '@solidjs/router'
+import { type JSX, Show } from 'solid-js'
 import { bridge } from '../lib/bridge.ts'
-import { composerFolderOf, useShell, useText } from '../stores/shell.ts'
-import { ClockIcon, GearIcon, PlusIcon, SearchIcon } from './icons.tsx'
+import { composerFolderOf, shell, useText } from '../stores/shell.ts'
+import { ClockIcon, PlusIcon, SearchIcon, TuneIcon } from './icons.tsx'
 
 function WindowControls() {
-  const platform = useShell((state) => state.platform)
-  const host = useShell((state) => state.host)
-  const maximized = useShell((state) => state.windowMaximized)
   const t = useText()
   const client = bridge()
   // A browser has no window of ours to move, and macOS draws its own controls anyway.
-  if (host === 'browser' || platform === 'darwin') return null
+  const ours = () => shell.host !== 'browser' && shell.platform !== 'darwin'
 
   return (
-    <div className="no-drag flex items-center">
-      <button
-        type="button"
-        aria-label={t('window.minimize')}
-        onClick={() => void client.sendWindowCommand('minimize')}
-        className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-          <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        aria-label={maximized ? t('window.restore') : t('window.maximize')}
-        onClick={() => void client.sendWindowCommand('toggle-maximize')}
-        className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-          <rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        aria-label={t('window.close')}
-        onClick={() => void client.sendWindowCommand('close')}
-        className="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M0 0 L10 10 M10 0 L0 10" stroke="currentColor" strokeWidth="1" />
-        </svg>
-      </button>
-    </div>
+    <Show when={ours()}>
+      <div class="no-drag flex items-center">
+        <button
+          type="button"
+          aria-label={t('window.minimize')}
+          onClick={() => void client.sendWindowCommand('minimize')}
+          class="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          aria-label={shell.windowMaximized ? t('window.restore') : t('window.maximize')}
+          onClick={() => void client.sendWindowCommand('toggle-maximize')}
+          class="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          aria-label={t('window.close')}
+          onClick={() => void client.sendWindowCommand('close')}
+          class="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M0 0 L10 10 M10 0 L0 10" stroke="currentColor" stroke-width="1" />
+          </svg>
+        </button>
+      </div>
+    </Show>
   )
 }
 
@@ -54,33 +53,23 @@ function WindowControls() {
  * from its neighbours by a hairline — a strip of glyph buttons is a toolbar, and a toolbar without
  * rules between its items is a row of unlabelled glyphs.
  */
-function Command({
-  icon,
-  label,
-  hint,
-  onClick,
-}: {
-  icon: ReactNode
-  label: string
-  hint?: string
-  onClick: () => void
-}) {
+function Command(props: { icon: JSX.Element; label: string; hint?: string; onClick: () => void }) {
   return (
     <button
       type="button"
-      aria-label={label}
-      title={hint ?? label}
-      onClick={onClick}
-      className="no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
+      aria-label={props.label}
+      title={props.hint ?? props.label}
+      onClick={() => props.onClick()}
+      class="no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
     >
-      {icon}
+      {props.icon}
     </button>
   )
 }
 
 /** A hairline between two commands of the strip. */
 function Rule() {
-  return <span aria-hidden="true" className="mx-1 h-4 w-px bg-line-strong/40" />
+  return <span aria-hidden="true" class="mx-1 h-4 w-px bg-line-strong/40" />
 }
 
 /**
@@ -89,61 +78,62 @@ function Rule() {
  * its own ruled place, then the workbench's settings beside the window's own controls. The rail
  * below is the index; this strip is what one does about it.
  */
-export function TitleBar({ onSearch, inSettings }: { onSearch: () => void; inSettings: boolean }) {
+export function TitleBar(props: { onSearch: () => void; inSettings: boolean }) {
   const t = useText()
   const navigate = useNavigate()
-  const platform = useShell((state) => state.platform)
-  const version = useShell((state) => state.appVersion)
-  const composerFolder = useShell(composerFolderOf)
-  const modifier = platform === 'darwin' ? '⌘' : 'Ctrl+'
+  const composerFolder = () => composerFolderOf(shell)
+  const modifier = () => (shell.platform === 'darwin' ? '⌘' : 'Ctrl+')
 
-  const newConversationHint = composerFolder
-    ? `${t('sidebar.newConversationIn', { folder: composerFolder.name })} · ${modifier}N`
-    : `${t('sidebar.newConversationNowhere')} · ${modifier}N`
+  const newConversationHint = () => {
+    const folder = composerFolder()
+    return folder !== undefined
+      ? `${t('sidebar.newConversationIn', { folder: folder.name })} · ${modifier()}N`
+      : `${t('sidebar.newConversationNowhere')} · ${modifier()}N`
+  }
 
   return (
-    <header className="drag-region flex h-10 shrink-0 items-center justify-between pl-2.5">
-      <div className="flex items-center">
-        <span className="drag-region flex items-center gap-2 pr-1.5" title={`Alpha ${version}`}>
+    <header class="drag-region flex h-10 shrink-0 items-center justify-between pl-2.5">
+      <div class="flex items-center">
+        <span class="drag-region flex items-center gap-2 pr-1.5" title={`Alpha ${shell.appVersion}`}>
           <span
             aria-hidden="true"
-            className="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
+            class="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
           >
             A
           </span>
-          <span className="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
+          <span class="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
         </span>
 
         <Rule />
         <Command
           icon={<PlusIcon />}
           label={t('sidebar.newConversation')}
-          hint={newConversationHint}
-          onClick={() => void navigate({ to: '/' })}
+          hint={newConversationHint()}
+          onClick={() => navigate('/')}
         />
         <Rule />
         <Command
           icon={<SearchIcon />}
           label={t('sidebar.search')}
-          hint={`${t('sidebar.search')} · ${modifier}K`}
-          onClick={onSearch}
+          hint={`${t('sidebar.search')} · ${modifier()}K`}
+          onClick={props.onSearch}
         />
         <Rule />
-        <Command icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => void navigate({ to: '/tasks' })} />
+        <Command icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => navigate('/tasks')} />
         <Rule />
       </div>
 
-      <div className="flex items-center">
-        {!inSettings && (
-          <Link
-            to="/settings"
+      <div class="flex items-center">
+        <Show when={!props.inSettings}>
+          <a
+            href="#/settings"
             aria-label={t('settings.open')}
             title={t('settings.open')}
-            className="no-drag mr-1 grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
+            class="no-drag mr-1 grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
           >
-            <GearIcon />
-          </Link>
-        )}
+            <TuneIcon />
+          </a>
+        </Show>
         <WindowControls />
       </div>
     </header>

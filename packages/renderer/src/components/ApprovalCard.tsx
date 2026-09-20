@@ -1,6 +1,6 @@
-import { type ApprovalRequest, levelKey, type Null, type RuleScope, riskKey } from '@alpha/core'
-import { useEffect, useRef, useState } from 'react'
-import { useConversations } from '../stores/conversations.ts'
+import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/core'
+import { createSignal, onMount, Show } from 'solid-js'
+import { conversationActions } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
 import { DiffView } from './DiffView.tsx'
 
@@ -9,27 +9,25 @@ import { DiffView } from './DiffView.tsx'
  * until one of the three answers is given. The keyboard is the fast path — Enter allows once,
  * Escape denies — because a card that needs a mouse is a card that gets clicked without reading.
  */
-export function ApprovalCard({ request }: { request: ApprovalRequest }) {
-  const answer = useConversations((state) => state.answerApproval)
+export function ApprovalCard(props: { request: ApprovalRequest }) {
+  const answer = conversationActions.answerApproval
   const t = useText()
-  const [reason, setReason] = useState('')
-  const [scope, setScope] = useState<RuleScope>('conversation')
-  const field = useRef<Null<HTMLInputElement>>(null)
-  const [busy, setBusy] = useState(false)
+  const [reason, setReason] = createSignal('')
+  const [scope, setScope] = createSignal<RuleScope>('conversation')
+  let field!: HTMLInputElement
+  const [busy, setBusy] = createSignal(false)
 
-  useEffect(() => {
-    field.current?.focus()
-  }, [])
+  onMount(() => field.focus())
 
   const settle = async (input: Parameters<typeof answer>[0]) => {
-    if (busy) return
+    if (busy()) return
     setBusy(true)
     await answer(input)
   }
 
-  const allowOnce = () => void settle({ requestId: request.requestId, decision: 'once' })
-  const allowAlways = () => void settle({ requestId: request.requestId, decision: 'always', scope })
-  const deny = () => void settle({ requestId: request.requestId, decision: 'deny', reason: reason.trim() })
+  const allowOnce = () => void settle({ requestId: props.request.requestId, decision: 'once' })
+  const allowAlways = () => void settle({ requestId: props.request.requestId, decision: 'always', scope: scope() })
+  const deny = () => void settle({ requestId: props.request.requestId, decision: 'deny', reason: reason().trim() })
 
   return (
     <section
@@ -44,49 +42,49 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
           deny()
         }
       }}
-      className="overflow-hidden rounded-card border border-amber/30 bg-amber/5 shadow-soft"
+      class="overflow-hidden rounded-card border border-amber/30 bg-amber/5 shadow-soft"
     >
-      <header className="flex items-baseline gap-2 px-3.5 pb-1 pt-2.5">
-        <span className="font-mono text-micro uppercase tracking-wider text-amber">
-          {t(request.risk === 'execute' ? 'approval.command' : 'approval.change')}
+      <header class="flex items-baseline gap-2 px-3.5 pb-1 pt-2.5">
+        <span class="font-mono text-micro uppercase tracking-wider text-amber">
+          {t(props.request.risk === 'execute' ? 'approval.command' : 'approval.change')}
         </span>
-        <span className="text-micro text-parchment-faint">· {t(levelKey(request.level))}</span>
+        <span class="text-micro text-parchment-faint">· {t(levelKey(props.request.level))}</span>
       </header>
 
-      <div className="px-3.5 pb-1">
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment">
-          {request.detail === '' ? t(riskKey(request.risk)) : request.detail}
+      <div class="px-3.5 pb-1">
+        <pre class="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment">
+          {props.request.detail === '' ? t(riskKey(props.request.risk)) : props.request.detail}
         </pre>
-        <p className="mt-0.5 font-mono text-micro text-parchment-faint">
-          {t('approval.inFolder', { path: request.cwd })}
+        <p class="mt-0.5 font-mono text-micro text-parchment-faint">
+          {t('approval.inFolder', { path: props.request.cwd })}
         </p>
-        {request.diff !== undefined && <DiffView diff={request.diff} />}
+        <Show when={props.request.diff}>{(diff) => <DiffView diff={diff()} />}</Show>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-3.5 py-2.5">
+      <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-3.5 py-2.5">
         <button
           type="button"
           onClick={allowOnce}
-          disabled={busy}
-          className="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60"
+          disabled={busy()}
+          class="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60"
         >
           {t('approval.allowOnce')}
         </button>
 
-        <div className="flex items-center rounded-control border border-line bg-ink-700 shadow-soft">
+        <div class="flex items-center rounded-control border border-line bg-ink-700 shadow-soft">
           <button
             type="button"
             onClick={allowAlways}
-            disabled={busy}
-            className="px-3 py-1 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
+            disabled={busy()}
+            class="px-3 py-1 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
           >
             {t('approval.alwaysAllow')}
           </button>
           <select
             aria-label={t('approval.rememberFor')}
-            value={scope}
-            onChange={(event) => setScope(event.target.value as RuleScope)}
-            className="border-l border-line bg-transparent px-1.5 py-1 text-micro text-parchment-dim focus:outline-none"
+            value={scope()}
+            onInput={(event) => setScope(event.currentTarget.value as RuleScope)}
+            class="border-l border-line bg-transparent px-1.5 py-1 text-micro text-parchment-dim focus:outline-none"
           >
             <option value="conversation">{t('approval.scopeConversation')}</option>
             <option value="workspace">{t('approval.scopeWorkspace')}</option>
@@ -97,18 +95,18 @@ export function ApprovalCard({ request }: { request: ApprovalRequest }) {
             and the space it leaves is what keeps Deny next to the decision it belongs to. */}
         <input
           ref={field}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
+          value={reason()}
+          onInput={(event) => setReason(event.currentTarget.value)}
           aria-label={t('approval.reasonLabel')}
           placeholder={t('approval.reasonPlaceholder')}
-          className="min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-700 px-2.5 py-1.5 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          class="min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-700 px-2.5 py-1.5 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
         />
 
         <button
           type="button"
           onClick={deny}
-          disabled={busy}
-          className="rounded-control border border-danger/40 px-3 py-1 text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
+          disabled={busy()}
+          class="rounded-control border border-danger/40 px-3 py-1 text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
         >
           {t('approval.deny')}
         </button>

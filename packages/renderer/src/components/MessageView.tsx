@@ -1,15 +1,19 @@
 import {
+  type ChatBlock,
   type ChatBlockAttachment,
   type ChatBlockCompaction,
+  type ChatBlockText,
   type ChatBlockThinking,
+  type ChatBlockTool,
   type ChatMessage,
+  type EditEffect,
   formatDuration,
   type TextKey,
   type TextParams,
 } from '@alpha/core'
-import { memo, useState } from 'react'
+import { createSignal, For, Index, Match, Show, Switch } from 'solid-js'
 import { copyText, markdownOf } from '../lib/clipboard.ts'
-import { useConversations } from '../stores/conversations.ts'
+import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
 import { TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
@@ -19,42 +23,42 @@ import { ToolRow } from './ToolRow.tsx'
  * A picture the message carried. It is shown rather than named, because it is what the model was
  * handed: a reader scrolling back sees the same thing the answer was about.
  */
-function AttachmentThumb({ block }: { block: ChatBlockAttachment }) {
+function AttachmentThumb(props: { block: ChatBlockAttachment }) {
   const t = useText()
   return (
     <img
-      src={`data:${block.mimeType};base64,${block.data}`}
+      src={`data:${props.block.mimeType};base64,${props.block.data}`}
       alt={t('message.attachment')}
-      className="max-h-48 w-auto rounded-card border border-line object-contain"
+      class="max-h-48 w-auto rounded-card border border-line object-contain"
     />
   )
 }
 
-function ThinkingBlock({ block }: { block: ChatBlockThinking }) {
+function ThinkingBlock(props: { block: ChatBlockThinking }) {
   const t = useText()
-  const elapsed = formatDuration(block.startedAt, block.endedAt)
+  const elapsed = () => formatDuration(props.block.startedAt, props.block.endedAt)
   return (
-    <details className="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
-      <summary className="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
+    <details class="mb-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
+      <summary class="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
         {t('message.thinking')}
-        {elapsed === '' ? '' : ` · ${elapsed}`}
+        {elapsed() === '' ? '' : ` · ${elapsed()}`}
       </summary>
-      <p className="mt-2 whitespace-pre-wrap font-mono text-code leading-[1.6] text-parchment-dim">{block.text}</p>
+      <p class="mt-2 whitespace-pre-wrap font-mono text-code leading-[1.6] text-parchment-dim">{props.block.text}</p>
     </details>
   )
 }
 
 /** Where the runtime summarised the history, with the summary readable rather than folded away. */
-function CompactionMarker({ block }: { block: ChatBlockCompaction }) {
+function CompactionMarker(props: { block: ChatBlockCompaction }) {
   const t = useText()
   return (
-    <details className="mb-3 rounded-card border border-dashed border-line bg-ink-800/50 px-3 py-2">
-      <summary className="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
-        {t(block.replaced === undefined ? 'message.compacted' : 'message.compactedCount', {
-          count: block.replaced ?? 0,
+    <details class="mb-3 rounded-card border border-dashed border-line bg-ink-800/50 px-3 py-2">
+      <summary class="cursor-pointer list-none font-mono text-micro uppercase tracking-wider text-parchment-faint">
+        {t(props.block.replaced === undefined ? 'message.compacted' : 'message.compactedCount', {
+          count: props.block.replaced ?? 0,
         })}
       </summary>
-      <p className="mt-2 whitespace-pre-wrap text-code leading-[1.6] text-parchment-dim">{block.summary}</p>
+      <p class="mt-2 whitespace-pre-wrap text-code leading-[1.6] text-parchment-dim">{props.block.summary}</p>
     </details>
   )
 }
@@ -63,202 +67,243 @@ function CompactionMarker({ block }: { block: ChatBlockCompaction }) {
  * Editing a message that has already been answered is a decision about the transcript, so both
  * outcomes are named here rather than one of them being the silent default.
  */
-function EditBox({ message, index }: { message: ChatMessage; index: number }) {
+function EditBox(props: { message: ChatMessage; index: number; onDone: () => void }) {
   const t = useText()
-  const editMessage = useConversations((state) => state.editMessage)
-  const [text, setText] = useState(message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n'))
+  const [text, setText] = createSignal(
+    props.message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n'),
+  )
+
+  // The box closes on the decision rather than on the answer: the row this message moves to is
+  // drawn from the transcript the edit returns, so a box left open would go on showing the old words.
+  const submit = (effect: EditEffect) => {
+    props.onDone()
+    void conversationActions.editMessage(props.index, text(), effect)
+  }
 
   return (
-    <div className="w-3/4 border border-amber/40 bg-ink-900/60 p-3">
+    <div class="w-3/4 border border-amber/40 bg-ink-900/60 p-3">
       <textarea
         rows={3}
-        value={text}
+        value={text()}
         aria-label={t('message.editLabel')}
-        onChange={(event) => setText(event.target.value)}
-        className="block w-full resize-none border border-line bg-ink-700 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
+        onInput={(event) => setText(event.target.value)}
+        class="block w-full resize-none border border-line bg-ink-700 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
       />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div class="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => void editMessage(index, text, 'replace')}
-          className="bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
+          onClick={() => submit('replace')}
+          class="bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
         >
           {t('message.resend')}
         </button>
         <button
           type="button"
-          onClick={() => void editMessage(index, text, 'fork')}
-          className="border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
+          onClick={() => submit('fork')}
+          class="border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
         >
           {t('message.fork')}
         </button>
       </div>
-      <p className="mt-1.5 text-micro text-parchment-faint">{t('message.editNote')}</p>
+      <p class="mt-1.5 text-micro text-parchment-faint">{t('message.editNote')}</p>
     </div>
   )
 }
 
-function StatusNote({ message }: { message: ChatMessage }) {
+function StatusNote(props: { message: ChatMessage }) {
   const t = useText()
-  if (message.status === 'interrupted') {
-    return <p className="mt-2 font-mono text-micro uppercase tracking-wider text-amber">{t('message.stopped')}</p>
-  }
-  if (message.status === 'failed') {
-    return (
-      <p className="mt-2 rounded-card border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
-        {message.error ?? t('message.failed')}
-      </p>
-    )
-  }
-  return null
+  return (
+    <>
+      <Show when={props.message.status === 'interrupted'}>
+        <p class="mt-2 font-mono text-micro uppercase tracking-wider text-amber">{t('message.stopped')}</p>
+      </Show>
+      <Show when={props.message.status === 'failed'}>
+        <p class="mt-2 rounded-card border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
+          {props.message.error ?? t('message.failed')}
+        </p>
+      </Show>
+    </>
+  )
 }
 
-export const MessageView = memo(function MessageView({
-  message,
-  index,
-  last = false,
-}: {
-  message: ChatMessage
-  index: number
-  /** The last message in the transcript, which is the only one with anything to regenerate. */
-  last?: boolean
-}) {
+/** The reader's own entry: the pictures and words they sent, and the two things one does to them. */
+function QuestionView(props: { message: ChatMessage; index: number }) {
   const t = useText()
-  const regenerate = useConversations((state) => state.regenerate)
-  const running = useConversations((state) => state.transcript.status === 'running')
-  const [editing, setEditing] = useState(false)
-  const words = message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')
+  const [editing, setEditing] = createSignal(false)
+  const running = () => conversations.transcript.status === 'running'
+  const pictures = () =>
+    props.message.blocks.filter((block): block is ChatBlockAttachment => block.kind === 'attachment')
+  const words = () => props.message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('\n')
 
-  if (message.role === 'user') {
-    return (
-      <article className="group flex flex-col" data-role="user">
-        {editing ? (
-          <EditBox message={message} index={index} />
-        ) : (
+  return (
+    <article class="group flex flex-col" data-role="user">
+      <Show
+        when={editing()}
+        fallback={
           <>
             {/* The pictures sit above the words they came with, which is the order they were
                 attached in and the order the model read them. */}
-            <div className="flex flex-col items-start gap-2">
-              {message.blocks
-                .filter((block): block is ChatBlockAttachment => block.kind === 'attachment')
-                .map((block, index) => {
-                  // Blocks are append-only, so a picture's position among them is its identity.
-                  const key = `${message.id}-shot-${index}`
-                  return <AttachmentThumb key={key} block={block} />
-                })}
-              {words !== '' && (
-                // The question is set in the display voice, a size above the answer: it is the
-                // heading of everything that follows it, and the one place the manuscript's
-                // voice is heard in the body of the page.
-                <p className="max-w-measure font-display text-lg leading-[1.5] whitespace-pre-wrap">{words}</p>
-              )}
+            <div class="flex flex-col items-start gap-2">
+              <For each={pictures()}>{(block) => <AttachmentThumb block={block} />}</For>
+              <Show when={words() !== ''}>
+                {/* The question is set in the display voice, a size above the answer: it is the
+                    heading of everything that follows it, and the one place the manuscript's
+                    voice is heard in the body of the page. */}
+                <p class="max-w-measure font-display text-lg leading-[1.5] whitespace-pre-wrap">{words()}</p>
+              </Show>
             </div>
             {/* One row of actions, revealed over the entry rather than printed in it: an entry at
                 rest is its number, its words and the rule under them, and the answer below is
                 what has to be readable. The answer's own row stays visible — that is the thing
                 a reader copies. */}
-            <div className="mt-1 flex items-center gap-3">
+            <div class="mt-1 flex items-center gap-3">
               <CopyButton
                 what="message.copyMessage"
                 label="message.copy"
-                text={markdownOf(message.blocks)}
-                className="opacity-0 group-hover:opacity-100 focus:opacity-100"
+                text={markdownOf(props.message.blocks)}
+                class="opacity-0 group-hover:opacity-100 focus:opacity-100"
               />
-              {!running && (
+              <Show when={!running()}>
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${TEXT_ACTION}`}
+                  class={`opacity-0 group-hover:opacity-100 focus:opacity-100 ${TEXT_ACTION}`}
                 >
                   {t('message.edit')}
                 </button>
-              )}
+              </Show>
             </div>
             {/* The entry's own rule, drawn under everything that belongs to it — the words and the
                 two things you can do to them — and before the work that answers it. */}
-            <span className="mt-2 h-px w-full bg-line" aria-hidden="true" />
+            <span class="mt-2 h-px w-full bg-line" aria-hidden="true" />
           </>
-        )}
-      </article>
-    )
-  }
-
-  const streaming = message.status === 'streaming'
-  const firstTool = message.blocks.findIndex((block) => block.kind === 'tool')
-  // Nothing to copy until something has been said: an action row under an empty streaming
-  // answer is a control for a thing that is not there yet.
-  const spoken = message.blocks.some((block) => block.kind === 'text' && block.text !== '')
-  return (
-    <article className="flex flex-col" data-role="assistant">
-      {message.blocks.map((block, index) => {
-        const isLast = index === message.blocks.length - 1
-        // Blocks are append-only within a message, so the position is the identity: two text
-        // blocks with the same text are still two blocks.
-        const key = `${message.id}-${index}`
-        if (block.kind === 'thinking') return <ThinkingBlock key={key} block={block} />
-        // A ledger that opens the answer hangs directly under the entry's own rule, so its first
-        // row is the one that does not draw a second rule beside it.
-        if (block.kind === 'tool') {
-          return <ToolRow key={block.callId} block={block} first={index === firstTool} />
         }
-        if (block.kind === 'compaction') return <CompactionMarker key={key} block={block} />
-        if (block.kind === 'attachment') return <AttachmentThumb key={key} block={block} />
-        return (
-          <div key={key} className="relative">
-            <Markdown text={block.text} caret={streaming && isLast} />
-          </div>
-        )
-      })}
-      {streaming && message.blocks.length === 0 && <span className="caret" aria-hidden="true" />}
-      <StatusNote message={message} />
-      {spoken && (
-        <div className="mt-1.5 flex items-center gap-3">
-          <CopyButton what="message.copyAnswer" label="message.copy" text={markdownOf(message.blocks)} />
-          {/* Only the last answer can be regenerated: it re-runs the last question, so offering
-              it under every answer would replace a different one than the reader is pointing at. */}
-          {last && !streaming && !running && (
-            <button type="button" onClick={() => void regenerate()} className={TEXT_ACTION}>
-              {t('message.regenerate')}
-            </button>
-          )}
-        </div>
-      )}
+      >
+        <EditBox message={props.message} index={props.index} onDone={() => setEditing(false)} />
+      </Show>
     </article>
   )
-})
+}
+
+/** One block of an answer, drawn as what it is: prose, thinking, a ledger row, a summary, a picture. */
+function BlockView(props: { block: () => ChatBlock; caret: boolean; first: boolean }) {
+  const kind = () => props.block().kind
+  const text = () => (props.block() as ChatBlockText).text
+  const thinking = () => props.block() as ChatBlockThinking
+  const tool = () => props.block() as ChatBlockTool
+  const compaction = () => props.block() as ChatBlockCompaction
+  const attachment = () => props.block() as ChatBlockAttachment
+
+  return (
+    <Switch
+      fallback={
+        <div class="relative">
+          <Markdown text={text()} caret={props.caret} />
+        </div>
+      }
+    >
+      <Match when={kind() === 'thinking'}>
+        <ThinkingBlock block={thinking()} />
+      </Match>
+      {/* A ledger that opens the answer hangs directly under the entry's own rule, so its first
+          row is the one that does not draw a second rule beside it. */}
+      <Match when={kind() === 'tool'}>
+        <ToolRow block={tool()} first={props.first} />
+      </Match>
+      <Match when={kind() === 'compaction'}>
+        <CompactionMarker block={compaction()} />
+      </Match>
+      <Match when={kind() === 'attachment'}>
+        <AttachmentThumb block={attachment()} />
+      </Match>
+    </Switch>
+  )
+}
+
+/** The work the question produced: thinking, tool rows, the answer, and what it cost. */
+function AnswerView(props: { message: ChatMessage; last: boolean }) {
+  const t = useText()
+  const streaming = () => props.message.status === 'streaming'
+  const running = () => conversations.transcript.status === 'running'
+  const firstTool = () => props.message.blocks.findIndex((block) => block.kind === 'tool')
+  // Nothing to copy until something has been said: an action row under an empty streaming
+  // answer is a control for a thing that is not there yet.
+  const spoken = () => props.message.blocks.some((block) => block.kind === 'text' && block.text !== '')
+
+  return (
+    <article class="flex flex-col" data-role="assistant">
+      <Index each={props.message.blocks}>
+        {(block, index) => (
+          <BlockView
+            block={block}
+            first={index === firstTool()}
+            caret={streaming() && index === props.message.blocks.length - 1}
+          />
+        )}
+      </Index>
+      {/* An answer that has not said anything yet is still an answer arriving: the caret is the
+          only thing on the page that says so. */}
+      <Show when={streaming() && props.message.blocks.length === 0}>
+        <span class="caret" aria-hidden="true" />
+      </Show>
+      <StatusNote message={props.message} />
+      <Show when={spoken()}>
+        <div class="mt-1.5 flex items-center gap-3">
+          <CopyButton what="message.copyAnswer" label="message.copy" text={markdownOf(props.message.blocks)} />
+          {/* Only the last answer can be regenerated: it re-runs the last question, so offering
+              it under every answer would replace a different one than the reader is pointing at. */}
+          <Show when={props.last && !streaming() && !running()}>
+            <button type="button" onClick={() => void conversationActions.regenerate()} class={TEXT_ACTION}>
+              {t('message.regenerate')}
+            </button>
+          </Show>
+        </div>
+      </Show>
+    </article>
+  )
+}
+
+/** One message: the reader's entry, or the work that answered it. */
+export function MessageView(props: { message: ChatMessage; index: number; last?: boolean }) {
+  return (
+    <Show
+      when={props.message.role === 'user'}
+      fallback={<AnswerView message={props.message} last={props.last === true} />}
+    >
+      <QuestionView message={props.message} index={props.index} />
+    </Show>
+  )
+}
 
 /**
  * Copies what is on screen: a message as markdown, a tool row as its output. Its words are keys,
  * not strings: this button is used in three places and the three say different things.
  */
-export function CopyButton({
-  what,
-  text,
-  label,
-  params,
-  className = '',
-}: {
+export function CopyButton(props: {
   /** What the accessible name says it copies. */
   what: TextKey
   text: string
   /** What the button itself says. */
   label: TextKey
   params?: TextParams
-  className?: string
+  class?: string
 }) {
   const t = useText()
-  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+  const [state, setState] = createSignal<'idle' | 'done' | 'failed'>('idle')
 
   return (
     <button
       type="button"
-      aria-label={t(what, params)}
+      aria-label={t(props.what, props.params)}
       onClick={() => {
-        void copyText(text).then((ok) => setState(ok ? 'done' : 'failed'))
+        void copyText(props.text).then((ok) => setState(ok ? 'done' : 'failed'))
       }}
-      className={`${TEXT_ACTION} ${state === 'done' ? 'text-jade' : ''} ${state === 'failed' ? 'text-danger' : ''} ${className}`}
+      class={`${TEXT_ACTION} ${state() === 'done' ? 'text-jade' : ''} ${state() === 'failed' ? 'text-danger' : ''} ${props.class ?? ''}`}
     >
-      {t(state === 'done' ? 'message.copied' : state === 'failed' ? 'message.copyFailed' : label, params)}
+      {t(
+        state() === 'done' ? 'message.copied' : state() === 'failed' ? 'message.copyFailed' : props.label,
+        props.params,
+      )}
     </button>
   )
 }

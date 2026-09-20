@@ -123,7 +123,7 @@ Layout:
 packages/core       pure: the transcript projection, the permission table, the IPC contract
 packages/main       the runtime: the agent process, the gate, providers, sessions, the IPC handlers
 packages/preload    the bridge: the only functions the window gets
-packages/renderer   React, TanStack Router, Tailwind, Zustand — the window and nothing else
+packages/renderer   Solid, @solidjs/router, Tailwind, remark — the window and nothing else
 e2e                 Playwright specs that launch the built app
 tools/constraints   the checker that keeps the constraints honest
 ```

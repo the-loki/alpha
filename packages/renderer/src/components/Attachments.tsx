@@ -1,5 +1,5 @@
-import type { Attachment, Null, Undef } from '@alpha/core'
-import { useRef } from 'react'
+import type { Attachment, Undef } from '@alpha/core'
+import { For, Show } from 'solid-js'
 import { readPicked } from '../lib/attachments.ts'
 import { useText } from '../stores/shell.ts'
 import { CloseIcon, PaperclipIcon } from './icons.tsx'
@@ -12,17 +12,17 @@ export const FOOT_BUTTON =
  * The way in to the file picker. The picker is the platform's; this is a button that opens it, and
  * the input itself is off the page because nothing about it is worth drawing.
  */
-export function AttachButton({ onPicked }: { onPicked: (picked: Attachment[], refused: Undef<Refusal>) => void }) {
+export function AttachButton(props: { onPicked: (picked: Attachment[], refused: Undef<Refusal>) => void }) {
   const t = useText()
-  const input = useRef<Null<HTMLInputElement>>(null)
+  let input!: HTMLInputElement
   return (
     <>
       <button
         type="button"
         aria-label={t('composer.attach')}
         title={t('composer.attach')}
-        onClick={() => input.current?.click()}
-        className={FOOT_BUTTON}
+        onClick={() => input.click()}
+        class={FOOT_BUTTON}
       >
         <PaperclipIcon />
       </button>
@@ -35,12 +35,14 @@ export function AttachButton({ onPicked }: { onPicked: (picked: Attachment[], re
         multiple
         aria-hidden="true"
         tabIndex={-1}
-        className="sr-only"
-        onChange={(event) => {
-          const files = [...(event.target.files ?? [])]
+        class="sr-only"
+        onInput={(event) => {
+          const files = [...(event.currentTarget.files ?? [])]
           // Choosing the same file twice is only a change the second time if the field is empty.
-          event.target.value = ''
-          void readPicked(files).then((picked) => onPicked(picked.attachments, picked.refused ? 'file' : undefined))
+          event.currentTarget.value = ''
+          void readPicked(files).then((picked) =>
+            props.onPicked(picked.attachments, picked.refused ? 'file' : undefined),
+          )
         }}
       />
     </>
@@ -51,35 +53,37 @@ export function AttachButton({ onPicked }: { onPicked: (picked: Attachment[], re
  * What is going with the message. A picture is shown rather than named: the thumb is the file,
  * and the only thing to decide about it is whether to keep it.
  */
-export function PendingAttachments({ items, onRemove }: { items: Attachment[]; onRemove: (index: number) => void }) {
+export function PendingAttachments(props: { items: Attachment[]; onRemove: (index: number) => void }) {
   const t = useText()
-  if (items.length === 0) return null
   return (
-    <ul aria-label={t('composer.attached')} className="mb-2 flex flex-wrap items-center gap-2">
-      {items.map((item, index) => {
-        // The same file can be picked twice, so the position is the only identity a row has — and
-        // a row that follows a removal is redrawn from its own bytes, which loses no state.
-        const key = `${item.name ?? 'shot'}-${index}`
-        return (
-          <li key={key} className="relative">
-            <img
-              src={`data:${item.mimeType};base64,${item.data}`}
-              alt={item.name ?? ''}
-              title={item.name}
-              className="h-12 w-12 rounded-control border border-line object-cover"
-            />
-            <button
-              type="button"
-              aria-label={t('composer.removeAttachment', { name: item.name ?? '' })}
-              onClick={() => onRemove(index)}
-              className="absolute -top-1.5 -right-1.5 grid h-4 w-4 place-items-center rounded-full border border-line bg-ink-900 text-parchment-dim transition-colors hover:border-danger hover:text-danger"
-            >
-              <CloseIcon className="h-2.5 w-2.5" />
-            </button>
-          </li>
-        )
-      })}
-    </ul>
+    <Show when={props.items.length > 0}>
+      <ul aria-label={t('composer.attached')} class="mb-2 flex flex-wrap items-center gap-2">
+        <For each={props.items}>
+          {(item, index) => {
+            // The same file can be picked twice, so the position is the only identity a row has — and
+            // a row that follows a removal is redrawn from its own bytes, which loses no state.
+            return (
+              <li class="relative">
+                <img
+                  src={`data:${item.mimeType};base64,${item.data}`}
+                  alt={item.name ?? ''}
+                  title={item.name}
+                  class="h-12 w-12 rounded-control border border-line object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label={t('composer.removeAttachment', { name: item.name ?? '' })}
+                  onClick={() => props.onRemove(index())}
+                  class="absolute -top-1.5 -right-1.5 grid h-4 w-4 place-items-center rounded-full border border-line bg-ink-900 text-parchment-dim transition-colors hover:border-danger hover:text-danger"
+                >
+                  <CloseIcon class="h-2.5 w-2.5" />
+                </button>
+              </li>
+            )
+          }}
+        </For>
+      </ul>
+    </Show>
   )
 }
 
@@ -94,13 +98,17 @@ export type Refusal = 'file' | 'model'
  * a picture that never arrived is the kind of thing noticed too late. It clears itself the next
  * time a pick goes through, so it never has to be dismissed.
  */
-export function AttachmentNote({ refused, model }: { refused: Undef<Refusal>; model: Undef<string> }) {
+export function AttachmentNote(props: { refused: Undef<Refusal>; model: Undef<string> }) {
   const t = useText()
-  if (refused === undefined) return null
-  if (refused === 'model') {
-    return (
-      <p className="mt-1 font-mono text-micro text-amber">{t('composer.attachmentNoVision', { model: model ?? '' })}</p>
-    )
-  }
-  return <p className="mt-1 px-1 text-micro text-amber">{t('composer.attachmentRefused')}</p>
+  return (
+    <Show when={props.refused !== undefined}>
+      {props.refused === 'model' ? (
+        <p class="mt-1 font-mono text-micro text-amber">
+          {t('composer.attachmentNoVision', { model: props.model ?? '' })}
+        </p>
+      ) : (
+        <p class="mt-1 px-1 text-micro text-amber">{t('composer.attachmentRefused')}</p>
+      )}
+    </Show>
+  )
 }

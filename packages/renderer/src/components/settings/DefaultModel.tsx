@@ -1,4 +1,5 @@
-import { useProviders } from '../../stores/providers.ts'
+import { For } from 'solid-js'
+import { providerActions, providers } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
 
 /**
@@ -8,39 +9,39 @@ import { useText } from '../../stores/shell.ts'
  */
 export function DefaultModel() {
   const t = useText()
-  const snapshot = useProviders((state) => state.snapshot)
-  const setDefaultModel = useProviders((state) => state.setDefaultModel)
-  const chosen = snapshot.defaultModelChoice
-  const value = chosen === undefined ? '' : `${chosen.providerId}::${chosen.modelId}`
+  const value = () => {
+    const chosen = providers.snapshot.defaultModelChoice
+    return chosen === undefined ? '' : `${chosen.providerId}::${chosen.modelId}`
+  }
 
   return (
     <div>
-      <label className="block">
-        <span className="mb-1 block text-micro text-parchment-faint">{t('settings.defaultModel')}</span>
+      <label class="block">
+        <span class="mb-1 block text-micro text-parchment-faint">{t('settings.defaultModel')}</span>
         <select
           aria-label={t('settings.defaultModel')}
-          value={value}
-          onChange={(event) => {
+          value={value()}
+          onInput={(event) => {
             const [providerId, modelId] = event.target.value.split('::')
-            void setDefaultModel(
+            void providerActions.setDefaultModel(
               providerId === undefined || modelId === undefined ? undefined : { providerId, modelId },
             )
           }}
-          className="w-full rounded-control border border-line bg-ink-700 px-2 py-1.5 text-code text-parchment focus:border-line-strong focus:outline-none"
+          class="w-full rounded-control border border-line bg-ink-700 px-2 py-1.5 text-code text-parchment focus:border-line-strong focus:outline-none"
         >
           <option value="">{t('settings.defaultModelAuto')}</option>
-          {snapshot.providers.map((provider) => (
-            <optgroup key={provider.id} label={provider.name}>
-              {provider.models.map((model) => (
-                <option key={model.id} value={`${provider.id}::${model.id}`}>
-                  {model.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
+          <For each={providers.snapshot.providers}>
+            {(provider) => (
+              <optgroup label={provider.name}>
+                <For each={provider.models}>
+                  {(model) => <option value={`${provider.id}::${model.id}`}>{model.name}</option>}
+                </For>
+              </optgroup>
+            )}
+          </For>
         </select>
       </label>
-      <p className="mt-1 text-micro leading-relaxed text-parchment-faint">{t('settings.defaultModelNote')}</p>
+      <p class="mt-1 text-micro leading-relaxed text-parchment-faint">{t('settings.defaultModelNote')}</p>
     </div>
   )
 }

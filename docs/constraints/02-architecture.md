@@ -29,7 +29,7 @@ main ──────────> core
 | `@alpha/core` | Domain rules, IPC contract types, validation schemas | nothing from this repo |
 | `@alpha/main` | Electron main process, the agent runtime, storage | `core`, node, electron |
 | `@alpha/preload` | The contextBridge surface | `core` only |
-| `@alpha/renderer` | React UI, router, stores, styles | `core` only |
+| `@alpha/renderer` | Solid UI, router, stores, styles | `core` only |
 
 Dependencies never point backwards: `core` knows nothing about the other three, and no package
 imports `main`. A cycle between packages is an error.
@@ -65,6 +65,10 @@ of a conversation is a projection that can be rebuilt from the runtime at any ti
 at lint time, and `pnpm check:constraints` rule `02-architecture:renderer-has-no-model-client`
 catches it in the same scan that checks everything else.
 
+The window is drawn by Solid (ADR-0021), and that is a boundary too: rule
+`02-architecture:renderer-is-solid` fails on a React, TanStack, zustand or react-markdown import
+under `packages/renderer/`, so the framework cannot creep back one file at a time.
+
 ## C2.4 — A key goes from the vault to the agent's environment, and nowhere else
 
 A credential is read from encrypted storage inside `main` and handed to the agent as an
@@ -81,9 +85,9 @@ matches `/apiKey|secret|credential/i` off a provider payload; review covers the 
 | Thing | Limit |
 | --- | --- |
 | Function or method body | 60 lines |
-| React component body | 120 lines |
+| Component body | 120 lines |
 | File | 300 lines |
-| `useEffect` in one component | 2 |
+| `createEffect` in one component | 2 |
 
 When a file wants to exceed these, the usual correct answer is that it is two modules wearing one
 hat; the constraint exists to make that visible at the moment it happens rather than at review

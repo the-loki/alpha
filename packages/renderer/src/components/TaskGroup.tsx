@@ -1,8 +1,8 @@
 import { formatAge, newTaskRun, type RunVerdict, type TaskNode } from '@alpha/core'
-import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useNavigate } from '@solidjs/router'
+import { createSignal, For, Show } from 'solid-js'
 import { useText } from '../stores/shell.ts'
-import { useTasks } from '../stores/tasks.ts'
+import { taskActions } from '../stores/tasks.ts'
 import { ConversationRow } from './ConversationRow.tsx'
 import { ChevronDownIcon, ClockIcon } from './icons.tsx'
 
@@ -15,91 +15,88 @@ const SHOWN_RUNS = 5
  * with a month of the same title, so the folded row has to say how the last run went: a task that
  * has been failing all week must not look like one that has been fine.
  */
-export function TaskGroup({ node }: { node: TaskNode }) {
+export function TaskGroup(props: { node: TaskNode }) {
   const t = useText()
   const navigate = useNavigate()
-  const runNow = useTasks((state) => state.runNow)
-  const [open, setOpen] = useState(false)
-  const [all, setAll] = useState(false)
-  const verdict = newTaskRun(node.lastRun)
-  const shown = all ? node.runs : node.runs.slice(0, SHOWN_RUNS)
-  const hidden = node.runs.length - shown.length
+  const [open, setOpen] = createSignal(false)
+  const [all, setAll] = createSignal(false)
+  const verdict = () => newTaskRun(props.node.lastRun)
+  const shown = () => (all() ? props.node.runs : props.node.runs.slice(0, SHOWN_RUNS))
+  const hidden = () => props.node.runs.length - shown().length
   // The word at the end of the row, in the colour the transcript uses for the same fact.
-  const tone =
-    verdict?.key === 'tasks.runFailed'
+  const tone = () =>
+    verdict()?.key === 'tasks.runFailed'
       ? 'text-danger'
-      : verdict?.count === undefined
+      : verdict()?.count === undefined
         ? 'text-parchment-faint'
         : 'text-amber'
 
   return (
-    <div className="mt-1">
-      <div className="group flex items-center gap-1">
-        <h3 className="min-w-0 flex-1">
+    <div class="mt-1">
+      <div class="group flex items-center gap-1">
+        <h3 class="min-w-0 flex-1">
           <button
             type="button"
-            aria-expanded={open}
-            aria-label={t(open ? 'sidebar.collapseTasks' : 'sidebar.expandTasks', { folder: node.task.name })}
+            aria-expanded={open()}
+            aria-label={t(open() ? 'sidebar.collapseTasks' : 'sidebar.expandTasks', { folder: props.node.task.name })}
             onClick={() => setOpen((value) => !value)}
-            className="flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui transition-colors hover:bg-ink-600"
+            class="flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui transition-colors hover:bg-ink-600"
           >
-            <ChevronDownIcon className={`text-parchment-faint transition-transform ${open ? '' : '-rotate-90'}`} />
-            <span className="ml-1 flex min-w-0 items-center gap-2">
-              <ClockIcon className="text-parchment-faint" />
-              <span className="min-w-0 truncate text-parchment-dim">{node.task.name}</span>
+            <ChevronDownIcon class={`text-parchment-faint transition-transform ${open() ? '' : '-rotate-90'}`} />
+            <span class="ml-1 flex min-w-0 items-center gap-2">
+              <ClockIcon class="text-parchment-faint" />
+              <span class="min-w-0 truncate text-parchment-dim">{props.node.task.name}</span>
             </span>
           </button>
         </h3>
-        {verdict !== undefined && <span className={`shrink-0 font-mono text-micro ${tone}`}>{say(t, verdict)}</span>}
-        <span className="relative flex h-5 w-6 shrink-0 items-center justify-center">
+        <Show when={verdict()}>
+          {(current) => <span class={`shrink-0 font-mono text-micro ${tone()}`}>{say(t, current())}</span>}
+        </Show>
+        <span class="relative flex h-5 w-6 shrink-0 items-center justify-center">
           <button
             type="button"
-            aria-label={t('sidebar.openTask', { name: node.task.name })}
-            title={t('sidebar.openTask', { name: node.task.name })}
-            onClick={() => void navigate({ to: '/tasks' })}
-            className="absolute inset-0 grid place-items-center rounded-control font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
+            aria-label={t('sidebar.openTask', { name: props.node.task.name })}
+            title={t('sidebar.openTask', { name: props.node.task.name })}
+            onClick={() => navigate('/tasks')}
+            class="absolute inset-0 grid place-items-center rounded-control font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
           >
-            {node.runs.length}
+            {props.node.runs.length}
           </button>
         </span>
       </div>
 
-      {open && (
-        <>
-          <ul className="space-y-0.5">
-            {shown.map((conversation) => (
-              <ConversationRow
-                key={conversation.id}
-                conversation={conversation}
-                label={formatAge(conversation.updatedAt, Date.now())}
-              />
-            ))}
-          </ul>
-          <div className="flex items-center gap-2 pl-11">
-            {hidden > 0 && (
-              <button
-                type="button"
-                onClick={() => setAll(true)}
-                aria-label={t('sidebar.showAll', { count: node.runs.length })}
-                className="rounded-control py-1 font-mono text-micro text-parchment-faint transition-colors hover:text-parchment-dim"
-              >
-                {t('sidebar.more', { count: hidden })}
-              </button>
+      <Show when={open()}>
+        <ul class="space-y-0.5">
+          <For each={shown()}>
+            {(conversation) => (
+              <ConversationRow conversation={conversation} label={formatAge(conversation.updatedAt, Date.now())} />
             )}
-            {node.runs.length === 0 && (
-              <span className="py-1 text-micro text-parchment-faint">{t('tasks.noRuns')}</span>
-            )}
+          </For>
+        </ul>
+        <div class="flex items-center gap-2 pl-11">
+          <Show when={hidden() > 0}>
             <button
               type="button"
-              onClick={() => void runNow(node.task.id)}
-              aria-label={t('sidebar.runNow', { name: node.task.name })}
-              className="rounded-control py-1 text-micro text-parchment-faint transition-colors hover:text-parchment-dim"
+              onClick={() => setAll(true)}
+              aria-label={t('sidebar.showAll', { count: props.node.runs.length })}
+              class="rounded-control py-1 font-mono text-micro text-parchment-faint transition-colors hover:text-parchment-dim"
             >
-              {t('tasks.runNow')}
+              {t('sidebar.more', { count: hidden() })}
             </button>
-          </div>
-        </>
-      )}
+          </Show>
+          <Show when={props.node.runs.length === 0}>
+            <span class="py-1 text-micro text-parchment-faint">{t('tasks.noRuns')}</span>
+          </Show>
+          <button
+            type="button"
+            onClick={() => void taskActions.runNow(props.node.task.id)}
+            aria-label={t('sidebar.runNow', { name: props.node.task.name })}
+            class="rounded-control py-1 text-micro text-parchment-faint transition-colors hover:text-parchment-dim"
+          >
+            {t('tasks.runNow')}
+          </button>
+        </div>
+      </Show>
     </div>
   )
 }

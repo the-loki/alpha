@@ -1,6 +1,6 @@
 import type { ProviderApi } from '@alpha/core'
-import { useState } from 'react'
-import { useProviders } from '../../stores/providers.ts'
+import { createSignal, Show } from 'solid-js'
+import { providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
 import { PRIMARY_ACTION } from '../controls.ts'
 import { ApiField, TextField } from './Fields.tsx'
@@ -21,14 +21,13 @@ const emptyDraft = (): Draft => ({ id: '', name: '', api: 'openai-completions', 
  */
 export function ProviderForm() {
   const t = useText()
-  const save = useProviders((state) => state.save)
-  const [draft, setDraft] = useState<Draft>(emptyDraft)
-  const [error, setError] = useState('')
+  const [draft, setDraft] = createSignal<Draft>(emptyDraft())
+  const [error, setError] = createSignal('')
 
   const add = async () => {
     setError('')
     try {
-      await save(draft)
+      await providerActions.save(draft())
       setDraft(emptyDraft())
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure))
@@ -39,40 +38,36 @@ export function ProviderForm() {
     // A section of the panel, not a box with a legend on its border: the label is a heading, the
     // fields sit under it in the panel's own grid, and the one primary action is in the footer the
     // section ends with — where every form in the app ends.
-    <section aria-label={t('settings.addProvider')} className="mt-4 rounded-card border border-line bg-ink-800/50 p-4">
-      <h3 className="font-mono text-micro tracking-widest text-parchment-faint uppercase">
-        {t('settings.addProvider')}
-      </h3>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+    <section aria-label={t('settings.addProvider')} class="mt-4 rounded-card border border-line bg-ink-800/50 p-4">
+      <h3 class="font-mono text-micro tracking-widest text-parchment-faint uppercase">{t('settings.addProvider')}</h3>
+      <div class="mt-3 grid grid-cols-2 gap-3">
         <TextField
           label={t('settings.fieldId')}
-          value={draft.id}
-          onChange={(id) => setDraft({ ...draft, id })}
+          value={draft().id}
+          onChange={(id) => setDraft((current) => ({ ...current, id }))}
           placeholder={t('settings.fieldIdPlaceholder')}
         />
         <TextField
           label={t('settings.fieldName')}
-          value={draft.name}
-          onChange={(name) => setDraft({ ...draft, name })}
+          value={draft().name}
+          onChange={(name) => setDraft((current) => ({ ...current, name }))}
           placeholder={t('settings.fieldNamePlaceholder')}
         />
-        <div className="col-span-2">
+        <div class="col-span-2">
           <TextField
             label={t('settings.fieldBaseUrl')}
-            value={draft.baseUrl}
-            onChange={(baseUrl) => setDraft({ ...draft, baseUrl })}
+            value={draft().baseUrl}
+            onChange={(baseUrl) => setDraft((current) => ({ ...current, baseUrl }))}
             placeholder={t('settings.fieldBaseUrlPlaceholder')}
           />
         </div>
-        <ApiField api={draft.api} onChange={(api) => setDraft({ ...draft, api })} />
+        <ApiField api={draft().api} onChange={(api) => setDraft((current) => ({ ...current, api }))} />
       </div>
-      {error !== '' && (
-        <p className="mt-3 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-          {error}
-        </p>
-      )}
-      <div className="mt-4 flex items-center justify-end gap-3 border-t border-line pt-3">
-        <button type="button" onClick={() => void add()} className={PRIMARY_ACTION}>
+      <Show when={error() !== ''}>
+        <p class="mt-3 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error()}</p>
+      </Show>
+      <div class="mt-4 flex items-center justify-end gap-3 border-t border-line pt-3">
+        <button type="button" onClick={() => void add()} class={PRIMARY_ACTION}>
           {t('settings.addProvider')}
         </button>
       </div>

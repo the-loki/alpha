@@ -1,7 +1,7 @@
 import type { NetworkBind, NetworkPatch, NetworkState, Undef } from '@alpha/core'
-import { useCallback, useEffect, useState } from 'react'
+import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
-import { useShell, useText } from '../../stores/shell.ts'
+import { shell, useText } from '../../stores/shell.ts'
 
 const BIND_LABELS: Record<NetworkBind, string> = {
   local: 'This machine only',
@@ -14,101 +14,105 @@ const BIND_LABELS: Record<NetworkBind, string> = {
  */
 export function BrowserAccessSection() {
   const t = useText()
-  const host = useShell((state) => state.host)
-  const [state, setState] = useState<Undef<NetworkState>>(undefined)
-  const [port, setPort] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [state, setState] = createSignal<Undef<NetworkState>>(undefined)
+  const [port, setPort] = createSignal('')
+  const [copied, setCopied] = createSignal(false)
 
-  const apply = useCallback((next: NetworkState) => {
+  const apply = (next: NetworkState) => {
     setState(next)
     setPort(String(next.port))
-  }, [])
+  }
 
   // Read once on mount: the page is the only place browser access is changed, so nothing else
   // can have moved it in the meantime.
-  useEffect(() => {
+  onMount(() => {
     void bridge().networkState().then(apply)
-  }, [apply])
-
-  if (state === undefined) return null
+  })
 
   const change = (patch: NetworkPatch) => {
     void bridge().setNetworkAccess(patch).then(apply)
   }
 
   return (
-    <section aria-label={t('settings.tabBrowserAccess')}>
-      {/* The panel's own heading says what this is; saying it again here would make the page read
-          as two versions of the same sentence. */}
-      {host === 'browser' && <p className="text-xs text-parchment-faint">{t('settings.browserHost')}</p>}
+    <Show when={state()}>
+      {(current) => (
+        <section aria-label={t('settings.tabBrowserAccess')}>
+          {/* The panel's own heading says what this is; saying it again here would make the page read
+              as two versions of the same sentence. */}
+          <Show when={shell.host === 'browser'}>
+            <p class="text-xs text-parchment-faint">{t('settings.browserHost')}</p>
+          </Show>
 
-      <div className="mt-3 space-y-3 rounded-card border border-line bg-ink-800 p-4">
-        <label className="flex items-center justify-between gap-4">
-          <span className="text-ui text-parchment">{t('settings.serve')}</span>
-          <input
-            type="checkbox"
-            aria-label={t('settings.serveLabel')}
-            checked={state.enabled}
-            onChange={(event) => change({ enabled: event.target.checked })}
-            className="h-4 w-4 accent-[var(--color-accent)]"
-          />
-        </label>
+          <div class="mt-3 space-y-3 rounded-card border border-line bg-ink-800 p-4">
+            <label class="flex items-center justify-between gap-4">
+              <span class="text-ui text-parchment">{t('settings.serve')}</span>
+              <input
+                type="checkbox"
+                aria-label={t('settings.serveLabel')}
+                checked={current().enabled}
+                onInput={(event) => change({ enabled: event.target.checked })}
+                class="h-4 w-4 accent-[var(--color-accent)]"
+              />
+            </label>
 
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-ui text-parchment">{t('settings.whoCanReach')}</span>
-          <div className="flex gap-1.5">
-            {(Object.keys(BIND_LABELS) as NetworkBind[]).map((bind) => (
-              <button
-                key={bind}
-                type="button"
-                aria-pressed={state.bind === bind}
-                onClick={() => change({ bind })}
-                className={`rounded-control border px-3 py-1.5 text-xs transition-colors ${
-                  state.bind === bind
-                    ? 'border-accent/50 bg-accent/10 text-accent'
-                    : 'border-line text-parchment-dim hover:bg-ink-700'
-                }`}
-              >
-                {BIND_LABELS[bind]}
-              </button>
-            ))}
+            <div class="flex items-center justify-between gap-4">
+              <span class="text-ui text-parchment">{t('settings.whoCanReach')}</span>
+              <div class="flex gap-1.5">
+                <For each={Object.keys(BIND_LABELS) as NetworkBind[]}>
+                  {(bind) => (
+                    <button
+                      type="button"
+                      aria-pressed={current().bind === bind}
+                      onClick={() => change({ bind })}
+                      class={`rounded-control border px-3 py-1.5 text-xs transition-colors ${
+                        current().bind === bind
+                          ? 'border-accent/50 bg-accent/10 text-accent'
+                          : 'border-line text-parchment-dim hover:bg-ink-700'
+                      }`}
+                    >
+                      {BIND_LABELS[bind]}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-4">
+              <label class="text-ui text-parchment" for="network-port">
+                Port
+              </label>
+              <span class="flex items-center gap-2">
+                <input
+                  id="network-port"
+                  value={port()}
+                  onInput={(event) => setPort(event.target.value.replace(/[^0-9]/g, ''))}
+                  onBlur={() => change({ port: Number(port() === '' ? 0 : port()) })}
+                  class="w-20 rounded-control border border-line bg-ink-700 px-2 py-1 text-right font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
+                />
+                <span class="text-micro text-parchment-faint">{t('settings.portHint')}</span>
+              </span>
+            </div>
+
+            <TokenRow state={current()} onChange={apply} onCopied={setCopied} copied={copied()} />
+
+            <Show when={current().error !== ''}>
+              <p class="text-xs text-danger">{current().error}</p>
+            </Show>
+
+            <Show when={current().urls.length > 0}>
+              <div>
+                <span class="block text-ui text-parchment">{t('settings.openAt')}</span>
+                <ul class="mt-1 space-y-0.5">
+                  <For each={current().urls}>
+                    {(url) => <li class="font-mono text-code text-parchment-dim">{url}</li>}
+                  </For>
+                </ul>
+              </div>
+            </Show>
           </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-ui text-parchment" htmlFor="network-port">
-            Port
-          </label>
-          <span className="flex items-center gap-2">
-            <input
-              id="network-port"
-              value={port}
-              onChange={(event) => setPort(event.target.value.replace(/[^0-9]/g, ''))}
-              onBlur={() => change({ port: Number(port === '' ? 0 : port) })}
-              className="w-20 rounded-control border border-line bg-ink-700 px-2 py-1 text-right font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
-            />
-            <span className="text-micro text-parchment-faint">{t('settings.portHint')}</span>
-          </span>
-        </div>
-
-        <TokenRow state={state} onChange={apply} onCopied={setCopied} copied={copied} />
-
-        {state.error !== '' && <p className="text-xs text-danger">{state.error}</p>}
-
-        {state.urls.length > 0 && (
-          <div>
-            <span className="block text-ui text-parchment">{t('settings.openAt')}</span>
-            <ul className="mt-1 space-y-0.5">
-              {state.urls.map((url) => (
-                <li key={url} className="font-mono text-code text-parchment-dim">
-                  {url}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </section>
+        </section>
+      )}
+    </Show>
   )
 }
 
@@ -120,30 +124,29 @@ function TokenRow(props: {
   copied: boolean
 }) {
   const t = useText()
-  const { state, onChange, copied } = props
-  const disabled = state.token === ''
+  const disabled = () => props.state.token === ''
   return (
     <div>
-      <span className="block text-ui text-parchment">{t('unlock.token')}</span>
-      <div className="mt-1 flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-code text-parchment-dim">
-          {disabled ? t('settings.tokenMinted') : state.token}
+      <span class="block text-ui text-parchment">{t('unlock.token')}</span>
+      <div class="mt-1 flex items-center gap-2">
+        <code class="min-w-0 flex-1 truncate rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-code text-parchment-dim">
+          {disabled() ? t('settings.tokenMinted') : props.state.token}
         </code>
         <button
           type="button"
-          disabled={disabled}
+          disabled={disabled()}
           onClick={() => {
-            void navigator.clipboard.writeText(state.token).then(() => props.onCopied(true))
+            void navigator.clipboard.writeText(props.state.token).then(() => props.onCopied(true))
           }}
-          className="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
+          class="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
         >
-          {t(copied ? 'message.copied' : 'message.copy')}
+          {t(props.copied ? 'message.copied' : 'message.copy')}
         </button>
         <button
           type="button"
-          disabled={disabled}
-          onClick={() => void bridge().regenerateNetworkToken().then(onChange)}
-          className="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
+          disabled={disabled()}
+          onClick={() => void bridge().regenerateNetworkToken().then(props.onChange)}
+          class="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
         >
           {t('settings.replaceToken')}
         </button>

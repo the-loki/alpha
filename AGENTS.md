@@ -22,7 +22,7 @@ permission level, approval, provider, credential, model).
 ### Layout
 
 `packages/core` is pure domain and the IPC contract; `packages/main` is the Electron main process
-and the agent runtime; `packages/preload` is the contextBridge; `packages/renderer` is the React
+and the agent runtime; `packages/preload` is the contextBridge; `packages/renderer` is the Solid
 UI. Dependencies point at `core` and never backwards.
 
 ### Before writing code here
