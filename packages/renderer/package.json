@@ -7,7 +7,7 @@
     "@alpha/core": "workspace:*",
     "@fontsource/ibm-plex-sans": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
-    "@tanstack/react-router": "1.169.2",
+    "@tanstack/react-router": "1.170.38",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "10.1.0",
