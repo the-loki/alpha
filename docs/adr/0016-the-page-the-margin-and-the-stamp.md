@@ -61,6 +61,11 @@ page's margin — was reversed by [0017](0017-soft-corners-and-the-page-stays.md
 rather than as precise. Everything else stands: the page, the ruled margin as a numbered column,
 the entry as a log line, the ledger as a table, the composer as a command line.
 
+The composer is a rounded bar with nothing in front of it, so the `❯` this record puts in the
+margin — in the columns paragraph, in "The composer is a command line", and in ADR-0017's sentence
+about the bar — is not drawn any more. What stands is the decision itself: a numbered margin, one
+column of text, and a composer that opens where the words are.
+
 ## Consequences
 
 - The conversation's header moves to being a **page head**: one band with the title at

@@ -54,7 +54,13 @@ async function ask(window: Page, text: string) {
   await composer.fill(text)
   await composer.press('Enter')
   await expect(window.getByRole('main').locator('[data-role="user"]').last()).toContainText(text)
-  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 20_000 })
+  // Send is back when the run is over, and it is the only signal the composer gives: it says
+  // nothing about the turn it is in. The reply is what makes that wait a real one — Send is also
+  // there in the moment before the run starts.
+  await expect(window.getByRole('main').locator('[data-role="assistant"]').last()).toContainText('Noted.', {
+    timeout: 20_000,
+  })
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible()
 }
 
 /** Two conversations, so there is something to switch between. */

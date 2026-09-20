@@ -45,17 +45,18 @@ export function RootLayout(props: { children?: JSX.Element }) {
   return (
     <Show when={!shell.locked} fallback={<UnlockScreen />}>
       {/* The window is a page and a rail, both floating: a soft gutter all the way round, one
-          rounded surface for the workbench's contents and one for the page being worked in (C5.4). */}
+          rounded surface for the workbench's contents and one for the page being worked in (C5.4).
+          The page takes everything left beside the rail — the workbench does not park a narrower
+          page in the middle of a wide window, because the room beside it is empty either way and a
+          blank margin is worse than a long line (C5.3 keeps prose to its measure instead). */}
       <div class="flex h-screen flex-col bg-ink-900">
         <TitleBar onSearch={() => setPaletteOpen(true)} inSettings={inSettings()} />
         <div class="flex min-h-0 flex-1 gap-2 px-2 pb-2">
           <Show when={!inSettings()}>
             <Sidebar />
           </Show>
-          <main class="min-w-0 flex-1">
-            <div class="flex h-full flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
-              {props.children}
-            </div>
+          <main class="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
+            {props.children}
           </main>
         </div>
         <ConversationPalette open={paletteOpen()} onClose={() => setPaletteOpen(false)} />

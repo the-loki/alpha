@@ -12,8 +12,6 @@
  * both. `docs/adr/0010` is the decision; this file is the whole of the interface's copy.
  */
 
-import type { ModelStatus } from './contract.ts'
-
 export const LANGUAGES = ['en', 'zh'] as const
 
 export type Language = (typeof LANGUAGES)[number]
@@ -51,14 +49,6 @@ export function text(language: Language, key: TextKey, params: TextParams = {}):
     const value = params[name]
     return value === undefined ? whole : String(value)
   })
-}
-
-/**
- * What to say about the model the runtime is pointed at. Nothing at all when there is one: the
- * composer's note is for what the box cannot say itself, and a configured model is not news.
- */
-export function modelText(language: Language, status: ModelStatus): string {
-  return status.kind === 'none' ? text(language, 'composer.noteNoModel') : ''
 }
 
 /**

@@ -1,9 +1,9 @@
-import { type Attachment, type Language, type ModelStatus, modelText, text, type Undef } from '@alpha/core'
+import type { Attachment, Undef } from '@alpha/core'
 import { useNavigate } from '@solidjs/router'
 import { batch, createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { runningModel } from '../stores/providers.ts'
-import { composerFolderOf, languageOf, shell, useText } from '../stores/shell.ts'
+import { composerFolderOf, shell, useText } from '../stores/shell.ts'
 import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from './Attachments.tsx'
 import { OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
@@ -11,15 +11,6 @@ import { LevelChip } from './LevelChip.tsx'
 import { PAGE } from './ledger.ts'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
-
-/** The prompt mark: the one mark on the page that is not an entry's number (C5.5). */
-function PromptMark() {
-  return (
-    <span class="pt-0.5 font-mono text-body text-accent select-none" aria-hidden="true">
-      ❯
-    </span>
-  )
-}
 
 /**
  * While a turn is running the send control splits in three, because stopping, steering and
@@ -152,33 +143,10 @@ function composerKeys(
 }
 
 /**
- * What the composer says under itself. It is the only line of explanation, so it says only what
- * the box itself cannot: with no folder the placeholder has already said that, and repeating it
- * here would be the same sentence twice.
- */
-function composerNote(language: Language, state: ComposerNote): string {
-  if (!state.hasFolder) return ''
-  // The model's own line comes first: with nothing to talk to, what the keyboard does is not the
-  // thing the reader needs to know.
-  const aboutModel = modelText(language, state.model)
-  if (aboutModel !== '') return aboutModel
-  if (state.running) {
-    return text(language, state.typed ? 'composer.noteSteer' : 'composer.noteWorking')
-  }
-  return text(language, 'composer.noteIdle')
-}
-
-/** Everything the composer's one line of explanation depends on. */
-interface ComposerNote {
-  hasFolder: boolean
-  model: ModelStatus
-  running: boolean
-  typed: boolean
-}
-
-/**
- * The composer sends; everything about whether it *may* send is stated in the note under it
- * rather than left to a disabled button with no explanation.
+ * The composer sends. What it may do is its foot's business — the controls it carries, and a send
+ * control that is disabled while nothing can leave — and it says nothing about itself: what the
+ * keyboard does is learned once, and a line under the box repeating it is a line every reader pays
+ * for. The one line that can appear there is a refusal no control could have made.
  */
 export function Composer(props: { streaming?: boolean }) {
   const [value, setValue] = createSignal('')
@@ -186,7 +154,6 @@ export function Composer(props: { streaming?: boolean }) {
   const [refused, setRefused] = createSignal<Undef<Refusal>>(undefined)
   const model = runningModel()
   const composerFolder = () => composerFolderOf(shell)
-  const language = () => languageOf(shell.language)
   const t = useText()
   const navigate = useNavigate()
   let field: Undef<HTMLTextAreaElement>
@@ -208,13 +175,6 @@ export function Composer(props: { streaming?: boolean }) {
 
   const hasWorkspace = () => composerFolder() !== undefined
   const running = () => conversations.transcript.status === 'running'
-  const note = () =>
-    composerNote(language(), {
-      hasFolder: hasWorkspace(),
-      model: shell.model,
-      running: running(),
-      typed: value().trim() !== '',
-    })
   const words = () => value().trim() !== ''
   // A picture is a message on its own: "look at this" is often the whole thing being said.
   const writable = () => hasWorkspace() && shell.model.kind !== 'none' && (words() || attached().length > 0)
@@ -247,8 +207,7 @@ export function Composer(props: { streaming?: boolean }) {
 
   return (
     // The line the next message is written on: a soft bar floating at the foot of the page, one
-    // column in from the page's own edge so it starts where every entry's words start, with the
-    // prompt mark at its left — the one mark that is not a number (C5.4).
+    // column in from the page's own edge so it starts where every entry's words start (C5.4).
     <div class={`shrink-0 pt-2 pb-4 ${PAGE}`}>
       <QueueStrip />
       {/* One column in from the page's edge — the width of an entry's number and the gap after it —
@@ -256,8 +215,7 @@ export function Composer(props: { streaming?: boolean }) {
       <div class="ml-10">
         <div class={BAR(props.streaming === true)}>
           <PendingAttachments items={attached()} onRemove={(index) => removeAt(index)} />
-          <div class="flex items-start gap-2.5">
-            <PromptMark />
+          <div class="flex items-start">
             <textarea
               ref={(element) => {
                 field = element
@@ -293,9 +251,6 @@ export function Composer(props: { streaming?: boolean }) {
             }}
           />
           <AttachmentNote refused={refused()} model={model.name()} />
-          <Show when={note() !== ''}>
-            <p class="mt-1 font-mono text-micro text-parchment-faint">{note()}</p>
-          </Show>
         </div>
       </div>
     </div>

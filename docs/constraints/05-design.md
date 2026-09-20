@@ -161,10 +161,16 @@ it is sans, and the counts and ages beside those names are the measurement that 
 The token carries the leading for its role; a paragraph of UI text that wraps anyway (empty
 states, the sentence under a control) may add `leading-relaxed` on top of it.
 
-**Width.** The text block fills the page: tool rows, diffs, tables and code blocks take the full
-width, because that is where long lines belong. Prose is capped at 100 characters of measure
-(`max-w-measure`, declared as `--container-measure` in the theme) on the assistant's markdown root
-and on an entry's own words — prose is the one thing that reads worse the wider it gets.
+**Width.** The page fills whatever the rail leaves, and the text block fills the page: tool rows,
+diffs, tables and code blocks take its full width, because that is where long lines belong — a long
+code line scrolls inside its own block rather than widening the page. Nothing parks a narrower page
+in the middle of a wide window: a blank margin beside the words is worse than a long line, and the
+room beside a centred column is empty either way. Prose is the one thing that reads worse the wider
+it gets, so it keeps its 100-character cap (`max-w-measure`, declared as `--container-measure` in the
+theme) on the assistant's markdown root and on an entry's own words. The window's opening size is
+what puts the column where it belongs: at 1200 wide (`packages/main/src/window.ts`) the page is about
+900px and a line of prose about 830 — the band every chat client settles in — and a maximized window
+is capped by the measure rather than by the column.
 
 ## C5.4 — Space and shape
 
@@ -186,9 +192,9 @@ have done, and nothing has both a heavy border and a shadow.
 
 **The window has a gutter, and two panels sit in it.** A half-rem all the way round, on
 `--ink-900`. The rail is a rounded panel; the page — the conversation, the tasks list, the settings
-panel — is a rounded panel beside it with a hairline and `--shadow-card`. Nothing is full bleed
-except the window itself, and the strip at the top holds only the app's mark and the window's own
-controls.
+panel — is a rounded panel beside it with a hairline and `--shadow-card`, taking the rest of the
+window. Nothing is full bleed except the window itself, and the strip at the top holds only the
+app's mark and the window's own controls.
 
 **The margin is a column, not a rule.** Two columns, imported from `components/ledger.ts` so
 nothing re-derives them: the leading column (`MARK_COLUMN`, 1.5rem) and the gap after it (1rem),
@@ -205,14 +211,18 @@ actions (copy, edit) are revealed on hover and on focus, so an entry at rest is 
 words and its rule. The assistant's answer keeps its own action row visible, because that is the
 thing a reader copies.
 
-**The composer is a bar, and a command line.** A rounded bar floating at the foot of the page, one
-column in from the page's edge so its words start where every entry's words start, with the prompt
-mark at its left. The line grows with what is written into it (`field-sizing-content`) rather than
-being a fixed box. Everything the message carries or is allowed to do sits in one row under the
-words: the way in to the file picker and the level chip at the left, the model it will run on and
-the control that sends it at the right. Both chips follow one rule — with a conversation open they
-change that conversation, and with none open they change what the next one starts with — and
-neither is duplicated in the head, because a setting lives where the message that uses it is
+**The composer is a bar, and a command line.** A rounded bar floating at the foot of the page, in
+the page's reading column and one column in from its edge so its words start where every entry's
+words start. It grows with what is written into it (`field-sizing-content`) rather than being a
+fixed box, and it explains nothing about itself: there is no line under the words saying what the
+box can do, because the control that decides it — the model, the level, the attach button — is
+already in the row below. The one thing that can appear under them is a refusal no control could
+have said (an `AttachmentNote`: a picture the model cannot take, or one past the size limit).
+Everything the message carries or is allowed to do sits in one row under the words: the way in to the file picker and the level
+chip at the left, the model it will run on and the control that sends it at the right. Both chips
+follow one rule — with a conversation open they change that conversation, and with none open they
+change what the next one starts with — and neither is duplicated in the head, because a setting
+lives where the message that uses it is
 written.
 
 **Where a rule goes.** A hairline separates two *different kinds* of thing: the page's head from its
@@ -315,10 +325,10 @@ are in pairs its fill with `aria-current`. **A menu marks what is in force the s
 level menu and the model menu are read as the same control twice rather than as two controls that
 happen to look similar. A mark that only a screen reader knows about is half a mark.
 
-**Decoration is hidden from a reader.** The entry numbers and the composer's prompt mark are
-`aria-hidden`: they are the page's furniture, and a reader being told "zero one" before every
-message is being read a layout instead of a transcript. The same goes for a rule drawn as an empty
-`span`, and for the middots that separate a page head's facts.
+**Decoration is hidden from a reader.** The entry numbers are `aria-hidden`: they are the page's
+furniture, and a reader being told "zero one" before every message is being read a layout instead
+of a transcript. The same goes for a rule drawn as an empty `span`, and for the middots that
+separate a page head's facts.
 
 ## C5.8 — Copy
 

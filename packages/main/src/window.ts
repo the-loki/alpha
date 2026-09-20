@@ -17,9 +17,12 @@ export function createMainWindow(options: {
   /** Where the window's own state goes; the window is one client among however many. */
   broadcast: Broadcast
 }): BrowserWindow {
+  // 1200 rather than 1440: the page fills what is left beside the rail, so the opening width *is*
+  // the reading column. At 1200 it lands at about 830px of words — the band every chat client
+  // settles in (C5.3) — and a wider default would only buy longer lines.
   const window = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: 1200,
+    height: 800,
     minWidth: 1024,
     minHeight: 720,
     show: false,

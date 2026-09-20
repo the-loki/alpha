@@ -97,40 +97,6 @@ test('a queued message waits, is edited where it stands, and then goes', async (
   await app.close()
 })
 
-test('a queue that cannot be sent stops, and says so', async () => {
-  // No model at all: the queued message cannot leave, so the queue stops and keeps it.
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      ...scriptedAgent,
-      language: 'en',
-      permissionLevel: 'full-access',
-    }),
-    'utf-8',
-  )
-
-  const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
-    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production' },
-  })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-
-  // With no model configured the composer refuses to send at all, which is its own rule (the hint
-  // under the box says so); this test is about the strip, so it asserts the composer's own answer.
-  await expect(window.getByText('No model configured yet.')).toBeVisible()
-  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
-
-  await app.close()
-})
-
 test('Stop stops the queue too, and Resume sends what was waiting', async () => {
   const { app, window } = await launch()
 

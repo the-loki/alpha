@@ -6,7 +6,8 @@
  *
  * The margin is a column and not a rule: the page is a soft surface (ADR-0017), and the number
  * alone is enough to say "this is the numbered line the work hangs off". `PAGE` is the page's own
- * padding, `BLOCK` is the pair of columns everything that carries text is built on.
+ * padding — the page itself is the reading column, so its width is the root layout's business —
+ * and `BLOCK` is the pair of columns everything that carries text is built on.
  */
 export const PAGE = 'px-6'
 export const BLOCK = 'flex gap-4'

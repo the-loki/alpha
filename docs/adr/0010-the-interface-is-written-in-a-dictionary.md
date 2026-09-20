@@ -76,9 +76,11 @@ have to be a second, unauthenticated endpoint, which is a worse trade than one s
 wrong language.
 
 **Errors are cases, not sentences.** Main no longer composes a user-facing sentence. `ModelStatus`
-is `{ kind: 'none' } | { kind: 'configured' }` and the window says "No model configured yet." in
-whatever language it is in. A sentence assembled in the main process would be an English clause in
-the middle of a Chinese window, and no amount of care in the renderer fixes that afterwards.
+is `{ kind: 'none' } | { kind: 'configured' }`: main says which case it is, and the window decides
+what follows from it — with none configured the composer will not send, and its chip says "No
+model" — in whatever language the window is in. A sentence assembled in the main process would be
+an English clause in the middle of a Chinese window, and no amount of care in the renderer fixes
+that afterwards.
 
 **Tests pin the language twice, for two different reasons.** Every spec's state file says
 `language: 'en'`, the way it already says `permissionLevel: 'ask'`: the assertions are about

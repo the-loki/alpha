@@ -1,12 +1,21 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
+import { _electron as electron, expect, type Locator, type Page, test } from '@playwright/test'
 import { configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 const REPLY = 'Two files use that name. I can rename both.'
+/** One line of code far wider than the page's column: what a code block does with it is the test. */
+const LONG_CODE = `const wide = ${'someFunction(argumentOne, argumentTwo, argumentThree), '.repeat(3)}done`
+
+/** Where a thing is on the page, for the tests about the page's shape rather than its words. */
+async function boxOf(where: Locator) {
+  const box = await where.boundingBox()
+  if (box === null) throw new Error('nothing to measure')
+  return box
+}
 
 /** A fresh install pointed at a real folder, with the agent's answers scripted rather than dialled. */
 async function launch(
@@ -95,10 +104,10 @@ test('a message streams a reply into the transcript', async () => {
   // The header takes the question as the conversation's name, so the bubble is what is asserted.
   await expect(window.getByRole('main').locator('[data-role="user"]')).toContainText('rename the parser module')
   await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 15_000 })
-  // The turn is over when the composer stops saying the agent is working, and it has cleared
-  // itself, so Send is disabled again for the next message.
-  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible()
-  await expect(window.getByRole('button', { name: 'Send' })).toBeDisabled()
+  // The turn is over when the run's own controls are gone and Send is back, disabled again for the
+  // next message: the composer says nothing about where it is in a turn.
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
 
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-settled.png') })
   await app.close()
@@ -117,6 +126,10 @@ test('the answer is visibly still arriving, with a caret at its end', async () =
   // moment before the first token, when there is nothing but a caret.
   await expect(window.getByRole('main')).toContainText('Two files', { timeout: 20_000 })
   await expect(caret).toBeVisible()
+  // Nothing under the box at all, and no mark in front of it — not while a turn is running either,
+  // which is the state the note used to speak in.
+  await expect(window.getByText('❯')).toHaveCount(0)
+  await expect(window.getByText(/Enter sends|agent is working/)).toHaveCount(0)
   // It sits on the line that is still being written, right after the last character, rather than
   // on a line of its own below the text.
   const caretIsOnTheLine = await caret.evaluate((element) => {
@@ -130,7 +143,8 @@ test('the answer is visibly still arriving, with a caret at its end', async () =
   await expect(window.getByRole('button', { name: 'Regenerate' })).toHaveCount(0)
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-streamed.png') })
 
-  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 30_000 })
+  // The turn has to end before the app closes: the run's controls give way to Send again.
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible({ timeout: 30_000 })
   await app.close()
 })
 
@@ -157,7 +171,8 @@ test('the caret follows text that ends inside a code fence', async () => {
   })
   expect(caretIsInTheCode).toBe(true)
   await window.screenshot({ path: join(SHOT_DIR, 'conversation-code-caret.png') })
-  await expect(window.getByText('Enter sends, Shift+Enter starts a new line.')).toBeVisible({ timeout: 30_000 })
+  // The turn has to end before the app closes: the run's controls give way to Send again.
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible({ timeout: 30_000 })
   await app.close()
 })
 
@@ -207,13 +222,85 @@ test('the model is chosen at the foot of the composer, and a new conversation st
   await reopened.app.close()
 })
 
-test('with no model configured the app opens and says what is missing', async () => {
+test('the page fills the room beside the rail, and the box stands in its column', async () => {
+  const { app, window } = await launch({ replies: ['A short answer for the ledger.'] })
+  // The size the workbench opens at, before any test asks for a viewport of its own: it is what
+  // sizes the reading column, since the page fills whatever the rail leaves (C5.3).
+  const opening = await window.evaluate(() => `${globalThis.innerWidth}x${globalThis.innerHeight}`)
+  expect(opening).toBe('1200x800')
+
+  await window.setViewportSize({ width: 1440, height: 900 })
+  await ask(window, 'rename the parser module')
+  await expect(window.getByRole('main')).toContainText('A short answer for the ledger.', { timeout: 15_000 })
+
+  const page = await boxOf(window.getByRole('main'))
+  const rail = await boxOf(window.getByRole('complementary'))
+  const words = await boxOf(window.getByRole('main').locator('[data-role="assistant"] p').first())
+  const box = await boxOf(window.getByRole('textbox', { name: 'Message the agent' }))
+  const windowWidth = await window.evaluate(() => globalThis.innerWidth)
+
+  // No blank beside the page: the half-rem gutter and the gap to the rail are all the room it
+  // leaves, on both sides.
+  expect(page.x - (rail.x + rail.width)).toBeLessThanOrEqual(8.5)
+  expect(windowWidth - (page.x + page.width)).toBeLessThanOrEqual(8.5)
+  // The box starts where an entry's words start, one text inset in: the bar's own padding (16px)
+  // and its hairline (1px), which is what keeps the words inside the box it is drawn in.
+  expect(box.x - words.x).toBeLessThan(20)
+  expect(box.x - words.x).toBeGreaterThan(-1)
+
+  // Narrower changes nothing about that: the page is still the room beside the rail.
+  await window.setViewportSize({ width: 1024, height: 720 })
+  const narrow = await boxOf(window.getByRole('main'))
+  const narrowWidth = await window.evaluate(() => globalThis.innerWidth)
+  expect(narrowWidth - (narrow.x + narrow.width)).toBeLessThanOrEqual(8.5)
+  expect(narrow.width).toBeLessThan(page.width)
+
+  await app.close()
+})
+
+test('a long line wraps inside the box, and a long code line scrolls in its block', async () => {
+  const { app, window } = await launch({ replies: [`\`\`\`ts\n${LONG_CODE}\n\`\`\`\nA short note.`] })
+  await window.setViewportSize({ width: 1440, height: 900 })
+
+  const box = window.getByRole('textbox', { name: 'Message the agent' })
+  const before = await boxOf(box)
+  await box.fill('A sentence with no break in it at all, written to see what the box does with it. '.repeat(3).trim())
+  const after = await boxOf(box)
+
+  // It wraps instead of widening — the box is the page's column either way — and it grows downwards.
+  expect(Math.abs(after.width - before.width)).toBeLessThan(2)
+  expect(after.height).toBeGreaterThan(before.height)
+
+  await box.press('Enter')
+  const code = window.getByRole('main').locator('[data-role="assistant"] pre')
+  await expect(code).toBeVisible({ timeout: 15_000 })
+
+  // The wide line stays inside its own block: the block fits the column and scrolls, rather than
+  // pushing the page wider.
+  const block = await boxOf(code)
+  const page = await boxOf(window.getByRole('main'))
+  expect(block.x + block.width).toBeLessThanOrEqual(page.x + page.width)
+  expect(await code.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(true)
+
+  await app.close()
+})
+
+test('with no model configured the composer opens whole, and nothing under it explains the model', async () => {
   const { app, window } = await launch({ provider: false })
 
-  await expect(window.getByText(/No model configured yet/)).toBeVisible()
+  // The foot is where a missing model is answered — by the control that chooses one, which reads
+  // "No model" and carries the hint — so the box says nothing about it underneath.
+  await expect(window.getByRole('button', { name: 'No model', exact: true })).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Attach a picture', exact: true })).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Ask', exact: true })).toBeVisible()
+  // Nothing under the box at all, and no mark in front of it.
+  await expect(window.getByText(/No model configured yet/)).toHaveCount(0)
+  await expect(window.getByText(/Enter sends/)).toHaveCount(0)
+  await expect(window.getByText('❯')).toHaveCount(0)
 
+  // And a message cannot leave: the box holds it, and the send control says so by being disabled.
   await ask(window, 'anything')
-  await expect(window.getByText(/No model configured yet/)).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
 
   await app.close()
 })
