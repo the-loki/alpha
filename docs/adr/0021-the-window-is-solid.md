@@ -71,7 +71,7 @@ lost is state the save has just made redundant.
 
 The documents that named React — the architecture and testing constraints, the design constraint,
 the layout in the README — name Solid now, and the constraint checker keeps the direction binding:
-no React import may reappear in `packages/renderer/src`.
+no React import may reappear in `apps/desktop/src/renderer`.
 
 This supersedes ADR-0006: the file-based routes and the router plugin it chose are gone with the
 framework it was chosen for, and the addresses it protected are unchanged.

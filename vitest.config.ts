@@ -8,6 +8,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     include: [
+      // The app is one package with three process directories, the library is another.
+      'apps/desktop/src/**/*.test.{ts,tsx}',
       'packages/*/src/**/*.test.{ts,tsx}',
       // Design-system checks read the repository rather than a package, so they live in tools/.
       'tools/**/*.test.{mjs,ts}',

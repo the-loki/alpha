@@ -10,6 +10,9 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+/** Where the workbench lives: one package under apps/, and every spec launches its built bundle. */
+export const APP_DIR = join(process.cwd(), 'apps', 'desktop')
+
 export const SCRIPTED_AGENT = join(process.cwd(), 'tools/scripted-agent/pi.mjs')
 
 /** The settings fragment that makes the workbench run that agent. */

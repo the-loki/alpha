@@ -40,7 +40,7 @@ them omit it and change what the function promises.
 Neither alias is written `T | undefined` or `T | null` at a use site: the name is the point.
 
 **Enforcement:** `pnpm check:constraints` rules `01-typescript:no-null-union` and
-`01-typescript:absence-is-named` scan `packages/*/src/**/*.{ts,tsx}` for `| null` and for a bare
+`01-typescript:absence-is-named` scan `apps/desktop/src/**` and `packages/*/src/**` for `| null` and for a bare
 `| undefined`. A `constraints-ignore 01-typescript` marker on the line is required to pass.
 Declaration files and test files are exempt: vendored types are not ours to fix, and a fixture has
 to be able to show the banned form.
@@ -94,8 +94,9 @@ callback, a noise-to-value trade this project does not take.
 ## C1.7 — Named exports, no default exports
 
 Default exports rename themselves at every import site, which makes grepping a symbol's uses
-unreliable. Files under `packages/*/src` are covered; the config files at the repository root are
-consumed by tooling that requires a default export, so they are not.
+unreliable. Files under `apps/desktop/src` and `packages/*/src` are covered; the build configs — the repository's
+and the workbench package's own — are consumed by tooling that requires a default export, so they
+are not.
 
 **Enforcement:** `pnpm check:constraints` rule `01-typescript:no-default-export`.
 

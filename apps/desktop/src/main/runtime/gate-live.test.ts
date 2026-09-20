@@ -21,7 +21,7 @@ import { importLegacySessionIn } from './legacy-sessions.ts'
  */
 const LIVE_PI = process.env.ALPHA_LIVE_PI ?? ''
 
-const FAKE_PROVIDER = join(import.meta.dirname, '../../../../tools/fake-provider/server.mjs')
+const FAKE_PROVIDER = join(import.meta.dirname, '../../../../../tools/fake-provider/server.mjs')
 const SECRET = 'sk-live-test-key'
 
 const testCipher: SecretCipher = {

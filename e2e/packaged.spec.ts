@@ -12,7 +12,7 @@ import { scriptedAgent } from './agent'
  * It is skipped until `pnpm package:linux` has produced a build, so the ordinary E2E run does not
  * depend on one being there.
  */
-const PACKAGED = join(process.cwd(), 'dist', 'linux-unpacked', 'alpha')
+const PACKAGED = join(process.cwd(), 'apps', 'desktop', 'dist', 'linux-unpacked', 'alpha')
 
 test.skip(!existsSync(PACKAGED), 'run `pnpm package:linux` first: the packaged build is not there')
 

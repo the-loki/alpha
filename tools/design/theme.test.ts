@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
  * Node, and a check that needs a filesystem is not a renderer unit test.
  */
 const REPO_ROOT = join(import.meta.dirname, '..', '..')
-const CSS = readFileSync(join(REPO_ROOT, 'packages/renderer/src/styles/app.css'), 'utf-8')
+const CSS = readFileSync(join(REPO_ROOT, 'apps/desktop/src/renderer/styles/app.css'), 'utf-8')
 
 type Palette = Record<string, string>
 

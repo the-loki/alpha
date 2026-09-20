@@ -18,7 +18,7 @@ pnpm package:mac     # dmg      (build on macOS)
 pnpm package:win     # nsis     (build on Windows)
 ```
 
-The packaged builds land in `dist/`. Each platform's installer has to be produced on that
+The packaged builds land in `apps/desktop/dist/`. Each platform's installer has to be produced on that
 platform — that is electron-builder's rule, not a limitation of the app.
 
 ## From a browser
@@ -120,10 +120,11 @@ machine-checkable parts of it. `docs/adr/` records the decisions that are expens
 Layout:
 
 ```
-packages/core       pure: the transcript projection, the permission table, the IPC contract
-packages/main       the runtime: the agent process, the gate, providers, sessions, the IPC handlers
-packages/preload    the bridge: the only functions the window gets
-packages/renderer   Solid, @solidjs/router, Tailwind, remark — the window and nothing else
-e2e                 Playwright specs that launch the built app
-tools/constraints   the checker that keeps the constraints honest
+apps/desktop            the workbench: one package, three processes
+  src/main              the runtime: the agent process, the gate, providers, sessions, the IPC handlers
+  src/preload           the bridge: the only functions the window gets
+  src/renderer          Solid, @solidjs/router, Tailwind, remark — the window and nothing else
+packages/core           pure: the transcript projection, the permission table, the IPC contract
+e2e                     Playwright specs that launch the built app
+tools/constraints       the checker that keeps the constraints honest
 ```

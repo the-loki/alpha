@@ -27,48 +27,57 @@ describe('05-design:no-px-lengths', () => {
   const rule = '05-design:no-px-lengths'
 
   it('flags a px length in a class, and in a stylesheet', () => {
-    const inClass = violationsFor(rule, file('packages/renderer/src/a.tsx', '<p className="text-[13px] gap-2">x</p>'))
+    const inClass = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.tsx', '<p className="text-[13px] gap-2">x</p>'),
+    )
     expect(inClass).toHaveLength(1)
     expect(inClass[0].message).toContain('13px')
 
-    const inCss = violationsFor(rule, file('packages/renderer/src/styles/a.css', '  padding: 6px;'))
+    const inCss = violationsFor(rule, file('apps/desktop/src/renderer/styles/a.css', '  padding: 6px;'))
     expect(inCss).toHaveLength(1)
   })
 
   it('allows hairlines, rem, and prose about px', () => {
-    const hairline = violationsFor(rule, file('packages/renderer/src/a.css', '  border: 1px solid var(--color-line);'))
+    const hairline = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.css', '  border: 1px solid var(--color-line);'),
+    )
     expect(hairline).toEqual([])
 
-    const rem = violationsFor(rule, file('packages/renderer/src/a.tsx', '<p className="text-ui rounded-card">x</p>'))
+    const rem = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.tsx', '<p className="text-ui rounded-card">x</p>'),
+    )
     expect(rem).toEqual([])
 
-    const comment = violationsFor(rule, file('packages/renderer/src/a.css', '   * rem, not px, so scaling works'))
+    const comment = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '   * rem, not px, so scaling works'))
     expect(comment).toEqual([])
   })
 
   it('tracks comments rather than guessing from the first character', () => {
     // A universal selector is not a comment, and a length in one is a length.
-    const selector = violationsFor(rule, file('packages/renderer/src/styles/a.css', '* { gap: 6px }'))
+    const selector = violationsFor(rule, file('apps/desktop/src/renderer/styles/a.css', '* { gap: 6px }'))
     expect(selector).toHaveLength(1)
 
     // A JSDoc block is a comment, even where a line starts with a star.
     const jsdoc = file(
-      'packages/renderer/src/a.ts',
+      'apps/desktop/src/renderer/a.ts',
       ['/**', ' * The caret is 2px wide.', ' */', 'const x = 1'].join('\n'),
     )
     expect(violationsFor(rule, jsdoc)).toEqual([])
 
-    const lineComment = violationsFor(rule, file('packages/renderer/src/a.ts', '// 6px of air'))
+    const lineComment = violationsFor(rule, file('apps/desktop/src/renderer/a.ts', '// 6px of air'))
     expect(lineComment).toEqual([])
   })
 
   it('reads the html the renderer ships too', () => {
-    const found = violationsFor(rule, file('packages/renderer/index.html', '<meta name="x" content="12px" />'))
+    const found = violationsFor(rule, file('apps/desktop/src/renderer/index.html', '<meta name="x" content="12px" />'))
     expect(found).toHaveLength(1)
   })
 
   it('says nothing about files outside the renderer', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.ts', 'const pad = "6px"'))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'const pad = "6px"'))).toEqual([])
   })
 })
 
@@ -78,14 +87,14 @@ describe('05-design:control-voice', () => {
   it('flags a button that sets itself in mono, however the className is wrapped', () => {
     const oneLine = violationsFor(
       rule,
-      file('packages/renderer/src/a.tsx', '<button className="font-mono text-micro">copy</button>'),
+      file('apps/desktop/src/renderer/a.tsx', '<button className="font-mono text-micro">copy</button>'),
     )
     expect(oneLine).toHaveLength(1)
 
     const wrapped = violationsFor(
       rule,
       file(
-        'packages/renderer/src/a.tsx',
+        'apps/desktop/src/renderer/a.tsx',
         ['<button', '  type="button"', '  className="font-mono text-micro"', '>'].join('\n'),
       ),
     )
@@ -97,7 +106,7 @@ describe('05-design:control-voice', () => {
     const data = violationsFor(
       rule,
       file(
-        'packages/renderer/src/a.tsx',
+        'apps/desktop/src/renderer/a.tsx',
         '<button className="text-xs text-parchment"><span className="font-mono">Ctrl+N</span></button>',
       ),
     )
@@ -105,13 +114,15 @@ describe('05-design:control-voice', () => {
 
     const notAButton = violationsFor(
       rule,
-      file('packages/renderer/src/a.tsx', '<span className="font-mono text-micro">/dev/alpha</span>'),
+      file('apps/desktop/src/renderer/a.tsx', '<span className="font-mono text-micro">/dev/alpha</span>'),
     )
     expect(notAButton).toEqual([])
   })
 
   it('says nothing about the main process', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.tsx', '<button className="font-mono">x</button>'))).toEqual([])
+    expect(
+      violationsFor(rule, file('apps/desktop/src/main/a.tsx', '<button className="font-mono">x</button>')),
+    ).toEqual([])
   })
 })
 
@@ -120,7 +131,7 @@ describe('05-design:no-other-weights', () => {
 
   it('flags every weight this interface does not have', () => {
     for (const weight of ['font-bold', 'font-extrabold', 'font-black', 'font-light', 'font-thin']) {
-      const found = violationsFor(rule, file('packages/renderer/src/a.tsx', `<h1 className="${weight}">x</h1>`))
+      const found = violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', `<h1 className="${weight}">x</h1>`))
       expect(found, weight).toHaveLength(1)
     }
   })
@@ -128,11 +139,14 @@ describe('05-design:no-other-weights', () => {
   it('allows the two weights there are, and the same words in the main process', () => {
     const allowed = violationsFor(
       rule,
-      file('packages/renderer/src/a.tsx', '<h1 className="font-semibold"><span className="font-medium">x</span></h1>'),
+      file(
+        'apps/desktop/src/renderer/a.tsx',
+        '<h1 className="font-semibold"><span className="font-medium">x</span></h1>',
+      ),
     )
     expect(allowed).toEqual([])
 
-    expect(violationsFor(rule, file('packages/main/src/a.ts', "const a = 'font-bold'"))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', "const a = 'font-bold'"))).toEqual([])
   })
 })
 
@@ -140,30 +154,33 @@ describe('05-design:copy-has-a-key', () => {
   const rule = '05-design:copy-has-a-key'
 
   it('flags copy in an attribute, in a text node, and in a wrapped paragraph', () => {
-    const attribute = violationsFor(rule, file('packages/renderer/src/a.tsx', '<input aria-label="Access token" />'))
+    const attribute = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.tsx', '<input aria-label="Access token" />'),
+    )
     expect(attribute).toHaveLength(1)
 
-    const text = violationsFor(rule, file('packages/renderer/src/a.tsx', '<p>Allow once</p>'))
+    const text = violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', '<p>Allow once</p>'))
     expect(text).toHaveLength(1)
 
     const paragraph = violationsFor(
       rule,
-      file('packages/renderer/src/a.tsx', '<p>\n  Alpha ships no keys. A provider you add is the only one.\n</p>'),
+      file('apps/desktop/src/renderer/a.tsx', '<p>\n  Alpha ships no keys. A provider you add is the only one.\n</p>'),
     )
     expect(paragraph).toHaveLength(1)
   })
 
   it('allows a key, a single word, and prose in a comment', () => {
-    const key = violationsFor(rule, file('packages/renderer/src/a.tsx', "<p>{t('sidebar.search')}</p>"))
+    const key = violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', "<p>{t('sidebar.search')}</p>"))
     expect(key).toEqual([])
 
-    const oneWord = violationsFor(rule, file('packages/renderer/src/a.tsx', '<span>Alpha</span>'))
+    const oneWord = violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', '<span>Alpha</span>'))
     expect(oneWord).toEqual([])
 
     const insideAComment = violationsFor(
       rule,
       file(
-        'packages/renderer/src/a.tsx',
+        'apps/desktop/src/renderer/a.tsx',
         ["{/* The age is the row's metadata, and the row is the", "    conversation's name and nothing else. */}"].join(
           '\n',
         ),
@@ -173,7 +190,7 @@ describe('05-design:copy-has-a-key', () => {
   })
 
   it('reads the renderer only', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.tsx', '<p aria-label="Access token" />'))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.tsx', '<p aria-label="Access token" />'))).toEqual([])
   })
 })
 
@@ -239,7 +256,7 @@ describe('01-typescript:absence-is-named', () => {
   })
 
   it('flags a union inside a generic argument', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.ts', 'let p: Promise<Thing | undefined>'))).toHaveLength(1)
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'let p: Promise<Thing | undefined>'))).toHaveLength(1)
   })
 
   it('flags a parameter the caller has to pass either way', () => {
@@ -286,8 +303,31 @@ describe('01-typescript:no-default-export', () => {
     expect(violationsFor(rule, file('packages/core/src/a.ts', 'export function f() {}'))).toEqual([])
   })
 
-  it('does not police the config files at the repo root', () => {
-    expect(violationsFor(rule, file('electron.vite.config.ts', 'export default {}'))).toEqual([])
+  it('does not police the build configs the tooling reads', () => {
+    expect(violationsFor(rule, file('apps/desktop/electron.vite.config.ts', 'export default {}'))).toEqual([])
+  })
+})
+
+describe('02-architecture:processes-stay-apart', () => {
+  const rule = '02-architecture:processes-stay-apart'
+
+  it('flags a process reaching into another one', () => {
+    const cases = [
+      ['apps/desktop/src/renderer/a.ts', "import { gate } from '../main/runtime/gate.ts'"],
+      ['apps/desktop/src/preload/a.ts', "import { start } from '../renderer/main.tsx'"],
+      ['apps/desktop/src/main/a.ts', "import { shell } from '../renderer/stores/shell.ts'"],
+    ]
+    for (const [path, text] of cases) expect(violationsFor(rule, file(path, text))).toHaveLength(1)
+  })
+
+  it('allows the library and the files of the process it is written in', () => {
+    const cases = [
+      ['apps/desktop/src/renderer/a.ts', "import { text } from '@alpha/core'"],
+      ['apps/desktop/src/renderer/a.ts', "import { shell } from './stores/shell.ts'"],
+      ['apps/desktop/src/main/a.ts', "import { gate } from './runtime/gate.ts'"],
+      ['packages/core/src/a.ts', 'export const a = 1'],
+    ]
+    for (const [path, text] of cases) expect(violationsFor(rule, file(path, text))).toEqual([])
   })
 })
 
@@ -299,7 +339,7 @@ describe('01-typescript:any-usage', () => {
   })
 
   it('flags an any cast', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.ts', 'const a = payload as any'))).toHaveLength(1)
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'const a = payload as any'))).toHaveLength(1)
   })
 
   it('passes the word any inside a string', () => {
@@ -349,7 +389,7 @@ describe('02-architecture:core-stays-pure', () => {
   })
 
   it('does not object to electron imports outside core', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.ts', 'import { app } from "electron"'))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'import { app } from "electron"'))).toEqual([])
   })
 })
 
@@ -358,12 +398,12 @@ describe('02-architecture:renderer-has-no-model-client', () => {
 
   it('flags a renderer importing an agent package', () => {
     const text = 'import { Agent } from "@earendil-works/pi-agent-core"'
-    expect(violationsFor(rule, file('packages/renderer/src/a.ts', text))).toHaveLength(1)
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/a.ts', text))).toHaveLength(1)
   })
 
   it('passes the same import in the main process', () => {
     const text = 'import { Agent } from "@earendil-works/pi-agent-core"'
-    expect(violationsFor(rule, file('packages/main/src/a.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', text))).toEqual([])
   })
 })
 
@@ -378,19 +418,19 @@ describe('02-architecture:renderer-is-solid', () => {
       'import { createRouter } from "@tanstack/react-router"',
       'import Markdown from "react-markdown"',
     ]) {
-      expect(violationsFor(rule, file('packages/renderer/src/a.tsx', text))).toHaveLength(1)
+      expect(violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', text))).toHaveLength(1)
     }
   })
 
   it('passes the same imports in the main process, where none of them belong either', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.ts', 'import { useState } from "react"'))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'import { useState } from "react"'))).toEqual([])
   })
 
   it('passes Solid, and a comment that names what was left behind', () => {
-    expect(violationsFor(rule, file('packages/renderer/src/a.tsx', 'import { createSignal } from "solid-js"'))).toEqual(
-      [],
-    )
-    expect(violationsFor(rule, file('packages/renderer/src/a.ts', '// React used to draw this window'))).toEqual([])
+    expect(
+      violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', 'import { createSignal } from "solid-js"')),
+    ).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/a.ts', '// React used to draw this window'))).toEqual([])
   })
 })
 
@@ -434,7 +474,7 @@ describe('02-architecture:max-function-lines', () => {
   })
 
   it('flags an oversized component in the renderer at a lower limit', () => {
-    expect(violationsFor(rule, file('packages/renderer/src/Big.tsx', fn('Big', 121)))).toHaveLength(1)
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/Big.tsx', fn('Big', 121)))).toHaveLength(1)
   })
 
   it('reports the line the function starts on', () => {
@@ -452,7 +492,9 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
   const rule = '03-product-scope:no-hardcoded-hosts'
 
   it('flags a literal http URL in a random source file', () => {
-    expect(violationsFor(rule, file('packages/main/src/a.ts', 'const u = "https://example.com/v1"'))).toHaveLength(1)
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'const u = "https://example.com/v1"'))).toHaveLength(
+      1,
+    )
   })
 
   it('flags a provider host in the module that used to be allowed to hold one', () => {
@@ -461,18 +503,18 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
   })
 
   it('passes the module that owns the workbench its own address', () => {
-    const listen = file('packages/main/src/server/http.ts', 'const urls = ["http://127.0.0.1:" + port]')
+    const listen = file('apps/desktop/src/main/server/http.ts', 'const urls = ["http://127.0.0.1:" + port]')
     expect(violationsFor(rule, listen)).toEqual([])
   })
 
   it('flags a host in another module of the server, which does not own the address', () => {
-    const nearby = file('packages/main/src/server/service.ts', 'const urls = ["http://127.0.0.1:4123"]')
+    const nearby = file('apps/desktop/src/main/server/service.ts', 'const urls = ["http://127.0.0.1:4123"]')
     expect(violationsFor(rule, nearby)).toHaveLength(1)
   })
 
   it('passes docs and test fixtures', () => {
     expect(violationsFor(rule, file('docs/research/x.md', 'see https://example.com'))).toEqual([])
-    expect(violationsFor(rule, file('packages/main/src/a.test.ts', 'const u = "https://x.test"'))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.test.ts', 'const u = "https://x.test"'))).toEqual([])
   })
 })
 
@@ -491,7 +533,7 @@ describe('02-architecture:contract-channels', () => {
   /** The table main declares: the handlers it answers with, and the channels it pushes. */
   const mainWith = (names, pushed = []) =>
     file(
-      'packages/main/src/channels.ts',
+      'apps/desktop/src/main/channels.ts',
       [
         `export const PUSHED_CHANNELS = [${pushed.map((name) => `'${name}'`).join(', ')}] as const`,
         'export const CHANNELS = {',
@@ -499,7 +541,7 @@ describe('02-architecture:contract-channels', () => {
         '}',
       ].join('\n'),
     )
-  const preloadUsing = (body) => file('packages/preload/src/index.ts', body)
+  const preloadUsing = (body) => file('apps/desktop/src/preload/index.ts', body)
 
   it('flags a channel the window asks for that nothing answers', () => {
     const found = crossViolations([contract, mainWith(['ping']), preloadUsing('ipcRenderer.invoke(IPC.pong)')])
@@ -520,27 +562,30 @@ describe('02-architecture:contract-channels', () => {
   })
 
   it('flags a channel string written out instead of taken from the contract', () => {
-    const inMain = violationsFor(rule, file('packages/main/src/ipc.ts', "ipcMain.handle('alpha:ping', () => {})"))
+    const inMain = violationsFor(rule, file('apps/desktop/src/main/ipc.ts', "ipcMain.handle('alpha:ping', () => {})"))
     expect(inMain).toHaveLength(1)
 
-    const inPreload = violationsFor(rule, file('packages/preload/src/index.ts', "ipcRenderer.invoke('alpha:ping')"))
+    const inPreload = violationsFor(rule, file('apps/desktop/src/preload/index.ts', "ipcRenderer.invoke('alpha:ping')"))
     expect(inPreload).toHaveLength(1)
   })
 
   it('flags the renderer reaching for the transport itself', () => {
-    const found = violationsFor(rule, file('packages/renderer/src/a.ts', "import { ipcRenderer } from 'electron'"))
+    const found = violationsFor(rule, file('apps/desktop/src/renderer/a.ts', "import { ipcRenderer } from 'electron'"))
     expect(found).toHaveLength(1)
   })
 
   it('flags an import of the transport outside the seam, which a call alone would miss', () => {
-    const imported = violationsFor(rule, file('packages/main/src/runtime/a.ts', "import { ipcMain } from 'electron'"))
+    const imported = violationsFor(
+      rule,
+      file('apps/desktop/src/main/runtime/a.ts', "import { ipcMain } from 'electron'"),
+    )
     expect(imported).toHaveLength(1)
   })
 
   it('lets a comment name the transport, because prose is not a dependency', () => {
     const prose = violationsFor(
       rule,
-      file('packages/main/src/channels.ts', ' * `ipcMain`, and the HTTP server dispatches the same table'),
+      file('apps/desktop/src/main/channels.ts', ' * `ipcMain`, and the HTTP server dispatches the same table'),
     )
     expect(prose).toEqual([])
   })
@@ -551,7 +596,7 @@ describe('02-architecture:contract-channels', () => {
   })
 
   it('says nothing about files that do not touch the seam', () => {
-    expect(violationsFor(rule, file('packages/renderer/src/a.tsx', 'const x = 1'))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', 'const x = 1'))).toEqual([])
   })
 })
 
@@ -562,7 +607,7 @@ describe('checkFile', () => {
   })
 
   it('skips generated files', () => {
-    expect(checkFile(file('packages/renderer/src/routeTree.gen.ts', 'type T = string | null'))).toEqual([])
+    expect(checkFile(file('apps/desktop/src/renderer/routeTree.gen.ts', 'type T = string | null'))).toEqual([])
   })
 
   it('skips files outside the source tree', () => {

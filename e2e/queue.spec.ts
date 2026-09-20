@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider, scriptedAgent } from './agent'
 
 /**
  * The queue the workbench owns (ADR-0011): a message typed while the agent is working waits for
@@ -32,8 +32,8 @@ async function launch() {
   configureProvider(dataDirectory)
 
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,

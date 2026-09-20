@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider, scriptedAgent } from './agent'
 
 /**
  * Putting a conversation away and taking it back out (tickets #79 and #80): the row's `⋯` holds
@@ -52,8 +52,8 @@ async function launch(options: { status?: 'idle' | 'waiting' } = {}) {
   configureProvider(dataDirectory)
 
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,

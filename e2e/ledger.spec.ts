@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -41,8 +41,8 @@ async function launch(options: { dataDirectory?: string; workspace?: string } = 
   configureProvider(dataDirectory)
 
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,

@@ -45,7 +45,7 @@ lives in `core/src/i18n.ts` with the types that name it, because a type's absenc
 words are both vocabulary — but no framework, no store and no side effects, so `core` stays pure.
 
 **Copy in a component is a `pnpm check` failure.** `05-design:copy-has-a-key` reads every `.tsx`
-under `packages/renderer/src/` and flags copy three ways it hides: an `aria-label`, `placeholder` or
+under `apps/desktop/src/renderer/` and flags copy three ways it hides: an `aria-label`, `placeholder` or
 `title` holding more than one word; a JSX text node with more than one word; and a line of prose
 with no code characters in it, which is how a wrapped paragraph reads to a checker. A key
 (`{t('sidebar.search')}`) is what passes, and a single word is left alone — `Alpha` is the app's

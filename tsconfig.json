@@ -23,5 +23,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["packages/*/src", "e2e", "*.config.ts"]
+  "include": ["apps/desktop/src", "apps/desktop/*.config.ts", "packages/*/src", "e2e", "*.config.ts"]
 }

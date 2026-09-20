@@ -33,7 +33,7 @@ const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) 
     store,
     // The scripted agent stands in for pi, and the script reaches it the way a model's answers do.
     agent: {
-      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
       directory: join(dataDirectory, 'agent'),
       env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
       sessionsRoot,
@@ -80,7 +80,7 @@ const configuredManager = (dataDirectory?: string, seed = true, events: RuntimeE
     providers,
     store: new StateStore(directory),
     agent: {
-      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
       directory: join(directory, 'agent'),
       env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
       sessionsRoot: join(directory, 'sessions'),
@@ -266,7 +266,7 @@ describe('[runtime] the reason a tool call ran', () => {
       providers: new ProviderStore(dataDirectory, new CredentialVault(dataDirectory, testCipher)),
       store: new StateStore(dataDirectory),
       agent: {
-        path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+        path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
         directory: join(dataDirectory, 'agent'),
         env: {
           ALPHA_FAUX_REPLIES: JSON.stringify([
@@ -336,7 +336,7 @@ const freshManagerAt = (dataDirectory: string, env: NodeJS.ProcessEnv = {}) => {
     providers: new ProviderStore(dataDirectory, vault),
     store,
     agent: {
-      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
       directory: join(dataDirectory, 'agent'),
       env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
       sessionsRoot: join(dataDirectory, 'sessions'),

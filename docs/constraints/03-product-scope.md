@@ -13,7 +13,7 @@ deleted when the user deletes the provider. Nothing about the user's usage is re
 
 **Enforcement:** no network call may be made to a host that is not a configured provider, the
 app's own update check, or a documented documentation link. `pnpm check:constraints` scans for
-hard-coded hosts anywhere in `packages/`, with one exemption for the module that listens on this
+hard-coded hosts anywhere in `apps/desktop/src` and `packages/`, with one exemption for the module that listens on this
 machine's own address. There is no provider catalog to make an exception for: the user types the
 base URL, and the only address Alpha knows is the one it binds ([ADR-0015](../adr/0015-three-protocols-and-no-catalog.md)).
 

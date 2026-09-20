@@ -56,7 +56,7 @@
   },
   "overrides": [
     {
-      "includes": ["packages/renderer/src/styles/**"],
+      "includes": ["apps/desktop/src/renderer/styles/**"],
       "linter": {
         "rules": {
           "complexity": {
@@ -66,7 +66,7 @@
       }
     },
     {
-      "includes": ["packages/renderer/src/**"],
+      "includes": ["apps/desktop/src/renderer/**"],
       "linter": {
         "rules": {
           "style": {

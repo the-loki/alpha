@@ -7,7 +7,7 @@ time; an occurrence that arrives while its task is still working is skipped and 
 ## Context
 
 A schedule needs a clock, and the workbench is the only thing here that has one. It quits when its
-last window closes (`app.on('window-all-closed')` in `packages/main/src/index.ts`), except on
+last window closes (`app.on('window-all-closed')` in `apps/desktop/src/main/index.ts`), except on
 macOS where the platform keeps the process alive — so "the task ran at nine" is really "the task
 ran at nine *and the workbench was open*". Making that untrue means a background service, a tray
 presence, and a story about what an application nobody is looking at may do to your files; that is

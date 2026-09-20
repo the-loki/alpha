@@ -9,7 +9,7 @@ import { ConversationRuntime } from './conversation-runtime.ts'
 import type { ApprovalAnswer } from './gate.ts'
 
 /** The scripted stand-in for pi, which asks Alpha's gate the way the real agent's extension does. */
-const SCRIPTED_AGENT = join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs')
+const SCRIPTED_AGENT = join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs')
 
 /**
  * The gate, through a real agent process: the model asks for something, the policy answers, and the

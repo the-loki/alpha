@@ -2,13 +2,12 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
+import { APP_DIR } from './agent'
 
 /**
  * A long list in the rail shows a screenful and offers the rest (ticket #86): the palette is the
  * list you find things in, so a folder that folds is not a folder that hides.
  */
-const REPO_ROOT = process.cwd()
-
 test('a folder with more conversations than fit says how many more there are', async () => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
@@ -39,8 +38,8 @@ test('a folder with more conversations than fit says how many more there are', a
   writeFileSync(join(dataDirectory, 'conversations.json'), JSON.stringify({ version: 1, conversations }), 'utf-8')
 
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
     env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production' },
   })
   const window = await app.firstWindow()

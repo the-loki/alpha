@@ -2,8 +2,7 @@ import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-
-const REPO_ROOT = process.cwd()
+import { APP_DIR } from './agent'
 
 /** A stand-in for pi: a script that answers like a version command, or fails like a broken one. */
 function stubAgent(script: string): string {
@@ -36,8 +35,8 @@ async function launch(agentPath: string) {
     'utf-8',
   )
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(directory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(directory, 'chromium')}`],
+    cwd: APP_DIR,
     env: { ...process.env, ALPHA_DATA_DIR: directory, NODE_ENV: 'production' },
   })
   const window = await app.firstWindow()

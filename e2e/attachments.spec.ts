@@ -2,9 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
-import { configureProvider, scriptedAgent } from './agent'
-
-const REPO_ROOT = process.cwd()
+import { APP_DIR, configureProvider, scriptedAgent } from './agent'
 
 /** A real one-pixel PNG, so what the transcript shows is a picture and not a broken box. */
 const PIXEL_PNG = Buffer.from(
@@ -51,8 +49,8 @@ async function launch(options: { vision?: boolean } = {}) {
   writeFileSync(note, 'not a picture')
 
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,

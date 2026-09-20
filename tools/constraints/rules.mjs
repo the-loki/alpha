@@ -11,7 +11,8 @@
 
 const GENERATED = [/(^|\/)node_modules\//, /(^|\/)out\//, /(^|\/)dist\//, /(^|\/)coverage\//, /\.gen\.ts$/]
 
-const isSource = (path) => /^packages\/[^/]+\/src\//.test(path) || /^tools\//.test(path)
+// The app is one package under apps/ (three process directories); the library is under packages/.
+const isSource = (path) => /^(apps|packages)\/[^/]+\/src\//.test(path) || /^tools\//.test(path)
 const isTs = (path) => /\.tsx?$/.test(path)
 const isDeclaration = (path) => /\.d\.ts$/.test(path)
 const isTest = (path) => /\.(test|spec)\.[cm]?tsx?$/.test(path)
@@ -187,11 +188,29 @@ const channelsUsedWith = (files, prefix, pattern) => {
   return used
 }
 
-const isMainSource = (path) => path.startsWith('packages/main/src/')
-const isPreloadSource = (path) => path.startsWith('packages/preload/src/')
+/** Which process of the app a path belongs to, or '' for anything that is not the app's source. */
+const appProcessOf = (path) => {
+  const match = /^apps\/desktop\/src\/(main|preload|renderer)(\/|$)/.exec(path)
+  return match === null ? '' : match[1]
+}
+
+/** Where a relative import lands, written as a path in this tree, so a rule can read the target. */
+const relativeTarget = (from, specifier) => {
+  if (!specifier.startsWith('.')) return ''
+  const parts = from.split('/').slice(0, -1)
+  for (const segment of specifier.split('/')) {
+    if (segment === '.' || segment === '') continue
+    if (segment === '..') parts.pop()
+    else parts.push(segment)
+  }
+  return parts.join('/')
+}
+
+const isMainSource = (path) => path.startsWith('apps/desktop/src/main/')
+const isPreloadSource = (path) => path.startsWith('apps/desktop/src/preload/')
 
 /** The one file on each side that is allowed to know the transport exists. */
-const isSeamFile = (path) => path === 'packages/main/src/ipc.ts' || path === 'packages/preload/src/index.ts'
+const isSeamFile = (path) => path === 'apps/desktop/src/main/ipc.ts' || path === 'apps/desktop/src/preload/index.ts'
 
 /** Whether a line is only prose: the transport may be named in a comment and nowhere else. */
 const isComment = (line) => /^\s*(\/\/|\/\*|\*)/.test(line)
@@ -287,7 +306,7 @@ export const RULES = [
     constraint: '02-architecture.md',
     description: 'the renderer holds no model client',
     check({ path, text }) {
-      if (!path.startsWith('packages/renderer/src/')) return []
+      if (!path.startsWith('apps/desktop/src/renderer/')) return []
       const found = []
       text.split('\n').forEach((line, index) => {
         for (const specifier of importSpecifiers(line)) {
@@ -305,11 +324,35 @@ export const RULES = [
   },
 
   {
+    id: '02-architecture:processes-stay-apart',
+    constraint: '02-architecture.md',
+    description: 'a process reaches another over the contract, never through its files',
+    check({ path, text }) {
+      const mine = appProcessOf(path)
+      if (mine === '') return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        if (isComment(line)) return
+        for (const specifier of importSpecifiers(line)) {
+          const theirs = appProcessOf(relativeTarget(path, specifier))
+          if (theirs === '' || theirs === mine) continue
+          found.push({
+            line: index + 1,
+            message: `${mine} may not import ${theirs}: the processes talk over the contract`,
+            text: line.trim(),
+          })
+        }
+      })
+      return found
+    },
+  },
+
+  {
     id: '02-architecture:renderer-is-solid',
     constraint: '02-architecture.md',
     description: 'the window is drawn by Solid, and React does not come back',
     check({ path, text }) {
-      if (!path.startsWith('packages/renderer/') || !/\.(ts|tsx)$/.test(path)) return []
+      if (!path.startsWith('apps/desktop/src/renderer/') || !/\.(ts|tsx)$/.test(path)) return []
       const found = []
       text.split('\n').forEach((line, index) => {
         if (isComment(line)) return
@@ -333,7 +376,7 @@ export const RULES = [
     constraint: '02-architecture.md',
     description: 'the agent is a program Alpha runs, not a library it links',
     check({ path, text }) {
-      if (!path.startsWith('packages/') || !path.includes('/src/')) return []
+      if (!isSource(path) || !path.includes('/src/')) return []
       const found = []
       text.split('\n').forEach((line, index) => {
         // A string may name the package Alpha tells the person to install; an import may not.
@@ -373,7 +416,7 @@ export const RULES = [
     description: 'a function fits on a screen',
     check({ path, text }) {
       if (!isSource(path) || isTest(path) || isDeclaration(path) || !isTs(path)) return []
-      const limit = path.startsWith('packages/renderer/') && path.endsWith('.tsx') ? 120 : 60
+      const limit = path.startsWith('apps/desktop/src/renderer/') && path.endsWith('.tsx') ? 120 : 60
       return functionBlocks(text.split('\n'))
         .filter((block) => block.length > limit)
         .map((block) => ({
@@ -389,7 +432,7 @@ export const RULES = [
     constraint: '05-design.md',
     description: 'lengths are rem, so the window scale applies',
     check({ path, text }) {
-      if (!path.startsWith('packages/renderer/')) return []
+      if (!path.startsWith('apps/desktop/src/renderer/')) return []
       if (!/\.(ts|tsx|css|html)$/.test(path)) return []
       const found = []
       // A comment may talk about px; a length in one is still a length, so the comment state is
@@ -425,7 +468,7 @@ export const RULES = [
     // inside a button is data the button carries (a path, a count), and that is the distinction
     // the design draws. The whole tag is read at once because a class list is allowed to wrap.
     check({ path, text }) {
-      if (!path.startsWith('packages/renderer/')) return []
+      if (!path.startsWith('apps/desktop/src/renderer/')) return []
       if (!/\.tsx$/.test(path)) return []
       const found = []
       for (const tag of text.matchAll(/<button\b[^>]*>/gs)) {
@@ -448,7 +491,7 @@ export const RULES = [
     // quoted text is exactly how it would hide. Hierarchy comes from size, colour and space, so the
     // rule names the forbidden weights rather than letting a new one arrive by accident.
     check({ path, text }) {
-      if (!path.startsWith('packages/renderer/')) return []
+      if (!path.startsWith('apps/desktop/src/renderer/')) return []
       if (!/\.(ts|tsx|css)$/.test(path)) return []
       const found = []
       text.split('\n').forEach((line, index) => {
@@ -477,7 +520,7 @@ export const RULES = [
      * in it is code that happens to have words in it.
      */
     check({ path, text }) {
-      if (!path.startsWith('packages/renderer/src/')) return []
+      if (!path.startsWith('apps/desktop/src/renderer/')) return []
       if (!/\.tsx$/.test(path) || isTest(path)) return []
       const found = []
       const lines = text.split('\n')
@@ -555,7 +598,7 @@ export const RULES = [
           }
         })
       }
-      if (path.startsWith('packages/renderer/src/') && /\b(ipcRenderer|ipcMain|contextBridge)\b/.test(text)) {
+      if (path.startsWith('apps/desktop/src/renderer/') && /\b(ipcRenderer|ipcMain|contextBridge)\b/.test(text)) {
         found.push({ line: 1, message: 'the renderer must reach the main process through the bridge', text: '' })
       }
       return found
@@ -566,7 +609,7 @@ export const RULES = [
       const channels = contractChannels(contract.text)
       // The handlers are a table now, so what is handled is read from its keys rather than from
       // the registrations: both transports dispatch that one table.
-      const table = files.find((candidate) => candidate.path === 'packages/main/src/channels.ts')
+      const table = files.find((candidate) => candidate.path === 'apps/desktop/src/main/channels.ts')
       const handled = table === undefined ? [] : handledNamesOf(table.text, channels).map((name) => channels.get(name))
       // Pushes are declared rather than spelled out at the call site — the window's subscriber
       // forwards every push channel by name — so what is sent is the declaration, not a `.send(`.
@@ -610,7 +653,7 @@ export const RULES = [
         isTest(path) ||
         // The server's own address is what that one module is about: it listens, and it has to
         // say where. A provider host is a violation everywhere, including there.
-        path === 'packages/main/src/server/http.ts' ||
+        path === 'apps/desktop/src/main/server/http.ts' ||
         isCheckerSource(path)
       if (exempt || !/\.(ts|tsx|mjs|js|json)$/.test(path)) return []
       const found = []

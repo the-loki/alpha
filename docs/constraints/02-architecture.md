@@ -4,39 +4,46 @@
 
 Alpha ships **no agent**. A conversation is a child process — the `pi` the person installed, found
 through Settings and driven over its RPC protocol ([ADR-0001](../adr/0001-agent-runtime-in-main-process.md)).
-No package depends on a pi package, and nothing under `packages/*/src` parses a session file,
-speaks a provider's wire, or implements a tool. What Alpha keeps of its own is the gate it writes
-as an extension, the `models.json` it writes for the agent to read, the conversation list, and the
-credentials.
+No package depends on a pi package, and nothing under `apps/desktop/src` or `packages/*/src` parses
+a session file, speaks a provider's wire, or implements a tool. What Alpha keeps of its own is the
+gate it writes as an extension, the `models.json` it writes for the agent to read, the conversation
+list, and the credentials.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:no-agent-dependency` fails on an
 import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
-`packages/*/src`. The install command Alpha offers is a string, not an import, and is exempt by
-being a string.
+`apps/desktop/src` or `packages/*/src`. The install command Alpha offers is a string, not an
+import, and is exempt by being a string.
 
-## C2.1 — Four packages, one direction
+## C2.1 — One workbench, one library, one direction
 
 ```
-renderer  ──┐
-            ├──> core        (pure TypeScript: domain rules, contracts, no I/O, no Electron)
-preload   ──┤
-            └──> (nothing else)
-main ──────────> core
+apps/desktop/src/          the app: one package, three processes
+  main/      ──┐
+  preload/   ──┼──> @alpha/core    (pure TypeScript: domain rules, contracts, no I/O, no Electron)
+  renderer/  ──┘
 ```
 
 | Package | Holds | May import |
 | --- | --- | --- |
 | `@alpha/core` | Domain rules, IPC contract types, validation schemas | nothing from this repo |
-| `@alpha/main` | Electron main process, the agent runtime, storage | `core`, node, electron |
-| `@alpha/preload` | The contextBridge surface | `core` only |
-| `@alpha/renderer` | Solid UI, router, stores, styles | `core` only |
+| `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | `core`, node, electron (not in the renderer) |
 
-Dependencies never point backwards: `core` knows nothing about the other three, and no package
-imports `main`. A cycle between packages is an error.
+`packages/` holds libraries — what the workbench depends on. The workbench lives in
+`apps/desktop`, one package whose three processes are directories, which keeps the split the rest of
+this document is about (the window has no Node, the bridge is the only door, the runtime is in
+`main`) without pretending the workbench and the library it depends on are peers.
 
-**Enforcement:** `pnpm check:constraints` rule `02-architecture:core-stays-pure` fails on any
-`electron` or Node builtin import under `packages/core/src`, and Biome's `style/noRestrictedGlobals`
-keeps the renderer off `process`, `require`, and `Buffer`.
+Dependencies never point backwards: `core` knows nothing about the workbench, and no process imports
+`main`'s runtime.
+
+**Enforcement:** three of the checker's rules and one linter keep this shape.
+`02-architecture:processes-stay-apart` fails on a relative import from one of the app's three
+processes into another — the window cannot reach the runtime's files, the runtime cannot reach the
+window's — which is what separate packages used to enforce by existing.
+`02-architecture:core-stays-pure` fails on any `electron` or Node builtin import under
+`packages/core/src`, and `02-architecture:renderer-is-solid` keeps the window on the framework it was
+rebuilt on. Biome's `style/noRestrictedGlobals` keeps the renderer off `process`, `require`, and
+`Buffer`.
 
 ## C2.2 — The renderer talks to the main process through one contract
 
@@ -61,13 +68,13 @@ intents, and holds no model client, no API key, and no transcript of record. The
 of a conversation is a projection that can be rebuilt from the runtime at any time.
 
 **Enforcement:** two rules, because they catch different things: Biome
-`style/noRestrictedImports` (scoped to `packages/renderer/src`) fails on an agent-package import
+`style/noRestrictedImports` (scoped to `apps/desktop/src/renderer`) fails on an agent-package import
 at lint time, and `pnpm check:constraints` rule `02-architecture:renderer-has-no-model-client`
 catches it in the same scan that checks everything else.
 
 The window is drawn by Solid (ADR-0021), and that is a boundary too: rule
 `02-architecture:renderer-is-solid` fails on a React, TanStack, zustand or react-markdown import
-under `packages/renderer/`, so the framework cannot creep back one file at a time.
+under `apps/desktop/src/renderer/`, so the framework cannot creep back one file at a time.
 
 ## C2.4 — A key goes from the vault to the agent's environment, and nowhere else
 

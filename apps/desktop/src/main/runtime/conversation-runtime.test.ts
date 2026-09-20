@@ -13,7 +13,7 @@ import type { ApprovalAnswer } from './gate.ts'
  * the agent's own answers are scripted — the process, the pipes, the session, the gate's round trip
  * and the tools are the real thing, which is exactly what a mock would not show.
  */
-const SCRIPTED_AGENT = join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs')
+const SCRIPTED_AGENT = join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs')
 
 const openRuntime = (
   options: {

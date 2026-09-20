@@ -19,7 +19,7 @@ import { TaskStore } from './tasks/store.ts'
  */
 /** The agent a provider is tested through, pointed at the scripted one for the suite's sake. */
 const agentPorts = (dataDirectory: string): AgentPorts => ({
-  path: () => join(import.meta.dirname, '../../../tools/scripted-agent/pi.mjs'),
+  path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
   directory: join(dataDirectory, 'agent'),
   env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
   sessionsRoot: join(dataDirectory, 'sessions'),
@@ -56,7 +56,7 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
     providers: new ProviderStore(dataDirectory, vault),
     store,
     agent: {
-      path: () => join(import.meta.dirname, '../../../tools/scripted-agent/pi.mjs'),
+      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
       directory: join(dataDirectory, 'agent'),
       env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
       sessionsRoot: join(dataDirectory, 'sessions'),

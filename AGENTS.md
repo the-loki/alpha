@@ -21,9 +21,9 @@ permission level, approval, provider, credential, model).
 
 ### Layout
 
-`packages/core` is pure domain and the IPC contract; `packages/main` is the Electron main process
-and the agent runtime; `packages/preload` is the contextBridge; `packages/renderer` is the Solid
-UI. Dependencies point at `core` and never backwards.
+`apps/desktop` is the workbench: `src/main` is the Electron main process and the agent runtime, `src/preload`
+is the contextBridge, `src/renderer` is the Solid UI. `packages/core` is the one library — pure domain
+and the IPC contract. The app depends on `core` and never backwards.
 
 ### Before writing code here
 

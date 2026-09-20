@@ -16,7 +16,7 @@ import { COOKIE_NAME } from './session.ts'
 
 /** The agent a provider is tested through, pointed at the scripted one for the suite's sake. */
 const agentPorts = (dataDirectory: string): AgentPorts => ({
-  path: () => join(import.meta.dirname, '../../../tools/scripted-agent/pi.mjs'),
+  path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
   directory: join(dataDirectory, 'agent'),
   env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
   sessionsRoot: join(dataDirectory, 'sessions'),
@@ -72,7 +72,7 @@ const start = async (
     store,
     // The test seam: a scripted agent standing in for pi, with the script its model would answer.
     agent: {
-      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
       directory: join(dataDirectory, 'agent'),
       env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
       sessionsRoot: join(dataDirectory, 'sessions'),

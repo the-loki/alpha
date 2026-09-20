@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type ElectronApplication, _electron as electron, expect, type Page, test } from '@playwright/test'
+import { APP_DIR } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -14,8 +15,8 @@ async function launchApp(
     writeFileSync(join(dataDirectory, 'workbench-state.json'), JSON.stringify(options.state), 'utf-8')
   }
   const app = await electron.launch({
-    args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: REPO_ROOT,
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
     env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production', ...options.env },
   })
   const window = await app.firstWindow()

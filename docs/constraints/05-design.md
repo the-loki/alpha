@@ -124,7 +124,7 @@ control*; `font-semibold` marks *titles* — the app's own name, a page's title,
 here is bold, light or black: hierarchy comes from size, colour and space, and a third weight would
 be a way of shouting what the layout should have said. `05-design:no-other-weights` fails
 `pnpm check` on `font-bold`, `font-extrabold`, `font-black`, `font-light` or `font-thin` anywhere
-under `packages/renderer/`.
+under `apps/desktop/src/renderer/`.
 
 | The display voice: a page's title, an entry's question, the title page | Newsreader | `font-display text-xl`–`text-3xl` | 1.125–1.875rem / 1.4–1.2 | medium (the sentence under it: regular, italic) |
 
@@ -168,7 +168,7 @@ in the middle of a wide window: a blank margin beside the words is worse than a 
 room beside a centred column is empty either way. Prose is the one thing that reads worse the wider
 it gets, so it keeps its 100-character cap (`max-w-measure`, declared as `--container-measure` in the
 theme) on the assistant's markdown root and on an entry's own words. The window's opening size is
-what puts the column where it belongs: at 1200 wide (`packages/main/src/window.ts`) the page is about
+what puts the column where it belongs: at 1200 wide (`apps/desktop/src/main/window.ts`) the page is about
 900px and a line of prose about 830 — the band every chat client settles in — and a maximized window
 is capped by the measure rather than by the column.
 
@@ -274,7 +274,7 @@ the right end of `Folders`, beside its count, and never a row of its own. A row 
 a fourth place to go, and it costs the rail a line of height to say something the `+` says in 1.25rem.
 
 **Lengths are rem, and the checker says so.** `05-design:no-px-lengths` fails `pnpm check` on any
-px length inside `packages/renderer/`, with exactly one exception: `1px` hairlines, which have to
+px length inside `apps/desktop/src/renderer/`, with exactly one exception: `1px` hairlines, which have to
 stay a device pixel to stay crisp.
 
 ## C5.5 — The distinctive pieces

@@ -19,7 +19,7 @@ const service = () => {
   const directory = mkdtempSync(join(tmpdir(), 'alpha-providers-'))
   const store = new ProviderStore(directory, new CredentialVault(directory, cipher))
   const agent = {
-    path: (): string => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+    path: (): string => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
     directory: join(directory, 'agent'),
     env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
     sessionsRoot: join(directory, 'sessions'),
