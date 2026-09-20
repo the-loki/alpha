@@ -168,7 +168,7 @@ export function TasksPage() {
           }
         >
           <Show when={tasks.listed}>
-            <div class="mt-6 rounded-card border border-line bg-ink-800 px-4 py-6">
+            <div class="mt-6 rounded-card border border-line bg-ink-800 p-4">
               <p class="text-ui text-parchment">{t('tasks.empty')}</p>
               <p class="mt-1 text-xs leading-relaxed text-parchment-dim">{t('tasks.emptyBody')}</p>
             </div>

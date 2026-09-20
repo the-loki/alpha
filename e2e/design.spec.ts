@@ -194,6 +194,93 @@ test('a page\u2019s body starts the same distance under its band', async () => {
   await app.close()
 })
 
+test('a block that groups things is inset by one number', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
+
+  // Every block that groups fields is inset 1rem on all four sides, and a group nested inside one
+  // is inset half that: two blocks of the same kind four pixels apart is a panel that looks
+  // assembled by two people, which is what the provider card and the form card were.
+  const paddingOf = async (target: Locator): Promise<string> => {
+    const [pad] = await target.evaluate((node) => {
+      const style = getComputedStyle(node as Element)
+      return [[style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].join(' ')]
+    })
+    return pad
+      .split(' ')
+      .map((value) => String(Math.round(Number.parseFloat(value))))
+      .join('/')
+  }
+  const GROUP = '16/16/16/16'
+  const NOTICE = '8/12/8/12'
+
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Providers', exact: true }).click()
+  const page = window.getByRole('main')
+  // Every block that groups a field, wherever it is: the panel's cards and the blocks nested in
+  // them. Named blocks would let the next panel's card be a different inset without a word.
+  const grouped = await window.evaluate(() => {
+    const rounds = (value: string): number => Math.round(Number.parseFloat(value))
+    // A block: edged on all four sides, filled, and holding a field — the panel's cards, and the
+    // blocks nested in them (which take the control radius rather than the card's).
+    const blocks = [...document.querySelectorAll('main *')].filter((node) => {
+      const style = getComputedStyle(node)
+      const edged = [
+        style.borderTopWidth,
+        style.borderRightWidth,
+        style.borderBottomWidth,
+        style.borderLeftWidth,
+      ].every((edge) => edge !== '0px')
+      const filled = style.backgroundColor !== 'rgba(0, 0, 0, 0)'
+      return edged && filled && node.querySelector('input, select, textarea') !== null
+    })
+    return blocks.map((node) => {
+      const style = getComputedStyle(node)
+      return {
+        kind: `${node.tagName.toLowerCase()}.${node.className.toString().slice(0, 30)}`,
+        pad: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].map(rounds).join('/'),
+        radius: style.borderRadius,
+        // A block inside another block that holds fields is the nested kind.
+        nested: blocks.some((outer) => outer !== node && outer.contains(node)),
+      }
+    })
+  })
+  // The sweep has to have found what it is about: the panel's cards and at least one nested block.
+  expect(grouped.length).toBeGreaterThanOrEqual(3)
+  expect(grouped.filter((block) => block.nested).length).toBeGreaterThanOrEqual(1)
+  for (const block of grouped) {
+    expect(block.pad, `${block.kind} is ${block.pad}`).toBe(block.nested ? '8/8/8/8' : '16/16/16/16')
+    // And the corner follows the same rule: a panel's block is a card, a block inside one is not.
+    expect(block.radius, `${block.kind} is ${block.radius}`).toBe(block.nested ? '10px' : '16px')
+  }
+
+  // A notice, on the other hand, is a line and not a block: the same shape wherever it appears,
+  // which is the control's radius rather than the card's.
+  const notice = page.getByText('This system offers no keychain')
+  expect(await paddingOf(notice)).toBe(NOTICE)
+  expect(await notice.evaluate((node) => getComputedStyle(node).borderRadius)).toBe('10px')
+
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await window.getByRole('button', { name: 'New task', exact: true }).click()
+  const taskForm = window.getByRole('main').locator('section:has(button:text-is("Save task"))')
+  expect(await paddingOf(taskForm)).toBe(GROUP)
+
+  // And the field the person writes a prompt in is a field they write three lines in: three rows of
+  // the body leading (1.5rem) plus its own padding, not the control height with the text inside it.
+  const prompt = taskForm.locator('textarea')
+  const single = taskForm.getByLabel('Name')
+  const [tall, short] = await Promise.all([box(prompt), box(single)])
+  expect({ tall: tall.h, overSingle: tall.h >= 3 * 24.75 + 16, short: short.h }).toEqual({
+    tall: tall.h,
+    overSingle: true,
+    short: 28,
+  })
+  await app.close()
+})
+
 test('the composer writes on the same x the entries write on', async () => {
   const { app, window } = await launch()
   await ask(window, 'say something')

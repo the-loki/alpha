@@ -14,6 +14,8 @@ import { shell, useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, FIELD_FRAME, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
 
 const FIELD = `w-full px-2 text-ui text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`
+/** The prompt is written, not typed in: several lines of the same voice the composer speaks in. */
+const PROMPT_FIELD = `w-full resize-none px-2.5 py-2 text-body leading-relaxed text-parchment ${FIELD_FRAME}`
 const LABEL = 'block text-xs font-medium text-parchment-dim'
 /** A choice carries a mark, not only a colour (C5.7): the chosen one is tinted and ringed. */
 const CHOICE = 'flex h-7 items-center gap-2 rounded-control border px-3 text-xs transition-colors'
@@ -146,7 +148,7 @@ export function TaskForm(props: {
               rows={3}
               value={props.form.prompt ?? ''}
               onInput={(event) => props.onChange({ prompt: event.currentTarget.value })}
-              class={`mt-1 ${FIELD}`}
+              class={`mt-1 ${PROMPT_FIELD}`}
             />
             <span class="mt-1 block text-micro leading-relaxed text-parchment-faint">{t('tasks.promptHint')}</span>
           </label>

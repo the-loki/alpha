@@ -80,7 +80,7 @@ export function QueueStrip() {
           </For>
         </ul>
         <Show when={conversations.transcript.queuedPaused}>
-          <div class="mt-1 flex items-center gap-2 rounded-control border border-amber/40 bg-amber/5 px-2.5 py-1">
+          <div class="mt-1 flex items-center gap-2 rounded-control border border-amber/40 bg-amber/5 px-3 py-2">
             <span class="min-w-0 flex-1 text-xs text-amber" title={t('composer.queueStoppedWhy')}>
               {t('composer.queueStopped')}
             </span>

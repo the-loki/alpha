@@ -25,7 +25,7 @@ const SCRIPT = [
   'The last one failed; the file does not exist.',
 ]
 
-async function launch(options: { level?: string } = {}) {
+async function launch(options: { level?: string; replies?: unknown[] } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   writeFileSync(join(workspace, 'notes.txt'), 'hello from the ledger')
@@ -50,7 +50,7 @@ async function launch(options: { level?: string } = {}) {
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(SCRIPT),
+      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? SCRIPT),
       NODE_ENV: 'production',
     },
   })
@@ -141,10 +141,45 @@ test('every settings panel draws under its own title', async () => {
   await app.close()
 })
 
+test('the tasks page and every settings panel draw in the dark palette too', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch({ replies: ['The nightly check found nothing.'] })
+
+  // A page is one palette at a time: the same screens in the dark are the other half of the set,
+  // and the half where a hairline or a grouped block is easiest to lose.
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Appearance', exact: true }).click()
+  await window.getByRole('button', { name: 'Dark' }).click()
+  await window.getByRole('link', { name: 'Agent', exact: true }).click()
+  await picture(window, 'dark-settings-agent')
+
+  for (const tab of ['Providers', 'Permissions', 'Browser access']) {
+    await window.getByRole('link', { name: tab, exact: true }).click()
+    await expect(window.getByRole('main').getByRole('heading', { level: 1, name: tab })).toBeVisible()
+    await picture(window, `dark-settings-${tab.toLowerCase().replace(' ', '-')}`)
+  }
+
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await picture(window, 'dark-tasks-empty')
+
+  await window.getByRole('button', { name: 'New task', exact: true }).click()
+  await expect(window.getByRole('region', { name: 'New task' })).toBeVisible()
+  await picture(window, 'dark-tasks-form')
+
+  const form = window.getByRole('region', { name: 'New task' })
+  await form.getByLabel('Name').fill('Nightly check')
+  await form.getByLabel('What to ask').fill('Check the notes file and report anything odd.')
+  await form.getByRole('button', { name: 'Save task' }).click()
+  await expect(window.getByText('Next run in')).toBeVisible()
+  await picture(window, 'dark-tasks-list')
+
+  await app.close()
+})
+
 test('the gate card and the dark palette draw as well as the rest', async () => {
   test.setTimeout(120_000)
   const { app, window } = await launch({ level: 'ask' })
-
   // The gate is the picture; the run stays where it is, with the card still waiting, because what
   // comes after a decision is the turn settling and that is another spec's subject.
   await ask(window, 'change the file')

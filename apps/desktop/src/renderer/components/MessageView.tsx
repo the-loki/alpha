@@ -110,7 +110,7 @@ function StatusNote(props: { message: ChatMessage }) {
         <p class="mt-2 font-mono text-micro uppercase tracking-wider text-amber">{t('message.stopped')}</p>
       </Show>
       <Show when={props.message.status === 'failed'}>
-        <p class="mt-2 rounded-card border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
+        <p class="mt-2 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
           {props.message.error ?? t('message.failed')}
         </p>
       </Show>

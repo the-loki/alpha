@@ -79,7 +79,7 @@ export function ProviderCard(props: { provider: ProviderView }) {
   const firstModel = () => props.provider.models[0]?.id ?? ''
 
   return (
-    <li class="rounded-card border border-line bg-ink-800 p-3">
+    <li class="rounded-card border border-line bg-ink-800 p-4">
       <div class="flex items-baseline justify-between gap-3">
         <div class="min-w-0">
           <p class="truncate text-ui font-medium text-parchment">{props.provider.name}</p>

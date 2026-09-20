@@ -18,7 +18,7 @@ export function ProvidersSection() {
   return (
     <section aria-label={t('settings.tabProviders')}>
       <Show when={providers.snapshot.protection === 'plaintext'}>
-        <p class="mt-2 rounded-card border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
+        <p class="mt-2 rounded-control border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
           {t('settings.noKeychain')}
         </p>
       </Show>

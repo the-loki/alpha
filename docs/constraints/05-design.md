@@ -310,7 +310,25 @@ one run of prose; the running total stays in the page's head, where it belongs t
 
 **A form is a panel of groups.** The fields of one concern stand together, the groups are separated
 by hairlines, and the form ends the way the gate ends: a rule, then the actions at the right end,
-primary last. A field's own label sits above it in `text-xs`, and the line that explains it is
+primary last.
+
+**A block that groups fields is inset by one number.** A panel's grouping blocks — the card around a
+provider, the card around a model, the form that adds one — are inset 1rem on all four sides, and a
+block nested inside one is inset half that. The inset is the same in every panel, because two
+grouping blocks a few pixels apart is a panel that looks assembled by two people.
+
+**A notice is a line, not a block.** It wears the control radius rather than the card's, and its own
+padding: half a rem above and below, three quarters of a rem at either end. The keychain notice, the
+level note, the transcript's failure line and the composer's paused line all wear that shape —
+`rounded-control` with `px-3 py-2` — and the first of them is the one `e2e/design.spec.ts` measures,
+the others being the same shape by construction.
+
+**A field the person writes a message in is a field they write several lines in.** The task prompt
+is the body voice at three rows — never a control-height box with its own text scrolled out of
+sight.
+
+`e2e/design.spec.ts` measures the insets, the nested one, a notice's shape and padding, and the
+prompt field's three rows. A field's own label sits above it in `text-xs`, and the line that explains it is
 `text-micro`, faint, with room to wrap. A section's name is set in the mono micro upper case the
 column labels use — the same voice that says `Folders` and `Gate` — because a form's groups and a
 record's fields are the same kind of thing: parts of one thing, named.
