@@ -23,11 +23,19 @@ export const scriptedAgent = { agent: { path: SCRIPTED_AGENT } }
  * agent is asked unless Alpha knows a model and holds a key (#114), so a spec that asks for a turn
  * writes both files. The key is a plaintext vault entry — the workbench only ever hands it to the
  * agent's environment, and the stand-in dials nobody — and the base URL is an example host for the
- * same reason.
+ * same reason; a spec that means to reach a real provider names one (C4.4's live seam).
  */
 export function configureProvider(
   dataDirectory: string,
-  options: { id?: string; images?: boolean; models?: unknown[] } = {},
+  options: {
+    id?: string
+    images?: boolean
+    models?: unknown[]
+    /** What the agent is told to dial, for the one spec that dials something real. */
+    api?: string
+    baseUrl?: string
+    key?: string
+  } = {},
 ): void {
   const id = options.id ?? 'scripted'
   const model = options.models ?? [
@@ -45,7 +53,13 @@ export function configureProvider(
     JSON.stringify({
       version: 1,
       providers: [
-        { id, name: 'Scripted', api: 'openai-completions', baseUrl: 'https://llm.internal.example/v1', models: model },
+        {
+          id,
+          name: 'Scripted',
+          api: options.api ?? 'openai-completions',
+          baseUrl: options.baseUrl ?? 'https://llm.internal.example/v1',
+          models: model,
+        },
       ],
     }),
     'utf-8',
@@ -54,7 +68,9 @@ export function configureProvider(
     join(dataDirectory, 'credentials.json'),
     JSON.stringify({
       version: 1,
-      entries: [{ providerId: id, protection: 'plaintext', payload: 'a key the stand-in never dials with' }],
+      entries: [
+        { providerId: id, protection: 'plaintext', payload: options.key ?? 'a key the stand-in never dials with' },
+      ],
     }),
     'utf-8',
   )

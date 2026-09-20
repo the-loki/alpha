@@ -54,11 +54,25 @@ endpoint on the loopback interface rather than to a provider:
 | `ALPHA_LIVE_PI` | Path to a real `pi`; anything else skips the live tests |
 | `FAKE_PROVIDER_PORT` | Port for the scripted model endpoint, `0` (any free port) by default |
 
-No credential is ever committed, and the default test run starts no agent and makes no network
-request. CI skips them; a developer with `pi` installed runs them against the scripted endpoint.
+A second live seam is the person's own machine rather than a scripted model: a run against a real
+provider, which is what the spawn, the models file, the credential hand-off and a tool call the
+model decided to make are checked against, none of which a stand-in can show
+([ADR-0022](../adr/0022-a-live-run-may-reach-a-provider.md)). It needs the path above plus the
+provider's base URL, the model id to run there, and a key for it; naming fewer than all four skips
+it, so `e2e/live.spec.ts` is the only file in the repository that dials out.
 
-**Enforcement:** each live test file skips itself when the variable is absent, and the endpoint is
-started on `127.0.0.1` by the test that needs it.
+| Variable | Meaning |
+| --- | --- |
+| `ALPHA_LIVE_BASE_URL` | The provider's base URL, e.g. `https://ollama.com/v1` |
+| `ALPHA_LIVE_MODEL` | The model id to run there |
+| `ALPHA_LIVE_KEY` | A key for it: read from the environment, held in that run's own vault file, and committed nowhere |
+
+No credential is ever committed, and the default test run starts no agent and makes no network
+request. CI skips them; a developer with `pi` installed runs them against the scripted model, or
+against their own provider when they want the real one.
+
+**Enforcement:** each live test file skips itself when its variables are absent, and the scripted
+endpoint is started on `127.0.0.1` by the test that needs it.
 
 ## C4.5 — What a test asserts
 
