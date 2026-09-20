@@ -146,9 +146,9 @@ level — including in Plan, where a rule approves what the level would block.
 
 A connection to an upstream model API: a base URL, one of the three wire protocols Alpha speaks
 (OpenAI chat completions, OpenAI responses, Anthropic messages), and the credential that goes with
-it. Alpha ships no catalog and no hosts, so every provider is one the user described. Which
-models travel over it is a separate fact, kept in the model settings. Avoid: *backend*, *vendor*,
-*endpoint* (a provider is the connection, not the address).
+it. Alpha ships no catalog and no hosts, so every provider is one the user described. The models
+that travel over it are its own sub-list, edited inside the provider's card. Avoid: *backend*,
+*vendor*, *endpoint* (a provider is the connection, not the address).
 
 ### Credential
 
