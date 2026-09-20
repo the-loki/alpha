@@ -160,6 +160,9 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
     case 'tool_started':
       return appendToolCall(state, event)
 
+    case 'tool_decided':
+      return mapToolBlocks(state, event.callId, (block) => ({ ...block, approval: event.approval }))
+
     case 'tool_output':
       return mapToolBlocks(state, event.callId, (block) => ({ ...block, output: event.output }))
 

@@ -9,7 +9,7 @@ import {
   text,
   type Undef,
 } from '@alpha/core'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { languageOf, useShell, useText } from '../stores/shell.ts'
 import { DiffView } from './DiffView.tsx'
 import { CopyButton } from './MessageView.tsx'
@@ -74,6 +74,11 @@ export function ToolRow({ block, first = false }: { block: ChatBlockTool; first?
   const t = useText()
   const language = useShell((state) => languageOf(state.language))
   const [open, setOpen] = useState(block.status === 'failed')
+  // A call that fails while the transcript is open opens itself, so the reason is on the screen
+  // without anyone knowing to click; one that arrives already failed does the same at mount.
+  useEffect(() => {
+    if (block.status === 'failed') setOpen(true)
+  }, [block.status])
   // An automatic approval shows no chip: the header's own chip already says which level is on.
   const approval = block.approval
   const mark = approval === undefined ? undefined : MARK[approval.kind]

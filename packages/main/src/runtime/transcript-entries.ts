@@ -1,19 +1,45 @@
 /**
- * A persisted transcript, turned back into what the window renders. The session's entries are
- * the record of truth (ADR-0004); this is the read side of the same mapping the translator does
- * for live events.
+ * A session's entries, turned into what the window renders. The transcript the agent keeps is the
+ * record of truth; this is the read side of the same mapping the translator does for live events,
+ * and the caller hands the entries in transcript order — walking back from the tip is the session
+ * reader's job, not this one's.
  */
 
 import {
   type ChatBlock,
   type ChatBlockTool,
   type ChatMessage,
+  type Null,
   toolOutcomeOf,
   toolRowOf,
   userBlocksOf,
 } from '@alpha/core'
-import type { AgentMessage, Entry } from '@earendil-works/pi-agent-core'
 import type { DecisionLookup } from './decisions.ts'
+
+/** One entry of a session, as the agent reports it over the protocol. */
+export interface AgentEntry {
+  type: string
+  id: string
+  parentId?: Null<string>
+  timestamp: number | string
+  message?: AgentEntryMessage
+  summary?: string
+  /** How many messages a compaction stood in for, worked out from the path it sits on. */
+  replaced?: number
+  /** Where the summary stops standing in: the first entry the agent kept as it was. */
+  firstKeptEntryId?: string
+}
+
+/** The message an entry carries, when it carries one. Only the fields the transcript draws. */
+export interface AgentEntryMessage {
+  role: string
+  content?: unknown
+  stopReason?: string
+  toolCallId?: string
+  isError?: boolean
+  details?: unknown
+  timestamp?: number
+}
 
 const blocksOf = (content: unknown[], timestamp: number, decisions: DecisionLookup): ChatBlock[] => {
   const blocks: ChatBlock[] = []
@@ -58,29 +84,28 @@ interface ToolResultContent {
   timestamp: number
 }
 
-export function entriesToMessages(entries: Entry[], decisions: DecisionLookup = new Map()): ChatMessage[] {
+export function entriesToMessages(entries: AgentEntry[], decisions: DecisionLookup = new Map()): ChatMessage[] {
   const messages: ChatMessage[] = []
-  // The session makes no promise about the order it hands entries back in, and the transcript's
-  // order is the whole point, so the sequence number decides it.
-  for (const entry of [...entries].sort((left, right) => left.seq - right.seq)) {
+  for (const entry of entries) {
     if (entry.type === 'compaction' || entry.type === 'branch_summary') {
       messages.push({
         id: entry.id,
         role: 'assistant',
-        blocks: [{ kind: 'compaction', summary: entry.summary, replaced: undefined }],
-        createdAt: entry.timestamp,
+        blocks: [{ kind: 'compaction', summary: entry.summary ?? '', replaced: entry.replaced }],
+        createdAt: at(entry.timestamp),
         status: 'complete',
       })
       continue
     }
     if (entry.type !== 'message') continue
-    const message: AgentMessage = entry.message
+    const message = entry.message
+    if (message === undefined) continue
     if (message.role === 'user') {
       messages.push({
         id: entry.id,
         role: 'user',
         blocks: userBlocksOf(message.content),
-        createdAt: entry.timestamp,
+        createdAt: at(entry.timestamp),
         status: 'complete',
       })
       continue
@@ -91,20 +116,24 @@ export function entriesToMessages(entries: Entry[], decisions: DecisionLookup = 
       messages.push({
         id: entry.id,
         role: 'assistant',
-        blocks: blocksOf(message.content, entry.timestamp, decisions),
-        createdAt: entry.timestamp,
+        blocks: blocksOf(listOf(message.content), at(entry.timestamp), decisions),
+        createdAt: at(entry.timestamp),
         status: failed ? 'failed' : interrupted ? 'interrupted' : 'complete',
       })
     }
     if (message.role === 'toolResult') {
       finishTool(messages, {
-        toolCallId: message.toolCallId,
+        toolCallId: message.toolCallId ?? '',
         isError: message.isError,
         content: message.content,
         details: message.details,
-        timestamp: entry.timestamp,
+        timestamp: at(entry.timestamp),
       })
     }
   }
   return messages
 }
+
+const listOf = (content: unknown): unknown[] => (Array.isArray(content) ? content : [])
+const at = (timestamp: number | string): number =>
+  typeof timestamp === 'number' ? timestamp : Date.parse(timestamp) || Date.now()

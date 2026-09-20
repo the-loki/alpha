@@ -4,13 +4,22 @@
  * so the rule they share — move the tip, then hand the window the transcript that is on it now —
  * lives here instead of in whichever caller remembered to do it.
  *
+ * Moving the tip is a fork: the agent copies the session up to the entry and carries on in the
+ * copy, which is a session of its own with an id of its own. What was replaced stays in the
+ * session it was written to, and the conversation records the copy as the session it is on now.
+ *
  * Editing into a fork is the third case, and it does not move this conversation's tip: the copy
  * is a conversation of its own, and the one on screen was not touched.
  */
-import type { ChatMessage, ConversationSummary, EditEffect, OpenedConversation } from '@alpha/core'
+import {
+  type ChatMessage,
+  type ConversationSummary,
+  type EditEffect,
+  type OpenedConversation,
+  textOfContent,
+} from '@alpha/core'
 import type { ConversationRuntime } from './conversation-runtime.ts'
-import { forkConversation } from './fork.ts'
-import { findSessionMetadata } from './session-reader.ts'
+import { type AgentPorts, forkSession } from './session-files.ts'
 
 export interface EditingPorts {
   /** Throws when there is no such conversation. */
@@ -20,7 +29,9 @@ export interface EditingPorts {
   /** Records a conversation the index has not seen before, which is what a fork produces. */
   register: (conversation: ConversationSummary) => void
   openConversation: (id: string) => Promise<OpenedConversation>
-  sessionsRoot: string
+  /** Records which session a conversation is on, after its tip has moved. */
+  adopt: (id: string, sessionId: string) => void
+  agent: AgentPorts
   /** The window's copy of the transcript, replaced because what it showed is off the branch. */
   replaceTranscript: (id: string, messages: ChatMessage[]) => void
 }
@@ -28,7 +39,12 @@ export interface EditingPorts {
 /** Answers the last user message again, with the replaced answer leaving the transcript's path. */
 export async function regenerate(ports: EditingPorts, id: string): Promise<void> {
   const runtime = await idleRuntime(ports, id)
-  if (!(await runtime.regenerate())) return
+  const last = (await runtime.userEntries()).at(-1)
+  const text = last === undefined ? '' : textOfContent(last.message?.content)
+  if (text === '' || last === undefined) return
+  if (!(await moveTip(ports, id, runtime, last.id))) return
+  await runtime.prompt(text)
+  await runtime.settle()
   ports.replaceTranscript(id, await runtime.transcript())
 }
 
@@ -46,38 +62,58 @@ export async function editMessage(
 ): Promise<OpenedConversation> {
   const runtime = await idleRuntime(ports, id)
   const conversation = ports.conversation(id)
+  const entry = (await runtime.userEntries())[userMessageIndex]
+  if (entry === undefined) throw new Error('That message is not in this conversation.')
+
   if (effect === 'replace') {
-    await runtime.resend(userMessageIndex, text)
-    const messages = await runtime.transcript()
-    ports.replaceTranscript(id, messages)
-    return { conversation, messages, usage: await runtime.usage() }
+    if (await moveTip(ports, id, runtime, entry.id)) {
+      await runtime.prompt(text)
+      await runtime.settle()
+      const messages = await runtime.transcript()
+      ports.replaceTranscript(id, messages)
+      return { conversation, messages, usage: await runtime.usage() }
+    }
+    return { conversation, messages: await runtime.transcript(), usage: await runtime.usage() }
   }
 
-  const entryId = await runtime.userEntryId(userMessageIndex)
-  if (entryId === undefined) throw new Error('That message is not in this conversation.')
-  const source = await findSessionMetadata({
-    sessionsRoot: ports.sessionsRoot,
-    workspacePath: conversation.workspacePath,
-    conversationId: id,
-  })
-  if (source === undefined) throw new Error('That conversation is not on disk yet.')
-  const forked = await forkConversation({
-    source,
-    conversation,
-    entryId,
-    text,
-    sessionsRoot: ports.sessionsRoot,
-  })
-  ports.register(forked)
-  const opened = await ports.openConversation(forked.id)
-  const forkedRuntime = await ports.runtime(forked.id)
+  // The copy is made outside this conversation's runtime, so the conversation on screen is not
+  // disturbed by it: the fork is a conversation of its own from here on.
+  const forked = await forkSession(ports.agent, conversation, entry.id)
+  if (forked === undefined) throw new Error('The agent could not copy this conversation.')
+  const now = Date.now()
+  const copy: ConversationSummary = {
+    ...conversation,
+    id: crypto.randomUUID(),
+    sessionId: forked,
+    title: conversation.title,
+    createdAt: now,
+    updatedAt: now,
+    status: 'idle',
+  }
+  ports.register(copy)
+  const opened = await ports.openConversation(copy.id)
+  const forkedRuntime = await ports.runtime(copy.id)
   await forkedRuntime.prompt(text)
-  return { conversation: forked, messages: opened.messages, usage: opened.usage }
+  await forkedRuntime.settle()
+  return { conversation: copy, messages: await forkedRuntime.transcript(), usage: opened.usage }
+}
+
+/** Moves the conversation's tip, recording the session the agent forked it into. */
+async function moveTip(
+  ports: EditingPorts,
+  id: string,
+  runtime: ConversationRuntime,
+  entryId: string,
+): Promise<boolean> {
+  const forked = await runtime.forkAt(entryId)
+  if (forked === undefined) return false
+  ports.adopt(id, forked)
+  return true
 }
 
 /** Editing or regenerating while a turn is in flight would be a decision made too early. */
 async function idleRuntime(ports: EditingPorts, id: string): Promise<ConversationRuntime> {
   const runtime = await ports.runtime(id)
-  if (runtime.isRunning()) throw new Error(`The agent is still working on this conversation.`)
+  if (runtime.isRunning()) throw new Error('The agent is still working on this conversation.')
   return runtime
 }

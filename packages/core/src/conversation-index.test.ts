@@ -24,6 +24,7 @@ const conversation = (id: string, workspacePath: string, updatedAt: number): Con
   permissionLevel: 'ask',
   model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
   thinkingLevel: 'medium',
+  sessionId: '',
 })
 
 const folder = (path: string, lastOpenedAt: number, name = path.slice(path.lastIndexOf('/') + 1)): WorkspaceRef => ({

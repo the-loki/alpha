@@ -1,6 +1,9 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, safeStorage } from 'electron'
+import { runInstall } from './agent-cli/install.ts'
+import { locateAgent, locateDeps } from './agent-cli/locate.ts'
+import { AgentCliService } from './agent-cli/service.ts'
 import { Broadcast } from './broadcast.ts'
 import { type ChannelPorts, headlessWindowPort } from './channels.ts'
 import { desktopWindowPort } from './desktop-window.ts'
@@ -8,6 +11,8 @@ import { registerIpcHandlers, windowSubscriber } from './ipc.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
 import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
+import { credentialFor, writeModelsFile } from './runtime/agent-models.ts'
+import { ensureGateExtension } from './runtime/gate-extension.ts'
 import { RuntimeManager } from './runtime/manager.ts'
 import { NetworkService } from './server/service.ts'
 import { StateStore } from './state-store.ts'
@@ -44,12 +49,35 @@ app.whenReady().then(async () => {
   const window = createMainWindow({ ...windowPaths, broadcast })
   broadcast.subscribe(windowSubscriber(() => BrowserWindow.getAllWindows()[0]))
 
+  const sessionsRoot = join(dataDirectory, 'sessions')
+  // Alpha's own agent directory holds the gate the agent asks through, so it is written before
+  // any conversation can start one.
+  const agentDirectory = join(dataDirectory, 'agent')
+  ensureGateExtension(agentDirectory)
+  writeModelsFile(providers, agentDirectory)
+  // Alpha ships no agent: this is what finds the one the person installed, and what installs one
+  // if they would rather Alpha did it. Every answer is a snapshot the panel draws.
+  const agent = new AgentCliService({
+    store,
+    deps: {
+      locate: (explicit) => locateAgent({ explicit, env: process.env, platform: process.platform }, locateDeps()),
+      runInstall,
+      publish: (snapshot) => broadcast.send('agentChanged', snapshot),
+    },
+  })
+  const agentPorts = {
+    path: () => store.read().agent.path,
+    directory: agentDirectory,
+    env: process.env,
+    sessionsRoot,
+    credential: (providerId: string) => credentialFor(providers, providerId),
+  }
   const runtime = new RuntimeManager({
     dataDirectory,
-    sessionsRoot: join(dataDirectory, 'sessions'),
+    sessionsRoot,
     providers,
     store,
-    env: process.env,
+    agent: agentPorts,
     emit: (event) => broadcast.send('runtimeEvent', event),
     emitRules: (rules) => broadcast.send('permissionRulesChanged', rules),
   })
@@ -68,7 +96,10 @@ app.whenReady().then(async () => {
   })
   tasks.start()
 
-  const providerService = new ProviderService(providers)
+  const providerService = new ProviderService(providers, {
+    agent: agentPorts,
+    scratch: join(agentDirectory, 'scratch'),
+  })
   const service = new NetworkService({
     store,
     broadcast,
@@ -78,7 +109,7 @@ app.whenReady().then(async () => {
 
   // Two clients, two windows on the same workbench: the desktop window may open a native folder
   // dialog and move itself, and a browser may do neither. Everything else is one set of handlers.
-  const shared = { store, runtime, providers: providerService, network: service, tasks }
+  const shared = { store, runtime, providers: providerService, network: service, tasks, agent }
   const serverPorts: ChannelPorts = { ...shared, window: headlessWindowPort }
   const desktopPorts: ChannelPorts = {
     ...shared,

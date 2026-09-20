@@ -25,12 +25,20 @@ const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) 
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, testCipher)
+  const sessionsRoot = join(dataDirectory, 'sessions')
   const manager = new RuntimeManager({
     dataDirectory,
-    sessionsRoot: join(dataDirectory, 'sessions'),
+    sessionsRoot,
     providers: new ProviderStore(dataDirectory, vault),
     store,
-    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
+    // The scripted agent stands in for pi, and the script reaches it the way a model's answers do.
+    agent: {
+      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      directory: join(dataDirectory, 'agent'),
+      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
+      sessionsRoot,
+      credential: () => ({ env: {} }),
+    },
     emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
@@ -41,7 +49,7 @@ const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) 
  * A manager whose model collection is the configured providers rather than the scripted one, so
  * the models a conversation may run on are real. Nothing here dials out: no turn is ever started.
  */
-const configuredManager = (dataDirectory?: string, seed = true) => {
+const configuredManager = (dataDirectory?: string, seed = true, events: RuntimeEvent[] = []) => {
   const directory = dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-data-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
   const providers = new ProviderStore(directory, new CredentialVault(directory, testCipher))
@@ -71,11 +79,17 @@ const configuredManager = (dataDirectory?: string, seed = true) => {
     sessionsRoot: join(directory, 'sessions'),
     providers,
     store: new StateStore(directory),
-    env: {},
-    emit: () => undefined,
+    agent: {
+      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      directory: join(directory, 'agent'),
+      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+      sessionsRoot: join(directory, 'sessions'),
+      credential: () => ({ env: {} }),
+    },
+    emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
-  return { manager, providers, workspace, dataDirectory: directory }
+  return { manager, providers, workspace, dataDirectory: directory, events }
 }
 
 describe('[runtime] what a conversation runs on', () => {
@@ -116,7 +130,7 @@ describe('[runtime] what a conversation runs on', () => {
       /does not take pictures/,
     )
     // The same message without the picture is not the boundary's business: it goes through.
-    await manager.prompt(created.conversation.id, 'look at this')
+    await tell(manager, created.conversation.id, 'look at this')
     await manager.closeAll()
 
     // And turning the setting on is what lets it through the gate.
@@ -149,7 +163,7 @@ describe('[runtime] naming a conversation', () => {
     expect(renamed.title).toBe('The parser rewrite')
     await manager.closeAll()
 
-    const reopened = freshManagerAt(dataDirectory, workspace)
+    const reopened = freshManagerAt(dataDirectory)
     expect(reopened.list().map((conversation) => conversation.title)).toEqual(['The parser rewrite'])
   })
 
@@ -179,7 +193,7 @@ describe('[runtime] the conversation list', () => {
     const { manager, workspace } = freshManager()
     const created = await manager.create(workspace)
 
-    await manager.prompt(created.conversation.id, 'hello')
+    await tell(manager, created.conversation.id, 'hello')
     await manager.closeAll()
 
     expect(manager.list()[0]?.status).toBe('idle')
@@ -190,7 +204,7 @@ describe('[runtime] deleting a conversation', () => {
   it('takes the transcript off the disk, not just off the list', async () => {
     const { manager, workspace, dataDirectory } = freshManager()
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'remember this')
+    await tell(manager, created.conversation.id, 'remember this')
     const sessionsRoot = join(dataDirectory, 'sessions')
     expect(existsSync(sessionsRoot)).toBe(true)
 
@@ -251,12 +265,17 @@ describe('[runtime] the reason a tool call ran', () => {
       sessionsRoot: join(dataDirectory, 'sessions'),
       providers: new ProviderStore(dataDirectory, new CredentialVault(dataDirectory, testCipher)),
       store: new StateStore(dataDirectory),
-      env: {
-        ALPHA_FAUX: '1',
-        ALPHA_FAUX_REPLIES: JSON.stringify([
-          { tool: { name: 'write', args: { path: 'notes.txt', content: 'written' } } },
-          'Written.',
-        ]),
+      agent: {
+        path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+        directory: join(dataDirectory, 'agent'),
+        env: {
+          ALPHA_FAUX_REPLIES: JSON.stringify([
+            { tool: { name: 'write', args: { path: 'notes.txt', content: 'written' } } },
+            'Written.',
+          ]),
+        },
+        sessionsRoot: join(dataDirectory, 'sessions'),
+        credential: () => ({ env: {} }),
       },
       emit: (event) => events.push(event),
       emitRules: () => undefined,
@@ -264,12 +283,12 @@ describe('[runtime] the reason a tool call ran', () => {
 
     // Level ask: the write has to go past the gate, and the answer is what gets remembered.
     const created = await manager.create(workspace)
-    const running = manager.prompt(created.conversation.id, 'write the file')
+    const running = tell(manager, created.conversation.id, 'write the file')
     manager.answerApproval(created.conversation.id, await waitForApproval(events), { decision: 'once' })
     await running
     await manager.closeAll()
 
-    const reopened = freshManagerAt(dataDirectory, workspace)
+    const reopened = freshManagerAt(dataDirectory)
     const opened = await reopened.open(created.conversation.id)
     const tool = opened.messages.flatMap((message) => message.blocks).find((block) => block.kind === 'tool')
     expect(tool?.kind === 'tool' ? tool.approval : undefined).toEqual({ kind: 'once', level: 'ask' })
@@ -295,7 +314,7 @@ describe('[runtime] exporting a conversation', () => {
   it('writes the markdown beside the workspace and reports where it went', async () => {
     const { manager, workspace } = freshManager({ ALPHA_FAUX_REPLIES: JSON.stringify(['The answer is 42.']) })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'what is the answer')
+    await tell(manager, created.conversation.id, 'what is the answer')
     manager.rename(created.conversation.id, 'The answer')
 
     const { path } = await manager.exportMarkdown(created.conversation.id)
@@ -308,7 +327,7 @@ describe('[runtime] exporting a conversation', () => {
   })
 })
 
-const freshManagerAt = (dataDirectory: string, workspace: string, env: NodeJS.ProcessEnv = {}) => {
+const freshManagerAt = (dataDirectory: string, env: NodeJS.ProcessEnv = {}) => {
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, testCipher)
   const manager = new RuntimeManager({
@@ -316,11 +335,16 @@ const freshManagerAt = (dataDirectory: string, workspace: string, env: NodeJS.Pr
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers: new ProviderStore(dataDirectory, vault),
     store,
-    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
+    agent: {
+      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      directory: join(dataDirectory, 'agent'),
+      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
+      sessionsRoot: join(dataDirectory, 'sessions'),
+      credential: () => ({ env: {} }),
+    },
     emit: () => undefined,
     emitRules: () => undefined,
   })
-  void workspace
   return manager
 }
 
@@ -345,12 +369,12 @@ describe('[runtime] reading a conversation back', () => {
   it('shows the answer that is on the branch, not the one regenerate replaced', async () => {
     const { manager, workspace, dataDirectory } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'a question')
+    await tell(manager, created.conversation.id, 'a question')
     await manager.regenerate(created.conversation.id)
     const live = await manager.transcriptFor(created.conversation.id)
     await manager.closeAll()
 
-    const reopened = freshManagerAt(dataDirectory, workspace, { ALPHA_FAUX_REPLIES: REPLIES })
+    const reopened = freshManagerAt(dataDirectory, { ALPHA_FAUX_REPLIES: REPLIES })
     const opened = await reopened.open(created.conversation.id)
     await reopened.closeAll()
 
@@ -361,12 +385,12 @@ describe('[runtime] reading a conversation back', () => {
   it('shows the branch after an edit replaced what followed', async () => {
     const { manager, workspace, dataDirectory } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'a question')
+    await tell(manager, created.conversation.id, 'a question')
     await manager.editMessage(created.conversation.id, 0, 'a better question', 'replace')
     const live = await manager.transcriptFor(created.conversation.id)
     await manager.closeAll()
 
-    const reopened = freshManagerAt(dataDirectory, workspace, { ALPHA_FAUX_REPLIES: REPLIES })
+    const reopened = freshManagerAt(dataDirectory, { ALPHA_FAUX_REPLIES: REPLIES })
     const opened = await reopened.open(created.conversation.id)
     await reopened.closeAll()
 
@@ -383,8 +407,8 @@ describe('[runtime] telling the window the transcript changed', () => {
   it('replaces it after an edit that continued from the edit', async () => {
     const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'a question')
-    await manager.prompt(created.conversation.id, 'a second question')
+    await tell(manager, created.conversation.id, 'a question')
+    await tell(manager, created.conversation.id, 'a second question')
     events.length = 0
 
     // No settling: the call resolving is the promise that the window has been told.
@@ -399,13 +423,18 @@ describe('[runtime] telling the window the transcript changed', () => {
   it('leaves it alone when the edit forked instead, because this conversation did not change', async () => {
     const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'a question')
+    await tell(manager, created.conversation.id, 'a question')
     events.length = 0
 
     const forked = await manager.editMessage(created.conversation.id, 0, 'a better question', 'fork')
     await settle()
 
     expect(forked.conversation.id).not.toBe(created.conversation.id)
+    // The copy is a conversation of its own, in the list, on a session of its own.
+    expect(manager.list().map((one) => one.id)).toContain(forked.conversation.id)
+    expect(forked.conversation.sessionId).not.toBe('')
+    // The copy carries the edit and the answer the script gave next, which is its own turn.
+    expect(texts(forked.messages)).toEqual(['a better question', 'THE FIRST ANSWER'])
     expect(events.filter((event) => event.type === 'transcript_replaced')).toEqual([])
   })
 
@@ -421,23 +450,28 @@ describe('[runtime] telling the window the transcript changed', () => {
   })
 
   it('takes an edit after a relaunch that followed a kill mid-turn', async () => {
-    // Closing the window mid-turn leaves the index saying "running", and nothing will ever
-    // finish that turn. The window's idea of it is a projection; the lane's is the fact.
+    // Closing the window mid-turn leaves the index saying "running", and nothing will ever finish
+    // the turn that was in flight. The window's idea of it is a projection; what the agent has
+    // written is the fact, and the conversation that is edited here is the one behind it.
     const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
     const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
-    const slow = {
+    const first = freshManagerAt(dataDirectory, { ALPHA_FAUX_REPLIES: JSON.stringify(['The first answer.']) })
+    const created = await first.create(workspace)
+    await tell(first, created.conversation.id, 'a first question')
+
+    // A second turn that will never finish: the app closes while the agent is still writing.
+    first.setConversationLevel(created.conversation.id, 'ask')
+    const slow = freshManagerAt(dataDirectory, {
       ALPHA_FAUX_REPLIES: JSON.stringify(['An answer long enough that the app is still writing it out.']),
       ALPHA_FAUX_TOKENS_PER_SECOND: '20',
       ALPHA_FAUX_TOKEN_SIZE: '4',
-    }
-    const first = freshManagerAt(dataDirectory, workspace, slow)
-    const created = await first.create(workspace)
-    const running = first.prompt(created.conversation.id, 'a long task')
+    })
+    const running = tell(slow, created.conversation.id, 'a long task')
     await new Promise((resolve) => setTimeout(resolve, 100))
-    await first.closeAll()
+    await slow.closeAll()
     await running.catch(() => undefined)
 
-    const second = freshManagerAt(dataDirectory, workspace, {
+    const second = freshManagerAt(dataDirectory, {
       ALPHA_FAUX_REPLIES: JSON.stringify(['The corrected answer.']),
     })
     const opened = await second.editMessage(created.conversation.id, 0, 'a better question', 'replace')
@@ -452,6 +486,12 @@ const settle = async (): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, 50))
 }
 
+/** Sends a message and waits for the turn it starts, which is what a reading test needs. */
+const tell = async (manager: RuntimeManager, id: string, text: string): Promise<void> => {
+  await manager.prompt(id, text)
+  await settle()
+}
+
 /**
  * The window keeps one copy of a conversation's summary, and the sidebar and the header both read
  * it. Every change to it takes the same road — an event — so no caller has to remember to say so.
@@ -464,22 +504,25 @@ describe('[runtime] a change to a conversation', () => {
   }
 
   it('reaches the window whichever field changed', async () => {
-    const { manager, workspace, events } = freshManager()
+    // The provider store is the configured one here, because switching a model is a check against
+    // the models Alpha serves rather than the scripted stand-in (#114).
+    const collected: RuntimeEvent[] = []
+    const { manager, workspace } = configuredManager(undefined, true, collected)
     const created = await manager.create(workspace)
     const id = created.conversation.id
-    events.length = 0
+    collected.length = 0
 
     manager.rename(id, 'The parser rewrite')
-    expect(lastUpdate(events, id)?.title).toBe('The parser rewrite')
+    expect(lastUpdate(collected, id)?.title).toBe('The parser rewrite')
 
     await manager.setThinkingLevel(id, 'high')
-    expect(lastUpdate(events, id)?.thinkingLevel).toBe('high')
+    expect(lastUpdate(collected, id)?.thinkingLevel).toBe('high')
 
     manager.setConversationLevel(id, 'plan')
-    expect(lastUpdate(events, id)?.permissionLevel).toBe('plan')
+    expect(lastUpdate(collected, id)?.permissionLevel).toBe('plan')
 
-    await manager.setConversationModel(id, 'faux', 'scripted')
-    expect(lastUpdate(events, id)?.model).toEqual({ providerId: 'faux', modelId: 'scripted' })
+    await manager.setConversationModel(id, 'local', 'local-70b')
+    expect(lastUpdate(collected, id)?.model).toEqual({ providerId: 'local', modelId: 'local-70b' })
   })
 
   it('carries the whole conversation, not the field that changed', async () => {
@@ -502,7 +545,7 @@ describe('[runtime] compaction', () => {
       ALPHA_FAUX_REPLIES: JSON.stringify(['The first answer.', 'Earlier turns were about naming things.']),
     })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'which name is better')
+    await tell(manager, created.conversation.id, 'which name is better')
 
     const compacted = await manager.compactConversation(created.conversation.id)
     expect(compacted).toBe(true)
@@ -510,6 +553,8 @@ describe('[runtime] compaction', () => {
 
     const marker = messages.flatMap((message) => message.blocks).find((block) => block.kind === 'compaction')
     expect(marker).toMatchObject({ kind: 'compaction', summary: 'Earlier turns were about naming things.' })
+    // And how much it stood in for: the messages before the first entry the agent kept.
+    expect(marker?.kind === 'compaction' ? marker.replaced : undefined).toBe(2)
     await manager.closeAll()
   })
 
@@ -522,10 +567,10 @@ describe('[runtime] compaction', () => {
       ]),
     })
     const created = await manager.create(workspace)
-    await manager.prompt(created.conversation.id, 'first question')
+    await tell(manager, created.conversation.id, 'first question')
     await manager.compactConversation(created.conversation.id)
 
-    await manager.prompt(created.conversation.id, 'second question')
+    await tell(manager, created.conversation.id, 'second question')
     const messages = await manager.transcriptFor(created.conversation.id)
     await manager.closeAll()
 

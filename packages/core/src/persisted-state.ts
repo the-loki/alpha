@@ -77,6 +77,18 @@ export function isTheme(value: unknown): value is Theme {
 
 const LanguageSchema = Type.Union(LANGUAGE_SETTINGS.map((language) => Type.Literal(language)))
 
+/** Where the person said the agent is, when it is not where Alpha would look. */
+export interface AgentSettings {
+  /** Empty means: look along `PATH` and in the usual install places. */
+  path: string
+}
+
+export function emptyAgentSettings(): AgentSettings {
+  return { path: '' }
+}
+
+const AgentSchema = Type.Object({ path: Type.String() })
+
 export const NETWORK_BINDS = ['local', 'network'] as const
 
 /** Whether the workbench is reachable from a browser, and how far that reach goes. */
@@ -128,6 +140,8 @@ const PersistedStateSchema = Type.Object({
   lastConversationId: Type.Optional(Type.String()),
   /** Browser access: absent in a file written before the workbench could be served. */
   network: Type.Optional(NetworkSchema),
+  /** Where the agent is: absent in a file written before Alpha looked for one. */
+  agent: Type.Optional(AgentSchema),
 })
 
 type PersistedStateShape = Static<typeof PersistedStateSchema>
@@ -146,6 +160,7 @@ export interface PersistedState {
   /** Empty when nothing was open, which is also what a launch with no history gets. */
   lastConversationId: string
   network: NetworkAccess
+  agent: AgentSettings
 }
 
 export function emptyPersistedState(): PersistedState {
@@ -159,6 +174,7 @@ export function emptyPersistedState(): PersistedState {
     language: DEFAULT_LANGUAGE,
     lastConversationId: '',
     network: emptyNetworkAccess(),
+    agent: emptyAgentSettings(),
   }
 }
 
@@ -186,7 +202,19 @@ export function parsePersistedState(raw: unknown): PersistedState {
     language: state.language ?? DEFAULT_LANGUAGE,
     lastConversationId: state.lastConversationId ?? '',
     network: readNetwork(readNetworkField(candidate)),
+    agent: readAgent(readAgentField(candidate)),
   }
+}
+
+/** Where the agent is, read field by field like the rest: a broken path costs the path. */
+function readAgentField(candidate: unknown): unknown {
+  return typeof candidate === 'object' && candidate !== null ? (candidate as { agent?: unknown }).agent : undefined
+}
+
+function readAgent(value: unknown): AgentSettings {
+  if (typeof value !== 'object' || value === null) return emptyAgentSettings()
+  const path = (value as Record<string, unknown>).path
+  return { path: typeof path === 'string' ? path : '' }
 }
 
 /**

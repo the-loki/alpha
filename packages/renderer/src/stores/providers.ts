@@ -25,8 +25,8 @@ export interface ProvidersStore {
   saveModels: (id: string, models: ProviderModelInput[]) => Promise<void>
   setDefaultModel: (chosen: DefaultModelInput) => Promise<void>
   remove: (id: string) => Promise<void>
-  setCredential: (id: string, secret: string) => Promise<void>
   test: (id: string, modelId: string) => Promise<ProviderTestOutcome>
+  setCredential: (id: string, secret: string) => Promise<void>
 }
 
 const emptySnapshot: ProvidersSnapshotMessage = { providers: [], protection: 'os' }
@@ -48,9 +48,9 @@ export const useProviders = create<ProvidersStore>((set) => ({
 
   remove: async (id) => set({ snapshot: await bridge().removeProvider(id) }),
 
-  setCredential: async (id, secret) => set({ snapshot: await bridge().setCredential(id, secret) }),
-
   test: async (id, modelId) => bridge().testProvider(id, modelId),
+
+  setCredential: async (id, secret) => set({ snapshot: await bridge().setCredential(id, secret) }),
 }))
 
 /** What a message typed now would run on, as far as the window can tell. */

@@ -41,6 +41,9 @@ export function newConversation(summary: NewConversation): ConversationSummary {
     permissionLevel: summary.permissionLevel,
     model: summary.model,
     thinkingLevel: DEFAULT_THINKING_LEVEL,
+    // A conversation starts on a session of its own: the agent is told this id and writes the file
+    // under it, so nothing has to be recorded for the first session.
+    sessionId: '',
   }
 }
 

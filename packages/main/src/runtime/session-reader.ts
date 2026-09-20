@@ -1,161 +1,165 @@
 /**
  * Reading a conversation's session: the one module that knows what is in a transcript.
  *
- * A session holds more than the conversation. Answering a message again moves the branch tip and
- * leaves the answer it replaced in the log as history, so the transcript is the path from the tip
- * back to the root — and that rule lives here rather than at every call site. Three readers with
- * two rules is how a discarded answer comes back after a relaunch (#60).
+ * The agent writes the session; this reads it back over the protocol (the same pipe the runs go
+ * down), so Alpha never parses a file it does not own. What it reads is the *path* from the
+ * branch's tip back to its root rather than the whole log: answering a message again leaves the
+ * answer it replaced in the session as history, and the transcript is the path, not the log. That
+ * rule lives here rather than at every call site (#60).
  */
-import { type ChatMessage, EMPTY_USAGE, type Undef, type UsageTotals } from '@alpha/core'
-import {
-  BACKGROUND_CONTEXT,
-  type Entry,
-  type JsonlSessionMetadata,
-  JsonlSessionRepo,
-  type Session,
-} from '@earendil-works/pi-agent-core'
-import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
+
+import { type ChatMessage, EMPTY_USAGE, type Null, type Undef, type UsageTotals } from '@alpha/core'
+import type { AgentRpc } from '../agent-cli/rpc.ts'
 import type { DecisionLookup } from './decisions.ts'
-import { entriesToMessages } from './transcript-entries.ts'
+import { type AgentEntry, entriesToMessages } from './transcript-entries.ts'
 
-export interface SessionLocation {
-  sessionsRoot: string
-  workspacePath: string
-  conversationId: string
+/** What `get_entries` answers with: every entry the session holds, and where its tip is. */
+interface EntriesAnswer {
+  entries: AgentEntry[]
+  leafId: Null<string>
 }
 
-/**
- * The path from the branch's tip back to its root, in order: what a transcript is. Exported for
- * the one caller that navigates the branch itself (editing, resending), not for reading.
- */
-export async function tipPathOf(session: Session<JsonlSessionMetadata>): Promise<Entry[]> {
-  const branch = await session.branch('main', BACKGROUND_CONTEXT)
-  if (branch === undefined) return []
-  const tip = await branch.getTipId(BACKGROUND_CONTEXT)
-  if (tip === null) return []
-  return branch.findEntries({ start: tip, order: 'oldestFirst' }, BACKGROUND_CONTEXT)
-}
+const record = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
 
-/** pi's usage in the workbench's terms: the totals module owns the shape, this owns the mapping. */
-export function usageOf(usage: {
-  input: number
-  output: number
-  cacheRead: number
-  cacheWrite: number
-  totalTokens: number
-  cost: { total: number }
-}): UsageTotals {
+const listOf = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
+
+const entryOf = (raw: unknown): AgentEntry => {
+  const entry = record(raw)
   return {
-    input: usage.input,
-    output: usage.output,
-    cacheRead: usage.cacheRead,
-    cacheWrite: usage.cacheWrite,
-    totalTokens: usage.totalTokens,
-    cost: usage.cost.total,
+    type: typeof entry.type === 'string' ? entry.type : '',
+    id: typeof entry.id === 'string' ? entry.id : '',
+    parentId: typeof entry.parentId === 'string' ? entry.parentId : null,
+    timestamp:
+      typeof entry.timestamp === 'string' || typeof entry.timestamp === 'number' ? entry.timestamp : Date.now(),
+    ...(record(entry.message).role === undefined ? {} : { message: entry.message as AgentEntry['message'] }),
+    ...(typeof entry.summary === 'string' ? { summary: entry.summary } : {}),
+    ...(typeof entry.firstKeptEntryId === 'string' ? { firstKeptEntryId: entry.firstKeptEntryId } : {}),
   }
 }
 
 /**
- * A conversation's session, open for reading. Wrapping it this way is what keeps the tip-path
- * rule out of callers' hands: there is no method here that reads the whole log.
+ * The path from the branch's tip back to its root, in order: what a transcript is. Entries whose
+ * parent is not in the path (a branch that was left behind) are not part of it.
  */
-export class SessionReader {
-  readonly #session: Session<JsonlSessionMetadata>
-  readonly #decisions: DecisionLookup
-  readonly #ownsSession: boolean
-
-  constructor(session: Session<JsonlSessionMetadata>, options: { decisions?: DecisionLookup; owns?: boolean } = {}) {
-    this.#session = session
-    this.#decisions = options.decisions ?? new Map()
-    this.#ownsSession = options.owns ?? false
+export function tipPath(entries: AgentEntry[], leafId: Null<string>): AgentEntry[] {
+  if (leafId === null) return []
+  const byId = new Map(entries.map((entry) => [entry.id, entry]))
+  const path: AgentEntry[] = []
+  let current = byId.get(leafId)
+  while (current !== undefined) {
+    path.push(current)
+    const parentId = current.parentId ?? null
+    current = parentId === null ? undefined : byId.get(parentId)
+    // A session that points at itself would otherwise loop forever.
+    if (path.length > entries.length) break
   }
+  const ordered = path.reverse()
+  return ordered.map((entry) => standInFor(ordered, entry))
+}
 
-  /** The session itself, for the harness the runtime builds on top of it. */
-  get session(): Session<JsonlSessionMetadata> {
-    return this.#session
+/**
+ * A compaction stands in for the messages before the first entry the agent kept. When it kept
+ * nothing — the summary covers everything said so far — it stands in for all of them, and the
+ * entry it was written to is where the kept part begins.
+ */
+function standInFor(path: AgentEntry[], entry: AgentEntry): AgentEntry {
+  if (entry.type !== 'compaction') return entry
+  const written = path.findIndex((one) => one.id === entry.id)
+  if (written === -1) return entry
+  const found = entry.firstKeptEntryId === undefined ? -1 : path.findIndex((one) => one.id === entry.firstKeptEntryId)
+  const kept = found === -1 ? written : found
+  return { ...entry, replaced: path.slice(0, kept).filter((one) => one.type === 'message').length }
+}
+
+/** Reads a conversation: its transcript, what it has spent, and where its session lives. */
+export class SessionReader {
+  readonly #rpc: AgentRpc
+  readonly #decisions: DecisionLookup
+
+  constructor(rpc: AgentRpc, decisions: DecisionLookup = new Map()) {
+    this.#rpc = rpc
+    this.#decisions = decisions
   }
 
   async transcript(): Promise<ChatMessage[]> {
-    return entriesToMessages(await tipPathOf(this.#session), this.#decisions)
+    const answer = await this.#entries()
+    return entriesToMessages(tipPath(answer.entries, answer.leafId), this.#decisions)
   }
 
+  /** What the session has spent so far, which is what a window opening it has to show. */
   async usage(): Promise<UsageTotals> {
-    const stats = await this.#session.getStats(BACKGROUND_CONTEXT)
-    return usageOf(stats.usage)
+    const outcome = await this.#rpc.send({ type: 'get_session_stats' })
+    if (!outcome.ok) return EMPTY_USAGE
+    return usageOf(record(outcome.data).usage)
   }
 
-  /** The entry a compaction wrote its summary into, for the marker the window shows. */
-  async entry(entryId: string): Promise<Undef<Entry>> {
-    return this.#session.getEntry(entryId, BACKGROUND_CONTEXT)
+  /** The user's own messages, in order: what a resend or a fork works from. */
+  async userEntries(): Promise<AgentEntry[]> {
+    const answer = await this.#entries()
+    return tipPath(answer.entries, answer.leafId).filter(
+      (entry) => entry.type === 'message' && entry.message?.role === 'user',
+    )
   }
 
-  /** Closes the session when this reader opened it; a session owned by a runtime is the runtime's. */
-  async close(): Promise<void> {
-    if (!this.#ownsSession) return
-    await this.#session.close(BACKGROUND_CONTEXT)
+  /**
+   * Branches the session before an entry, which is how a branch tip moves: the agent copies what
+   * came before the entry into a session of its own and carries on there. What was replaced stays
+   * in the session it was written to. The answer is the id of the copy, or nothing when the agent
+   * would not fork.
+   */
+  async forkAt(entryId: string): Promise<Undef<string>> {
+    const outcome = await this.#rpc.send({ type: 'fork', entryId })
+    if (!outcome.ok) return undefined
+    const sessionId = (await this.#state()).sessionId
+    return sessionId === '' ? undefined : sessionId
   }
-}
 
-const repoAt = (location: SessionLocation): JsonlSessionRepo =>
-  new JsonlSessionRepo({
-    fileSystem: new NodeExecutionEnv({ cwd: location.workspacePath }),
-    sessionsRoot: location.sessionsRoot,
-  })
-
-/** Finds the session a conversation is stored in, so it can be reopened after a restart. */
-export async function findSessionMetadata(location: SessionLocation): Promise<Undef<JsonlSessionMetadata>> {
-  const repo = repoAt(location)
-  const sessions = await repo.list({ cwd: location.workspacePath }, BACKGROUND_CONTEXT)
-  return sessions.find((metadata) => metadata.id === location.conversationId)
-}
-
-/**
- * Opens the session a conversation is stored in. A conversation that has never run has none, and
- * the caller is told so (`undefined`) rather than handed an empty session it might write into —
- * unless it asked for one, which is what starting a conversation does. A new session is created
- * under the id it was asked for, so the conversation's id is the one its file is named after.
- */
-export async function openSession(
-  location: SessionLocation,
-  options: { create?: boolean; decisions?: DecisionLookup } = {},
-): Promise<Undef<SessionReader>> {
-  const repo = repoAt(location)
-  const metadata = await findSessionMetadata(location)
-  if (metadata !== undefined) {
-    const session = await repo.open(metadata, BACKGROUND_CONTEXT)
-    return new SessionReader(session, { decisions: options.decisions, owns: true })
+  /** Which session the agent is on, as it names it. */
+  async sessionId(): Promise<string> {
+    return (await this.#state()).sessionId
   }
-  if (options.create !== true) return undefined
-  const session = await repo.create({ cwd: location.workspacePath, id: location.conversationId }, BACKGROUND_CONTEXT)
-  return new SessionReader(session, { decisions: options.decisions, owns: true })
-}
 
-/** Opens a session, reads from it, and closes it again: what every caller outside the runtime does. */
-export async function withSession<T>(
-  location: SessionLocation,
-  read: (reader: SessionReader) => Promise<T>,
-  absent: T,
-  options: { decisions?: DecisionLookup } = {},
-): Promise<T> {
-  const reader = await openSession(location, options)
-  if (reader === undefined) return absent
-  try {
-    return await read(reader)
-  } finally {
-    await reader.close()
+  /** Where the session is, which is what the agent's own `sessionFile` answer is for. */
+  async file(): Promise<string> {
+    return (await this.#state()).file
+  }
+
+  async #state(): Promise<{ sessionId: string; file: string }> {
+    const outcome = await this.#rpc.send({ type: 'get_state' })
+    const data = record(outcome.data)
+    return {
+      sessionId: typeof data.sessionId === 'string' ? data.sessionId : '',
+      file: typeof data.sessionFile === 'string' ? data.sessionFile : '',
+    }
+  }
+
+  /** The whole log, for the one caller that needs to see past the tip: forking. */
+  async log(): Promise<EntriesAnswer> {
+    return this.#entries()
+  }
+
+  async #entries(): Promise<EntriesAnswer> {
+    const outcome = await this.#rpc.send({ type: 'get_entries' })
+    const data = record(outcome.data)
+    return {
+      entries: listOf(data.entries).map(entryOf),
+      leafId: typeof data.leafId === 'string' ? data.leafId : null,
+    }
   }
 }
 
-/** What a conversation that is not running has spent. */
-export async function sessionUsage(location: SessionLocation): Promise<UsageTotals> {
-  return withSession(location, (reader) => reader.usage(), EMPTY_USAGE)
-}
-
-/** Takes the session off the disk. A conversation that is deleted is deleted, not hidden. */
-export async function deleteSession(location: SessionLocation): Promise<void> {
-  const metadata = await findSessionMetadata(location)
-  if (metadata === undefined) return
-  const repo = repoAt(location)
-  await repo.delete(metadata, BACKGROUND_CONTEXT)
-  await repo.close(BACKGROUND_CONTEXT)
+/** pi's numbers in the workbench's terms: the shape is core's, the mapping is this file's. */
+export function usageOf(usage: unknown): UsageTotals {
+  const numbers = record(usage)
+  const cost = record(numbers.cost)
+  const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
+  return {
+    input: count(numbers.input),
+    output: count(numbers.output),
+    cacheRead: count(numbers.cacheRead),
+    cacheWrite: count(numbers.cacheWrite),
+    totalTokens: count(numbers.totalTokens),
+    cost: count(cost.total),
+  }
 }

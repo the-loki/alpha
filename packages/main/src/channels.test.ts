@@ -8,6 +8,7 @@ import { CredentialVault, type SecretCipher } from './providers/credential-vault
 import { ProviderService } from './providers/service.ts'
 import { ProviderStore } from './providers/store.ts'
 import { RuntimeManager } from './runtime/manager.ts'
+import type { AgentPorts } from './runtime/session-files.ts'
 import { StateStore } from './state-store.ts'
 import { TaskService } from './tasks/service.ts'
 import { TaskStore } from './tasks/store.ts'
@@ -16,6 +17,15 @@ import { TaskStore } from './tasks/store.ts'
  * The table every transport dispatches through, driven without Electron: a real runtime over a
  * temporary data directory, a real provider store, and a window port that does nothing.
  */
+/** The agent a provider is tested through, pointed at the scripted one for the suite's sake. */
+const agentPorts = (dataDirectory: string): AgentPorts => ({
+  path: () => join(import.meta.dirname, '../../../tools/scripted-agent/pi.mjs'),
+  directory: join(dataDirectory, 'agent'),
+  env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
+  sessionsRoot: join(dataDirectory, 'sessions'),
+  credential: () => ({ env: {} }),
+})
+
 const testCipher: SecretCipher = {
   available: true,
   encrypt: (plaintext) => `enc:${plaintext}`,
@@ -45,15 +55,38 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers: new ProviderStore(dataDirectory, vault),
     store,
-    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+    agent: {
+      path: () => join(import.meta.dirname, '../../../tools/scripted-agent/pi.mjs'),
+      directory: join(dataDirectory, 'agent'),
+      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+      sessionsRoot: join(dataDirectory, 'sessions'),
+      credential: () => ({ env: {} }),
+    },
     emit: (event) => events.push(event),
     emitRules: (rules: PermissionRule[]) => events.push(rules),
   })
+  // Alpha ships no agent: the panel's stub answers with a machine that has none.
+  const agent = {
+    snapshot: async () => ({
+      status: { kind: 'missing' } as const,
+      path: '',
+      command: 'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',
+      installing: false,
+      output: '',
+    }),
+    setPath: async () => agent.snapshot(),
+    install: async () => agent.snapshot(),
+  }
+
   return {
     store,
     window,
-    providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
+    providers: new ProviderService(new ProviderStore(dataDirectory, vault), {
+      agent: agentPorts(dataDirectory),
+      scratch: join(dataDirectory, 'scratch'),
+    }),
     network: stubNetwork,
+    agent,
     runtime,
     tasks: new TaskService({
       tasks: new TaskStore(dataDirectory),

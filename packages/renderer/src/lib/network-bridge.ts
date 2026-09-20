@@ -7,6 +7,7 @@
  * cookie once (see `unlock`) and keeps it in local storage so a reload does not ask again.
  */
 import {
+  type AgentSnapshot,
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
@@ -270,10 +271,10 @@ export function networkBridge(): AlphaBridge {
     setDefaultModel: (chosen: DefaultModelInput) =>
       invoke('setDefaultModel', [chosen]) as Promise<ProvidersSnapshotMessage>,
     removeProvider: (id: string) => invoke('removeProvider', [id]) as Promise<ProvidersSnapshotMessage>,
-    setCredential: (id: string, secret: string) =>
-      invoke('setCredential', [id, secret]) as Promise<ProvidersSnapshotMessage>,
     testProvider: (id: string, modelId: string) =>
       invoke('testProvider', [id, modelId]) as Promise<{ ok: boolean; message: string }>,
+    setCredential: (id: string, secret: string) =>
+      invoke('setCredential', [id, secret]) as Promise<ProvidersSnapshotMessage>,
     setConversationModel: (id: string, providerId: string, modelId: string) =>
       invoke('setConversationModel', [id, providerId, modelId]) as Promise<ConversationSummary>,
     setThinkingLevel: (id: string, level: ThinkingLevel) =>
@@ -293,5 +294,10 @@ export function networkBridge(): AlphaBridge {
     answerApproval: (answer: ApprovalAnswerInput) => invoke('answerApproval', [answer]) as Promise<void>,
     ...taskCalls,
     onPermissionRules: (listener: (rules: PermissionRule[]) => void) => listen('permissionRulesChanged', listener),
+
+    agentSnapshot: () => invoke('agentSnapshot', []) as Promise<AgentSnapshot>,
+    setAgentPath: (path: string) => invoke('setAgentPath', [path]) as Promise<AgentSnapshot>,
+    installAgent: () => invoke('installAgent', []) as Promise<AgentSnapshot>,
+    onAgentChanged: (listener: (snapshot: AgentSnapshot) => void) => listen('agentChanged', listener),
   }
 }

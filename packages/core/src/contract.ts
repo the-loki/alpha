@@ -4,6 +4,7 @@
  * handler for each. `pnpm check:constraints` is what keeps the three in step.
  */
 
+import type { AgentStatus } from './agent-cli.ts'
 import type { Attachment } from './attachments.ts'
 import type { LanguageSetting } from './i18n.ts'
 import type { Undef } from './maybe.ts'
@@ -28,6 +29,21 @@ export interface ProviderModelInput {
 
 /** Which model new conversations start on. Absent clears the choice, so the first model wins. */
 export type DefaultModelInput = Undef<ConversationModel>
+
+/**
+ * Everything the agent panel draws, in one value: whether there is a pi to run, where Alpha
+ * looked for it (or was told to), the command that installs one, and what an install is doing.
+ */
+export interface AgentSnapshot {
+  status: AgentStatus
+  /** What the settings hold. Empty means Alpha searches for it. */
+  path: string
+  /** The command Alpha runs, and offers to the person to run themselves. */
+  command: string
+  installing: boolean
+  /** What the last install printed, kept after it ends so a failure can be read. */
+  output: string
+}
 
 import type { RuleScope } from './permission.ts'
 import type { WorkspaceRef, WorkspaceSelection } from './workspace.ts'
@@ -54,8 +70,8 @@ export const IPC = {
   saveProviderModels: 'alpha:save-provider-models',
   setDefaultModel: 'alpha:set-default-model',
   removeProvider: 'alpha:remove-provider',
-  setCredential: 'alpha:set-credential',
   testProvider: 'alpha:test-provider',
+  setCredential: 'alpha:set-credential',
   setConversationModel: 'alpha:set-conversation-model',
   setThinkingLevel: 'alpha:set-thinking-level',
   steer: 'alpha:steer',
@@ -77,6 +93,10 @@ export const IPC = {
   permissionRules: 'alpha:permission-rules',
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
+  agentSnapshot: 'alpha:agent-snapshot',
+  setAgentPath: 'alpha:set-agent-path',
+  installAgent: 'alpha:install-agent',
+  agentChanged: 'alpha:agent-changed',
   permissionRulesChanged: 'alpha:permission-rules-changed',
   tasksChanged: 'alpha:tasks-changed',
   networkState: 'alpha:network-state',
@@ -198,6 +218,13 @@ export interface AlphaBridge {
   sendWindowCommand(command: WindowCommand): Promise<void>
   onWindowState(listener: (state: WindowState) => void): () => void
 
+  /** Whether there is an agent to run, where it is, and how to get one. */
+  agentSnapshot(): Promise<AgentSnapshot>
+  setAgentPath(path: string): Promise<AgentSnapshot>
+  installAgent(): Promise<AgentSnapshot>
+  /** Pushed as the snapshot changes, so an install can be watched while it runs. */
+  onAgentChanged(listener: (snapshot: AgentSnapshot) => void): () => void
+
   listConversations(): Promise<ConversationSummary[]>
   createConversation(workspacePath: string): Promise<OpenedConversation>
   openConversation(id: string): Promise<OpenedConversation>
@@ -212,9 +239,9 @@ export interface AlphaBridge {
   saveProviderModels(id: string, models: ProviderModelInput[]): Promise<ProvidersSnapshotMessage>
   setDefaultModel(chosen: DefaultModelInput): Promise<ProvidersSnapshotMessage>
   removeProvider(id: string): Promise<ProvidersSnapshotMessage>
+  testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
   /** The one direction a credential travels: towards the main process. */
   setCredential(id: string, secret: string): Promise<ProvidersSnapshotMessage>
-  testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
   setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary>
   setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary>
   /** A message for the running turn, or one queued behind it. */

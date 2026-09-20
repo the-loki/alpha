@@ -228,8 +228,27 @@ export const EN = {
   'settings.tabPermissions': 'Permissions',
   'settings.tabAppearance': 'Appearance',
   'settings.tabBrowserAccess': 'Browser access',
+
+  'agent.ready': 'Found pi {version} at {path}.',
+  'agent.missing': 'pi is not installed yet. Alpha drives the pi you install rather than shipping one.',
+  'agent.outdated': 'pi {version} is older than Alpha needs. Update to {needed} or newer.',
+  'agent.unusable': 'Found pi at {path}, but it would not run: {reason}',
+  'agent.path': 'Where pi is',
+  'agent.pathHint':
+    'Empty means Alpha looks along PATH and in the usual install places. A path here is used instead of that search.',
+  'agent.install': 'Install pi for me',
+  'agent.installing': 'Installing…',
+  'agent.recheck': 'Look again',
+  'agent.command': 'Or run this yourself',
+  'agent.copy': 'Copy the command',
+  'agent.copied': 'Copied',
+  'agent.output': 'What the install said',
+  'agent.failed': 'The install did not finish.',
+  'settings.tabAgent': 'Agent',
+  'settings.agentNote':
+    'Alpha runs the pi you installed, so your conversations use your pi, your providers and your own settings. Alpha keeps the window, the permission ladder and the ledger.',
   'settings.providersNote':
-    'Where the workbench may reach, and with which key. Keys are held in the OS keychain and never leave this process.',
+    'Where the workbench may reach, and with which key. Keys are held in the OS keychain and handed only to the agent\u0027s environment, for the calls it makes itself.',
   'settings.modelsNote':
     "Which model new conversations start on, and which models each connection serves. The limits are the ones the provider documents; only a model listed here appears in a conversation's picker. Whether a model takes pictures is on this panel too, because nothing else can know it.",
   'settings.permissionsNote': 'What the agent may do on its own, and what it has to ask about.',

@@ -66,7 +66,7 @@ describe('[runtime] the gate', () => {
 
     const result = await h.gate(call('read', { path: 'notes.txt' }))
 
-    expect(result).toBeUndefined()
+    expect(result.block).toBeUndefined()
     expect(h.asked).toEqual([])
     expect(h.notes.get('read-1')).toEqual({ kind: 'auto', level: 'ask' })
   })
@@ -94,7 +94,7 @@ describe('[runtime] the gate', () => {
 
     const result = await h.gate(call('write', { path: 'a.txt' }))
 
-    expect(result).toBeUndefined()
+    expect(result.block).toBeUndefined()
     expect(h.asked).toHaveLength(1)
     expect(h.asked[0]).toMatchObject({
       callId: 'write-1',
@@ -123,7 +123,7 @@ describe('[runtime] the gate', () => {
 
     const result = await h.gate(call('bash', { command: 'pnpm test' }))
 
-    expect(result).toBeUndefined()
+    expect(result.block).toBeUndefined()
     expect(h.remembered).toHaveLength(1)
     expect(h.remembered[0]).toMatchObject({
       scope: 'workspace',
@@ -188,7 +188,7 @@ describe('[runtime] the gate', () => {
 
     const result = await h.gate(call('bash', { command: 'pnpm test --run' }))
 
-    expect(result).toBeUndefined()
+    expect(result.block).toBeUndefined()
     expect(h.asked).toEqual([])
     expect(h.notes.get('bash-1')).toEqual({ kind: 'rule', level: 'ask', ruleId: 'r1' })
   })
@@ -217,7 +217,7 @@ describe('[runtime] the gate', () => {
 
     expect((await h.gate(call('write', { path: 'a.txt' })))?.block).toBeDefined()
     h.level = 'full-access'
-    expect(await h.gate(call('write', { path: 'b.txt' }))).toBeUndefined()
+    expect((await h.gate(call('write', { path: 'b.txt' }))).block).toBeUndefined()
   })
 
   it('treats a blocked call as blocked even when the level changed while it waited', async () => {

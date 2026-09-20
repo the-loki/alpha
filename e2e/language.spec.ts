@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -29,6 +30,7 @@ async function launch(
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language,
       permissionLevel: 'ask',
       ...(options.network === undefined ? {} : { network: { ...options.network, enabled: true, bind: 'local' } }),
@@ -36,13 +38,14 @@ async function launch(
     'utf-8',
   )
 
+  configureProvider(dataDirectory)
+
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX: '1',
       ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [{ text: 'A short answer.' }]),
       NODE_ENV: 'production',
     },

@@ -1,8 +1,7 @@
-import type { Entry } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
-import { entriesToMessages } from './transcript-entries.ts'
+import { type AgentEntry, entriesToMessages } from './transcript-entries.ts'
 
-const entry = (partial: Record<string, unknown>): Entry => partial as unknown as Entry
+const entry = (partial: Record<string, unknown>): AgentEntry => partial as unknown as AgentEntry
 
 const userEntry = (seq: number, text: string) =>
   entry({
@@ -38,7 +37,6 @@ describe('[runtime] entriesToMessages', () => {
     const [message] = entriesToMessages([
       entry({
         type: 'message',
-        seq: 1,
         id: 'e1',
         parentId: null,
         timestamp: 1,
@@ -58,10 +56,10 @@ describe('[runtime] entriesToMessages', () => {
     ])
   })
 
-  it('orders the transcript by sequence, whatever order the session returned', () => {
+  it('keeps the order it was handed, which is the order the path was walked in', () => {
     const messages = entriesToMessages([
-      assistantEntry(2, [{ type: 'text', text: 'Done.' }]),
       userEntry(1, 'fix the parser'),
+      assistantEntry(2, [{ type: 'text', text: 'Done.' }]),
     ])
     expect(messages.map((message) => message.role)).toEqual(['user', 'assistant'])
   })
@@ -83,7 +81,6 @@ describe('[runtime] entriesToMessages', () => {
     const [message] = entriesToMessages([
       entry({
         type: 'message',
-        seq: 1,
         id: 'e1',
         parentId: null,
         timestamp: 1,
@@ -97,7 +94,6 @@ describe('[runtime] entriesToMessages', () => {
     const [message] = entriesToMessages([
       entry({
         type: 'message',
-        seq: 1,
         id: 'e1',
         parentId: null,
         timestamp: 1,
@@ -112,7 +108,6 @@ describe('[runtime] entriesToMessages', () => {
       userEntry(1, 'before'),
       entry({
         type: 'compaction',
-        seq: 2,
         id: 'e2',
         parentId: null,
         timestamp: 2,
@@ -134,7 +129,6 @@ describe('[runtime] entriesToMessages', () => {
     ])
     const result = entry({
       type: 'message',
-      seq: 2,
       id: 'e2',
       parentId: null,
       timestamp: 2,

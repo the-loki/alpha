@@ -41,7 +41,7 @@ test('a folder with more conversations than fit says how many more there are', a
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
-    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, ALPHA_FAUX: '1', NODE_ENV: 'production' },
+    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production' },
   })
   const window = await app.firstWindow()
   await window.waitForSelector('#root > *')

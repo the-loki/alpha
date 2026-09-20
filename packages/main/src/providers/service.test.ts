@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ProviderModelDefinition } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
+import { credentialFor } from '../runtime/agent-models.ts'
 import { CredentialVault } from './credential-vault.ts'
 import { ProviderService } from './service.ts'
 import { ProviderStore } from './store.ts'
@@ -17,7 +18,14 @@ const cipher = {
 const service = () => {
   const directory = mkdtempSync(join(tmpdir(), 'alpha-providers-'))
   const store = new ProviderStore(directory, new CredentialVault(directory, cipher))
-  return { service: new ProviderService(store), store }
+  const agent = {
+    path: (): string => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+    directory: join(directory, 'agent'),
+    env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
+    sessionsRoot: join(directory, 'sessions'),
+    credential: (providerId: string) => credentialFor(store, providerId),
+  }
+  return { service: new ProviderService(store, { agent, scratch: join(directory, 'scratch') }), store, agent }
 }
 
 const endpoint = { id: 'local', name: 'Local', api: 'openai-completions' as const, baseUrl: 'https://llm.test/v1' }
@@ -123,5 +131,45 @@ describe('[main] credentials', () => {
     expect(providers.snapshot().providers[0].hasCredential).toBe(true)
     providers.remove('local')
     expect(store.hasCredential('local')).toBe(false)
+  })
+})
+
+/**
+ * Whether a provider answers is asked through the agent, because the agent is what talks to one:
+ * Alpha hands it the model and the key, and reports back what it made of it.
+ */
+describe('[agent-runtime] asking a provider whether it answers', () => {
+  it('answers with the model’s own words, from a real run', async () => {
+    const { service: providers } = service()
+    providers.save(endpoint)
+    providers.saveModels('local', [model('a')])
+    providers.setCredential('local', 'sk-test')
+
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+  })
+
+  it('refuses a provider with no key, without asking the agent', async () => {
+    const { service: providers } = service()
+    providers.save(endpoint)
+    providers.saveModels('local', [model('a')])
+
+    expect(await providers.test('local', 'a')).toMatchObject({ ok: false })
+    expect((await providers.test('local', 'a')).message).toContain('key')
+  })
+
+  it('refuses a provider that is not there', async () => {
+    const { service: providers } = service()
+
+    expect(await providers.test('nobody', 'a')).toMatchObject({ ok: false, message: 'No provider nobody' })
+  })
+
+  it('refuses when there is no agent to ask', async () => {
+    const { service: providers, agent } = service()
+    providers.save(endpoint)
+    providers.saveModels('local', [model('a')])
+    providers.setCredential('local', 'sk-test')
+
+    agent.path = () => ''
+    expect((await providers.test('local', 'a')).message).toContain('No agent is installed')
   })
 })

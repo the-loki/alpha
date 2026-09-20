@@ -1,6 +1,9 @@
 /**
- * What the settings screen is allowed to do with providers, and the one action that talks to the
- * network: testing a connection, which reports the provider's own words back to the user.
+ * What the settings screen is allowed to do with providers: store them, name their models, keep
+ * their keys, say which one a new conversation runs on, and — when the person asks — find out
+ * whether one answers. The last of those is asked *through the agent*, because the agent is what
+ * talks to a provider: Alpha hands it the model to try and the key that goes with it, and reports
+ * back what the agent made of it.
  *
  * The service never returns a credential. It can say whether one is stored, and it can replace
  * or delete one (docs/constraints/02-architecture.md C2.4).
@@ -10,6 +13,8 @@
  * snapshot, so the window keeps one state instead of making a call after each edit.
  */
 
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   type ConversationModel,
   credentialRequirement,
@@ -20,8 +25,10 @@ import {
   type StoredProvider,
   type Undef,
 } from '@alpha/core'
-import type { Api, Model } from '@earendil-works/pi-ai'
-import { createProviderModelRuntime } from './model-runtime.ts'
+import { AgentRpc, rpcArgs } from '../agent-cli/rpc.ts'
+import { writeModelsFile } from '../runtime/agent-models.ts'
+import { agentEnv } from '../runtime/agent-process.ts'
+import type { AgentPorts } from '../runtime/session-files.ts'
 import type { ProviderStore } from './store.ts'
 
 export interface ProvidersSnapshot {
@@ -36,15 +43,20 @@ export interface ProvidersSnapshot {
 
 export interface ProviderTestResult {
   ok: boolean
-  /** Either the model's reply or the provider's error, never a generic failure. */
+  /** Either what the model answered or why it could not be reached, never a generic failure. */
   message: string
 }
 
 export class ProviderService {
   readonly #store: ProviderStore
+  readonly #agent: AgentPorts
+  /** Where a test's own session and workspace live: never the person's workspace. */
+  readonly #scratch: string
 
-  constructor(store: ProviderStore) {
+  constructor(store: ProviderStore, options: { agent: AgentPorts; scratch: string }) {
     this.#store = store
+    this.#agent = options.agent
+    this.#scratch = options.scratch
   }
 
   snapshot(): ProvidersSnapshot {
@@ -94,34 +106,65 @@ export class ProviderService {
     return this.snapshot()
   }
 
-  /** One real request, so a wrong key or a wrong base URL is caught here and not mid-conversation. */
+  /**
+   * One real request, so a wrong key or a wrong base URL is caught here rather than mid-turn. It
+   * is the agent that makes it — with this provider and this model, and with the key in its
+   * environment — so what is tested is the path a conversation takes, not a second implementation
+   * of it that could disagree.
+   */
   async test(providerId: string, modelId: string): Promise<ProviderTestResult> {
-    const provider: Undef<StoredProvider> = this.#store.find(providerId)
+    const provider = this.#store.find(providerId)
     if (provider === undefined) return { ok: false, message: `No provider ${providerId}` }
     if (!this.#store.hasCredential(providerId)) {
       return { ok: false, message: credentialRequirement({ hasCredential: false }).reason }
     }
+    const credential = this.#agent.credential(providerId)
+    if (credential.problem !== undefined) return { ok: false, message: credential.problem.message }
+    if (this.#agent.path() === '') {
+      return { ok: false, message: 'No agent is installed, so there is nothing here to ask the provider.' }
+    }
 
-    const runtime = createProviderModelRuntime(this.#store)
-    const model: Undef<Model<Api>> = runtime.models.getModel(providerId, modelId)
-    if (model === undefined) return { ok: false, message: `${providerId} does not serve ${modelId}` }
-
+    mkdirSync(this.#scratch, { recursive: true })
+    writeModelsFile(this.#store, this.#agent.directory)
+    const rpc = AgentRpc.open({
+      file: this.#agent.path(),
+      args: [
+        ...rpcArgs({
+          sessionsDirectory: join(this.#scratch, 'sessions'),
+          sessionId: `test-${Date.now()}`,
+          name: 'provider test',
+        }),
+        '--provider',
+        providerId,
+        '--model',
+        modelId,
+      ],
+      cwd: this.#scratch,
+      env: { ...agentEnv(this.#agent.env, this.#agent.directory), ...credential.env },
+    })
     try {
-      const reply = await runtime.models.completeSimple(
-        model,
-        { messages: [{ role: 'user', content: 'Reply with the single word: ready', timestamp: Date.now() }] },
-        { maxTokens: 32 },
-      )
-      const text = reply.content
-        .map((part) => (part.type === 'text' ? part.text : ''))
-        .join('')
-        .trim()
-      if (reply.stopReason === 'error') {
-        return { ok: false, message: reply.errorMessage ?? 'The provider refused the request.' }
-      }
-      return { ok: true, message: text === '' ? 'The provider answered.' : text }
-    } catch (error) {
-      return { ok: false, message: error instanceof Error ? error.message : String(error) }
+      return await askOnce(rpc)
+    } finally {
+      await rpc.close()
     }
   }
+}
+
+/** One question, one answer: the shortest thing that proves a provider is reachable. */
+async function askOnce(rpc: AgentRpc): Promise<ProviderTestResult> {
+  const settled = new Promise<void>((done) => {
+    const stop = rpc.onEvent((event) => {
+      if (event.type !== 'agent_settled' && event.type !== 'agent_end') return
+      stop()
+      done()
+    })
+  })
+  const asked = await rpc.send({ type: 'prompt', message: 'Reply with the single word: ready' })
+  if (!asked.ok) return { ok: false, message: asked.error ?? 'The provider refused the request.' }
+  await settled
+  const said = await rpc.send({ type: 'get_last_assistant_text' })
+  const data = said.data as Undef<{ text?: unknown }>
+  const answer = data?.text
+  const text = typeof answer === 'string' ? answer.trim() : ''
+  return text === '' ? { ok: false, message: 'The provider answered with nothing.' } : { ok: true, message: text }
 }

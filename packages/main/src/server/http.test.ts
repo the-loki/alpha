@@ -9,9 +9,19 @@ import { CredentialVault, type SecretCipher } from '../providers/credential-vaul
 import { ProviderService } from '../providers/service.ts'
 import { ProviderStore } from '../providers/store.ts'
 import { RuntimeManager } from '../runtime/manager.ts'
+import type { AgentPorts } from '../runtime/session-files.ts'
 import { StateStore } from '../state-store.ts'
 import { type RunningServer, startServer } from './http.ts'
 import { COOKIE_NAME } from './session.ts'
+
+/** The agent a provider is tested through, pointed at the scripted one for the suite's sake. */
+const agentPorts = (dataDirectory: string): AgentPorts => ({
+  path: () => join(import.meta.dirname, '../../../tools/scripted-agent/pi.mjs'),
+  directory: join(dataDirectory, 'agent'),
+  env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
+  sessionsRoot: join(dataDirectory, 'sessions'),
+  credential: () => ({ env: {} }),
+})
 
 /** Browser access in a test that is not about browser access. */
 const stubNetwork: NetworkPort = {
@@ -60,16 +70,50 @@ const start = async (
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers: new ProviderStore(dataDirectory, vault),
     store,
-    env: { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+    // The test seam: a scripted agent standing in for pi, with the script its model would answer.
+    agent: {
+      path: () => join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs'),
+      directory: join(dataDirectory, 'agent'),
+      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
+      sessionsRoot: join(dataDirectory, 'sessions'),
+      credential: () => ({ env: {} }),
+    },
     emit: (event) => events.push(event),
     emitRules: (rules: PermissionRule[]) => events.push(rules),
   })
   const ports: ChannelPorts = {
     store,
     runtime,
-    providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
+    providers: new ProviderService(new ProviderStore(dataDirectory, vault), {
+      agent: agentPorts(dataDirectory),
+      scratch: join(dataDirectory, 'scratch'),
+    }),
     window: headlessWindowPort,
     network: stubNetwork,
+    agent: {
+      snapshot: async () => ({
+        status: { kind: 'missing' },
+        path: '',
+        command: 'npm install',
+        installing: false,
+        output: '',
+      }),
+      setPath: async () => ({
+        status: { kind: 'missing' },
+        path: '',
+        command: 'npm install',
+        installing: false,
+        output: '',
+      }),
+      install: async () => ({
+        status: { kind: 'missing' },
+        path: '',
+        command: 'npm install',
+        installing: false,
+        output: '',
+      }),
+    },
+
     tasks: {
       snapshot: () => ({ tasks: [], runs: [] }),
       save: () => ({ tasks: [], runs: [] }),

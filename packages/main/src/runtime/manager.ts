@@ -1,6 +1,7 @@
 /**
  * The conversations that are open, and the index of the ones that are not. One runtime per open
- * conversation; everything else is read from the index file, so the sidebar costs one read.
+ * conversation — one agent process each — and everything else is read from the index file, so the
+ * sidebar costs one read.
  *
  * The manager also owns the bookkeeping the window should not have to do: a conversation takes
  * its title from the user's first message, its status follows the run, and its model is the
@@ -12,7 +13,6 @@ import {
   type Attachment,
   type ChatMessage,
   type ConversationSummary,
-  DEFAULT_THINKING_LEVEL,
   defaultLevelFor,
   type EditEffect,
   EMPTY_USAGE,
@@ -23,7 +23,6 @@ import {
   type RuntimeEvent,
   type ThinkingLevel,
 } from '@alpha/core'
-import { createProviderModelRuntime } from '../providers/model-runtime.ts'
 import type { ProviderStore } from '../providers/store.ts'
 import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
@@ -32,21 +31,27 @@ import type { ConversationRuntime, PermissionPorts } from './conversation-runtim
 import { DecisionLog } from './decisions.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
-import { describeRuntime, type ModelRuntime, modelFor, resolveModelRuntime } from './models.ts'
-import { type Opened, type OpeningRequest, tryOpen } from './opening.ts'
+import { defaultModel, describeRuntime, modelFor, refusesPictures } from './models.ts'
+import { type OpeningPorts, tryOpen } from './opening.ts'
 import { createPermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
 import { QueueRunner } from './queue.ts'
-import { readSessionTranscript, sessionLocation, usageFor, writeSessionMarkdown } from './session-files.ts'
-import { deleteSession } from './session-reader.ts'
+import {
+  type AgentPorts,
+  deleteSession,
+  readSessionTranscript,
+  usageFor,
+  writeSessionMarkdown,
+} from './session-files.ts'
 import { UnattendedRuns } from './unattended.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string
   sessionsRoot: string
   providers: ProviderStore
+  /** Where the agent is and how it is run: the same answers every part of the runtime needs. */
+  agent: AgentPorts
   /** The remembered level and the rules the user has stopped wanting to be asked about. */
   store: StateStore
-  env: NodeJS.ProcessEnv
   emit: (event: RuntimeEvent) => void
   /** Told when the rules change, so a settings page that is open can follow along. */
   emitRules: (rules: PermissionRule[]) => void
@@ -58,7 +63,7 @@ export class RuntimeManager {
   readonly #open = new Map<string, ConversationRuntime>()
   readonly #approvals: ApprovalBroker
   readonly #decisions: DecisionLog
-  /** Messages waiting for a turn of their own, and what the lane is holding for this one. */
+  /** Messages waiting for a turn of their own, and what the agent is holding for this one. */
   readonly #queue: QueueRunner
   /** Runs with nobody watching, and the refusals their gate had to hand out (ADR-0012). */
   readonly #unattended = new UnattendedRuns()
@@ -94,30 +99,27 @@ export class RuntimeManager {
   }
 
   modelStatus(): ModelStatus {
-    return describeRuntime(this.#modelRuntime())
+    return describeRuntime(this.#options.providers)
   }
 
   async create(workspacePath: string): Promise<OpenedConversation> {
-    const model = this.#modelRuntime().defaultModel
-    const opened = await this.#tryOpen({
-      conversationId: crypto.randomUUID(),
-      workspacePath,
-      model,
-      thinkingLevel: DEFAULT_THINKING_LEVEL,
-    })
-
     const conversation = newConversation({
-      id: opened.conversationId,
+      id: crypto.randomUUID(),
       workspacePath,
       now: Date.now(),
       permissionLevel: defaultLevelFor(this.#options.store.read(), workspacePath),
-      model: model === undefined ? NO_MODEL : { providerId: model.provider, modelId: model.id },
+      model: this.#startingModel(),
     })
-    if (opened.runtime !== undefined) this.#open.set(conversation.id, opened.runtime)
+    const runtime = tryOpen(this.#openingPorts(), {
+      conversationId: conversation.id,
+      conversation,
+      model: defaultModel(this.#options.providers),
+    })
+    if (runtime !== undefined) this.#open.set(conversation.id, runtime)
     this.#books.upsert(conversation)
     this.#options.store.rememberConversation(conversation.id)
 
-    return { conversation, messages: opened.messages, usage: EMPTY_USAGE }
+    return { conversation, messages: [], usage: EMPTY_USAGE }
   }
 
   async open(id: string): Promise<OpenedConversation> {
@@ -129,19 +131,18 @@ export class RuntimeManager {
       return { conversation, messages: await existing.transcript(), usage: await existing.usage() }
     }
 
-    const opened = await this.#tryOpen({
+    const runtime = tryOpen(this.#openingPorts(), {
       conversationId: id,
-      workspacePath: conversation.workspacePath,
-      model: modelFor(this.#modelRuntime(), conversation),
-      thinkingLevel: conversation.thinkingLevel,
+      conversation,
+      model: modelFor(this.#options.providers, conversation),
     })
-    if (opened.runtime !== undefined) this.#open.set(id, opened.runtime)
+    if (runtime !== undefined) this.#open.set(id, runtime)
     if (conversation.title !== DEFAULT_TITLE) this.#books.markNamed(id)
 
     return {
       conversation,
-      messages: opened.messages,
-      usage: await usageFor(conversation, this.#options.sessionsRoot, opened.runtime),
+      messages: await this.transcriptFor(id),
+      usage: await usageFor(this.#options.agent, conversation, runtime),
     }
   }
 
@@ -163,18 +164,19 @@ export class RuntimeManager {
 
   async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
     const conversation = this.#requireConversation(id)
-    const model = modelFor(this.#modelRuntime(), conversation)
-    if (model === undefined) {
-      throw new Error('No model is configured. Add a provider and a model in Settings first.')
+    // A credential Alpha cannot read is reported as such, and the run is refused before the agent
+    // is asked: a turn that fails at its first token is a worse answer than a sentence (#114).
+    const model = modelFor(this.#options.providers, conversation)
+    const key = model === undefined ? undefined : this.#options.agent.credential(model.providerId)
+    if (key?.problem !== undefined) throw new Error(key.problem.message)
+    // The last word on whether a picture may go: an agent handed a picture its model cannot read
+    // answers about something it never saw, and a turn that refuses is better than that (ADR-0018).
+    if ((attachments?.length ?? 0) > 0 && refusesPictures(this.#options.providers, conversation.model)) {
+      throw new Error(
+        `${conversation.model.modelId} does not take pictures. Turn that on for it under Settings, Models.`,
+      )
     }
-    // The last word on whether a picture may go: pi-ai would drop it silently for a model that
-    // does not take one, and a turn that answers about a picture nobody saw is worse than a turn
-    // that refuses (ADR-0018). The window says the same thing earlier, where it can.
-    if ((attachments?.length ?? 0) > 0 && !model.input.includes('image')) {
-      throw new Error(`${model.name} does not take pictures. Turn that on for it under Settings, Models.`)
-    }
-    const runtime = await this.#openFor(id)
-    await runtime.prompt(text, attachments)
+    await (await this.#openFor(id)).prompt(text, attachments)
   }
 
   async steer(id: string, text: string): Promise<void> {
@@ -196,12 +198,12 @@ export class RuntimeManager {
   }
 
   /**
-   * Taking back a message that has not been sent. The lane's queue holds steers; ours holds what is
-   * waiting for the next turn, and which one an id belongs to is not the window's problem.
+   * Taking back a message that has not been sent. The agent's queue is emptied whole and ours is
+   * not, so which one an id belongs to decides which of the two is asked.
    */
   async cancelQueued(id: string, entryId: string): Promise<void> {
     if (this.#queue.cancel(id, entryId)) return
-    await (await this.#openFor(id)).cancelQueued(entryId)
+    await (await this.#openFor(id)).cancelQueued()
   }
 
   /** Starting a stopped queue again: pressing Stop, or a failed turn, is what stopped it. */
@@ -247,8 +249,8 @@ export class RuntimeManager {
   }
 
   /**
-   * Deleting means deleting: the transcript directory goes with it, so the conversation is gone
-   * from the list and from the disk, not merely hidden from one of them.
+   * Deleting means deleting: the session goes with it, so the conversation is gone from the list
+   * and from the disk, not merely hidden from one of them.
    */
   async remove(id: string): Promise<ConversationSummary[]> {
     const conversation = this.#requireConversation(id)
@@ -258,7 +260,7 @@ export class RuntimeManager {
       await runtime.close()
       this.#open.delete(id)
     }
-    await deleteSession(sessionLocation(this.#options.sessionsRoot, conversation))
+    await deleteSession(this.#options.agent, conversation)
     this.#decisions.forget(id)
     this.#queue.forget(id)
     this.#books.forget(id)
@@ -277,7 +279,7 @@ export class RuntimeManager {
     const runtime = this.#open.get(id)
     if (runtime !== undefined) return runtime.transcript()
     const conversation = this.#requireConversation(id)
-    return readSessionTranscript(sessionLocation(this.#options.sessionsRoot, conversation), this.#decisions.opened(id))
+    return readSessionTranscript(this.#options.agent, conversation, this.#decisions.opened(id))
   }
 
   /**
@@ -305,7 +307,8 @@ export class RuntimeManager {
         this.#books.markNamed(conversation.id)
       },
       openConversation: (id) => this.open(id),
-      sessionsRoot: this.#options.sessionsRoot,
+      agent: this.#options.agent,
+      adopt: (id, sessionId) => void this.#books.update(id, { sessionId, updatedAt: Date.now() }),
       replaceTranscript: (id, messages) =>
         this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages }),
     }
@@ -324,9 +327,10 @@ export class RuntimeManager {
 
   async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
     this.#requireConversation(id)
-    const model = this.#modelRuntime().models.getModel(providerId, modelId)
-    if (model === undefined) throw new Error(`${providerId} does not serve ${modelId}`)
-    await this.#open.get(id)?.setModel(model)
+    if (this.#options.providers.find(providerId)?.models.some((model) => model.id === modelId) !== true) {
+      throw new Error(`${providerId} does not serve ${modelId}`)
+    }
+    await this.#open.get(id)?.setModel(providerId, modelId)
     return this.#books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
@@ -348,7 +352,7 @@ export class RuntimeManager {
     if (open !== undefined) return open
     await this.open(id)
     const opened = this.#open.get(id)
-    if (opened === undefined) throw new Error('No model is configured. Add a provider and a model in Settings first.')
+    if (opened === undefined) throw new Error('No agent is installed, so this conversation cannot run.')
     return opened
   }
 
@@ -364,17 +368,13 @@ export class RuntimeManager {
     return refusal === undefined ? this.#approvals.ask(id, ask) : Promise.resolve(refusal)
   }
 
-  #tryOpen(request: OpeningRequest): Promise<Opened> {
-    return tryOpen(
-      {
-        sessionsRoot: this.#options.sessionsRoot,
-        decisions: this.#decisions,
-        permissions: () => this.#permissionPorts(),
-        modelRuntime: () => this.#modelRuntime(),
-        emit: (event) => this.#observe(event),
-      },
-      request,
-    )
+  #openingPorts(): OpeningPorts {
+    return {
+      agent: this.#options.agent,
+      decisions: this.#decisions,
+      permissions: () => this.#permissionPorts(),
+      emit: (event) => this.#observe(event),
+    }
   }
 
   #permissionPorts(): PermissionPorts {
@@ -386,7 +386,8 @@ export class RuntimeManager {
     })
   }
 
-  #modelRuntime(): ModelRuntime {
-    return resolveModelRuntime(this.#options.env, () => createProviderModelRuntime(this.#options.providers))
+  /** Where a new conversation starts, and what it is named while it has no name of its own. */
+  #startingModel(): ConversationSummary['model'] {
+    return defaultModel(this.#options.providers) ?? NO_MODEL
   }
 }

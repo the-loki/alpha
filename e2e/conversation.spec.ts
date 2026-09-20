@@ -2,18 +2,20 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 const REPLY = 'Two files use that name. I can rename both.'
 
-/** A fresh install pointed at a real folder, with the model scripted rather than dialled. */
+/** A fresh install pointed at a real folder, with the agent's answers scripted rather than dialled. */
 async function launch(
   options: {
     dataDirectory?: string
     replies?: string[]
     workspace?: string
-    faux?: boolean
+    /** False leaves the workbench with no connection, for the tests about that state. */
+    provider?: boolean
     slow?: boolean
     /** A configured endpoint, for the tests that need models to switch between. */
     models?: boolean
@@ -21,6 +23,9 @@ async function launch(
 ) {
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
+  // A turn is refused without a connection to run on, so the turns here get one; the tests about
+  // the model controls bring their own, and the no-model test asks for none.
+  if (options.provider !== false && options.models !== true) configureProvider(dataDirectory)
   writeFileSync(
     join(dataDirectory, 'workbench-state.json'),
     JSON.stringify({
@@ -28,6 +33,7 @@ async function launch(
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'ask',
     }),
@@ -63,9 +69,7 @@ async function launch(
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ...(options.faux === false
-        ? {}
-        : { ALPHA_FAUX: '1', ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]) }),
+      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]),
       // slow: a stream a test can catch mid-answer, for the frames that are about streaming.
       ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '10', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
       NODE_ENV: 'production',
@@ -177,8 +181,8 @@ test('the conversation is listed, titled, and restored after a relaunch', async 
 
 test('the model is chosen at the foot of the composer, and a new conversation starts on it', async () => {
   test.setTimeout(90_000)
-  // No scripted model: the point is the control and the record, and nothing here dials out.
-  const { app, window, dataDirectory, workspace } = await launch({ faux: false, models: true })
+  // No turn runs: the point is the control and the record, and nothing here dials out.
+  const { app, window, dataDirectory, workspace } = await launch({ models: true })
   await window.setViewportSize({ width: 1440, height: 900 })
 
   // With no conversation open the chip names what a new one will start on, and the menu is the
@@ -198,13 +202,13 @@ test('the model is chosen at the foot of the composer, and a new conversation st
   await app.close()
 
   // And it is what the next launch starts a conversation on, which is the whole point of choosing.
-  const reopened = await launch({ dataDirectory, workspace, faux: false, models: true })
+  const reopened = await launch({ dataDirectory, workspace, models: true })
   await expect(reopened.window.getByRole('button', { name: 'Local 70B', exact: true })).toBeVisible()
   await reopened.app.close()
 })
 
 test('with no model configured the app opens and says what is missing', async () => {
-  const { app, window } = await launch({ faux: false })
+  const { app, window } = await launch({ provider: false })
 
   await expect(window.getByText(/No model configured yet/)).toBeVisible()
 

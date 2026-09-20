@@ -10,6 +10,7 @@
  * check someone has to remember.
  */
 import {
+  type AgentSnapshot,
   defaultLevelFor,
   type IPC,
   isPermissionLevel,
@@ -82,6 +83,16 @@ export interface TasksPort {
   runNow(id: string): Promise<TasksSnapshot>
 }
 
+/**
+ * What a client may ask about the agent Alpha runs. Alpha ships none, so the questions are "is
+ * there one", "where did you look", and "install one for me" — and every answer is a snapshot.
+ */
+export interface AgentPort {
+  snapshot(): Promise<AgentSnapshot>
+  setPath(path: string): Promise<AgentSnapshot>
+  install(): Promise<AgentSnapshot>
+}
+
 export interface ChannelPorts {
   store: StateStore
   runtime: RuntimeManager
@@ -90,6 +101,7 @@ export interface ChannelPorts {
   providers: ProviderService
   window: WindowPort
   network: NetworkPort
+  agent: AgentPort
 }
 
 /** The arguments as they arrived from another process, before any handler has looked at them. */
@@ -101,7 +113,13 @@ export type ChannelHandler = (ports: ChannelPorts, args: ChannelArgs) => unknown
  * The channels main pushes to a client rather than answers: the runtime's events, the window's own
  * state, and a change to the remembered rules. They have no handler, and a client cannot call them.
  */
-export const PUSHED_CHANNELS = ['runtimeEvent', 'windowStateChanged', 'permissionRulesChanged', 'tasksChanged'] as const
+export const PUSHED_CHANNELS = [
+  'runtimeEvent',
+  'windowStateChanged',
+  'permissionRulesChanged',
+  'tasksChanged',
+  'agentChanged',
+] as const
 
 type PushedChannel = (typeof PUSHED_CHANNELS)[number]
 type NamedChannel = Exclude<keyof typeof IPC, PushedChannel>
@@ -218,6 +236,8 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
     await runtime.regenerate(requireString(args[0], 'conversationId'))
   },
 
+  // The window sends the message and the effect it wants; the agent cannot move a branch tip yet
+  // and the manager says so, but the arguments are still checked at the boundary first.
   editMessage: ({ runtime }, args) => {
     const effect = args[3]
     if (effect !== 'replace' && effect !== 'fork') throw new Error('effect must be replace or fork')
@@ -233,6 +253,12 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
     if (!isThinkingLevel(level)) throw new Error('level must be a thinking level')
     return runtime.setThinkingLevel(requireString(args[0], 'conversationId'), level)
   },
+
+  agentSnapshot: ({ agent }) => agent.snapshot(),
+
+  setAgentPath: ({ agent }, args) => agent.setPath(requireString(args[0], 'path')),
+
+  installAgent: ({ agent }) => agent.install(),
 
   networkState: ({ network }) => network.state(),
 

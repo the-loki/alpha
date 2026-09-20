@@ -12,6 +12,7 @@ const conversation: ConversationSummary = {
   permissionLevel: 'ask',
   model: { providerId: 'faux', modelId: 'scripted' },
   thinkingLevel: 'medium',
+  sessionId: '',
 }
 
 const user = (text: string): ChatMessage => ({

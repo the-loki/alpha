@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 /**
  * The clock, and what an unattended run may do. A task whose moment passed while the workbench was
@@ -23,6 +24,7 @@ test('a task missed while the workbench was closed runs, and refuses what nobody
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
@@ -51,13 +53,14 @@ test('a task missed while the workbench was closed runs, and refuses what nobody
     'utf-8',
   )
 
+  configureProvider(dataDirectory)
+
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX: '1',
       ALPHA_FAUX_REPLIES: JSON.stringify([{ tool: { name: 'bash', args: { command: 'echo hi' } } }, 'All done.']),
       NODE_ENV: 'production',
     },

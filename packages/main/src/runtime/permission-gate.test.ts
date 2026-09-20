@@ -3,13 +3,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent } from '@alpha/core'
 import { describe, expect, it } from 'vitest'
+import { rpcArgs } from '../agent-cli/rpc.ts'
 import { ApprovalBroker } from './approvals.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import type { ApprovalAnswer } from './gate.ts'
-import { resolveModelRuntime } from './models.ts'
+
+/** The scripted stand-in for pi, which asks Alpha's gate the way the real agent's extension does. */
+const SCRIPTED_AGENT = join(import.meta.dirname, '../../../../tools/scripted-agent/pi.mjs')
 
 /**
- * The gate, through a real harness: the model asks for something, the policy answers, and the
+ * The gate, through a real agent process: the model asks for something, the policy answers, and the
  * workspace is the evidence. Nothing here is a mock — a denied call is a call that did not happen.
  */
 interface GateOptions {
@@ -18,7 +21,7 @@ interface GateOptions {
   answer?: ApprovalAnswer
 }
 
-const open = async (options: GateOptions & { workspace: string; replies: unknown[] }) => {
+const open = (options: GateOptions & { workspace: string; replies: unknown[] }) => {
   const sessionsRoot = mkdtempSync(join(tmpdir(), 'alpha-sessions-'))
   const events: RuntimeEvent[] = []
   const asked: ApprovalAsk[] = []
@@ -28,15 +31,14 @@ const open = async (options: GateOptions & { workspace: string; replies: unknown
   // travels the same path a person's click does.
   const broker = new ApprovalBroker({ emit: (event) => events.push(event) })
 
-  const opened = await ConversationRuntime.open({
+  const opened = ConversationRuntime.open({
     conversationId: 'gate',
-    workspacePath: options.workspace,
-    sessionsRoot,
-    modelRuntime: resolveModelRuntime({
-      ALPHA_FAUX: '1',
-      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies),
-    }),
-    systemPrompt: 'You are Alpha.',
+    process: {
+      file: SCRIPTED_AGENT,
+      args: rpcArgs({ sessionsDirectory: sessionsRoot, sessionId: 'gate', name: 'gate' }),
+      cwd: options.workspace,
+      env: { ...process.env, ALPHA_FAUX_REPLIES: JSON.stringify(options.replies) },
+    },
     permissions: {
       level: () => state.level,
       rules: () => state.rules,
@@ -58,7 +60,18 @@ const open = async (options: GateOptions & { workspace: string; replies: unknown
     },
     emit: (event) => events.push(event),
   })
-  return { ...opened, events, asked, remembered, state, sessionsRoot }
+  // A prompt is answered as soon as the agent takes it: the run goes on behind it, and a test
+  // waits for the run the way the window does — by its end.
+  const ended = (): number =>
+    events.filter((event) => event.type === 'turn_finished' || event.type === 'run_failed').length
+  const run = async (text: string): Promise<void> => {
+    const before = ended()
+    await opened.runtime.prompt(text)
+    for (let attempt = 0; attempt < 300 && ended() === before; attempt += 1) {
+      await new Promise((done) => setTimeout(done, 20))
+    }
+  }
+  return { ...opened, events, asked, remembered, state, sessionsRoot, run }
 }
 
 const workspace = (): string => mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
@@ -72,9 +85,10 @@ const rowOf = (messages: { blocks: unknown[] }[], index = 0) => {
   return blocks[index]
 }
 
+/** How a row learns why its call got past the gate: the decision lands on it after the row does. */
 const approvalOf = (events: RuntimeEvent[], callId: string): ApprovalRecord | undefined => {
-  const started = events.find((event) => event.type === 'tool_started' && event.callId === callId)
-  return started?.type === 'tool_started' ? started.approval : undefined
+  const decided = events.find((event) => event.type === 'tool_decided' && event.callId === callId)
+  return decided?.type === 'tool_decided' ? decided.approval : undefined
 }
 
 const callIdOf = (events: RuntimeEvent[]): string => {
@@ -87,14 +101,14 @@ const writeCall = { tool: { name: 'write', args: { path: 'made.txt', content: 'w
 describe('[runtime] a call the gate allows', () => {
   it('runs it, and the row says a person allowed it', async () => {
     const workspacePath = workspace()
-    const { runtime, events, asked } = await open({
+    const { runtime, run, events, asked } = await open({
       workspace: workspacePath,
       replies: [writeCall, 'Wrote it.'],
       answer: { decision: 'once' },
     })
 
-    await runtime.prompt('write the file')
-    await runtime.close()
+    await run('write the file')
+    runtime.close()
 
     expect(readFileSync(join(workspacePath, 'made.txt'), 'utf8')).toBe('written')
     expect(asked).toHaveLength(1)
@@ -103,22 +117,24 @@ describe('[runtime] a call the gate allows', () => {
   })
 
   it('asks before the call starts, so the card is up while nothing has run yet', async () => {
-    const { runtime, events } = await open({ workspace: workspace(), replies: [writeCall, 'done'] })
+    const { runtime, run, events } = await open({ workspace: workspace(), replies: [writeCall, 'done'] })
 
-    await runtime.prompt('write the file')
+    await run('write the file')
     await runtime.close()
 
+    // The agent announces the call before it asks — the row appears, waiting — but what the call
+    // would do has not happened yet: the answer comes first, the command second.
     const requested = events.findIndex((event) => event.type === 'approval_requested')
-    const started = events.findIndex((event) => event.type === 'tool_started')
+    const finished = events.findIndex((event) => event.type === 'tool_finished')
     expect(requested).toBeGreaterThanOrEqual(0)
-    expect(requested).toBeLessThan(started)
+    expect(requested).toBeLessThan(finished)
   })
 
   it('shows the proposed change on the card, so the user sees what they are approving', async () => {
-    const { runtime, asked } = await open({ workspace: workspace(), replies: [writeCall, 'done'] })
+    const { runtime, run, asked } = await open({ workspace: workspace(), replies: [writeCall, 'done'] })
 
-    await runtime.prompt('write the file')
-    await runtime.close()
+    await run('write the file')
+    runtime.close()
 
     expect(asked[0].diff).toContain('+written')
   })
@@ -126,14 +142,14 @@ describe('[runtime] a call the gate allows', () => {
   it('runs the next matching call without a card once the user says always', async () => {
     const workspacePath = workspace()
     const edit = { tool: { name: 'write', args: { path: 'src/main.ts', content: 'x' } } }
-    const { runtime, asked, remembered } = await open({
+    const { runtime, run, asked, remembered } = await open({
       workspace: workspacePath,
       replies: [edit, edit, 'Both written.'],
       answer: { decision: 'always', scope: 'workspace' },
     })
 
-    await runtime.prompt('write the file')
-    await runtime.close()
+    await run('write the file')
+    runtime.close()
 
     expect(remembered).toHaveLength(1)
     expect(remembered[0]).toMatchObject({ scope: 'workspace', toolName: 'write', pattern: 'src/main.ts' })
@@ -143,14 +159,14 @@ describe('[runtime] a call the gate allows', () => {
 
   it('never asks at full access', async () => {
     const workspacePath = workspace()
-    const { runtime, events, asked } = await open({
+    const { runtime, run, events, asked } = await open({
       workspace: workspacePath,
       replies: [writeCall, 'done'],
       level: 'full-access',
     })
 
-    await runtime.prompt('write the file')
-    await runtime.close()
+    await run('write the file')
+    runtime.close()
 
     expect(asked).toEqual([])
     expect(approvalOf(events, callIdOf(events))).toEqual({ kind: 'auto', level: 'full-access' })
@@ -158,13 +174,13 @@ describe('[runtime] a call the gate allows', () => {
 
   it('lets a file write through at accept-edits but still asks before a command', async () => {
     const workspacePath = workspace()
-    const { runtime, events, asked } = await open({
+    const { runtime, run, events, asked } = await open({
       workspace: workspacePath,
       level: 'accept-edits',
       replies: [writeCall, { tool: { name: 'bash', args: { command: 'echo hi' } } }, 'done'],
     })
 
-    await runtime.prompt('write and run')
+    await run('write and run')
     await runtime.close()
 
     expect(asked.map((ask) => ask.toolName)).toEqual(['bash'])
@@ -175,14 +191,14 @@ describe('[runtime] a call the gate allows', () => {
 describe('[runtime] a call the gate refuses', () => {
   it('blocks a write in plan without asking anyone, and says why', async () => {
     const workspacePath = workspace()
-    const { runtime, events, asked } = await open({
+    const { runtime, run, events, asked } = await open({
       workspace: workspacePath,
       level: 'plan',
       replies: [writeCall, 'Understood.'],
     })
 
-    await runtime.prompt('write the file')
-    await runtime.close()
+    await run('write the file')
+    runtime.close()
 
     expect(asked).toEqual([])
     expect(existsSync(join(workspacePath, 'made.txt'))).toBe(false)
@@ -193,13 +209,13 @@ describe('[runtime] a call the gate refuses', () => {
 
   it('does not run a denied call, and hands the reason to the model', async () => {
     const workspacePath = workspace()
-    const { runtime, events } = await open({
+    const { runtime, run, events } = await open({
       workspace: workspacePath,
       replies: [writeCall, 'I will not write it.'],
       answer: { decision: 'deny', reason: 'that file is generated' },
     })
 
-    await runtime.prompt('write the file')
+    await run('write the file')
     const transcript = await runtime.transcript()
     await runtime.close()
 
@@ -217,14 +233,14 @@ describe('[runtime] a call the gate refuses', () => {
   })
 
   it('tells the model the call was denied when no reason was given', async () => {
-    const { runtime, events } = await open({
+    const { runtime, run, events } = await open({
       workspace: workspace(),
       replies: [writeCall, 'ok'],
       answer: { decision: 'deny' },
     })
 
-    await runtime.prompt('write the file')
-    await runtime.close()
+    await run('write the file')
+    runtime.close()
 
     const finished = events.find((event) => event.type === 'tool_finished')
     expect(finished?.type === 'tool_finished' && finished.output).toContain('denied')
@@ -235,17 +251,17 @@ describe('[runtime] revoking a remembered rule', () => {
   it('makes the next matching call ask again', async () => {
     const workspacePath = workspace()
     const edit = { tool: { name: 'write', args: { path: 'src/main.ts', content: 'x' } } }
-    const { runtime, asked, remembered, state } = await open({
+    const { runtime, run, asked, remembered, state } = await open({
       workspace: workspacePath,
       replies: [edit, edit, 'Written.', edit, 'Written again.'],
       answer: { decision: 'always', scope: 'workspace' },
     })
 
-    await runtime.prompt('write it')
+    await run('write it')
     expect(asked).toHaveLength(1)
 
     state.rules = state.rules.filter((rule) => rule.id !== remembered[0].id)
-    await runtime.prompt('write it again')
+    await run('write it again')
     await runtime.close()
 
     expect(asked).toHaveLength(2)
@@ -256,17 +272,17 @@ describe('[runtime] revoking a remembered rule', () => {
 describe('[runtime] changing the level', () => {
   it('applies to the next call without restarting the conversation', async () => {
     const workspacePath = workspace()
-    const { runtime, events, state } = await open({
+    const { runtime, run, events, state } = await open({
       workspace: workspacePath,
       level: 'plan',
       replies: [writeCall, 'I will not write it.', writeCall, 'Written now.'],
     })
 
-    await runtime.prompt('write the file')
+    await run('write the file')
     expect(existsSync(join(workspacePath, 'made.txt'))).toBe(false)
 
     state.level = 'full-access'
-    await runtime.prompt('now write it')
+    await run('now write it')
     await runtime.close()
 
     expect(readFileSync(join(workspacePath, 'made.txt'), 'utf8')).toBe('written')

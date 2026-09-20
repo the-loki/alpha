@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -20,11 +21,14 @@ async function launch(
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
       // Full access: these tests are about turn control, so no approval card intervenes.
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
+
+  configureProvider(dataDirectory)
 
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -32,7 +36,6 @@ async function launch(
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX: '1',
       ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? ['Answer.']),
       ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '20', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
       NODE_ENV: 'production',
@@ -108,17 +111,26 @@ test('a stopped turn survives a relaunch, marker and all', async () => {
 })
 
 test('a turn killed with the process can still be edited after the relaunch', async () => {
+  // Two launches and a slow stream: a real agent process costs more than the default half minute.
+  test.setTimeout(90_000)
   const first = await launch({
     slow: true,
-    replies: ['An answer nobody reads to the end, because the process goes away.'],
+    replies: [
+      'A first answer that is safely on the record.',
+      'An answer nobody reads to the end, because the process goes away.',
+    ],
   })
   await ask(first.window, 'say something long')
-  await expect(first.window.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 20_000 })
-  await expect(first.window.getByRole('main').locator('[data-role="assistant"]')).toContainText('An answer', {
+  // The first turn is on the record before the crash: pi keeps a session's file only once an
+  // answer is on it, so a turn killed before any answer leaves nothing to edit at all.
+  await expect(first.window.getByRole('main').getByText('A first answer that is safely on the record.')).toBeVisible({
     timeout: 20_000,
   })
-  // No Stop and no close: the process is killed with the turn in flight, which is the state a
-  // crash leaves behind — a run nothing is driving, still sitting on the lane.
+
+  await ask(first.window, 'and one more thing')
+  await expect(first.window.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 20_000 })
+  // No Stop and no close: the process is killed with the second turn in flight, which is the
+  // state a crash leaves behind — a run nothing is driving, still sitting on the lane.
   first.app.process().kill('SIGKILL')
 
   const second = await launch({

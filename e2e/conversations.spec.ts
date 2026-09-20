@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } fro
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -23,6 +24,7 @@ async function launch(options: { dataDirectory?: string; workspace?: string; kee
         },
         recents: [{ path: workspace, name: workspace.split('/').pop(), lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
@@ -33,13 +35,14 @@ async function launch(options: { dataDirectory?: string; workspace?: string; kee
 }
 
 async function start({ dataDirectory, workspace }: { dataDirectory: string; workspace: string }) {
+  configureProvider(dataDirectory)
+
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX: '1',
       ALPHA_FAUX_REPLIES: JSON.stringify(['The answer.']),
       NODE_ENV: 'production',
     },

@@ -154,6 +154,13 @@ export interface ConversationSummary {
   model: ConversationModel
   thinkingLevel: ThinkingLevel
   /**
+   * The session this conversation is on, which is the agent's own id for it. Empty means the
+   * conversation's own id is the session's: that is how a conversation starts, and moving the
+   * branch tip — regenerate, editing an earlier message — is what makes the two differ (they are
+   * a fork of the session, and the agent is the one that names the copy).
+   */
+  sessionId: string
+  /**
    * When it was put away, or absent for one that is in the list. An archived conversation is out
    * of the tree and in the archived section, works like any other, and comes back the moment a
    * message is sent to it (ticket #79).
@@ -189,6 +196,11 @@ export type RuntimeEvent =
       approval?: ApprovalRecord
       startedAt: number
     }
+  /**
+   * How a call got past the gate, once it has. The agent announces a call before it asks, so the
+   * answer cannot ride on the row when the row appears: it lands on it a moment later.
+   */
+  | { conversationId: string; type: 'tool_decided'; callId: string; approval: ApprovalRecord }
   | { conversationId: string; type: 'tool_output'; callId: string; output: string }
   | {
       conversationId: string

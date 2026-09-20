@@ -13,6 +13,7 @@ const conversation = (id: string, updatedAt: number, archivedAt?: number): Conve
   permissionLevel: 'ask',
   model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
   thinkingLevel: 'medium',
+  sessionId: '',
   ...(archivedAt === undefined ? {} : { archivedAt }),
 })
 

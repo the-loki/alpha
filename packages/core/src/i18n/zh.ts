@@ -224,7 +224,26 @@ export const ZH = {
   'settings.tabPermissions': '权限',
   'settings.tabAppearance': '外观',
   'settings.tabBrowserAccess': '浏览器访问',
-  'settings.providersNote': '工作台能连到哪里、用哪把密钥。密钥存在系统钥匙串里，不离开这个进程。',
+
+  'agent.ready': '在 {path} 找到 pi {version}。',
+  'agent.missing': 'pi 还没装。Alpha 驱动你自己装的 pi，不自带。',
+  'agent.outdated': 'pi {version} 比 Alpha 需要的旧。请更新到 {needed} 或更新版本。',
+  'agent.unusable': '在 {path} 找到了 pi，但它跑不起来：{reason}',
+  'agent.path': 'pi 在哪里',
+  'agent.pathHint': '留空则沿 PATH 和常见安装位置查找；这里填了路径就用它，不再搜索。',
+  'agent.install': '帮我安装 pi',
+  'agent.installing': '正在安装…',
+  'agent.recheck': '重新检测',
+  'agent.command': '或者你自己跑这条命令',
+  'agent.copy': '复制命令',
+  'agent.copied': '已复制',
+  'agent.output': '安装过程输出',
+  'agent.failed': '安装没有完成。',
+  'settings.tabAgent': 'Agent',
+  'settings.agentNote':
+    'Alpha 跑的是你装好的 pi：会话用你的 pi、你的供应商和你自己的设置；窗口、权限梯队和账本仍然由 Alpha 管。',
+  'settings.providersNote':
+    '工作台能连到哪里、用哪把密钥。密钥存在系统钥匙串里，只在对话发起调用时交给 agent 自己的环境。',
   'settings.modelsNote':
     '新会话默认用哪个模型，以及每个连接提供哪些模型。限额按供应商文档填写；只有列在这里的模型，才会出现在会话的模型选择里。"能不能看图"也在这里设置——因为除了你，没有别的东西知道。',
   'settings.permissionsNote': 'agent 可以自己做什么，什么必须先问。',

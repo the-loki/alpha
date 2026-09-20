@@ -3,6 +3,7 @@ import { createServer } from 'node:net'
 import { networkInterfaces, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Browser, chromium, _electron as electron, expect, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -35,6 +36,7 @@ async function launchServing(port: number, options: { token?: string; level?: st
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: options.level ?? 'full-access',
       network: { enabled: true, port, bind: 'local', token: options.token ?? TOKEN },
@@ -42,13 +44,15 @@ async function launchServing(port: number, options: { token?: string; level?: st
     'utf-8',
   )
 
+  // The suite hands a picture across the wire, so the connection serves a model that takes one.
+  configureProvider(dataDirectory, { images: true })
+
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: REPO_ROOT,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX: '1',
       ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]),
       NODE_ENV: 'production',
     },

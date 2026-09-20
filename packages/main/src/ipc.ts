@@ -10,7 +10,7 @@
 import { IPC, type Undef } from '@alpha/core'
 import { type BrowserWindow, ipcMain } from 'electron'
 import type { Subscriber } from './broadcast.ts'
-import { CHANNELS, type ChannelPorts, type NetworkPort } from './channels.ts'
+import { type AgentPort, CHANNELS, type ChannelPorts, type NetworkPort } from './channels.ts'
 import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
 import type { StateStore } from './state-store.ts'
@@ -23,6 +23,8 @@ export interface IpcContext {
   window: ChannelPorts['window']
   /** Browser access, which the settings page reads and changes. */
   network: NetworkPort
+  /** The agent Alpha runs, which it ships none of: found, or installed, or reported missing. */
+  agent: AgentPort
   /** The scheduled tasks, which every client may read and edit. */
   tasks: ChannelPorts['tasks']
 }
@@ -34,6 +36,7 @@ export function registerIpcHandlers(context: IpcContext): void {
     providers: context.providers,
     window: context.window,
     network: context.network,
+    agent: context.agent,
     tasks: context.tasks,
   }
 

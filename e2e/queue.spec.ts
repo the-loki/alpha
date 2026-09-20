@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
+import { configureProvider, scriptedAgent } from './agent'
 
 /**
  * The queue the workbench owns (ADR-0011): a message typed while the agent is working waits for
@@ -21,11 +22,14 @@ async function launch() {
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
+
+  configureProvider(dataDirectory)
 
   const app = await electron.launch({
     args: [REPO_ROOT, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -33,7 +37,6 @@ async function launch() {
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX: '1',
       // The first turn is long enough to type two messages behind it: what is being tested is the
       // queue, not a race against a fast answer.
       ALPHA_FAUX_REPLIES: JSON.stringify([`${'a'.repeat(240)}.`, 'The second answer.']),
@@ -105,6 +108,7 @@ test('a queue that cannot be sent stops, and says so', async () => {
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
+      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),

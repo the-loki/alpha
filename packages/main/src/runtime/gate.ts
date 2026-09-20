@@ -1,8 +1,12 @@
 /**
- * The gate: one hook, evaluated for every tool call the harness is about to make. It answers with
- * a decision — run, block, or ask — and leaves a record on the call so the row in the transcript
- * can say afterwards how it got past. A block is not an error: the harness turns it into a tool
- * result the model reads, which is how the agent learns to propose instead of trying again.
+ * The gate: one question, asked for every tool call the agent is about to make. It answers with a
+ * decision — run, block, or ask — and with the record of how it decided, which is what the row in
+ * the transcript shows afterwards. The record travels back with the answer rather than only being
+ * written down: the row it belongs to is already on screen, and a conversation whose decisions are
+ * not being kept still says how each call got past.
+ *
+ * A block is not an error: the agent turns it into a tool result the model reads, which is how the
+ * agent learns to propose instead of trying again.
  */
 import {
   type ApprovalAsk,
@@ -43,8 +47,14 @@ export interface ToolCallEvent {
   args: Record<string, unknown>
 }
 
-/** What the harness reads: undefined runs the call, a block replaces it with an error result. */
-export type GateVerdict = undefined | { block: { reason: string } }
+/**
+ * What the agent is told: a block replaces the call with an error result carrying the reason, in
+ * Alpha's words. The record is what the ledger row shows.
+ */
+export interface GateVerdict {
+  block?: { reason: string }
+  record: ApprovalRecord
+}
 
 const DENIED_FALLBACK = 'The user denied this call.'
 
@@ -75,16 +85,17 @@ export function createToolGate(ports: GatePorts): (event: ToolCallEvent) => Prom
       const record: ApprovalRecord =
         decision.by === 'rule' ? { kind: 'rule', level, ruleId: decision.ruleId } : { kind: 'auto', level }
       ports.note(event.toolCallId, record)
-      return undefined
+      return { record }
     }
 
     if (decision.outcome === 'block') {
-      ports.note(event.toolCallId, {
+      const record: ApprovalRecord = {
         kind: 'blocked',
         level: ports.level(ports.conversationId),
         reason: decision.reason,
-      })
-      return { block: { reason: decision.reason } }
+      }
+      ports.note(event.toolCallId, record)
+      return { block: { reason: decision.reason }, record }
     }
 
     return askForApproval(ports, event, risk)
@@ -111,8 +122,9 @@ async function askForApproval(
 
   if (answer.decision === 'deny') {
     const reason = answer.reason === undefined || answer.reason === '' ? DENIED_FALLBACK : answer.reason
-    ports.note(event.toolCallId, { kind: 'denied', level, reason })
-    return { block: { reason } }
+    const record: ApprovalRecord = { kind: 'denied', level, reason }
+    ports.note(event.toolCallId, record)
+    return { block: { reason }, record }
   }
 
   if (answer.decision === 'always') {
@@ -127,10 +139,12 @@ async function askForApproval(
       createdAt: Date.now(),
     }
     ports.remember(rule)
-    ports.note(event.toolCallId, { kind: 'always', level, ruleId: rule.id })
-    return undefined
+    const record: ApprovalRecord = { kind: 'always', level, ruleId: rule.id }
+    ports.note(event.toolCallId, record)
+    return { record }
   }
 
-  ports.note(event.toolCallId, { kind: 'once', level })
-  return undefined
+  const once: ApprovalRecord = { kind: 'once', level }
+  ports.note(event.toolCallId, once)
+  return { record: once }
 }

@@ -4,6 +4,7 @@
  */
 
 import {
+  type AgentSnapshot,
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
@@ -45,6 +46,8 @@ const bridge: AlphaBridge = {
   setConversationLevel: (id: string, level: PermissionLevel) =>
     ipcRenderer.invoke(IPC.setConversationLevel, id, level) as Promise<ConversationSummary>,
   sendWindowCommand: (command: WindowCommand) => ipcRenderer.invoke(WINDOW_COMMAND_CHANNELS[command]) as Promise<void>,
+  testProvider: (id: string, modelId: string) =>
+    ipcRenderer.invoke(IPC.testProvider, id, modelId) as Promise<{ ok: boolean; message: string }>,
   onWindowState: (listener: (state: WindowState) => void) => {
     const handler = (_event: unknown, state: WindowState) => listener(state)
     ipcRenderer.on(IPC.windowStateChanged, handler)
@@ -74,8 +77,6 @@ const bridge: AlphaBridge = {
   removeProvider: (id: string) => ipcRenderer.invoke(IPC.removeProvider, id) as Promise<ProvidersSnapshotMessage>,
   setCredential: (id: string, secret: string) =>
     ipcRenderer.invoke(IPC.setCredential, id, secret) as Promise<ProvidersSnapshotMessage>,
-  testProvider: (id: string, modelId: string) =>
-    ipcRenderer.invoke(IPC.testProvider, id, modelId) as Promise<{ ok: boolean; message: string }>,
   setConversationModel: (id: string, providerId: string, modelId: string) =>
     ipcRenderer.invoke(IPC.setConversationModel, id, providerId, modelId) as Promise<ConversationSummary>,
   setThinkingLevel: (id: string, level: ThinkingLevel) =>
@@ -116,6 +117,15 @@ const bridge: AlphaBridge = {
     const handler = (_event: unknown, rules: PermissionRule[]) => listener(rules)
     ipcRenderer.on(IPC.permissionRulesChanged, handler)
     return () => ipcRenderer.removeListener(IPC.permissionRulesChanged, handler)
+  },
+
+  agentSnapshot: () => ipcRenderer.invoke(IPC.agentSnapshot) as Promise<AgentSnapshot>,
+  setAgentPath: (path: string) => ipcRenderer.invoke(IPC.setAgentPath, path) as Promise<AgentSnapshot>,
+  installAgent: () => ipcRenderer.invoke(IPC.installAgent) as Promise<AgentSnapshot>,
+  onAgentChanged: (listener: (snapshot: AgentSnapshot) => void) => {
+    const handler = (_event: unknown, snapshot: AgentSnapshot) => listener(snapshot)
+    ipcRenderer.on(IPC.agentChanged, handler)
+    return () => ipcRenderer.removeListener(IPC.agentChanged, handler)
   },
 }
 

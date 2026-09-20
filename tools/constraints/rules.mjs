@@ -305,6 +305,30 @@ export const RULES = [
   },
 
   {
+    id: '02-architecture:no-agent-dependency',
+    constraint: '02-architecture.md',
+    description: 'the agent is a program Alpha runs, not a library it links',
+    check({ path, text }) {
+      if (!path.startsWith('packages/') || !path.includes('/src/')) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        // A string may name the package Alpha tells the person to install; an import may not.
+        if (isComment(line) || line.includes('npm install')) return
+        for (const specifier of importSpecifiers(line)) {
+          if (specifier.startsWith('@earendil-works/') || /^pi-(agent-core|ai)$/.test(specifier)) {
+            found.push({
+              line: index + 1,
+              message: 'Alpha drives an agent it does not depend on: no pi package in the source',
+              text: line.trim(),
+            })
+          }
+        }
+      })
+      return found
+    },
+  },
+
+  {
     id: '02-architecture:max-file-lines',
     constraint: '02-architecture.md',
     description: 'a file fits in a head',

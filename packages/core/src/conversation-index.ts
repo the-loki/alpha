@@ -23,6 +23,9 @@ const ConversationSummarySchema = Type.Object({
   permissionLevel: Type.Union(PERMISSION_LEVELS.map((level) => Type.Literal(level))),
   model: Type.Object({ providerId: Type.String(), modelId: Type.String() }),
   thinkingLevel: Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level))),
+  // Absent on a conversation written before conversations could be forked, and read as "this
+  // conversation's own id is its session" — the same meaning as an empty string.
+  sessionId: Type.Optional(Type.String()),
   // Absent means not archived, and it is optional on purpose: a required field would fail the
   // whole index on the first launch after an upgrade and empty the sidebar (ADR-0011's sibling
   // decision, ticket #79).
@@ -50,7 +53,15 @@ export function parseConversationIndex(raw: unknown): ConversationIndex {
   const candidate = typeof raw === 'string' ? parseJson(raw) : raw
   if (!Value.Check(ConversationIndexSchema, candidate)) return emptyConversationIndex()
   const index: IndexShape = candidate
-  return { version: 1, conversations: index.conversations }
+  // A conversation written before conversations could be forked has no session of its own, which
+  // is what an empty id means: the conversation's own id is the session's.
+  return {
+    version: 1,
+    conversations: index.conversations.map((conversation) => ({
+      ...conversation,
+      sessionId: conversation.sessionId ?? '',
+    })),
+  }
 }
 
 export function listForWorkspace(index: ConversationIndex, workspacePath: string): ConversationSummary[] {
