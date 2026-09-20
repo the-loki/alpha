@@ -5,6 +5,7 @@ import { providerActions, providers, runningModel } from '../stores/providers.ts
 import { useText } from '../stores/shell.ts'
 import { CHIP as CHIP_SHAPE, ROW_CURRENT, ROW_HOVER } from './controls.ts'
 import { CheckIcon } from './icons.tsx'
+import { SCROLLS } from './ledger.ts'
 
 const CHIP = `${CHIP_SHAPE} max-w-56 border-line text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment`
 
@@ -74,7 +75,7 @@ export function ModelChip() {
         <div
           role="menu"
           aria-label={t('model.menuLabel')}
-          class="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-surface-overlay py-1 overlay-in shadow-overlay"
+          class={`absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 rounded-overlay border border-line bg-surface-overlay py-1 overlay-in shadow-overlay ${SCROLLS}`}
         >
           <For each={providers.snapshot.providers}>
             {(provider) => (

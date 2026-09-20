@@ -45,11 +45,16 @@ export const PRIMARY_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center rounde
  */
 export const FIELD_FRAME = 'rounded-control border border-line bg-ink-700 focus:border-line-strong'
 
-/** The row inside a menu that is the one in force: a tint of the surface it sits on (C5.2). */
-export const ROW_CURRENT = 'bg-ink-900/50'
+/**
+ * The row inside a menu that is the one in force: a tint of the ink the panel is made of (C5.2). The
+ * ink and not the palette's greys, because an overlay is a lift off the page in both palettes and the
+ * greys are not on the same side of the panel in both: in the dark they would deepen the row back
+ * toward the page it just floated off.
+ */
+export const ROW_CURRENT = 'bg-parchment/16'
 
 /** And the row a pointer is over: the same tint, lighter, so the two never read as the same state. */
-export const ROW_HOVER = 'hover:bg-ink-900/30'
+export const ROW_HOVER = 'hover:bg-parchment/8'
 
 /**
  * A name with a state on it: the permission level, the model a message will run on. Same height as

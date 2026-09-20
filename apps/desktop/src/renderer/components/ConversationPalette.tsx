@@ -4,6 +4,7 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
 import { ROW_CURRENT } from './controls.ts'
+import { SCROLLS } from './ledger.ts'
 
 /** How many matches the palette shows at once: more than this is a list, not a shortcut. */
 const SHOWN = 8
@@ -82,7 +83,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
             }}
             class="w-full border-b border-line bg-transparent px-4 py-3 text-body text-parchment placeholder:text-parchment-faint"
           />
-          <div role="listbox" aria-label={t('palette.list')} class="max-h-80 overflow-y-auto py-1">
+          <div role="listbox" aria-label={t('palette.list')} class={`max-h-80 py-1 ${SCROLLS}`}>
             <For each={shown()}>
               {(conversation, index) => (
                 <button

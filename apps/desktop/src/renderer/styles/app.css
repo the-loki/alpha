@@ -130,8 +130,10 @@
   --text-body: 0.9375rem;
   --text-body--line-height: 1.65;
 
-  /* How wide a line of prose may get, in characters: code, diffs and tables take the rest. */
-  --container-measure: 100ch;
+  /* How wide a line of prose may get, in characters: code, diffs and tables take the rest. Seventy,
+     not a hundred: the sweep back is what a reader's eye does between every line, and a page column's
+     worth of characters is a wall with no shape in it to keep a place in (C5.4). */
+  --container-measure: 70ch;
 }
 
 /*
@@ -298,6 +300,11 @@
     );
   }
 
+  /*
+   * The wheel: half a rem of room, and a grip inside it that a hand can actually take hold of. The
+   * transparent border is what keeps the thumb a pill rather than a bar, and at a tenth of a rem a
+   * side it left two pixels of the eight to aim at (C5.4).
+   */
   ::-webkit-scrollbar {
     width: 0.5rem;
     height: 0.5rem;
@@ -306,7 +313,7 @@
   ::-webkit-scrollbar-thumb {
     background-color: var(--color-ink-600);
     border-radius: 1rem;
-    border: 0.1875rem solid transparent;
+    border: 0.125rem solid transparent;
     background-clip: content-box;
   }
 

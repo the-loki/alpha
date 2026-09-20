@@ -60,7 +60,7 @@ function Command(props: { icon: JSX.Element; label: string; hint?: string; onCli
       aria-label={props.label}
       title={props.hint ?? props.label}
       onClick={() => props.onClick()}
-      class="no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
+      class="no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
     >
       {props.icon}
     </button>
@@ -129,7 +129,7 @@ export function TitleBar(props: { onSearch: () => void; inSettings: boolean }) {
             href="#/settings"
             aria-label={t('settings.open')}
             title={t('settings.open')}
-            class="no-drag mr-1 grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-700/60 hover:text-parchment"
+            class="no-drag mr-1 grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
           >
             <TuneIcon />
           </a>

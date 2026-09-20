@@ -3,7 +3,7 @@ import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { agent, agentActions, agentReady } from '../../stores/agent.ts'
 import { useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT } from '../controls.ts'
+import { CONTROL_HEIGHT, OUTLINED_ACTION } from '../controls.ts'
 
 /**
  * The agent Alpha runs: none of its own, so this panel is the whole relationship with pi until a
@@ -75,11 +75,7 @@ export function AgentSection() {
                 >
                   {snapshot().installing ? t('agent.installing') : t('agent.install')}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void agentActions.refresh()}
-                  class="inline-flex h-7 items-center rounded-control border border-line px-3 text-xs text-parchment-dim hover:bg-ink-700"
-                >
+                <button type="button" onClick={() => void agentActions.refresh()} class={OUTLINED_ACTION}>
                   {t('agent.recheck')}
                 </button>
               </div>
@@ -96,7 +92,7 @@ export function AgentSection() {
                       void navigator.clipboard.writeText(snapshot().command)
                       setCopied(true)
                     }}
-                    class="rounded-control border border-line px-3 py-1.5 text-xs text-parchment-dim hover:bg-ink-700"
+                    class={OUTLINED_ACTION}
                   >
                     {copied() ? t('agent.copied') : t('agent.copy')}
                   </button>

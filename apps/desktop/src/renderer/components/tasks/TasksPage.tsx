@@ -14,7 +14,7 @@ import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { runsOf, taskActions, taskOf, tasks } from '../../stores/tasks.ts'
 import { DESTRUCTIVE_ACTION, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
 import { ClockIcon } from '../icons.tsx'
-import { BAND } from '../ledger.ts'
+import { BAND, PAGE, SCROLLS } from '../ledger.ts'
 import { TaskForm } from './TaskForm.tsx'
 
 function scheduleText(t: ReturnType<typeof useText>, schedule: TaskSchedule): string {
@@ -137,7 +137,7 @@ export function TasksPage() {
         </button>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+      <div class={`min-h-0 flex-1 py-6 ${PAGE} ${SCROLLS}`}>
         {/* What this page is for, on the measure the prose keeps: the band's rule is what separates
             the page's head from its body, so the first line of the body draws no rule of its own. */}
         <p class="max-w-measure text-xs leading-relaxed text-parchment-dim">{t('tasks.intro')}</p>

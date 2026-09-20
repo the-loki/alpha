@@ -5,7 +5,7 @@ import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.
 import { tasks } from '../stores/tasks.ts'
 import { ArchivedSection, FolderSection } from './FolderTree.tsx'
 import { PlusIcon } from './icons.tsx'
-import { PANEL } from './ledger.ts'
+import { PANEL, SCROLLS } from './ledger.ts'
 
 /**
  * A control that is only its glyph: an action that belongs beside the thing it acts on rather than
@@ -19,7 +19,7 @@ function IconAction(props: { icon: JSX.Element; label: string; onClick: () => vo
       aria-label={props.label}
       title={props.label}
       onClick={props.onClick}
-      class="grid h-5 w-5 shrink-0 place-items-center rounded-control text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment"
+      class="grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
     >
       {props.icon}
     </button>
@@ -42,7 +42,7 @@ export function Sidebar() {
     // A soft panel beside the page: the workbench's contents, floating the same distance off the
     // window's edges as the page does (C5.4).
     <aside class={PANEL}>
-      <div class="mt-1.5 flex min-h-0 flex-1 flex-col overflow-y-auto pt-2">
+      <div class={`mt-1.5 flex min-h-0 flex-1 flex-col pt-2 ${SCROLLS}`}>
         {/* The index's own row: what it holds, how much of it, and the one action that belongs to
             the index itself — adding another folder to it. */}
         <div class="flex items-center gap-1 px-2 pb-1">

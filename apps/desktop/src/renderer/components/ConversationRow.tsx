@@ -44,7 +44,7 @@ export function ConversationRow(props: {
             class={`flex min-w-0 flex-1 items-center gap-2 rounded-control py-1.5 pr-2 pl-3 text-left transition-colors ${
               props.conversation.id === conversations.activeId
                 ? 'bg-ink-700 text-parchment shadow-soft'
-                : 'text-parchment-dim hover:bg-ink-700/60'
+                : 'text-parchment-dim hover:bg-ink-600'
             }`}
           >
             <span class="flex w-4 shrink-0 justify-center">

@@ -21,6 +21,18 @@ const DOT_CLASS: Record<string, string> = {
 }
 
 /**
+ * What the pointer does to the level's tone: deepen its frame. A chip answers the pointer with its
+ * frame rather than with a fill (C5.6), and a tinted chip has to do it in its own tint — a fill would
+ * paint over the level's own colour, and the neutral frame would say the chip has no level on it.
+ */
+const TONE_HOVER: Record<string, string> = {
+  info: 'hover:border-info/70',
+  amber: 'hover:border-amber/70',
+  jade: 'hover:border-jade/70',
+  warm: 'hover:border-warm/70',
+}
+
+/**
  * The permission level, always visible, at the foot of the composer: what the message about to be
  * typed is allowed to do, next to the message. Colour distinguishes the levels, but the label is
  * what carries the meaning, so the chip still reads for someone who cannot tell warm from jade.
@@ -73,7 +85,7 @@ export function LevelChip() {
             : t('level.chipTitle')
         }
         onClick={() => setOpen((value) => !value)}
-        class={`${CHIP} font-medium transition-colors ${TONE_CLASS[tone()]}`}
+        class={`${CHIP} font-medium transition-colors ${TONE_CLASS[tone()]} ${TONE_HOVER[tone()]}`}
       >
         <span class={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone()]}`} aria-hidden="true" />
         {t(levelKey(level()))}

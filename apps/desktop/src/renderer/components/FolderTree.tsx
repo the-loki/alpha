@@ -140,7 +140,7 @@ function ConversationList(props: { conversations: ConversationSummary[] }) {
           type="button"
           onClick={() => setAll((value) => !value)}
           aria-label={all() ? t('sidebar.showFewer') : t('sidebar.showAll', { count: props.conversations.length })}
-          class="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment-dim"
+          class="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
         >
           {all() ? t('sidebar.showFewer') : t('sidebar.more', { count: hidden() })}
         </button>
@@ -190,7 +190,7 @@ export function ArchivedSection(props: { conversations: ConversationSummary[] })
               type="button"
               onClick={() => setAll(true)}
               aria-label={t('sidebar.showAll', { count: props.conversations.length })}
-              class="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment-dim"
+              class="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
             >
               {t('sidebar.more', { count: hidden() })}
             </button>

@@ -325,3 +325,236 @@ test('hovering a control moves nothing', async () => {
 
   await app.close()
 })
+
+/** What is actually on screen where an element is: its own fill painted over its ancestors'. */
+async function painted(target: Locator): Promise<{ rgb: string; lum: number }> {
+  return await target.evaluate((node) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (context === null) throw new Error('no 2d context')
+    const chain: string[] = []
+    for (let current: Element | null = node as Element; current !== null; current = current.parentElement) {
+      chain.push(getComputedStyle(current).backgroundColor)
+    }
+    // Outermost first, so a translucent layer lands on the colour it is drawn on.
+    for (const layer of chain.reverse()) {
+      context.fillStyle = layer
+      context.fillRect(0, 0, 1, 1)
+    }
+    const [r = 0, g = 0, b = 0] = [...context.getImageData(0, 0, 1, 1).data]
+    const linear = [r, g, b].map((channel) => {
+      const part = channel / 255
+      return part <= 0.03928 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4
+    })
+    return {
+      rgb: `${r} ${g} ${b}`,
+      lum: 0.2126 * (linear[0] ?? 0) + 0.7152 * (linear[1] ?? 0) + 0.0722 * (linear[2] ?? 0),
+    }
+  })
+}
+
+/** The colour of one of the theme's own slots: a probe wearing it, read by the same pipeline. */
+async function token(window: Page, name: string): Promise<string> {
+  await window.evaluate((slot) => {
+    const probe = document.createElement('div')
+    probe.dataset.probe = slot
+    probe.style.backgroundColor = `var(--color-${slot})`
+    document.body.append(probe)
+  }, name)
+  const seen = await painted(window.locator(`[data-probe="${name}"]`))
+  await window.evaluate((slot) => document.querySelector(`[data-probe="${slot}"]`)?.remove(), name)
+  return seen.rgb
+}
+
+/**
+ * One pointer, one answer (C5.6). A control the hand can act on tells the hand the same thing
+ * wherever it is drawn: it takes the panel's tint, `--ink-600` — the one step off the page in both
+ * palettes, darker in the light and lighter in the dark. A translucent wash is not that: the same
+ * wash over the rail and over the page is two different answers, and in the dark palette one of them
+ * sinks back into the page instead of lifting off it. A fill that is the page's own colour is not an
+ * answer either, and three of the settings panels used to give exactly that.
+ */
+test('the pointer is answered with one fill, on every surface', async () => {
+  test.setTimeout(240_000)
+  for (const theme of ['light', 'dark'] as const) {
+    const { app, window } = await launch({ theme })
+    await ask(window, 'say something')
+    const tint = await token(window, 'ink-600')
+
+    const answer = async (what: string, target: Locator) => {
+      await target.hover()
+      // Past the fade: a control that answers with `transition-colors` is mid-answer otherwise.
+      await window.waitForTimeout(260)
+      const seen = await painted(target)
+      expect(`${theme} ${what} is ${seen.rgb}`, `${theme} ${what}: ${seen.rgb} where the tint is ${tint}`).toBe(
+        `${theme} ${what} is ${tint}`,
+      )
+      const fade = await target.evaluate((node) => getComputedStyle(node as Element).transitionDuration)
+      expect(`${theme} ${what} fades in ${fade}`).not.toBe(`${theme} ${what} fades in 0s`)
+    }
+
+    // The strip: a command beside the window's own controls. Both are one row of chrome, and the
+    // three commands used to lift while the controls beside them darkened.
+    await answer('the Tasks command', window.getByRole('button', { name: 'Tasks' }))
+    await answer('a window control', window.getByRole('button', { name: 'Minimize window' }))
+
+    // The rail: a folder row, a glyph on the index's own heading, and the places inside settings.
+    const rail = window.getByRole('complementary')
+    await answer('a folder row', rail.getByRole('button', { name: 'sandbox' }).first())
+    await answer('a glyph action', rail.getByRole('button', { name: 'Add a folder' }))
+
+    // The page: the ledger's rows.
+    await answer('a ledger row', window.getByRole('button', { name: /notes\.txt/ }).first())
+
+    // And the pages: a choice, a decision card, a button with a frame.
+    await window.getByRole('link', { name: 'Settings' }).click()
+    await window.getByRole('link', { name: 'Appearance', exact: true }).click()
+    const appearanceChoice = window.getByRole('button', { name: theme === 'dark' ? 'Light' : 'Dark' })
+    await answer('an appearance choice', appearanceChoice)
+
+    await window.getByRole('link', { name: 'Permissions', exact: true }).click()
+    const level = window.getByRole('main').getByRole('button', { name: /^Ask/ }).first()
+    await answer('a permission card', level)
+
+    await window.getByRole('link', { name: 'Agent', exact: true }).click()
+    await answer(
+      'a settings button',
+      window
+        .getByRole('main')
+        .getByRole('button', { name: /Look again/ })
+        .first(),
+    )
+
+    // The nav is the rail's panel in another place, and its rows answer like the rail's rows.
+    await answer('a settings row', window.getByRole('link', { name: 'Providers', exact: true }))
+
+    await app.close()
+  }
+})
+
+/**
+ * Two things the pointer can act on that are not rows, and the answer each of them owes. A chip is a
+ * frame: the pointer brightens the frame, and the chip keeps its fill — the two chips in the
+ * composer's foot used to disagree, one brightening and the other saying nothing at all. A word is
+ * only a word: the pointer lifts its ink and fills nothing, so a row of actions under a message
+ * never turns into a row of buttons.
+ */
+test('a chip answers with its frame, a word answers with its ink', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  // The turn's own actions appear when the answer is complete: reading a control before that is
+  // reading one the transcript may replace under the pointer, and a detached node has no styles.
+  await expect(window.getByRole('button', { name: 'Copy message' }).first()).toBeVisible()
+
+  const edgeAndInk = async (target: Locator) =>
+    await target.evaluate((node) => {
+      if (!(node as Element).isConnected) throw new Error('the control was replaced while it was being read')
+      const style = getComputedStyle(node as Element)
+      return { edge: style.borderTopColor, ink: style.color, fill: style.backgroundColor }
+    })
+
+  for (const what of ['Scripted model', 'Full access']) {
+    const chip = window.getByRole('button', { name: what, exact: true })
+    const before = await edgeAndInk(chip)
+    await chip.hover()
+    await window.waitForTimeout(260)
+    const after = await edgeAndInk(chip)
+    expect(`${what} edge: ${before.edge} -> ${after.edge}`).not.toBe(`${what} edge: ${before.edge} -> ${before.edge}`)
+    expect(`${what} fill: ${before.fill} -> ${after.fill}`).toBe(`${what} fill: ${before.fill} -> ${before.fill}`)
+  }
+
+  const word = window.getByRole('button', { name: 'Copy message' }).first()
+  const before = await edgeAndInk(word)
+  await word.hover()
+  await window.waitForTimeout(260)
+  const after = await edgeAndInk(word)
+  expect(`copy ink: ${before.ink} -> ${after.ink}`).not.toBe(`copy ink: ${before.ink} -> ${before.ink}`)
+  expect(`copy fill stays ${before.fill}`).toBe(`copy fill stays ${after.fill}`)
+
+  await app.close()
+})
+
+/**
+ * The row inside a menu, and the menu it is inside. An overlay is a lift off the page (C5.2), so the
+ * row inside it is a further step in the same direction — and it has to be that direction in both
+ * palettes. The rows used to be a tint of the page's own ink, which meant the row a pointer was over
+ * sank back toward the page it had just floated off: closer to the page than the menu around it.
+ */
+test('a row inside a menu steps further off the page than the menu does', async () => {
+  test.setTimeout(240_000)
+  for (const theme of ['light', 'dark'] as const) {
+    const { app, window } = await launch({ theme })
+    await ask(window, 'say something')
+    const page = await painted(window.getByRole('main'))
+
+    /** How far off the page a surface is drawn: a row closer to the page than its menu is a hole. */
+    const step = async (target: Locator): Promise<number> => {
+      const seen = await painted(target)
+      return Math.abs(seen.lum - page.lum)
+    }
+
+    await window.getByRole('button', { name: 'Full access' }).click()
+    const menu = window.getByRole('menu', { name: 'Permission level' })
+    await expect(menu).toBeVisible()
+    const surface = await step(menu)
+    // The row in force, and a row the pointer is over: both are steps off the menu's own fill.
+    const inForce = await step(menu.locator('button[aria-checked="true"]').first())
+    expect(inForce, `${theme}: the row in force inside a menu sinks toward the page`).toBeGreaterThan(surface)
+    const other = menu.locator('button[role="menuitemradio"][aria-checked="false"]').first()
+    await other.hover()
+    await window.waitForTimeout(260)
+    const hovered = await step(other)
+    expect(hovered, `${theme}: hovering a menu row sinks it toward the page`).toBeGreaterThan(surface)
+    await window.keyboard.press('Escape')
+
+    // The palette's own row is the same promise, over a panel that floats on a scrim. Its rows take
+    // the pointer by *becoming* the choice, so what is measured is where the pointer left it.
+    await window.keyboard.press('Control+k')
+    const dialog = window.getByRole('dialog', { name: 'Switch conversation' })
+    await expect(dialog).toBeVisible()
+    const palette = await step(dialog.locator('div').first())
+    const chosen = await step(dialog.getByRole('option', { selected: true }))
+    expect(chosen, `${theme}: the palette's row in force sinks toward the page`).toBeGreaterThan(palette)
+    await window.keyboard.press('Escape')
+
+    await app.close()
+  }
+})
+
+/**
+ * The wheel's grip. A scrollbar takes its room from the column it scrolls — 0.5rem of it — and draws
+ * its thumb inside that room, a transparent border on each side being what makes the thumb a pill
+ * rather than a bar. Three pixels of border on each side of an eight pixel bar leaves two pixels to
+ * take hold of, which is a hairline with a hit area, not a grip.
+ */
+test('the wheel’s grip is a grip, and the wheel takes real room', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await ask(window, 'and something else')
+  // A window too short for the transcript, so the wheel is really there to be measured.
+  await window.setViewportSize({ width: 1440, height: 380 })
+
+  const bar = await window.getByRole('main').evaluate((node) => {
+    const scroller = [...node.querySelectorAll('*')].find(
+      (child) => getComputedStyle(child).overflowY === 'auto' && child.scrollHeight > child.clientHeight,
+    )
+    if (scroller === undefined) throw new Error('nothing on this page scrolls')
+    const box = scroller as HTMLElement
+    const style = getComputedStyle(document.documentElement, '::-webkit-scrollbar')
+    const thumb = getComputedStyle(document.documentElement, '::-webkit-scrollbar-thumb')
+    const edge = Number.parseFloat(thumb.borderLeftWidth) + Number.parseFloat(thumb.borderRightWidth)
+    return {
+      room: box.offsetWidth - box.clientWidth,
+      width: Number.parseFloat(style.width),
+      grip: Number.parseFloat(style.width) - edge,
+    }
+  })
+  expect({ room: bar.room, width: bar.width }).toEqual({ room: 8, width: 8 })
+  expect(bar.grip, `a ${bar.grip}px grip inside a ${bar.width}px bar`).toBeGreaterThanOrEqual(4)
+
+  await app.close()
+})

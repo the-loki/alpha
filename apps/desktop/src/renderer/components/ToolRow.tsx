@@ -98,7 +98,7 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open()}
-        class="flex w-full items-center gap-3 rounded-control px-2 py-2 text-left transition-colors hover:bg-ink-800"
+        class="flex w-full items-center gap-3 rounded-control px-2 py-2 text-left transition-colors hover:bg-ink-600"
       >
         <span
           class={`w-3 shrink-0 text-center font-mono text-micro ${TONE[props.block.status]}`}

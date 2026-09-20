@@ -12,7 +12,7 @@ import { APP_DIR, configureProvider, scriptedAgent } from './agent'
  */
 const SCRIPT = [{ tool: { name: 'bash', args: { command: 'echo hello' } } }, 'It says hello from the ledger.']
 
-async function launch(options: { level?: string } = {}) {
+async function launch(options: { level?: string; replies?: unknown[] } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   writeFileSync(join(workspace, 'notes.txt'), 'hello from the ledger')
@@ -36,7 +36,7 @@ async function launch(options: { level?: string } = {}) {
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(SCRIPT),
+      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? SCRIPT),
       NODE_ENV: 'production',
     },
   })
@@ -97,6 +97,45 @@ test('the controls in one row are one height', async () => {
 
   // And the head's own select, which stands in a row with words rather than with buttons.
   await expect(heights(window.getByRole('combobox', { name: 'Thinking' }))).resolves.toEqual([CONTROL])
+
+  // A choice in a settings panel is the same pill as a choice in another panel: one height, because
+  // two panels that draw the same decision at two heights are two designs (C5.4). Each is measured
+  // while its own panel is the one on screen.
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await window.getByRole('link', { name: 'Appearance', exact: true }).click()
+  const themeChoice = await heights(window.getByRole('main').getByRole('button', { name: 'Dark', exact: true }))
+  await window.getByRole('link', { name: 'Browser access', exact: true }).click()
+  const reachChoice = await heights(window.getByRole('main').getByRole('button', { name: 'This machine only' }))
+  // And a button with a frame is the control height in every panel — the agent's pair and the token's
+  // pair used to be 2px taller than every other framed button in the app.
+  const tokenButtons = await heights(
+    window.getByRole('main').getByRole('button', { name: 'Copy', exact: true }),
+    window.getByRole('main').getByRole('button', { name: 'Replace' }),
+  )
+  await window.getByRole('link', { name: 'Agent', exact: true }).click()
+  const agentButtons = await heights(
+    window.getByRole('main').getByRole('button', { name: 'Look again' }),
+    window.getByRole('main').getByRole('button', { name: 'Copy the command' }),
+  )
+  expect([...themeChoice, ...reachChoice, ...tokenButtons, ...agentButtons]).toEqual(
+    Array.from({ length: 6 }, () => CONTROL),
+  )
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+
+  // An action that is only its glyph is the same box wherever it is drawn: the rail's own heading and
+  // the strip draw the same kind of control, and a 1.25rem glyph beside a 1.75rem one is two designs.
+  const glyphs = await Promise.all(
+    [window.getByRole('button', { name: 'Add a folder' }), window.getByRole('button', { name: 'Search' })].map(
+      async (glyph) => {
+        const rect = await box(glyph)
+        return [rect.w, rect.h]
+      },
+    ),
+  )
+  expect(glyphs).toEqual([
+    [CONTROL, CONTROL],
+    [CONTROL, CONTROL],
+  ])
 
   await app.close()
 })
@@ -360,5 +399,119 @@ test('the rail and the settings menu are the same panel', async () => {
   await window.getByRole('link', { name: 'Settings' }).click()
   const menu = await box(window.getByRole('navigation', { name: 'Settings sections' }))
   expect(menu).toEqual(rail)
+  await app.close()
+})
+
+/**
+ * Where the page's column stops on the right. A wheel that appears when the content grows takes its
+ * room out of the column it scrolls, so a page whose transcript is long ends 8px short of a page
+ * whose content fits — and the band above it, which never scrolls and so never gives up the room,
+ * ends 8px past the body it names. One page, one right edge, and the edge does not move when the
+ * page grows (C5.4).
+ */
+test('a page ends on one right edge, whether or not it has grown long', async () => {
+  const { app, window } = await launch({
+    replies: [{ tool: { name: 'read', args: { path: 'notes.txt' } } }, 'It says hello from the ledger.'],
+  })
+  await ask(window, 'show me the notes')
+  await settled(window)
+  await ask(window, 'and again')
+  await settled(window)
+
+  /** Where the three things on a page stop: the entries, the band's last control, the composer's card. */
+  const edges = async (): Promise<{ entry: number; band: number; composer: number; scrolls: boolean }> =>
+    await window.getByRole('main').evaluate((node) => {
+      const round = (value: number) => Math.round(value * 100) / 100
+      const of = (element: Element | null | undefined) =>
+        element === null || element === undefined ? -1 : round(element.getBoundingClientRect().right)
+      const scroller = [...node.querySelectorAll('*')].find(
+        (child) => getComputedStyle(child).overflowY === 'auto' && child.clientHeight > 0,
+      )
+      const band = node.querySelector('[class*="h-14"][class*="border-b"]')
+      let card: Element | null = node.querySelector('textarea')
+      while (card !== null && !card.className.toString().includes('rounded-card')) card = card.parentElement
+      return {
+        entry: of(node.querySelector('[data-role="tool"]')),
+        band: of(band?.lastElementChild?.lastElementChild),
+        composer: of(card),
+        scrolls: scroller !== undefined && scroller.scrollHeight > scroller.clientHeight + 4,
+      }
+    })
+  // The window a transcript fits in, and one it does not: the same page, one turn long and two.
+  await window.setViewportSize({ width: 1440, height: 900 })
+  const roomy = await edges()
+  await window.setViewportSize({ width: 1440, height: 380 })
+  const tight = await edges()
+
+  // The two reads are only worth comparing if the wheel really came and went between them.
+  expect({ roomy: roomy.scrolls, tight: tight.scrolls }).toEqual({ roomy: false, tight: true })
+  // One page, one right edge: what the band ends on, what the entries end on, what the composer ends on.
+  const { scrolls: _roomy, ...whileItFits } = roomy
+  const { scrolls: _tight, ...onceItScrolls } = tight
+  expect(whileItFits, `the page while it fits: ${JSON.stringify(roomy)}`).toEqual({
+    entry: roomy.entry,
+    band: roomy.entry,
+    composer: roomy.entry,
+  })
+  expect(onceItScrolls, `the page once it scrolls: ${JSON.stringify(tight)}`).toEqual({
+    entry: roomy.entry,
+    band: roomy.entry,
+    composer: roomy.entry,
+  })
+
+  // And the same edge on a page that never grows long enough to have a wheel at all.
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  const tasks = await window.getByRole('main').evaluate((node) => {
+    const last = node.querySelector('[class*="h-14"][class*="border-b"]')?.lastElementChild
+    const button = last?.lastElementChild ?? last
+    let card: Element | null =
+      [...node.querySelectorAll('p')].find((line) => (line.textContent ?? '').includes('No tasks')) ?? null
+    while (card !== null && !card.className.toString().includes('rounded-card')) card = card.parentElement
+    return {
+      band: button === null || button === undefined ? -1 : Math.round(button.getBoundingClientRect().right * 100) / 100,
+      card: card === null ? -1 : Math.round(card.getBoundingClientRect().right * 100) / 100,
+    }
+  })
+  expect(tasks, `the tasks page: ${JSON.stringify(tasks)}`).toEqual({ band: roomy.entry, card: roomy.entry })
+
+  await app.close()
+})
+
+/**
+ * A line of prose, measured in the unit that matters to a reader: characters. The page's column is
+ * wide, and prose that fills it is a hundred characters to the line — a wall a reader loses their
+ * place in on every sweep back. The one voice is the display voice of the empty state, and the other
+ * is the body voice of an answer, and both are capped by `--container-measure` (C5.4).
+ */
+test('a line of prose is a measure, not a wall', async () => {
+  const paragraph =
+    'A line of prose is read one line at a time, so its length is the one number a reader feels without naming ' +
+    'it. When the line runs wider than a comfortable measure the eye loses its place on the return sweep, and ' +
+    'the paragraph stops being a paragraph and becomes a wall of text with no shape in it for a reader to hold.'
+  const { app, window } = await launch({ replies: [paragraph] })
+
+  /** How many characters the eye travels before it sweeps back, in the element's own voice. */
+  const perLine = async (target: Locator): Promise<{ chars: number; voice: string }> =>
+    await target.evaluate((node) => {
+      const style = getComputedStyle(node as Element)
+      const probe = document.createElement('span')
+      probe.style.cssText = `position:absolute;visibility:hidden;font:${style.font};white-space:pre;width:1ch`
+      document.body.append(probe)
+      const one = probe.getBoundingClientRect().width
+      probe.remove()
+      const widest = Math.max(...[...(node as Element).getClientRects()].map((rect) => rect.width))
+      return { chars: Math.round(widest / one), voice: `${style.fontSize} ${style.fontFamily.split(',')[0]}` }
+    })
+
+  const READABLE = 70
+  // The display voice is the empty state's own line; the body voice is the paragraph of an answer.
+  const display = await perLine(window.getByRole('main').locator('p[class*="font-display"]').first())
+  expect(display.chars, `the empty state: ${display.voice}`).toBeLessThanOrEqual(READABLE)
+
+  await ask(window, 'show me the notes')
+  await settled(window)
+  const body = await perLine(window.getByRole('main').locator('p').filter({ hasText: 'comfortable measure' }).first())
+  expect(body.chars, `an answer: ${body.voice}`).toBeLessThanOrEqual(READABLE)
+
   await app.close()
 })

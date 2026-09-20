@@ -1,6 +1,6 @@
 import { Show } from 'solid-js'
 import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
-import { BLOCK, entryNumber, MARK_COLUMN, PAGE } from './ledger.ts'
+import { BLOCK, entryNumber, MARK_COLUMN, PAGE, SCROLLS } from './ledger.ts'
 
 /**
  * What is on the page before anything has been asked. With a folder open that is the page itself,
@@ -37,7 +37,7 @@ export function EmptyState() {
       }
     >
       {(folder) => (
-        <div class="min-h-0 flex-1 overflow-y-auto">
+        <div class={`min-h-0 flex-1 ${SCROLLS}`}>
           {/* The title page: the folio number set large, the name of the work in the display voice with
               its address under it, and the sentence in the display italic — what this page is, before
               its first entry is written. The heading is here because the page's one title belongs in

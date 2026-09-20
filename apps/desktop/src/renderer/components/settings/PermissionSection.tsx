@@ -22,7 +22,7 @@ export function PermissionSection() {
                 type="button"
                 aria-pressed={candidate === shell.workspaceLevel}
                 onClick={() => void shellActions.setPermissionLevel(candidate)}
-                class={`flex w-full items-start gap-3 rounded-card border px-3 py-2.5 text-left transition-colors hover:bg-ink-700 ${
+                class={`flex w-full items-start gap-3 rounded-card border px-3 py-2.5 text-left transition-colors hover:bg-ink-600 ${
                   candidate === shell.workspaceLevel
                     ? TONE_CLASS[levelTone(candidate)]
                     : 'border-line text-parchment-dim'

@@ -72,10 +72,13 @@ drawn on the page or on the rail, and they have to stand a readable step off whi
 `--surface-overlay` is that step — a tint of the ink over the chrome (`color-mix(in oklab, …)`, so it
 follows the palette) rather than chrome itself, which in the dark palette sits two percent off the
 scrimmed page and leaves a panel that is not there. The rows *inside* an overlay are the same idea
-one level down: a tint (`--ink-900` at alpha), never a solid step of the ladder, because a solid one
-is the overlay's own colour in one of the two palettes. `e2e/surface.spec.ts` composites what the
-panel is drawn on — scrim included — in a canvas and requires a contrast of at least 1.1, in both
-palettes, for all four overlays.
+one level down: a tint of the ink the panel is made of (`--parchment` at alpha), never a solid step of
+the ladder and never a grey — the greys are not on the same side of the panel in both palettes, so a
+row tinted with one would lift off the page in the light and deepen back toward it in the dark, a hole
+in the menu the pointer just opened. `e2e/surface.spec.ts` composites what the panel is drawn on —
+scrim included — in a canvas and requires a contrast of at least 1.1, in both palettes, for all four
+overlays; it also measures the rows: the one in force, and the one under the pointer, must each stand
+further off the page than the overlay around them.
 
 The alternation is what answers "how deep am I" without a border telling the reader: linen, white,
 linen, tinted. It also means one rule holds in both palettes — in light the sequence is
@@ -83,8 +86,8 @@ linen, tinted. It also means one rule holds in both palettes — in light the se
 against whatever text sits on it: the four steps by `tools/design/theme.test.ts`, which reads the
 tokens out of the stylesheet, and the overlay step by `e2e/surface.spec.ts`, which composites it in
 a real window because a mixed colour is not a value that test can read as a hex. A surface never
-blends a colour of its own: these four steps, the overlay's tint and the scrim behind it
-(`--ink-900` at alpha) are the whole vocabulary.
+blends a colour of its own: these four steps, the overlay's tint and the scrim behind it are the whole
+vocabulary.
 
 ### The accent is a slot, not a colour
 
@@ -180,11 +183,14 @@ diffs, tables and code blocks take its full width, because that is where long li
 code line scrolls inside its own block rather than widening the page. Nothing parks a narrower page
 in the middle of a wide window: a blank margin beside the words is worse than a long line, and the
 room beside a centred column is empty either way. Prose is the one thing that reads worse the wider
-it gets, so it keeps its 100-character cap (`max-w-measure`, declared as `--container-measure` in the
-theme) on the assistant's markdown root and on an entry's own words. The window's opening size is
-what puts the column where it belongs: at 1200 wide (`apps/desktop/src/main/window.ts`) the page is about
-900px and a line of prose about 830 — the band every chat client settles in — and a maximized window
-is capped by the measure rather than by the column.
+it gets, so it keeps a readable cap — seventy characters, whatever voice it is set in
+(`max-w-measure`, declared as `--container-measure` in the theme) — on the assistant's markdown root
+and on an entry's own words. A hundred was a page's width rather than a measure: the sweep back is
+what a reader's eye does between every line, and a hundred characters is a wall with no shape in it
+for a reader to keep a place in. The window's opening size is what puts the column where it belongs:
+at 1200 wide (`apps/desktop/src/main/window.ts`) the page is about 900px and a line of prose about
+580 — the band every chat client settles in — and a maximized window is capped by the measure rather
+than by the column.
 
 ## C5.4 — Space and shape
 
@@ -226,7 +232,9 @@ drawn *inside* the page would give the window a third surface it does not have, 
 would disagree about where the left column ends. A page's own way back lives in that panel, not in
 the page.
 
-**A page wears a band.** One height (3.5rem), one padding (`PAGE`), a hairline under it, and the
+**A page wears a band.** One height (3.5rem), one padding (`BESIDE_SCROLLS` — the page's own padding
+plus the room the wheel takes, since the band never scrolls and has to end where the body ends), a
+hairline under it, and the
 page's title in it at the left — so the title stands on the same x on the conversation, on the tasks
 list and on every settings panel, and the panel's own sentence is the first line of the body rather
 than a second line in the band. The body starts one distance under that rule on every page whose body begins
@@ -243,6 +251,19 @@ on top of that. Nothing centres a narrower column in the middle of a wide page �
 mistake C5.3 forbids one level up, and it is what makes two pages of one window look assembled by
 two people. `e2e/design.spec.ts` measures it: the three pages' titles agree on their x, and the
 composer's words stand on the column the entries' words stand on.
+
+**The wheel's room is part of that edge.** A page is a column that scrolls, and a scrollbar takes
+its room out of the column it scrolls — so a column that scrolls reserves it always (`SCROLLS`, the
+`scrollbar-gutter` on the transcript, a page body, the rail, and the two lists that open as menus and
+can grow while they are open), or every row in the list moves 8px sideways the moment the content
+passes the fold, which is the moment a person is reading it.
+What stands *beside* that column — the band, the composer, the way back above the tasks — never
+scrolls and so loses nothing, and gives up the same 0.5rem on purpose (`BESIDE_SCROLLS`), or the
+entries end 8px short of the band that names them. The wheel itself is half a rem of room with a
+grip of half that inside it: the transparent border that keeps the thumb a pill must leave a hand
+something to take hold of, so it is an eighth of a rem a side and not more. `e2e/design.spec.ts`
+measures the three edges of a page at two window heights, one where the transcript fits and one where
+it scrolls; `e2e/surface.spec.ts` measures the grip inside the bar.
 
 **The margin is a column, not a rule.** Two columns, imported from `components/ledger.ts` so
 nothing re-derives them: the leading column (`MARK_COLUMN`, 1.5rem) and the gap after it (1rem),
@@ -354,7 +375,8 @@ They are all the same size, so the two hairlines between them are the only thing
 is which — a rail whose actions run together is a rail where the fourth row means nothing. A control
 that acts on the index itself belongs *in* the index's heading row: adding a folder is a glyph at
 the right end of `Folders`, beside its count, and never a row of its own. A row spent on it reads as
-a fourth place to go, and it costs the rail a line of height to say something the `+` says in 1.25rem.
+a fourth place to go, and it costs the rail a line of height to say something the `+` says in the
+same box every other glyph action is drawn in, whether it stands in the rail or in the strip.
 
 **Lengths are rem, and the checker says so.** `05-design:no-px-lengths` fails `pnpm check` on any
 px length inside `apps/desktop/src/renderer/`, with exactly one exception: `1px` hairlines, which have to
@@ -394,9 +416,23 @@ overlay entry, and the ember cursor. The one slow change is the hearth — the l
 the page — which fades over a full second when a turn starts and settles over one when it ends, at
 the pace of a room, not of a control. On hover, only two things change: colour and border — plus the
 one deliberate exception, a row's own actions fading in over the row (`opacity`, and `focus-within`
-reveals them for the keyboard as well, so nothing is hover-only). Nothing moves on hover:
+reveals them for the keyboard as well, so nothing is hover-only). **The pointer's answer is one
+colour.** A row or a button the hand can act on fills with `--ink-600`, on every surface and in both
+palettes: it is the one step off the page that reads the same way twice — darker than the page in the
+light, lighter in the dark — where a wash of a lighter token lifts over the rail in one palette and
+sinks into the page in the other, and where a fill of the page's own colour says nothing at all.
+Four kinds of control answer in their own way instead, and only these four: a **chip** brightens its
+own frame and keeps its fill, because the fill is the level or the model it is named for; a row
+inside a **menu** takes a tint of the panel's ink — a further step off the page than the menu itself,
+never back toward it; a control that is already **lit or semantic** — the primary's accent, the
+destructive's red, the amber of a decision — brightens its own colour, because that colour is what it
+means; and a **word** action fills nothing at all and lifts its ink, so a row of actions under a
+message never turns into a row of buttons. Nothing moves on hover:
 `e2e/surface.spec.ts` hovers a chip, a rail row, a ledger row and an action and requires every one of
-them to keep its box, its borders, its padding and its transform.
+them to keep its box, its borders, its padding and its transform; it also requires each row and button
+of the first kind to land on the one fill, in both palettes, and requires the rows inside a menu —
+the one in force and the one under the pointer — to stand further off the page than the menu they
+sit in.
 `prefers-reduced-motion: reduce` collapses every transition to 0ms and freezes the ember cursor.
 
 ## C5.7 — Accessibility floor

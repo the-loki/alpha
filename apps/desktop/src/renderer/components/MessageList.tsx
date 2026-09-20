@@ -9,7 +9,7 @@ import {
 import { createEffect, createMemo, Index, Show } from 'solid-js'
 import { useText } from '../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
-import { BLOCK, entryNumber, MARK_COLUMN, PAGE } from './ledger.ts'
+import { BLOCK, entryNumber, MARK_COLUMN, PAGE, SCROLLS } from './ledger.ts'
 import { MessageView } from './MessageView.tsx'
 
 /** Which user message this is, counting from the top, which is how an edit names its target. */
@@ -107,7 +107,7 @@ export function MessageList(props: { transcript: TranscriptState }) {
         const element = event.currentTarget
         atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 48
       }}
-      class="min-h-0 flex-1 overflow-y-auto"
+      class={`min-h-0 flex-1 ${SCROLLS}`}
       data-region="transcript"
     >
       {/* The page: a leading column carrying the entries' numbers, then the text block. Tool rows,

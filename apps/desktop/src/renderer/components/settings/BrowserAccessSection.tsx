@@ -2,7 +2,7 @@ import type { NetworkBind, NetworkPatch, NetworkState, Undef } from '@alpha/core
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { shell, useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, FIELD_FRAME } from '../controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON, FIELD_FRAME, OUTLINED_ACTION } from '../controls.ts'
 
 const BIND_LABELS: Record<NetworkBind, string> = {
   local: 'This machine only',
@@ -65,10 +65,10 @@ export function BrowserAccessSection() {
                       type="button"
                       aria-pressed={current().bind === bind}
                       onClick={() => change({ bind })}
-                      class={`rounded-control border px-3 py-1.5 text-xs transition-colors ${
+                      class={`flex h-7 items-center rounded-control border px-3 text-xs transition-colors ${
                         current().bind === bind
                           ? 'border-accent/50 bg-accent/10 text-accent'
-                          : 'border-line text-parchment-dim hover:bg-ink-700'
+                          : 'border-line text-parchment-dim hover:bg-ink-600'
                       }`}
                     >
                       {BIND_LABELS[bind]}
@@ -139,7 +139,7 @@ function TokenRow(props: {
           onClick={() => {
             void navigator.clipboard.writeText(props.state.token).then(() => props.onCopied(true))
           }}
-          class="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
+          class={OUTLINED_ACTION}
         >
           {t(props.copied ? 'message.copied' : 'message.copy')}
         </button>
@@ -147,7 +147,7 @@ function TokenRow(props: {
           type="button"
           disabled={disabled()}
           onClick={() => void bridge().regenerateNetworkToken().then(props.onChange)}
-          class="rounded-control border border-line px-3 py-1.5 text-xs text-parchment transition-colors hover:border-line-strong disabled:opacity-40"
+          class={DESTRUCTIVE_BUTTON}
         >
           {t('settings.replaceToken')}
         </button>

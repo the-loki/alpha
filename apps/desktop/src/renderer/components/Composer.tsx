@@ -8,7 +8,7 @@ import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from '
 import { AMBER_ACTION, OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
-import { PAGE } from './ledger.ts'
+import { BESIDE_SCROLLS } from './ledger.ts'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
 
@@ -205,7 +205,7 @@ export function Composer(props: { streaming?: boolean }) {
     // The line the next message is written on: a soft bar floating at the foot of the page. It is
     // set on the words' own column — the entry number's column plus the gap after it, less the
     // bar's own padding — so what is typed starts on the x every entry's words start on (C5.4).
-    <div class={`shrink-0 pt-2 pb-4 ${PAGE}`}>
+    <div class={`shrink-0 pt-2 pb-4 ${BESIDE_SCROLLS}`}>
       {/* One column in from the page's edge, and the bar's own padding makes up the difference: what
           is typed starts on the words' column, and everything the composer stacks — what waits, the
           pictures, the words — shares that one edge. */}

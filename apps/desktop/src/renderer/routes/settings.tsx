@@ -2,7 +2,7 @@ import type { TextKey } from '@alpha/core'
 import { useSearchParams } from '@solidjs/router'
 import { For, type JSX } from 'solid-js'
 import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
-import { BAND, PANEL } from '../components/ledger.ts'
+import { BAND, PAGE, PANEL, SCROLLS } from '../components/ledger.ts'
 import { AgentSection } from '../components/settings/AgentSection.tsx'
 import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
 import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
@@ -106,7 +106,7 @@ export function Settings() {
           is the first rule's subject, not a section under one. The sentence that says what the
           panel is about is above the rules, because it is not a section of the panel — it is the
           panel, said once. */}
-      <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+      <div class={`min-h-0 flex-1 py-6 ${PAGE} ${SCROLLS}`}>
         <p class="max-w-measure text-xs leading-relaxed text-parchment-dim">{t(TAB_NOTES[tab()])}</p>
         <div class="mt-5 divide-y divide-line [&>*]:pt-5">{panelOf(tab())}</div>
       </div>
@@ -125,11 +125,11 @@ export function SettingsNav() {
   const tab = useSettingTab()
 
   return (
-    <nav aria-label={t('settings.sections')} class={`${PANEL} overflow-y-auto pb-6`}>
+    <nav aria-label={t('settings.sections')} class={`${PANEL} pb-6 ${SCROLLS}`}>
       {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
       <a
         href="#/"
-        class="mt-1.5 flex items-center gap-2 rounded-control px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-700/60 hover:text-parchment"
+        class="mt-1.5 flex items-center gap-2 rounded-control px-2 py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
       >
         <ArrowLeftIcon /> {t('settings.back')}
       </a>
@@ -154,7 +154,7 @@ export function SettingsNav() {
                       class={`flex items-center gap-2.5 rounded-control px-2 py-1.5 text-ui transition-colors ${
                         candidate === tab()
                           ? 'bg-ink-700 font-medium text-parchment shadow-soft'
-                          : 'text-parchment-dim hover:bg-ink-700/60 hover:text-parchment'
+                          : 'text-parchment-dim hover:bg-ink-600 hover:text-parchment'
                       }`}
                     >
                       {TAB_ICONS[candidate]()}
