@@ -1,10 +1,9 @@
 import type { TextKey } from '@alpha/core'
 import { createFileRoute, Link, type SearchSchemaInput } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { ArrowLeftIcon, BranchIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
+import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
 import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
 import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
-import { ModelsSection } from '../components/settings/ModelsSection.tsx'
 import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
@@ -14,13 +13,12 @@ import { useText } from '../stores/shell.ts'
  * Settings is a menu, not a scroll: one panel at a time, and each panel has an address of its own
  * so a link to "the browser access page" means something.
  */
-const SETTING_TABS = ['providers', 'models', 'permissions', 'appearance', 'browser-access'] as const
+const SETTING_TABS = ['providers', 'permissions', 'appearance', 'browser-access'] as const
 
 type SettingTab = (typeof SETTING_TABS)[number]
 
 const TAB_LABELS: Record<SettingTab, TextKey> = {
   providers: 'settings.tabProviders',
-  models: 'settings.tabModels',
   permissions: 'settings.tabPermissions',
   appearance: 'settings.tabAppearance',
   'browser-access': 'settings.tabBrowserAccess',
@@ -28,7 +26,6 @@ const TAB_LABELS: Record<SettingTab, TextKey> = {
 
 const TAB_ICONS: Record<SettingTab, ReactNode> = {
   providers: <SlidersIcon />,
-  models: <BranchIcon />,
   permissions: <ShieldIcon />,
   appearance: <PaletteIcon />,
   'browser-access': <GlobeIcon />,
@@ -36,14 +33,13 @@ const TAB_ICONS: Record<SettingTab, ReactNode> = {
 
 /** The menu, grouped the way the reference groups it: what the agent may do, then how it looks. */
 const TAB_GROUPS: { label: TextKey; tabs: SettingTab[] }[] = [
-  { label: 'settings.groupAgent', tabs: ['providers', 'models', 'permissions'] },
+  { label: 'settings.groupAgent', tabs: ['providers', 'permissions'] },
   { label: 'settings.groupApp', tabs: ['appearance', 'browser-access'] },
 ]
 
 /** What each panel is about, said once at the top of it rather than inferred from its controls. */
 const TAB_NOTES: Record<SettingTab, TextKey> = {
   providers: 'settings.providersNote',
-  models: 'settings.modelsNote',
   permissions: 'settings.permissionsNote',
   appearance: 'settings.appearanceNote',
   'browser-access': 'settings.browserAccessNote',
@@ -52,7 +48,6 @@ const TAB_NOTES: Record<SettingTab, TextKey> = {
 /** What each panel holds. Providers is first because it is what a person comes here to change. */
 const PANELS: Record<SettingTab, ReactNode> = {
   providers: <ProvidersSection />,
-  models: <ModelsSection />,
   permissions: (
     <>
       <PermissionSection />

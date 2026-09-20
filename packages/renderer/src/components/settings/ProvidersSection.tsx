@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useProviders } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
+import { DefaultModel } from './DefaultModel.tsx'
 import { ProviderCard } from './ProviderCard.tsx'
 import { ProviderForm } from './ProviderForm.tsx'
 
@@ -23,6 +24,11 @@ export function ProvidersSection() {
           {t('settings.noKeychain')}
         </p>
       )}
+
+      {/* The one model choice that is not a provider's own: what a new conversation starts on.
+          It is a choice among every provider's models, so it sits above the cards, not in one —
+          and only once there is a card to choose from. */}
+      {snapshot.providers.length > 0 && <DefaultModel />}
 
       {snapshot.providers.length === 0 ? (
         // The empty state is a sentence in the panel's own voice, not a bare line: it says what

@@ -4,6 +4,15 @@ Alpha speaks exactly three wire protocols — OpenAI chat completions, OpenAI re
 messages — and ships **no catalog of providers and no model ids**. A provider is a connection
 the user describes; the models it serves are a separate setting.
 
+## Superseded in part
+
+The decision that a model list is edited on a panel of its own was reversed: the models panel made
+a user find their provider a second time in order to edit what already belonged to it. A model is
+edited as a **sub-list of its provider's card**, and the one choice that is not a provider's own —
+what a new conversation starts on — sits at the top of the providers panel. The data model here is
+untouched: models are still stored per provider, the add-provider form still starts empty, and
+nothing about the catalog decision changes.
+
 ## Context
 
 The first version shipped a catalog of seven providers. Picking one filled in the name, the base

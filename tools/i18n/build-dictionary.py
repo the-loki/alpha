@@ -464,7 +464,6 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.fieldIdPlaceholder', 'my-endpoint', 'my-endpoint'),
     ('settings.fieldNamePlaceholder', 'My endpoint', '我的端点'),
     ('settings.fieldBaseUrlPlaceholder', 'the provider base url', '供应商的 base url'),
-    ('settings.tabModels', 'Models', '模型'),
     ('settings.modelsNoProviders', 'Add a provider first, on the Providers panel.', '先在"供应商"页添加一个供应商。'),
     ('settings.noModels', 'No models yet. Add the ones this provider serves.', '还没有模型。把这个供应商提供的模型加进来。'),
     ('settings.defaultModel', 'New conversations start on', '新会话默认使用'),
@@ -483,6 +482,7 @@ ENTRIES: list[tuple[str, str, str]] = [
     ('settings.displayNamePlaceholder', 'What it is called', '显示名称'),
     # The four fields of a model row. The row's number is in the row, in its own column, so a label
     # never has to carry it: "Model id 1" and "Model id 2" are the same field written twice.
+    ('settings.modelsLabel', 'Models', '模型'),
     ('settings.modelRow', 'Model {index}', '模型 {index}'),
     ('settings.modelId', 'Model id', '模型 ID'),
     ('settings.modelName', 'Display name', '显示名称'),

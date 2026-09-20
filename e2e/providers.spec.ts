@@ -32,7 +32,9 @@ async function launch(dataDirectory?: string) {
 }
 
 async function openSettings(window: Page, tab: string) {
-  await window.getByRole('link', { name: 'Settings' }).click()
+  // The strip hides the settings command while settings is open, so a second call only changes tab.
+  const settingsLink = window.getByRole('link', { name: 'Settings' })
+  if ((await settingsLink.count()) > 0) await settingsLink.click()
   await window.getByRole('link', { name: tab, exact: true }).click()
 }
 
@@ -155,8 +157,7 @@ test('the models a connection serves are a setting of their own', async () => {
   await openSettings(window, 'Providers')
   await describeProvider(window, { id: 'local-endpoint', name: 'Local', baseUrl: 'https://llm.internal.example/v1' })
 
-  // Nothing to send a request to yet, and the models panel is what says so.
-  await window.getByRole('link', { name: 'Models', exact: true }).click()
+  // Nothing to send a request to yet, and the card's model sub-list is what says so.
   await expect(window.getByText('No models yet. Add the ones this provider serves.')).toBeVisible()
 
   await addModel(window, 'Local', { id: 'local-7b', context: '64000', max: '4096' })
@@ -185,7 +186,6 @@ test('whether a model takes pictures is a setting of its own', async () => {
   const { app, window, directory } = await launch()
   await openSettings(window, 'Providers')
   await describeProvider(window, { id: 'local-endpoint', name: 'Local', baseUrl: 'https://llm.internal.example/v1' })
-  await window.getByRole('link', { name: 'Models', exact: true }).click()
   await addModel(window, 'Local', { id: 'local-7b', context: '64000', max: '4096' })
 
   // Off unless it is said: the app ships no catalog, so nothing here knows what the endpoint
@@ -197,9 +197,7 @@ test('whether a model takes pictures is a setting of its own', async () => {
   await window.getByRole('button', { name: 'Save models' }).click()
   await expect.poll(saved).toBe(true)
 
-  // And it comes back ticked, because it is stored with the model rather than with the window.
-  await window.getByRole('link', { name: 'Providers' }).click()
-  await window.getByRole('link', { name: 'Models', exact: true }).click()
+  // The row keeps its state on screen: the tick is stored with the model, not with the window.
   await expect(window.getByRole('checkbox', { name: 'Takes pictures' })).toBeChecked()
   await app.close()
 })
