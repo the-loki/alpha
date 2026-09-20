@@ -51,7 +51,7 @@ export function AppearanceSection() {
         <h2 id="settings-theme" class={GROUP_LABEL}>
           {t('settings.theme')}
         </h2>
-        <p class="mt-1 text-xs text-parchment-dim">{t('settings.themeNote')}</p>
+        <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.themeNote')}</p>
         <div class="mt-3 flex gap-2">
           <For each={THEMES}>
             {(candidate) => (
@@ -75,7 +75,7 @@ export function AppearanceSection() {
         <h2 id="settings-accent" class={GROUP_LABEL}>
           {t('settings.accent')}
         </h2>
-        <p class="mt-1 text-xs text-parchment-dim">{t('settings.accentNote')}</p>
+        <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.accentNote')}</p>
         <div class="mt-3 flex flex-wrap gap-2">
           <For each={ACCENTS}>
             {(candidate) => (
@@ -106,7 +106,7 @@ export function AppearanceSection() {
         <h2 id="settings-language" class={GROUP_LABEL}>
           {t('settings.language')}
         </h2>
-        <p class="mt-1 text-xs text-parchment-dim">{t('settings.languageNote')}</p>
+        <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.languageNote')}</p>
         <div class="mt-3 flex gap-2">
           <For each={LANGUAGE_SETTINGS}>
             {(candidate) => (

@@ -185,8 +185,10 @@ code line scrolls inside its own block rather than widening the page. Nothing pa
 in the middle of a wide window: a blank margin beside the words is worse than a long line, and the
 room beside a centred column is empty either way. Prose is the one thing that reads worse the wider
 it gets, so it keeps a readable cap — seventy characters, whatever voice it is set in
-(`max-w-measure`, declared as `--container-measure` in the theme) — on the assistant's markdown root
-and on an entry's own words. A hundred was a page's width rather than a measure: the sweep back is
+(`max-w-measure`, declared as `--container-measure` in the theme) — on the assistant's markdown root,
+on an entry's own words, and on every sentence the interface writes under a control: a panel's note is
+prose like any other. `e2e/design.spec.ts` measures every sentence on every panel the window opens, and
+counts what it measured, so a panel that writes none of them fails rather than passes. A hundred was a page's width rather than a measure: the sweep back is
 what a reader's eye does between every line, and a hundred characters is a wall with no shape in it
 for a reader to keep a place in. The window's opening size is what puts the column where it belongs:
 at 1200 wide (`apps/desktop/src/main/window.ts`) the page is about 900px and a line of prose about
@@ -434,7 +436,18 @@ inside a **menu** takes a tint of the panel's ink — a further step off the pag
 never back toward it; a control that is already **lit or semantic** — the primary's accent, the
 destructive's red, the amber of a decision — brightens its own colour, because that colour is what it
 means; and a **word** action fills nothing at all and lifts its ink, so a row of actions under a
-message never turns into a row of buttons. Nothing moves on hover:
+message never turns into a row of buttons. **Every control answers, and none is silent.** A hand that passes over something it can press is told
+so — fill, frame, ink, or the light a lit thing brightens — and the outlined action comes in three
+tinted siblings that each brighten their own colour: the accent for what the app offers to do for you
+(`TINTED_ACTION`), the amber for a decision that is neither the primary nor a refusal, and the danger
+for the one that destroys. `e2e/design.spec.ts` sweeps every button, link and disclosure on every screen a window
+can reach and names the ones that say nothing: it found the agent panel's `Install pi for me`, which
+offered to install the agent with an accent frame and no answer at all; the gate's `Always allow`,
+whose hover was a no-op because its ink was already the colour it hovered to; and a task card, whose
+whole body opens the task and answered only over its words. (The one screen no window here can reach is
+the unlock card a *browser* is shown before it has a token; its button wears the same shapes.) A
+control already in force is not asked, since it is saying "you are here"; nor is a disabled one, nor a
+field, whose answer is the keyboard's ring. Nothing moves on hover:
 `e2e/surface.spec.ts` hovers a chip, a rail row, a ledger row and an action and requires every one of
 them to keep its box, its borders, its padding and its transform; it also requires each row and button
 of the first kind to land on the one fill, in both palettes, and requires the rows inside a menu —

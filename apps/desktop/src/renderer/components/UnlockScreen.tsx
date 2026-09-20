@@ -47,7 +47,7 @@ export function UnlockScreen() {
           <span class="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
         </span>
         <h1 class="mt-5 font-display text-2xl font-medium text-parchment">{t('unlock.title')}</h1>
-        <p class="mt-2 text-body text-parchment-dim">{t('unlock.body')}</p>
+        <p class="mt-2 max-w-measure text-body text-parchment-dim">{t('unlock.body')}</p>
 
         <label class="mt-5 block">
           <span class="mb-1 block text-ui text-parchment-dim">{t('unlock.token')}</span>

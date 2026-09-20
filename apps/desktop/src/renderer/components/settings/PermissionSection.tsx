@@ -14,7 +14,7 @@ export function PermissionSection() {
       <h2 id="settings-level" class={GROUP_LABEL}>
         {t('settings.defaultLevel')}
       </h2>
-      <p class="mt-1 text-xs text-parchment-dim">{t('settings.defaultLevelNote')}</p>
+      <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.defaultLevelNote')}</p>
       <ul class="mt-3 space-y-1.5">
         <For each={PERMISSION_LEVELS}>
           {(candidate) => (

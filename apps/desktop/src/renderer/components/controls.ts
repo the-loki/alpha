@@ -27,6 +27,13 @@ export const OUTLINED_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center round
  */
 export const DESTRUCTIVE_BUTTON = `inline-flex ${CONTROL_HEIGHT} items-center rounded-control border border-danger/40 px-3 text-xs text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-40`
 
+/**
+ * The outlined body in the accent: something the app offers to do *for* you rather than telling you how
+ * to do it yourself. It is the third of the tinted siblings — with the amber of a decision and the
+ * danger of a refusal — and its pointer answer is its own colour, deepened (C5.6).
+ */
+export const ACCENT_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center rounded-control border border-accent/50 bg-accent/10 px-3 text-xs text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-40`
+
 /** The outlined body in amber: a decision that is neither the primary nor a refusal. */
 export const AMBER_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center rounded-control border border-amber/50 px-3 text-xs text-amber transition-colors hover:bg-amber/10 disabled:opacity-40`
 

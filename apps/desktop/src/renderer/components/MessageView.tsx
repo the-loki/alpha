@@ -97,7 +97,7 @@ function EditBox(props: { message: ChatMessage; index: number; onDone: () => voi
           {t('message.fork')}
         </button>
       </div>
-      <p class="mt-1.5 text-micro text-parchment-faint">{t('message.editNote')}</p>
+      <p class="mt-1.5 max-w-measure text-micro text-parchment-faint">{t('message.editNote')}</p>
     </div>
   )
 }

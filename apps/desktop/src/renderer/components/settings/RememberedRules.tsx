@@ -33,7 +33,7 @@ export function RememberedRules() {
       <h2 id="settings-rules" class={GROUP_LABEL}>
         {t('settings.remembered')}
       </h2>
-      <p class="mt-1 text-xs text-parchment-dim">
+      <p class="mt-1 max-w-measure text-xs text-parchment-dim">
         {t(rules().length === 0 ? 'settings.remembered.none' : 'settings.remembered.some')}
       </p>
 

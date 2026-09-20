@@ -43,20 +43,34 @@ function TaskRow(props: { task: ScheduledTask; onOpen: () => void }) {
   const next = () => nextRunAt(props.task.schedule, new Date(props.task.createdAt), props.task.lastRunAt)
 
   return (
-    <li class="flex items-center gap-3 rounded-card border border-line bg-ink-800 px-4 py-3">
+    <li class="relative flex items-center gap-3 rounded-card border border-line bg-ink-800 px-4 py-3">
       <ClockIcon class="text-parchment-faint" />
+      {/* The card is the control that opens the task: one button over the whole of it, so the hand is
+          answered wherever it lands on the card rather than only over its words. */}
+      <button
+        type="button"
+        onClick={props.onOpen}
+        class="absolute inset-0 rounded-card transition-colors hover:bg-ink-600"
+        aria-label={props.task.name}
+      />
       <div class="min-w-0 flex-1">
-        <button type="button" onClick={props.onOpen} class="block w-full text-left">
-          <span class="block truncate text-ui font-medium text-parchment">{props.task.name}</span>
-          <span class="mt-0.5 block truncate font-mono text-micro text-parchment-faint">
-            {scheduleText(t, props.task.schedule)} · {props.task.workspacePath}
-          </span>
-        </button>
+        <span class="block truncate text-ui font-medium text-parchment">{props.task.name}</span>
+        <span class="mt-0.5 block truncate font-mono text-micro text-parchment-faint">
+          {scheduleText(t, props.task.schedule)} · {props.task.workspacePath}
+        </span>
+        <span class="block truncate text-ui font-medium text-parchment">{props.task.name}</span>
+        <span class="mt-0.5 block truncate font-mono text-micro text-parchment-faint">
+          {scheduleText(t, props.task.schedule)} · {props.task.workspacePath}
+        </span>
         <span class="mt-1 block text-xs text-parchment-faint">
           {props.task.enabled ? t('tasks.nextRun', { when: formatUntil(next(), Date.now()) }) : t('tasks.stopped')}
         </span>
       </div>
-      <button type="button" onClick={() => void taskActions.runNow(props.task.id)} class={OUTLINED_ACTION}>
+      <button
+        type="button"
+        onClick={() => void taskActions.runNow(props.task.id)}
+        class={`relative ${OUTLINED_ACTION}`}
+      >
         {t('tasks.runNow')}
       </button>
     </li>
@@ -170,7 +184,7 @@ export function TasksPage() {
           <Show when={tasks.listed}>
             <div class="mt-6 rounded-card border border-line bg-ink-800 p-4">
               <p class="text-ui text-parchment">{t('tasks.empty')}</p>
-              <p class="mt-1 text-xs leading-relaxed text-parchment-dim">{t('tasks.emptyBody')}</p>
+              <p class="mt-1 max-w-measure text-xs leading-relaxed text-parchment-dim">{t('tasks.emptyBody')}</p>
             </div>
           </Show>
         </Show>

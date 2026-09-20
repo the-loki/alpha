@@ -3,7 +3,7 @@ import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { agent, agentActions, agentReady } from '../../stores/agent.ts'
 import { useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, OUTLINED_ACTION } from '../controls.ts'
+import { ACCENT_ACTION, CONTROL_HEIGHT, OUTLINED_ACTION } from '../controls.ts'
 
 /**
  * The agent Alpha runs: none of its own, so this panel is the whole relationship with pi until a
@@ -63,7 +63,7 @@ export function AgentSection() {
                   }}
                   class={`w-full rounded-control border border-line bg-ink-700 px-3 font-mono text-xs text-parchment ${CONTROL_HEIGHT}`}
                 />
-                <p class="text-xs text-parchment-faint">{t('agent.pathHint')}</p>
+                <p class="max-w-measure text-xs text-parchment-faint">{t('agent.pathHint')}</p>
               </div>
 
               <div class="flex flex-wrap items-center gap-2">
@@ -71,7 +71,7 @@ export function AgentSection() {
                   type="button"
                   disabled={snapshot().installing}
                   onClick={() => void agentActions.install()}
-                  class="inline-flex h-7 items-center rounded-control border border-accent/50 bg-accent/10 px-3 text-xs text-accent disabled:opacity-50"
+                  class={ACCENT_ACTION}
                 >
                   {snapshot().installing ? t('agent.installing') : t('agent.install')}
                 </button>

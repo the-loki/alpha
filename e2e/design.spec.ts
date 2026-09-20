@@ -12,6 +12,9 @@ import { APP_DIR, configureProvider, scriptedAgent } from './agent'
  */
 const SCRIPT = [{ tool: { name: 'bash', args: { command: 'echo hello' } } }, 'It says hello from the ledger.']
 
+/** The settings panels, in the order the menu lists them: a sweep that visits them says this once. */
+const SETTINGS_TABS = ['Agent', 'Providers', 'Permissions', 'Appearance', 'Browser access'] as const
+
 async function launch(options: { level?: string; replies?: unknown[]; noFolder?: boolean } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
@@ -67,6 +70,20 @@ async function ask(window: Page, text: string): Promise<void> {
 }
 
 const settled = (window: Page) => expect(window.getByRole('button', { name: 'Send' })).toBeVisible({ timeout: 30_000 })
+
+/**
+ * A panel's own content arrives over IPC — the agent it found, the network it is on — so a sweep over a
+ * panel waits for its controls. Measuring the instant its tab was clicked is measuring a panel that has
+ * not written anything yet, and a sweep over none of anything passes.
+ */
+async function waitForControls(scope: Locator, where: string): Promise<void> {
+  await expect
+    .poll(async () => await scope.locator('button:not([disabled]), a[href]').count(), {
+      timeout: 5_000,
+      message: `${where} has no controls to look at`,
+    })
+    .toBeGreaterThan(0)
+}
 
 /** The box a person clicks, in window coordinates. */
 async function box(target: Locator): Promise<{ x: number; y: number; w: number; h: number }> {
@@ -504,16 +521,23 @@ test('a line of prose is a measure, not a wall', async () => {
     'the paragraph stops being a paragraph and becomes a wall of text with no shape in it for a reader to hold.'
   const { app, window } = await launch({ replies: [paragraph] })
 
-  /** How many characters the eye travels before it sweeps back, in the element's own voice. */
+  /**
+   * How many characters the eye travels before it sweeps back, in the element's own voice: the widest
+   * line the *text* makes, not the box it sits in — a block is as wide as its container whatever its
+   * words do, so measuring the box measures the panel.
+   */
   const perLine = async (target: Locator): Promise<{ chars: number; voice: string }> =>
     await target.evaluate((node) => {
-      const style = getComputedStyle(node as Element)
+      const element = node as Element
+      const style = getComputedStyle(element)
       const probe = document.createElement('span')
       probe.style.cssText = `position:absolute;visibility:hidden;font:${style.font};white-space:pre;width:1ch`
       document.body.append(probe)
       const one = probe.getBoundingClientRect().width
       probe.remove()
-      const widest = Math.max(...[...(node as Element).getClientRects()].map((rect) => rect.width))
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const widest = Math.max(...[...range.getClientRects()].map((rect) => rect.width), 0)
       return { chars: Math.round(widest / one), voice: `${style.fontSize} ${style.fontFamily.split(',')[0]}` }
     })
 
@@ -526,6 +550,39 @@ test('a line of prose is a measure, not a wall', async () => {
   await settled(window)
   const body = await perLine(window.getByRole('main').locator('p').filter({ hasText: 'comfortable measure' }).first())
   expect(body.chars, `an answer: ${body.voice}`).toBeLessThanOrEqual(READABLE)
+
+  // And every sentence the interface itself writes, on every panel that writes one: the line that
+  // explains a section is prose like any other, and it was the only prose in the app with no cap — the
+  // appearance panel's three ran to a hundred and forty-five characters on one line.
+  const long: string[] = []
+  let measured = 0
+  const proseOn = async (where: string): Promise<void> => {
+    // Prose is the sans voice: what a path, a count or a diff does with its width is its own business.
+    // Every line is measured, with no length filter — a short line is short by its own measurement.
+    for (const line of await window.getByRole('main').locator('p, span.block').all()) {
+      const sans = await line.evaluate((node) => getComputedStyle(node as Element).fontFamily.includes('Plex Sans'))
+      if (!sans) continue
+      const { chars, voice } = await perLine(line)
+      if (chars === 0) continue
+      measured += 1
+      if (chars > READABLE) {
+        const words = await line.evaluate((node) => (node.textContent ?? '').trim().slice(0, 34))
+        long.push(`${where}: ${chars}ch in ${voice}: "${words}"`)
+      }
+    }
+  }
+  await proseOn('the workbench')
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await proseOn('the tasks page')
+  await window.getByRole('link', { name: 'Settings' }).click()
+  for (const tab of SETTINGS_TABS) {
+    await window.getByRole('link', { name: tab, exact: true }).click()
+    await waitForControls(window.getByRole('main'), tab)
+    await proseOn(`settings: ${tab}`)
+  }
+  // The sweep has to have measured what it is about: six panels and the workbench write sentences.
+  expect(measured, 'the sweep measured no prose at all').toBeGreaterThanOrEqual(12)
+  expect(long, `these lines run past the measure:\n  ${long.join('\n  ')}`).toEqual([])
 
   await app.close()
 })
@@ -566,7 +623,7 @@ test('a thing is named in the display voice, and a part of it in the label voice
   await window.getByRole('button', { name: 'Tasks' }).click()
   await named('Tasks')
   await window.getByRole('link', { name: 'Settings' }).click()
-  for (const tab of ['Agent', 'Providers', 'Permissions', 'Appearance', 'Browser access']) {
+  for (const tab of SETTINGS_TABS) {
     await window.getByRole('link', { name: tab, exact: true }).click()
     await named(tab)
   }
@@ -689,4 +746,139 @@ test('the lit thing is one thing, on every screen that has one', async () => {
   const choose = alone.window.getByRole('button', { name: 'Choose a folder', exact: true })
   expect(await look(choose), 'the first screen says choose a folder').toBe(appPrimary)
   await alone.app.close()
+})
+
+/**
+ * The controls in a scope that answer the pointer with nothing, named for the failure message. The
+ * ways a control can answer: fill, frame, ink, and the light a lit thing brightens with (`filter`). A
+ * control that is already in force is not asked — it is saying "you are here", and a second answer on
+ * top of that would be two answers to the same question — and neither is a disabled control, nor a
+ * field, whose answer is the keyboard's ring.
+ */
+async function silent(window: Page, where: string, scope: Locator): Promise<string[]> {
+  const look = async (target: Locator) =>
+    await target.evaluate((node) => {
+      const style = getComputedStyle(node as Element)
+      return [style.backgroundColor, style.borderTopColor, style.color, style.filter, style.boxShadow].join(' | ')
+    })
+  const found: string[] = []
+  const controls = scope.locator('button:not([disabled]), a[href], summary')
+  await waitForControls(scope, where)
+  for (const target of await controls.all()) {
+    const inForce = await target.evaluate((node) => {
+      const element = node as Element
+      const current = element.getAttribute('aria-current')
+      return (
+        (current !== null && current !== 'false') ||
+        element.getAttribute('aria-pressed') === 'true' ||
+        element.getAttribute('aria-checked') === 'true' ||
+        element.getAttribute('aria-selected') === 'true'
+      )
+    })
+    if (inForce) continue
+    const before = await look(target)
+    await target.hover()
+    // Past the fade: 150–220ms is mid-answer, and a control read there looks like one that answered.
+    await window.waitForTimeout(260)
+    if ((await look(target)) === before) {
+      const name = await target.evaluate((node) =>
+        (node.getAttribute('aria-label') ?? node.textContent ?? '').trim().slice(0, 28),
+      )
+      found.push(`${where}: "${name}"`)
+    }
+  }
+  return found
+}
+
+/**
+ * No control is silent under the pointer (C5.6). A hand passing over something it can press is told so,
+ * by whichever way that control's family answers: the fill changes (a row, a button), the frame (a
+ * chip), the ink (a word), or the light a lit thing brightens. A control that says nothing is a control
+ * a person has to press to find out about — the agent panel's `Install pi for me` was one, with an
+ * accent frame and no answer at all. The screens are swept in one window each, because a gate exists
+ * only while a turn waits and the first screen only before a folder.
+ */
+test('every control answers the pointer, in one of the three ways', async () => {
+  test.setTimeout(180_000)
+  const { app, window } = await launch()
+
+  const page = window.getByRole('main')
+  const quiet: string[] = []
+
+  // The workbench: the empty state's one button, then a turn's own controls and the ledger's rows.
+  quiet.push(...(await silent(window, 'the empty workbench', page)))
+  await ask(window, 'say something')
+  await settled(window)
+  quiet.push(...(await silent(window, 'a conversation', page)))
+  quiet.push(...(await silent(window, 'a conversation', window.getByRole('complementary'))))
+
+  // The strip, which is chrome rather than a page.
+  quiet.push(...(await silent(window, 'the strip', window.getByRole('banner'))))
+
+  // The command palette, and the two menus a chip opens.
+  await window.keyboard.press('Control+k')
+  const palette = window.getByRole('dialog', { name: 'Switch conversation' })
+  await expect(palette).toBeVisible()
+  quiet.push(...(await silent(window, 'the palette', palette)))
+  await window.keyboard.press('Escape')
+  await window.getByRole('button', { name: 'Full access' }).click()
+  quiet.push(...(await silent(window, 'the level menu', window.getByRole('menu', { name: 'Permission level' }))))
+  await window.keyboard.press('Escape')
+  await window.getByRole('button', { name: 'Scripted model' }).click()
+  quiet.push(...(await silent(window, 'the model menu', window.getByRole('menu').first())))
+  await window.keyboard.press('Escape')
+
+  // A conversation's own menu, which is drawn over the rail rather than in the page.
+  const actions = window.getByRole('button', { name: /^Actions for / }).first()
+  await actions.hover()
+  await actions.click()
+  await expect(window.getByRole('menuitem', { name: 'Archive' })).toBeVisible()
+  quiet.push(...(await silent(window, 'a conversation menu', window.locator('div.rounded-overlay').first())))
+  await window.keyboard.press('Escape')
+
+  // The tasks page, a task's card, the form, and every settings panel.
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  quiet.push(...(await silent(window, 'the tasks page', page)))
+  await window.getByRole('button', { name: 'New task', exact: true }).click()
+  await window.getByRole('textbox').first().fill('Nightly check')
+  await window.getByRole('textbox').nth(1).fill('Read the notes and report.')
+  await window.getByRole('button', { name: 'Save task' }).click()
+  quiet.push(...(await silent(window, 'a task on the list', page)))
+  await window.getByRole('main').getByRole('button', { name: 'Nightly check' }).first().click()
+  quiet.push(...(await silent(window, 'the task form', page)))
+  await window.getByRole('link', { name: 'Settings' }).click()
+  quiet.push(
+    ...(await silent(window, 'the settings menu', window.getByRole('navigation', { name: 'Settings sections' }))),
+  )
+  for (const tab of SETTINGS_TABS) {
+    await window.getByRole('link', { name: tab, exact: true }).click()
+    quiet.push(...(await silent(window, `settings: ${tab}`, page)))
+  }
+
+  expect(quiet, `these controls answer the pointer with nothing:\n  ${quiet.join('\n  ')}`).toEqual([])
+
+  await app.close()
+})
+
+/**
+ * And the two screens the sweep above cannot reach, because each needs a window of its own: the gate,
+ * which exists only while a turn waits for a decision, and the screen a person sees before they have a
+ * folder at all. A rule about every control is only a rule about the controls someone looked at.
+ */
+test('the controls of a gate and of the first screen answer too', async () => {
+  test.setTimeout(120_000)
+  const gate = await launch({ level: 'ask' })
+  await ask(gate.window, 'change the file')
+  await expect(gate.window.getByRole('button', { name: 'Allow once' })).toBeVisible({ timeout: 30_000 })
+  const onTheGate = await silent(gate.window, 'the gate', gate.window.getByRole('main'))
+  expect(onTheGate, `these controls answer the pointer with nothing:\n  ${onTheGate.join('\n  ')}`).toEqual([])
+  await gate.app.close()
+
+  const first = await launch({ noFolder: true })
+  const onTheFirstScreen = await silent(first.window, 'the first screen', first.window.getByRole('main'))
+  expect(
+    onTheFirstScreen,
+    `these controls answer the pointer with nothing:\n  ${onTheFirstScreen.join('\n  ')}`,
+  ).toEqual([])
+  await first.app.close()
 })

@@ -59,7 +59,7 @@ export function ApiField(props: { api: ProviderApi; onChange: (api: ProviderApi)
           <For each={PROVIDER_APIS}>{(candidate) => <option value={candidate}>{t(API_LABELS[candidate])}</option>}</For>
         </select>
       </label>
-      <p class="mt-1 text-micro leading-relaxed text-parchment-faint">{t(API_NOTES[props.api])}</p>
+      <p class="mt-1 max-w-measure text-micro leading-relaxed text-parchment-faint">{t(API_NOTES[props.api])}</p>
     </div>
   )
 }

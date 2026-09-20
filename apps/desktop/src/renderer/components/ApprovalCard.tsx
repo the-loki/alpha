@@ -75,7 +75,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
             type="button"
             onClick={allowAlways}
             disabled={busy()}
-            class="h-full px-3 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
+            class="h-full rounded-l-control px-3 text-xs text-parchment transition-colors hover:bg-ink-600 disabled:opacity-60"
           >
             {t('approval.alwaysAllow')}
           </button>

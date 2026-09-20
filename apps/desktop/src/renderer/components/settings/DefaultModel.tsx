@@ -42,7 +42,7 @@ export function DefaultModel() {
           </For>
         </select>
       </label>
-      <p class="mt-1 text-micro leading-relaxed text-parchment-faint">{t('settings.defaultModelNote')}</p>
+      <p class="mt-1 max-w-measure text-micro leading-relaxed text-parchment-faint">{t('settings.defaultModelNote')}</p>
     </div>
   )
 }

@@ -41,7 +41,7 @@ export function BrowserAccessSection() {
           {/* The panel's own heading says what this is; saying it again here would make the page read
               as two versions of the same sentence. */}
           <Show when={shell.host === 'browser'}>
-            <p class="text-xs text-parchment-faint">{t('settings.browserHost')}</p>
+            <p class="max-w-measure text-xs text-parchment-faint">{t('settings.browserHost')}</p>
           </Show>
 
           <div class="mt-3 space-y-3 rounded-card border border-line bg-ink-800 p-4">

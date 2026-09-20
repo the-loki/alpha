@@ -54,6 +54,12 @@ async function ask(window: Page, text: string): Promise<void> {
   const composer = window.getByRole('textbox', { name: 'Message the agent' })
   await composer.fill(text)
   await composer.press('Enter')
+  // The words are an entry in the transcript, and the composer's own button is back: the first is what
+  // makes it an ask, and the second is what makes the turn over. Waiting on the button alone is waiting
+  // on a control that is visible before a turn starts.
+  await expect(window.getByRole('main').locator('[data-role="user"]').filter({ hasText: text }).last()).toBeVisible({
+    timeout: 30_000,
+  })
   await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible({ timeout: 30_000 })
 }
 
