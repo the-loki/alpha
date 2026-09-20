@@ -1,5 +1,19 @@
 # 02 — Architecture
 
+## C2.0 — The agent is a program Alpha runs, not a library Alpha links
+
+Alpha ships **no agent**. A conversation is a child process — the `pi` the person installed, found
+through Settings and driven over its RPC protocol ([ADR-0001](../adr/0001-agent-runtime-in-main-process.md)).
+No package depends on a pi package, and nothing under `packages/*/src` parses a session file,
+speaks a provider's wire, or implements a tool. What Alpha keeps of its own is the gate it writes
+as an extension, the `models.json` it writes for the agent to read, the conversation list, and the
+credentials.
+
+**Enforcement:** `pnpm check:constraints` rule `02-architecture:no-agent-dependency` fails on an
+import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
+`packages/*/src`. The install command Alpha offers is a string, not an import, and is exempt by
+being a string.
+
 ## C2.1 — Four packages, one direction
 
 ```
@@ -13,7 +27,7 @@ main ──────────> core
 | Package | Holds | May import |
 | --- | --- | --- |
 | `@alpha/core` | Domain rules, IPC contract types, validation schemas | nothing from this repo |
-| `@alpha/main` | Electron main process, agent runtime, storage, provider clients | `core`, `pi-*`, node, electron |
+| `@alpha/main` | Electron main process, the agent runtime, storage | `core`, node, electron |
 | `@alpha/preload` | The contextBridge surface | `core` only |
 | `@alpha/renderer` | React UI, router, stores, styles | `core` only |
 
@@ -51,11 +65,13 @@ of a conversation is a projection that can be rebuilt from the runtime at any ti
 at lint time, and `pnpm check:constraints` rule `02-architecture:renderer-has-no-model-client`
 catches it in the same scan that checks everything else.
 
-## C2.4 — Secrets never leave the main process
+## C2.4 — A key goes from the vault to the agent's environment, and nowhere else
 
-A credential is read from encrypted storage inside `main`, attached to an outbound request in
-`main`, and never crosses the IPC boundary in plaintext. The renderer may learn *that* a
-credential exists, and may send a new one *to* be stored, never read one back.
+A credential is read from encrypted storage inside `main` and handed to the agent as an
+environment variable named for one provider, for one conversation. It never crosses the IPC
+boundary in plaintext: the renderer may learn *that* a credential exists, and may send a new one
+*to* be stored, never read one back. Nor is it written into a file — the agent's `models.json`
+names the variable, and the key itself travels only in the environment of the process that dials.
 
 **Enforcement:** `pnpm check:constraints` fails if any renderer file reads a field whose name
 matches `/apiKey|secret|credential/i` off a provider payload; review covers the rest.

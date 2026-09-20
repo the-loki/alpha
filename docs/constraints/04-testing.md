@@ -19,45 +19,46 @@ inside a module. Alpha has four:
 | Seam | What it is | Test kind |
 | --- | --- | --- |
 | `core`'s domain functions | Pure functions and stores over domain types | Unit, no I/O |
-| The IPC contract | The typed surface preload exposes, driven end to end | Integration, real runtime, scripted model |
-| The agent runtime | Conversation lifecycle: prompt → turn → tool → result | Integration, scripted model |
+| The IPC contract | The typed surface preload exposes, driven end to end | Integration, real runtime, scripted agent |
+| The agent runtime | Conversation lifecycle: prompt → turn → tool → result | Integration, scripted agent |
 | The window | What a user sees and can do | E2E, Playwright + Electron |
 
 The IPC contract seam is the important one: it exercises the real runtime, the real permission
-gate, the real store, and the real preload bridge, while replacing only the model — so a passing
-suite means the wiring works, not that a mock agrees with itself.
+gate, the real store, the real preload bridge, and a real child process speaking pi's protocol —
+so a passing suite means the wiring works, not that a mock agrees with itself.
 
 **Enforcement:** review. New test files declare the seam they target in the top-level `describe`.
 
-## C4.3 — The scripted model, not a mocked runtime
+## C4.3 — The scripted agent, not a mocked runtime
 
-Integration tests replace the *model* with `pi-ai`'s faux provider, which returns scripted
-assistant messages deterministically. They do not mock the agent runtime, the permission gate,
-the session store, or the IPC transport: any of those being wrong is exactly the bug the test
-should catch.
+Integration tests replace the *agent* with the scripted stand-in in `tools/scripted-agent/`: a real
+child process that speaks pi's RPC protocol, keeps a session the way pi keeps one, asks Alpha's
+gate before a tool call, and really writes and runs what its script tells it to. Only the model's
+answers are decided in advance. They do not mock the agent process, the gate, the session, or the
+IPC transport: any of those being wrong is exactly the bug the test should catch.
 
-**Enforcement:** `pnpm check:constraints` fails if `vi.mock` is used on `@earendil-works/*` or on
-a `core` module inside an integration test.
+The things a stand-in cannot show are checked against a real `pi` when one is installed
+(`ALPHA_LIVE_PI`), with a scripted model endpoint on the other end
+(`tools/fake-provider/`): that Alpha's gate extension is loaded, and that a refusal reaches the
+model as a refusal.
 
-## C4.4 — One live test, gated by an environment variable
+**Enforcement:** `pnpm check:constraints` fails if `vi.mock` is used inside an integration test.
 
-A single end-to-end test talks to a real model to prove the provider client, the wire protocol,
-and streaming actually work. It runs only when `ALPHA_LIVE_TEST=1` is set, and it reads its
-endpoint and key from the environment:
+## C4.4 — The live tests, gated by an environment variable
+
+The tests that need a real agent run only when one is named, and they talk to a scripted model
+endpoint on the loopback interface rather than to a provider:
 
 | Variable | Meaning |
 | --- | --- |
-| `ALPHA_LIVE_TEST` | `1` to enable the live test; anything else skips it |
-| `ALPHA_LIVE_BASE_URL` | Provider base URL, e.g. `https://api.commandcode.ai/provider/v1` |
-| `ALPHA_LIVE_API_KEY` | Credential for that provider |
-| `ALPHA_LIVE_MODEL` | Model id, e.g. `deepseek/deepseek-v4.1-flash` |
-| `ALPHA_LIVE_API` | Wire protocol, defaults to `openai-completions` |
+| `ALPHA_LIVE_PI` | Path to a real `pi`; anything else skips the live tests |
+| `FAKE_PROVIDER_PORT` | Port for the scripted model endpoint, `0` (any free port) by default |
 
-No credential is ever committed, and the default test run makes no network request. The developer
-running it locally supplies the values from their own ZCode configuration; CI skips it.
+No credential is ever committed, and the default test run starts no agent and makes no network
+request. CI skips them; a developer with `pi` installed runs them against the scripted endpoint.
 
-**Enforcement:** the live test file calls a shared `requireLiveEnv()` helper that skips with a
-printed reason when the variables are absent.
+**Enforcement:** each live test file skips itself when the variable is absent, and the endpoint is
+started on `127.0.0.1` by the test that needs it.
 
 ## C4.5 — What a test asserts
 

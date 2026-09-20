@@ -3,15 +3,16 @@
 Every model carries a **takes pictures** setting, off until it is turned on. A picture attached to
 a conversation whose model does not take them is refused — at the composer when the window knows
 the model, and in the main process when it does not — rather than sent as a message the model never
-saw a picture in.
+saw a picture in. The setting travels to the agent as the model's `input` list in `models.json`; the
+refusal is Alpha's, read from the same record (runtime/models.ts).
 
 ## Context
 
 Attachments have been part of the workbench since ADR-0014: bytes, not paths, read in the window,
 stored in the transcript, handed to the runtime as image content. What was never modelled is
-whether the model on the other end can *read* one. The runtime built every model with
-`input: ['text']`, and every protocol in pi-ai drops image content for a model that does not list
-`image` there:
+whether the model on the other end can *read* one. Back when Alpha made the requests, the runtime
+built every model with `input: ['text']`, and every protocol implementation dropped image content
+for a model that did not list `image` there:
 
 ```js
 if (hasImages && model.input.includes("image")) { … }   // openai-completions
@@ -33,9 +34,10 @@ model row in the models panel, stored in `providers.json` with the rest of the m
 through the same validator. It is **off** for a model that does not say otherwise, including every
 model stored before this setting existed.
 
-**The runtime is told, and the protocol decides.** `toPiModel` maps it to pi-ai's `input`: a model
-that takes pictures is declared `['text', 'image']`, and one that does not is declared `['text']`.
-That is the fix for the silent drop — the flag the protocols already respect is finally set.
+**The agent is told, and its protocol decides.** The setting is written into the model's `input`
+in `models.json`: a model that takes pictures is declared `['text', 'image']`, and one that does not
+is declared `['text']` (`runtime/agent-models.ts`). That is the fix for the silent drop — the flag
+the protocol already respects is finally set.
 
 **Where a picture is refused.** Two places, one sentence each:
 

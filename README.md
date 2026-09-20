@@ -1,11 +1,12 @@
 # Alpha
 
-A local-first desktop workbench for a pi agent. Bring your own key, choose how much the agent may
-do without asking, and read every tool call it made in a ledger you can audit afterwards.
+A local-first desktop workbench for `pi`. Alpha ships no agent: it runs the `pi` you installed,
+against a folder you choose, with your own key — choose how much the agent may do without asking,
+and read every tool call it made in a ledger you can audit afterwards.
 
-Alpha is an Electron app: a warm Ink interface around the `pi` agent core, with the model, the
-tools and the transcript all running in the main process and the window receiving a projection of
-it over a typed IPC contract.
+Alpha is an Electron app. The agent is a child process it drives over `pi`'s RPC protocol; the
+window receives a projection of the conversation over a typed IPC contract, and the credential, the
+permission ladder and the decisions stay in the main process.
 
 ## Install
 
@@ -120,7 +121,7 @@ Layout:
 
 ```
 packages/core       pure: the transcript projection, the permission table, the IPC contract
-packages/main       the runtime: pi harness, sessions, providers, the gate, the IPC handlers
+packages/main       the runtime: the agent process, the gate, providers, sessions, the IPC handlers
 packages/preload    the bridge: the only functions the window gets
 packages/renderer   React, TanStack Router, Tailwind, Zustand — the window and nothing else
 e2e                 Playwright specs that launch the built app

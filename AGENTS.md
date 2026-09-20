@@ -4,9 +4,11 @@ Chat replies use Chinese (简体中文).
 
 ## Alpha
 
-A local-first Electron workbench that runs a `pi` agent against a folder on your machine. Read
-`CONTEXT.md` before naming anything in code, issues, or UI copy: it fixes the vocabulary
-(workspace, conversation, turn, permission level, approval, provider, credential, model).
+A local-first Electron workbench that runs the `pi` the person installed against a folder on your
+machine. Alpha ships no agent: it finds `pi`, drives it over its RPC protocol, and owns the window,
+the IPC contract, the permission gate, the decisions and the credentials. Read `CONTEXT.md` before
+naming anything in code, issues, or UI copy: it fixes the vocabulary (workspace, conversation, turn,
+permission level, approval, provider, credential, model).
 
 ### Commands
 

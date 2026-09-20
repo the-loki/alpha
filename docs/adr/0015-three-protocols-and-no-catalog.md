@@ -1,10 +1,18 @@
 # Three protocols, no catalog, and a model list that belongs to the user
 
-Alpha speaks exactly three wire protocols — OpenAI chat completions, OpenAI responses, Anthropic
-messages — and ships **no catalog of providers and no model ids**. A provider is a connection
-the user describes; the models it serves are a separate setting.
+Alpha names exactly three wire protocols — OpenAI chat completions, OpenAI responses, Anthropic
+messages — and ships **no catalog of providers and no model ids**. A provider is a connection the
+user describes; the models it serves are a separate setting.
+
+The protocols are still Alpha's to *name* (the record's `api`), but they are no longer Alpha's to
+*speak*: the agent makes the requests, and Alpha writes what it needs into a `models.json` in its
+own agent directory ([ADR-0001](0001-agent-runtime-in-main-process.md)).
 
 ## Superseded in part
+
+Two things have moved since this was written. The protocols are described rather than implemented:
+the table that used to pick a pi-ai implementation per `api` now picks a string in the agent's
+configuration, and Alpha contains no provider client at all (the dependency is gone, #115).
 
 The decision that a model list is edited on a panel of its own was reversed: the models panel made
 a user find their provider a second time in order to edit what already belonged to it. A model is
@@ -32,8 +40,8 @@ wanted.
 
 **Three protocols, as a closed union in `core`.** `openai-completions`, `openai-responses`,
 `anthropic-messages`: the de-facto standard that gateways and local servers copy, OpenAI's newer
-shape, and Anthropic's own. Each is one API implementation from pi-ai, chosen by a table keyed on
-the record's `api`, so adding a fourth later is one row.
+shape, and Anthropic's own. The union is a closed list of names, and each name is written into the
+agent's `models.json` beside the base URL and the models that go with it.
 
 **No catalog, and therefore no host in Alpha's source.** The user types a base URL or nothing
 works. That is a stronger version of C3.1 than the catalog was: the previous rule had to exempt

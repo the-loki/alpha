@@ -7,7 +7,9 @@ content — never as a path to a file on the machine.
 
 The obvious way to send a picture is to name it: the composer knows the path, the runtime reads the
 file when it builds the prompt, and the transcript records where the file was. It is less data over
-the wire, and it is what a tool call does.
+the wire, and it is what a tool call does. What still holds with the agent doing the sending is that
+the picture has to cross the process boundary as content: Alpha hands it to `pi` in the prompt, and
+it is the agent that puts it on the wire.
 
 Three things make it the wrong shape here. The workbench is served to a browser
 ([ADR-0009](0009-the-workbench-can-be-served-to-a-browser.md)), and a path on the machine that runs
