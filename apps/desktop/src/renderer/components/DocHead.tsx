@@ -11,12 +11,14 @@ import {
 import { createSignal, For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
-import { PAGE } from './ledger.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { BAND } from './ledger.ts'
 
-/** The head's own controls are stamps, like every other control on the sheet. */
-const SELECT_CLASS =
-  'border border-line bg-ink-700 px-2 py-1 text-xs text-parchment-dim transition-colors hover:text-parchment focus:border-line-strong focus:outline-none'
+/**
+ * The head's own control: the same body as every other control in the window — one height, one
+ * radius, one hairline — because it stands in a row beside actions that are words.
+ */
+const SELECT_CLASS = `${CONTROL_HEIGHT} rounded-control border border-line bg-ink-700 px-2 text-xs text-parchment-dim transition-colors hover:text-parchment focus:border-line-strong focus:outline-none`
 
 /** What the session has spent. Cost is shown only when the model's own cost data is non-zero. */
 function UsageReadout() {
@@ -97,7 +99,7 @@ function ConversationTitle() {
 export function DocHead() {
   const t = useText()
 
-  const band = `flex h-14 items-center justify-between gap-4 border-b border-line/70 bg-ink-800/70 backdrop-blur-xl ${PAGE}`
+  const band = `bg-ink-800/70 backdrop-blur-xl ${BAND}`
 
   // A page that has not been asked anything yet has no head band: its name is set on the page
   // itself, large, where a title page puts it — and a document says its name once (ADR-0019).

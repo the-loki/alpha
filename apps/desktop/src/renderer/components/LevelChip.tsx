@@ -2,6 +2,7 @@ import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS, type Permi
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { shell, shellActions, useText } from '../stores/shell.ts'
+import { CHIP } from './controls.ts'
 import { CheckIcon } from './icons.tsx'
 
 /** How each tone of the permission level reads: the settings page uses the same map. */
@@ -72,7 +73,7 @@ export function LevelChip() {
             : t('level.chipTitle')
         }
         onClick={() => setOpen((value) => !value)}
-        class={`flex items-center gap-2 rounded-control border px-2.5 py-1 text-xs font-medium transition-colors ${TONE_CLASS[tone()]}`}
+        class={`${CHIP} font-medium transition-colors ${TONE_CLASS[tone()]}`}
       >
         <span class={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone()]}`} aria-hidden="true" />
         {t(levelKey(level()))}

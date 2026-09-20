@@ -12,13 +12,15 @@ export function TasksRoute() {
   return (
     // A div, not a second `<main>`: the window has one main landmark, and this is it — the tasks
     // page is inside it, not beside it.
-    <div class="h-full overflow-y-auto">
-      {/* The way back sits at the page's own edge, the way it does in settings: above the column
-          of content, not inside it. */}
-      <div class={`pt-2 ${PAGE}`}>
+    <div class="flex h-full min-h-0 flex-col">
+      {/* The way back is the one row above the band, at the page's own edge: the rail beside this
+          page is the workbench's index rather than this page's menu, so the way back belongs to the
+          page. Its own padding is cancelled, so its word stands on the x the page's title stands
+          on rather than a hair to the right of it. */}
+      <div class={`shrink-0 pt-2 ${PAGE}`}>
         <a
           href="#/"
-          class="inline-flex items-center gap-2 px-2 py-1 text-xs text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          class="-ml-2 inline-flex items-center gap-2 rounded-control px-2 py-1 text-xs text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           <ArrowLeftIcon />
           {t('settings.back')}

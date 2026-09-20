@@ -8,6 +8,7 @@ import { bridge } from '../lib/bridge.ts'
 import { conversationActions } from '../stores/conversations.ts'
 import { shell, shellActions } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
+import { SettingsNav } from './settings.tsx'
 
 export function RootLayout(props: { children?: JSX.Element }) {
   const [paletteOpen, setPaletteOpen] = createSignal(false)
@@ -52,8 +53,11 @@ export function RootLayout(props: { children?: JSX.Element }) {
       <div class="flex h-screen flex-col bg-ink-900">
         <TitleBar onSearch={() => setPaletteOpen(true)} inSettings={inSettings()} />
         <div class="flex min-h-0 flex-1 gap-2 px-2 pb-2">
-          <Show when={!inSettings()}>
-            <Sidebar />
+          {/* One slot, two panels: the workbench's index and the settings menu are the same panel
+              in the same place, because settings is a place the window goes rather than a page with
+              a menu inside it (C5.4). */}
+          <Show when={inSettings()} fallback={<Sidebar />}>
+            <SettingsNav />
           </Show>
           <main class="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
             {props.children}

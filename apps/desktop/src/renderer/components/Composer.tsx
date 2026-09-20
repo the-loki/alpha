@@ -5,7 +5,7 @@ import { conversationActions, conversations } from '../stores/conversations.ts'
 import { runningModel } from '../stores/providers.ts'
 import { composerFolderOf, shell, useText } from '../stores/shell.ts'
 import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from './Attachments.tsx'
-import { OUTLINED_ACTION } from './controls.ts'
+import { AMBER_ACTION, OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
 import { PAGE } from './ledger.ts'
@@ -24,11 +24,7 @@ function RunningActions(props: {
   const t = useText()
   return (
     <div class="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => props.onStop()}
-        class="rounded-control border border-amber/50 px-3 py-1 text-xs text-amber transition-colors hover:bg-amber/10"
-      >
+      <button type="button" onClick={() => props.onStop()} class={AMBER_ACTION}>
         {t('composer.stop')}
       </button>
       <button
@@ -82,7 +78,7 @@ function ComposerFoot(props: {
             aria-label={t('composer.send')}
             // The accent means "this does something". A disabled send wears the quiet surface
             // instead, so the ember in the corner always means a message can go.
-            class="grid h-7 w-7 shrink-0 place-items-center bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
+            class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-accent-ink transition-colors hover:bg-accent-bright disabled:bg-ink-600 disabled:text-parchment-faint"
           >
             <ArrowUpIcon />
           </button>
@@ -206,13 +202,15 @@ export function Composer(props: { streaming?: boolean }) {
   }
 
   return (
-    // The line the next message is written on: a soft bar floating at the foot of the page, one
-    // column in from the page's own edge so it starts where every entry's words start (C5.4).
+    // The line the next message is written on: a soft bar floating at the foot of the page. It is
+    // set on the words' own column — the entry number's column plus the gap after it, less the
+    // bar's own padding — so what is typed starts on the x every entry's words start on (C5.4).
     <div class={`shrink-0 pt-2 pb-4 ${PAGE}`}>
-      <QueueStrip />
-      {/* One column in from the page's edge — the width of an entry's number and the gap after it —
-          so the bar lines up with the words above it rather than with the numbers. */}
-      <div class="ml-10">
+      {/* One column in from the page's edge, and the bar's own padding makes up the difference: what
+          is typed starts on the words' column, and everything the composer stacks — what waits, the
+          pictures, the words — shares that one edge. */}
+      <div class="ml-6">
+        <QueueStrip />
         <div class={BAR(props.streaming === true)}>
           <PendingAttachments items={attached()} onRemove={(index) => removeAt(index)} />
           <div class="flex items-start">

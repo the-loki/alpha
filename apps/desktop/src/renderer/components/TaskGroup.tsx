@@ -4,7 +4,7 @@ import { createSignal, For, Show } from 'solid-js'
 import { useText } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
 import { ConversationRow } from './ConversationRow.tsx'
-import { ChevronDownIcon, ClockIcon } from './icons.tsx'
+import { ClockIcon } from './icons.tsx'
 
 /** How many of a task's runs the rail shows; the task's own page holds the rest. */
 const SHOWN_RUNS = 5
@@ -42,7 +42,9 @@ export function TaskGroup(props: { node: TaskNode }) {
             onClick={() => setOpen((value) => !value)}
             class="flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui transition-colors hover:bg-ink-600"
           >
-            <ChevronDownIcon class={`text-parchment-faint transition-transform ${open() ? '' : '-rotate-90'}`} />
+            {/* The column a folder leaves empty, left empty here too: folding is the row's own
+                click, so a chevron to aim at would be a control the rail does not have. */}
+            <span class="w-4 shrink-0" aria-hidden="true" />
             <span class="ml-1 flex min-w-0 items-center gap-2">
               <ClockIcon class="text-parchment-faint" />
               <span class="min-w-0 truncate text-parchment-dim">{props.node.task.name}</span>

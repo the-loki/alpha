@@ -2,6 +2,7 @@ import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/
 import { createSignal, onMount, Show } from 'solid-js'
 import { conversationActions } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
 
 /**
@@ -61,22 +62,25 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
         <Show when={props.request.diff}>{(diff) => <DiffView diff={diff()} />}</Show>
       </div>
 
+      {/* One row of decisions, one height: Allow once, Always allow with the scope it is
+          remembered for, a reason, and Deny. The reason field is the same height as the buttons —
+          a field that is taller than the decision beside it is the row reading as two rows. */}
       <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-3.5 py-2.5">
         <button
           type="button"
           onClick={allowOnce}
           disabled={busy()}
-          class="rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60"
+          class={`${CONTROL_HEIGHT} inline-flex items-center rounded-control bg-accent px-3 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright disabled:opacity-60`}
         >
           {t('approval.allowOnce')}
         </button>
 
-        <div class="flex items-center rounded-control border border-line bg-ink-700 shadow-soft">
+        <div class={`${CONTROL_HEIGHT} flex items-center rounded-control border border-line bg-ink-700 shadow-soft`}>
           <button
             type="button"
             onClick={allowAlways}
             disabled={busy()}
-            class="px-3 py-1 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
+            class="h-full px-3 text-xs text-parchment transition-colors hover:text-parchment disabled:opacity-60"
           >
             {t('approval.alwaysAllow')}
           </button>
@@ -84,7 +88,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
             aria-label={t('approval.rememberFor')}
             value={scope()}
             onInput={(event) => setScope(event.currentTarget.value as RuleScope)}
-            class="border-l border-line bg-transparent px-1.5 py-1 text-micro text-parchment-dim focus:outline-none"
+            class="h-full border-l border-line bg-transparent px-1.5 text-micro text-parchment-dim focus:outline-none"
           >
             <option value="conversation">{t('approval.scopeConversation')}</option>
             <option value="workspace">{t('approval.scopeWorkspace')}</option>
@@ -99,15 +103,10 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
           onInput={(event) => setReason(event.currentTarget.value)}
           aria-label={t('approval.reasonLabel')}
           placeholder={t('approval.reasonPlaceholder')}
-          class="min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-700 px-2.5 py-1.5 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none"
+          class={`min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-700 px-2.5 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`}
         />
 
-        <button
-          type="button"
-          onClick={deny}
-          disabled={busy()}
-          class="rounded-control border border-danger/40 px-3 py-1 text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
-        >
+        <button type="button" onClick={deny} disabled={busy()} class={DESTRUCTIVE_BUTTON}>
           {t('approval.deny')}
         </button>
       </div>

@@ -3,10 +3,10 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { providerActions, providers, runningModel } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
+import { CHIP as CHIP_SHAPE } from './controls.ts'
 import { CheckIcon } from './icons.tsx'
 
-const CHIP =
-  'flex max-w-56 items-center gap-2 rounded-control border border-line px-2.5 py-1 text-xs text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment'
+const CHIP = `${CHIP_SHAPE} max-w-56 border-line text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment`
 
 /**
  * Which model the next message runs on, at the foot of the composer beside the send control.

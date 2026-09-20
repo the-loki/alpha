@@ -14,6 +14,7 @@ import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { runsOf, taskActions, taskOf, tasks } from '../../stores/tasks.ts'
 import { DESTRUCTIVE_ACTION, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
 import { ClockIcon } from '../icons.tsx'
+import { BAND } from '../ledger.ts'
 import { TaskForm } from './TaskForm.tsx'
 
 function scheduleText(t: ReturnType<typeof useText>, schedule: TaskSchedule): string {
@@ -125,72 +126,78 @@ export function TasksPage() {
   }
 
   return (
-    <div class="mx-auto w-full max-w-3xl px-4 py-5">
-      <div class="flex items-center justify-between">
-        <h1 class="font-display text-xl font-medium text-parchment">{t('tasks.title')}</h1>
+    <div class="flex h-full min-h-0 flex-col">
+      {/* The page's band: what this page is, and the one thing you do to the page itself — the same
+          band, height and padding the conversation head and a settings panel wear, so the title
+          stands on the same x and the same y wherever you are (C5.4). */}
+      <header class={BAND}>
+        <h1 class="min-w-0 truncate font-display text-xl font-medium text-parchment">{t('tasks.title')}</h1>
         <button type="button" onClick={() => start()} class={PRIMARY_ACTION}>
           {t('tasks.new')}
         </button>
-      </div>
-      {/* The page's own band: what this page is, then a rule, then the tasks it holds — the same
-          shape the settings panel and the conversation header use. */}
-      <p class="mt-2 border-b border-line pb-4 text-xs leading-relaxed text-parchment-dim">{t('tasks.intro')}</p>
+      </header>
 
-      <Show when={form() !== undefined}>
-        <TaskForm
-          form={draft()}
-          note={note()}
-          onChange={(changes) => setForm((previous) => ({ ...previous, ...changes }))}
-          onCancel={() => {
-            setForm(undefined)
-            setEditing(undefined)
-          }}
-          onSave={async () => {
-            await taskActions.save({ ...draft(), id: editing() === '' ? undefined : editing() })
-            setForm(undefined)
-            setEditing(undefined)
-          }}
-        />
-      </Show>
+      <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        {/* What this page is for, on the measure the prose keeps: the band's rule is what separates
+            the page's head from its body, so the first line of the body draws no rule of its own. */}
+        <p class="max-w-measure text-xs leading-relaxed text-parchment-dim">{t('tasks.intro')}</p>
 
-      <Show
-        when={tasks.tasks.length === 0}
-        fallback={
-          <ul class="mt-5 space-y-2">
-            <For each={tasks.tasks}>{(task) => <TaskRow task={task} onOpen={() => start(task)} />}</For>
-          </ul>
-        }
-      >
-        <Show when={tasks.listed}>
-          <div class="mt-6 rounded-card border border-line bg-ink-800 px-4 py-6">
-            <p class="text-ui text-parchment">{t('tasks.empty')}</p>
-            <p class="mt-1 text-xs leading-relaxed text-parchment-dim">{t('tasks.emptyBody')}</p>
-          </div>
+        <Show when={form() !== undefined}>
+          <TaskForm
+            form={draft()}
+            note={note()}
+            onChange={(changes) => setForm((previous) => ({ ...previous, ...changes }))}
+            onCancel={() => {
+              setForm(undefined)
+              setEditing(undefined)
+            }}
+            onSave={async () => {
+              await taskActions.save({ ...draft(), id: editing() === '' ? undefined : editing() })
+              setForm(undefined)
+              setEditing(undefined)
+            }}
+          />
         </Show>
-      </Show>
 
-      <Show when={current()}>
-        {(task) => (
-          <section aria-labelledby="task-history" class="mt-6">
-            <h2 id="task-history" class="text-body font-medium text-parchment">
-              {t('tasks.history')}
-            </h2>
-            <RunList runs={runsOf(task().id)} />
-            <div class="mt-4 flex gap-3">
-              <button
-                type="button"
-                onClick={() => void taskActions.save({ id: task().id, enabled: !task().enabled })}
-                class={OUTLINED_ACTION}
-              >
-                {t(task().enabled ? 'tasks.stop' : 'tasks.start')}
-              </button>
-              <button type="button" onClick={() => void taskActions.remove(task().id)} class={DESTRUCTIVE_ACTION}>
-                {t('tasks.delete')}
-              </button>
+        <Show
+          when={tasks.tasks.length === 0}
+          fallback={
+            <ul class="mt-5 space-y-2">
+              <For each={tasks.tasks}>{(task) => <TaskRow task={task} onOpen={() => start(task)} />}</For>
+            </ul>
+          }
+        >
+          <Show when={tasks.listed}>
+            <div class="mt-6 rounded-card border border-line bg-ink-800 px-4 py-6">
+              <p class="text-ui text-parchment">{t('tasks.empty')}</p>
+              <p class="mt-1 text-xs leading-relaxed text-parchment-dim">{t('tasks.emptyBody')}</p>
             </div>
-          </section>
-        )}
-      </Show>
+          </Show>
+        </Show>
+
+        <Show when={current()}>
+          {(task) => (
+            <section aria-labelledby="task-history" class="mt-6">
+              <h2 id="task-history" class="text-body font-medium text-parchment">
+                {t('tasks.history')}
+              </h2>
+              <RunList runs={runsOf(task().id)} />
+              <div class="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => void taskActions.save({ id: task().id, enabled: !task().enabled })}
+                  class={OUTLINED_ACTION}
+                >
+                  {t(task().enabled ? 'tasks.stop' : 'tasks.start')}
+                </button>
+                <button type="button" onClick={() => void taskActions.remove(task().id)} class={DESTRUCTIVE_ACTION}>
+                  {t('tasks.delete')}
+                </button>
+              </div>
+            </section>
+          )}
+        </Show>
+      </div>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.
 import { tasks } from '../stores/tasks.ts'
 import { ArchivedSection, FolderSection } from './FolderTree.tsx'
 import { PlusIcon } from './icons.tsx'
+import { PANEL } from './ledger.ts'
 
 /**
  * A control that is only its glyph: an action that belongs beside the thing it acts on rather than
@@ -40,7 +41,7 @@ export function Sidebar() {
   return (
     // A soft panel beside the page: the workbench's contents, floating the same distance off the
     // window's edges as the page does (C5.4).
-    <aside class="flex w-64 shrink-0 flex-col rounded-card bg-ink-800 px-2 pb-2">
+    <aside class={PANEL}>
       <div class="mt-1.5 flex min-h-0 flex-1 flex-col overflow-y-auto pt-2">
         {/* The index's own row: what it holds, how much of it, and the one action that belongs to
             the index itself — adding another folder to it. */}

@@ -1,6 +1,7 @@
 import { For } from 'solid-js'
 import { providerActions, providers } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
+import { CONTROL_HEIGHT } from '../controls.ts'
 
 /**
  * Which model a conversation with nothing chosen yet runs on, by provider and model. It is the one
@@ -27,7 +28,7 @@ export function DefaultModel() {
               providerId === undefined || modelId === undefined ? undefined : { providerId, modelId },
             )
           }}
-          class="w-full rounded-control border border-line bg-ink-700 px-2 py-1.5 text-code text-parchment focus:border-line-strong focus:outline-none"
+          class={`w-full rounded-control border border-line bg-ink-700 px-2 text-code text-parchment focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`}
         >
           <option value="">{t('settings.defaultModelAuto')}</option>
           <For each={providers.snapshot.providers}>

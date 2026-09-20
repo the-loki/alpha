@@ -2,6 +2,7 @@ import type { NetworkBind, NetworkPatch, NetworkState, Undef } from '@alpha/core
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { shell, useText } from '../../stores/shell.ts'
+import { CONTROL_HEIGHT } from '../controls.ts'
 
 const BIND_LABELS: Record<NetworkBind, string> = {
   local: 'This machine only',
@@ -87,7 +88,7 @@ export function BrowserAccessSection() {
                   value={port()}
                   onInput={(event) => setPort(event.target.value.replace(/[^0-9]/g, ''))}
                   onBlur={() => change({ port: Number(port() === '' ? 0 : port()) })}
-                  class="w-20 rounded-control border border-line bg-ink-700 px-2 py-1 text-right font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
+                  class={`w-20 rounded-control border border-line bg-ink-700 px-2 text-right font-mono text-code text-parchment focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`}
                 />
                 <span class="text-micro text-parchment-faint">{t('settings.portHint')}</span>
               </span>
@@ -129,7 +130,7 @@ function TokenRow(props: {
     <div>
       <span class="block text-ui text-parchment">{t('unlock.token')}</span>
       <div class="mt-1 flex items-center gap-2">
-        <code class="min-w-0 flex-1 truncate rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-code text-parchment-dim">
+        <code class="flex h-7 min-w-0 flex-1 items-center truncate rounded-control border border-line bg-ink-700 px-2 font-mono text-code text-parchment-dim">
           {disabled() ? t('settings.tokenMinted') : props.state.token}
         </code>
         <button

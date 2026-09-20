@@ -36,7 +36,7 @@ const ACCENT_LABELS: Record<Accent, string> = {
   plum: 'Plum',
 }
 
-const CHOICE = 'flex items-center gap-2 rounded-control border px-3 py-1.5 text-xs transition-colors'
+const CHOICE = 'flex h-7 items-center gap-2 rounded-control border px-3 text-xs transition-colors'
 const CHOSEN = 'border-accent/50 bg-accent/10 text-accent'
 const RESTING = 'border-line text-parchment-dim hover:bg-ink-600'
 
@@ -82,7 +82,7 @@ export function AppearanceSection() {
                 type="button"
                 aria-pressed={candidate === shell.accent}
                 onClick={() => void shellActions.setAppearance({ accent: candidate })}
-                class={`${CHOICE} py-1.5 pr-3 pl-2 ${
+                class={`${CHOICE} pr-3 pl-2 ${
                   candidate === shell.accent ? 'border-line-strong bg-ink-600 font-medium text-parchment' : RESTING
                 }`}
               >

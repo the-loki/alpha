@@ -3,6 +3,7 @@ import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { agent, agentActions, agentReady } from '../../stores/agent.ts'
 import { useText } from '../../stores/shell.ts'
+import { CONTROL_HEIGHT } from '../controls.ts'
 
 /**
  * The agent Alpha runs: none of its own, so this panel is the whole relationship with pi until a
@@ -60,7 +61,7 @@ export function AgentSection() {
                     void agentActions.setPath(typed() ?? snapshot().path)
                     setTyped(undefined)
                   }}
-                  class="w-full rounded-control border border-line bg-ink-700 px-3 py-1.5 font-mono text-xs text-parchment"
+                  class={`w-full rounded-control border border-line bg-ink-700 px-3 font-mono text-xs text-parchment ${CONTROL_HEIGHT}`}
                 />
                 <p class="text-xs text-parchment-faint">{t('agent.pathHint')}</p>
               </div>
@@ -70,14 +71,14 @@ export function AgentSection() {
                   type="button"
                   disabled={snapshot().installing}
                   onClick={() => void agentActions.install()}
-                  class="rounded-control border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs text-accent disabled:opacity-50"
+                  class="inline-flex h-7 items-center rounded-control border border-accent/50 bg-accent/10 px-3 text-xs text-accent disabled:opacity-50"
                 >
                   {snapshot().installing ? t('agent.installing') : t('agent.install')}
                 </button>
                 <button
                   type="button"
                   onClick={() => void agentActions.refresh()}
-                  class="rounded-control border border-line px-3 py-1.5 text-xs text-parchment-dim hover:bg-ink-700"
+                  class="inline-flex h-7 items-center rounded-control border border-line px-3 text-xs text-parchment-dim hover:bg-ink-700"
                 >
                   {t('agent.recheck')}
                 </button>
@@ -86,7 +87,7 @@ export function AgentSection() {
               <div class="space-y-1">
                 <span class="block text-xs text-parchment-dim">{t('agent.command')}</span>
                 <div class="flex items-center gap-2">
-                  <code class="grow truncate rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment-faint">
+                  <code class="flex h-7 grow items-center truncate rounded-control border border-line bg-ink-700 px-2 font-mono text-xs text-parchment-faint">
                     {snapshot().command}
                   </code>
                   <button

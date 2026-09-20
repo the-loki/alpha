@@ -11,12 +11,12 @@ import {
 } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { shell, useText } from '../../stores/shell.ts'
-import { OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
+import { CONTROL_HEIGHT, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
 
-const FIELD = 'w-full rounded-control border border-line bg-ink-700 px-2 py-1.5 text-ui text-parchment'
+const FIELD = `w-full rounded-control border border-line bg-ink-700 px-2 text-ui text-parchment ${CONTROL_HEIGHT}`
 const LABEL = 'block text-xs font-medium text-parchment-dim'
 /** A choice carries a mark, not only a colour (C5.7): the chosen one is tinted and ringed. */
-const CHOICE = 'flex items-center gap-2 rounded-control border px-3 py-1 text-xs transition-colors'
+const CHOICE = 'flex h-7 items-center gap-2 rounded-control border px-3 text-xs transition-colors'
 const CHOSEN = 'border-accent/50 bg-accent/10 text-accent'
 const RESTING = 'border-line text-parchment-dim hover:bg-ink-600'
 
@@ -58,7 +58,7 @@ function ScheduleFields(props: { schedule: TaskSchedule; onChange: (schedule: Ta
               const minutes = Number(event.currentTarget.value)
               props.onChange({ kind: 'every', minutes: Number.isFinite(minutes) ? minutes : MINIMUM_INTERVAL_MINUTES })
             }}
-            class="w-24 rounded-control border border-line bg-ink-700 px-2 py-1.5 text-code text-parchment"
+            class="h-7 w-24 rounded-control border border-line bg-ink-700 px-2 text-code text-parchment"
           />
         </label>
       ) : (
@@ -74,7 +74,7 @@ function ScheduleFields(props: { schedule: TaskSchedule; onChange: (schedule: Ta
                 at: parseDailyTime(event.currentTarget.value) === undefined ? '09:00' : event.currentTarget.value,
               })
             }
-            class="rounded-control border border-line bg-ink-700 px-2 py-1.5 text-code text-parchment"
+            class="h-7 rounded-control border border-line bg-ink-700 px-2 text-code text-parchment"
           />
         </label>
       )}

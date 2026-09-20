@@ -3,7 +3,7 @@ import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
 import { MoreIcon } from './icons.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
@@ -85,7 +85,7 @@ export function ConversationRow(props: {
               void conversationActions.rename(props.conversation.id, next)
             }
           }}
-          class="w-full rounded-control border border-line-strong bg-ink-700 px-2 py-1 text-ui text-parchment focus:outline-none"
+          class={`w-full rounded-control border border-line-strong bg-ink-700 px-2 text-ui text-parchment focus:outline-none ${CONTROL_HEIGHT}`}
         />
       </li>
     </Show>

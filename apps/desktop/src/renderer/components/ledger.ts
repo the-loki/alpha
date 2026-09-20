@@ -14,6 +14,21 @@ export const BLOCK = 'flex gap-4'
 /** The leading column: numbers are right-aligned in it, so two digits and one line up. */
 export const MARK_COLUMN = 'w-6 shrink-0 pt-1 text-right font-mono text-micro text-parchment-faint'
 
+/**
+ * The panel beside the page: the rail on the workbench, the menu in settings. One class because
+ * they are one panel in one slot — the window has two surfaces and never a third, so settings
+ * swaps this rather than nesting a menu inside the page (C5.4).
+ */
+export const PANEL = 'flex w-64 shrink-0 flex-col rounded-card bg-ink-800 px-2 pb-2'
+
+/**
+ * The band a page wears at the top: what this page is, and the controls that act on the page rather
+ * than on one thing in it. One height and one padding for every page — the conversation, the tasks,
+ * a settings panel — so moving between them does not move the title, and the rule under the band is
+ * drawn on the same line in all three (C5.4).
+ */
+export const BAND = `flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line ${PAGE}`
+
 /** Two digits, so a column of numbers in the margin is a column and not a ragged edge. */
 export function entryNumber(index: number): string {
   return String(index + 1).padStart(2, '0')

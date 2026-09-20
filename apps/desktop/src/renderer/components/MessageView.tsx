@@ -15,7 +15,7 @@ import { createSignal, For, Index, Match, Show, Switch } from 'solid-js'
 import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { TEXT_ACTION } from './controls.ts'
+import { OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -81,27 +81,19 @@ function EditBox(props: { message: ChatMessage; index: number; onDone: () => voi
   }
 
   return (
-    <div class="w-3/4 border border-amber/40 bg-ink-900/60 p-3">
+    <div class="w-3/4 rounded-card border border-amber/40 bg-ink-900/60 p-3">
       <textarea
         rows={3}
         value={text()}
         aria-label={t('message.editLabel')}
         onInput={(event) => setText(event.target.value)}
-        class="block w-full resize-none border border-line bg-ink-700 px-2.5 py-2 text-sm leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
+        class="block w-full resize-none rounded-control border border-line bg-ink-700 px-2.5 py-2 text-body leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
       />
       <div class="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => submit('replace')}
-          class="bg-accent px-3 py-1 text-xs font-medium text-accent-ink transition-colors hover:bg-accent-bright"
-        >
+        <button type="button" onClick={() => submit('replace')} class={PRIMARY_ACTION}>
           {t('message.resend')}
         </button>
-        <button
-          type="button"
-          onClick={() => submit('fork')}
-          class="border border-line px-3 py-1 text-xs text-parchment transition-colors hover:bg-ink-700"
-        >
+        <button type="button" onClick={() => submit('fork')} class={OUTLINED_ACTION}>
           {t('message.fork')}
         </button>
       </div>

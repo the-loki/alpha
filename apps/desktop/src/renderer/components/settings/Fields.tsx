@@ -1,9 +1,10 @@
 import { PROVIDER_APIS, type ProviderApi, type TextKey } from '@alpha/core'
 import { For } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
+import { CONTROL_HEIGHT } from '../controls.ts'
 
-export const FIELD =
-  'w-full rounded-control border border-line bg-ink-700 px-2 py-1 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none'
+/** A field is a body like a button is: one height, one radius, one hairline (C5.4). */
+export const FIELD = `w-full rounded-control border border-line bg-ink-700 px-2 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`
 
 export function TextField(props: {
   label: string

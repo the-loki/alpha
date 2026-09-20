@@ -17,7 +17,7 @@ function WindowControls() {
           type="button"
           aria-label={t('window.minimize')}
           onClick={() => void client.sendWindowCommand('minimize')}
-          class="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          class="grid h-7 w-10 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
@@ -27,7 +27,7 @@ function WindowControls() {
           type="button"
           aria-label={shell.windowMaximized ? t('window.restore') : t('window.maximize')}
           onClick={() => void client.sendWindowCommand('toggle-maximize')}
-          class="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          class="grid h-7 w-10 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" />
@@ -37,7 +37,7 @@ function WindowControls() {
           type="button"
           aria-label={t('window.close')}
           onClick={() => void client.sendWindowCommand('close')}
-          class="grid h-8 w-10 place-items-center text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
+          class="grid h-7 w-10 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <path d="M0 0 L10 10 M10 0 L0 10" stroke="currentColor" stroke-width="1" />

@@ -179,7 +179,17 @@ hairlines. **Soft corners, and nothing is square** (ADR-0017): `--radius-control
 button, a chip, a field, a row; `--radius-card` `1rem` for a panel, the page, a block in it, the
 composer's bar; `--radius-overlay` `1.25rem` for a menu and the command palette. Chips and state
 dots are pills (`rounded-full`). There are three radii and no fourth: a component that wants a
-different corner wants a different element.
+different corner wants a different element. A control with a fill or an edge is never given a zero
+radius — the composer's send control, the window's own buttons and the head's selects included.
+
+**Everything with a body is one height.** A button, a chip, a field and a select that stand in a row
+are `CONTROL_HEIGHT` (1.75rem), and what is inside them is centred in it rather than given its own
+padding, so a control's height does not move when its words do. A row of decisions is one row: the
+gate's Allow once, Always allow, its reason field and Deny are the same height, and the primary is
+shouted with colour rather than with size — a button taller than the decision beside it is a button
+out of place. A row *inside* a composite control (the scope select beside "Always allow") is that
+control's inner box, not a second height. `e2e/design.spec.ts` measures the composer's foot, the
+strip's commands and the gate's decisions.
 
 **Height comes from three shadows, edges come from hairlines.** `--shadow-card` lifts the page and
 the rail off the window; `--shadow-soft` lifts what floats a little less — the composer's bar, the
@@ -195,6 +205,27 @@ have done, and nothing has both a heavy border and a shadow.
 panel — is a rounded panel beside it with a hairline and `--shadow-card`, taking the rest of the
 window. Nothing is full bleed except the window itself, and the strip at the top holds only the
 app's mark and the window's own controls.
+
+**Settings swaps the rail, it does not nest inside the page.** The menu is the same panel in the
+same slot at the same width as the rail, because the two screens are the same window twice; a menu
+drawn *inside* the page would give the window a third surface it does not have, and the two screens
+would disagree about where the left column ends. A page's own way back lives in that panel, not in
+the page.
+
+**A page wears a band.** One height (3.5rem), one padding (`PAGE`), a hairline under it, and the
+page's title in it at the left — so the title stands on the same x on the conversation, on the tasks
+list and on every settings panel, and the panel's own sentence is the first line of the body rather
+than a second line in the band. What acts on the page itself (adding a task) sits at the band's
+right end; what acts on something in the page stays with that thing. A page's way back is the one
+row that may stand above its band — the tasks page carries one there, and settings carries its own
+in the menu instead, where the row belongs to the panel rather than to the page.
+
+**One page, one content edge.** Every page's content starts on the page's own padding and runs to
+its other edge: a panel's fields, cards and rules are the panel's width, and prose keeps the measure
+on top of that. Nothing centres a narrower column in the middle of a wide page — that is the same
+mistake C5.3 forbids one level up, and it is what makes two pages of one window look assembled by
+two people. `e2e/design.spec.ts` measures it: the three pages' titles agree on their x, and the
+composer's words stand on the column the entries' words stand on.
 
 **The margin is a column, not a rule.** Two columns, imported from `components/ledger.ts` so
 nothing re-derives them: the leading column (`MARK_COLUMN`, 1.5rem) and the gap after it (1rem),
