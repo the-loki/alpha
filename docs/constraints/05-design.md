@@ -225,6 +225,17 @@ change what the next one starts with — and neither is duplicated in the head, 
 lives where the message that uses it is
 written.
 
+**What the box holds, the box bounds.** The composer may not grow past the page it stands on: the
+transcript gives up its room to it, so a box that kept growing would push the words — and the
+controls that send them — off the bottom of the window. The draft stops at its own cap (10rem), and
+the two things that arrive in numbers — the waiting messages and the pictures — scroll inside a 15vh
+strip and a 10vh row of their own, because a queue or a pile is bounded by how much there is, not by
+how tall the window is. The paused notice and its Resume stay outside that strip: a control that can
+be scrolled out of reach is not a control. With the foot, the notice and the paddings, the composer
+stays inside the page on any window taller than about 31rem; a browser window shorter than that is
+smaller than the workbench, not a layout to design for (ADR-0009). What has to be visible at all
+times is the last line of the page: the controls, and the line being typed.
+
 **Where a rule goes.** A hairline separates two *different kinds* of thing: the page's head from its
 body, the transcript from the composer's bar, **the rail's one starting action from the two that go
 somewhere, and those from the index below them**, one folder group from the next, one section of the
@@ -257,12 +268,18 @@ column labels use — the same voice that says `Folders` and `Gate` — because 
 record's fields are the same kind of thing: parts of one thing, named.
 
 **The rail's columns.** Every row in the rail is built on three x-positions, so a list of folders
-and their conversations reads as one grid: the glyph at 0.5rem (the chevron of a folder, the icon
-of an action row), the second column at 1.75rem (a folder's glyph, a conversation's status dot,
+and their conversations reads as one grid: the glyph at 0.5rem (an action row's icon; a folder
+leaves this column empty, because folding is the row's own click and there is no chevron to aim at —
+and the column stays, because the grid is what lines a folder up with the conversations under it),
+the second column at 1.75rem (a folder's glyph, a conversation's status dot,
 centred in its own 1rem box), and the third at 3.25rem (the name). The conversation you are in is a
 lifted row — the page's own fill, a rounded row, `--shadow-soft` — and the accent is not spent on
 saying where you are. A row that puts a name anywhere else is the thing that makes a rail look
 hand-assembled.
+
+**A folder with nothing under it is a heading.** Its row names the folder and says there is nothing
+in it; it is not a button, it has no `aria-expanded`, and clicking it folds nothing, because there is
+nothing to fold. A row that offers a fold over an empty section is a control that does nothing.
 
 **The rail's groups, and the one action that is a glyph.** The rows above the index are three
 things and only three: the one row that *starts* something (a new conversation, with the folder it

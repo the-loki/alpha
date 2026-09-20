@@ -65,10 +65,10 @@ async function launch(options: { vision?: boolean } = {}) {
 }
 
 /** Picking a file goes through the button, because that is the only way in there is. */
-async function attach(window: Awaited<ReturnType<typeof launch>>['window'], path: string) {
+async function attach(window: Awaited<ReturnType<typeof launch>>['window'], ...paths: string[]) {
   const chooser = window.waitForEvent('filechooser')
   await window.getByRole('button', { name: 'Attach a picture' }).click()
-  await (await chooser).setFiles(path)
+  await (await chooser).setFiles(paths)
 }
 
 test('a picture goes with the message and stays in the transcript', async () => {
@@ -88,6 +88,35 @@ test('a picture goes with the message and stays in the transcript', async () => 
   await expect(said.getByText('what is wrong here')).toBeVisible()
   // Sent, so the composer is empty of it: what is attached to the next message is nothing.
   await expect(window.getByRole('img', { name: 'screenshot.png' })).toHaveCount(0)
+
+  await app.close()
+})
+
+test('a pile of pictures scrolls, and keeps its remove controls reachable', async () => {
+  const { app, window } = await launch()
+  // More pictures than the box can show at once, each with its own name, so the bound is what the
+  // test is measuring.
+  const pileDirectory = mkdtempSync(join(tmpdir(), 'alpha-pile-'))
+  const pile = Array.from({ length: 20 }, (_, index) => join(pileDirectory, `pile-${index}.png`))
+  for (const file of pile) writeFileSync(file, PIXEL_PNG)
+  await attach(window, ...pile)
+  await expect(window.locator('[aria-label="Attached pictures"] img')).toHaveCount(pile.length)
+
+  // The pile scrolls inside its own box rather than growing the composer: the box is what bounds
+  // it, and a picture's remove control sits outside that picture's own corner — so the box needs
+  // room for it, or the control that takes a picture off the message is cut off.
+  const measured = await window.evaluate(() => {
+    const list = document.querySelector('[aria-label="Attached pictures"]')
+    const remove = list?.querySelector('button')
+    if (list === null || remove === null || remove === undefined) return null
+    const box = list.getBoundingClientRect()
+    const control = remove.getBoundingClientRect()
+    return {
+      scrolls: list.scrollHeight > list.clientHeight,
+      inside: control.top >= box.top && control.right <= box.right,
+    }
+  })
+  expect(measured).toEqual({ scrolls: true, inside: true })
 
   await app.close()
 })

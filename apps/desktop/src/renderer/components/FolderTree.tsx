@@ -28,6 +28,20 @@ export function FolderSection(props: {
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = createSignal(false)
   const count = () => props.folder.conversations.length
+  /** A folder with nothing under it has nothing to fold, so its row is a heading and not a control. */
+  const foldable = () => count() > 0 || props.tasks.length > 0
+  const rowTone = () => (props.current ? 'text-parchment' : 'text-parchment-dim')
+  const label = () => (
+    <>
+      {/* The column the chevron was in stays, empty: the rail's columns are what line a folder up
+          with the conversations under it, and a folder is not the place to break that grid. */}
+      <span class="w-4 shrink-0" aria-hidden="true" />
+      <span class="ml-1 flex min-w-0 items-center gap-2">
+        <FolderIcon class={props.current ? 'text-accent' : undefined} />
+        <span class="min-w-0 truncate">{props.folder.name}</span>
+      </span>
+    </>
+  )
 
   // A folder's own new conversation: the composer points here from now on, and the pane goes back
   // to being the place where the next message starts one.
@@ -43,29 +57,31 @@ export function FolderSection(props: {
     >
       <div class="group flex items-center gap-1">
         <h2 class="min-w-0 flex-1">
-          <button
-            type="button"
-            aria-expanded={!collapsed()}
-            aria-label={
-              collapsed()
-                ? t('sidebar.expand', { folder: props.folder.name })
-                : t('sidebar.collapse', { folder: props.folder.name })
+          <Show
+            when={foldable()}
+            fallback={
+              <span
+                class={`flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-ui font-medium ${rowTone()}`}
+              >
+                {label()}
+              </span>
             }
-            title={props.folder.path}
-            onClick={() => setCollapsed((value) => !value)}
-            class={`flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui font-medium transition-colors hover:bg-ink-600 ${
-              props.current ? 'text-parchment' : 'text-parchment-dim'
-            }`}
           >
-            <ChevronDownIcon class={`transition-transform ${collapsed() ? '-rotate-90' : ''}`} />
-            {/* Two columns, held by every row in this rail: this one owns the second column
-                (the folder glyph) and the third (its name), and the conversation rows below put
-                their status dot and title in exactly the same two places. */}
-            <span class="ml-1 flex min-w-0 items-center gap-2">
-              <FolderIcon class={props.current ? 'text-accent' : undefined} />
-              <span class="min-w-0 truncate">{props.folder.name}</span>
-            </span>
-          </button>
+            <button
+              type="button"
+              aria-expanded={!collapsed()}
+              aria-label={
+                collapsed()
+                  ? t('sidebar.expand', { folder: props.folder.name })
+                  : t('sidebar.collapse', { folder: props.folder.name })
+              }
+              title={props.folder.path}
+              onClick={() => setCollapsed((value) => !value)}
+              class={`flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui font-medium transition-colors hover:bg-ink-600 ${rowTone()}`}
+            >
+              {label()}
+            </button>
+          </Show>
         </h2>
         {/* One slot, two faces: the count is what the folder holds, the plus is what you can do
             with it. They share a box so hovering never moves the folder's name. */}

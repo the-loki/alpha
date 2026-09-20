@@ -24,8 +24,11 @@ export function QueueStrip() {
 
   return (
     <Show when={conversations.transcript.queued.length > 0 || conversations.transcript.queuedPaused}>
+      {/* What waits scrolls on its own, because a queue may not grow the composer past the page:
+          the words, and the controls that send them, live under it. The paused notice stays outside
+          the box — Resume is one of those controls. */}
       <div class="mb-1.5">
-        <ul aria-label={t('composer.queuedList')} class="space-y-1">
+        <ul aria-label={t('composer.queuedList')} class="max-h-[15vh] space-y-1 overflow-y-auto">
           <For each={conversations.transcript.queued}>
             {(item) => (
               <li class="flex items-center gap-2 rounded-control border border-line bg-ink-800/70 px-2.5 py-1">

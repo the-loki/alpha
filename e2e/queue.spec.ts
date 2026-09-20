@@ -97,6 +97,42 @@ test('a queued message waits, is edited where it stands, and then goes', async (
   await app.close()
 })
 
+test('a queue and a full draft still leave the composer inside the page', async () => {
+  const { app, window } = await launch()
+  // A short window, because the workbench can be served to a browser (ADR-0009) and a browser
+  // window can be any height: the box holds its own contents rather than pushing its controls off
+  // the bottom of the page.
+  await window.setViewportSize({ width: 1024, height: 520 })
+
+  await composer(window).fill('the running turn')
+  await composer(window).press('Enter')
+  await expect(window.getByRole('button', { name: 'Queue', exact: true })).toBeVisible({ timeout: 15_000 })
+
+  for (let index = 0; index < 8; index += 1) await queue(window, `waiting ${index}`)
+  await composer(window).fill('a draft long enough that the box grows to its own cap. '.repeat(20))
+
+  const page = await window.getByRole('main').boundingBox()
+  const box = await composer(window).boundingBox()
+  const foot = await window.getByRole('button', { name: 'Scripted model', exact: true }).boundingBox()
+  if (page === null || box === null || foot === null) throw new Error('nothing to measure')
+
+  // The page's own bottom edge is the limit, and the words and the controls that send them are
+  // inside it — the queue scrolled rather than the composer being clipped.
+  expect(box.y + box.height).toBeLessThanOrEqual(page.y + page.height)
+  expect(foot.y + foot.height).toBeLessThanOrEqual(page.y + page.height)
+
+  // The queue went into a box of its own rather than off the page: it scrolls, and every waiting
+  // message is still reachable in it.
+  const list = window.getByRole('list', { name: 'Queued messages' })
+  expect(await list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await expect(window.getByText('waiting 7')).toBeVisible()
+
+  await app.close()
+})
+
 test('Stop stops the queue too, and Resume sends what was waiting', async () => {
   const { app, window } = await launch()
 

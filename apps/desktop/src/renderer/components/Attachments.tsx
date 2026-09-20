@@ -57,7 +57,13 @@ export function PendingAttachments(props: { items: Attachment[]; onRemove: (inde
   const t = useText()
   return (
     <Show when={props.items.length > 0}>
-      <ul aria-label={t('composer.attached')} class="mb-2 flex flex-wrap items-center gap-2">
+      {/* The pictures scroll rather than push — a pile of them may not grow the composer past the
+          page the words are written on — with their own padding inside the scroll box, because each
+          thumb's remove control sits outside the thumb's corner and would be cut off by the box. */}
+      <ul
+        aria-label={t('composer.attached')}
+        class="-m-2 mb-0 flex max-h-[10vh] flex-wrap items-center gap-2 overflow-y-auto p-2"
+      >
         <For each={props.items}>
           {(item, index) => {
             // The same file can be picked twice, so the position is the only identity a row has — and
