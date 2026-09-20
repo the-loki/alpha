@@ -3,7 +3,7 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { providerActions, providers, runningModel } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
-import { CHIP as CHIP_SHAPE } from './controls.ts'
+import { CHIP as CHIP_SHAPE, ROW_CURRENT, ROW_HOVER } from './controls.ts'
 import { CheckIcon } from './icons.tsx'
 
 const CHIP = `${CHIP_SHAPE} max-w-56 border-line text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment`
@@ -74,7 +74,7 @@ export function ModelChip() {
         <div
           role="menu"
           aria-label={t('model.menuLabel')}
-          class="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-ink-800 py-1 overlay-in shadow-overlay"
+          class="absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 overflow-y-auto rounded-overlay border border-line bg-surface-overlay py-1 overlay-in shadow-overlay"
         >
           <For each={providers.snapshot.providers}>
             {(provider) => (
@@ -91,7 +91,7 @@ export function ModelChip() {
                         aria-checked={current()}
                         onClick={() => void choose({ providerId: provider.id, modelId: model.id })}
                         class={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-ui text-parchment transition-colors ${
-                          current() ? 'bg-ink-700' : 'hover:bg-ink-600'
+                          current() ? ROW_CURRENT : ROW_HOVER
                         }`}
                       >
                         {/* The mark of the chosen one, the same one the settings choices wear. */}

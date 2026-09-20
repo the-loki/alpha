@@ -11,9 +11,9 @@ import {
 } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { shell, useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
+import { CONTROL_HEIGHT, FIELD_FRAME, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
 
-const FIELD = `w-full rounded-control border border-line bg-ink-700 px-2 text-ui text-parchment ${CONTROL_HEIGHT}`
+const FIELD = `w-full px-2 text-ui text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`
 const LABEL = 'block text-xs font-medium text-parchment-dim'
 /** A choice carries a mark, not only a colour (C5.7): the chosen one is tinted and ringed. */
 const CHOICE = 'flex h-7 items-center gap-2 rounded-control border px-3 text-xs transition-colors'

@@ -1,6 +1,7 @@
 import { createSignal, Show } from 'solid-js'
 import { rememberedToken } from '../lib/network-bridge.ts'
 import { shellActions, useText } from '../stores/shell.ts'
+import { FIELD_FRAME } from './controls.ts'
 
 /**
  * What a browser sees before it holds a session. One field, one button, and where to find the
@@ -57,7 +58,7 @@ export function UnlockScreen() {
             value={token()}
             onInput={(event) => setToken(event.target.value)}
             placeholder={t('unlock.tokenPlaceholder')}
-            class="w-full border border-line bg-ink-700 px-3 py-2 font-mono text-code text-parchment focus:border-line-strong focus:outline-none"
+            class={`w-full px-3 py-2 font-mono text-code text-parchment ${FIELD_FRAME}`}
           />
         </label>
 

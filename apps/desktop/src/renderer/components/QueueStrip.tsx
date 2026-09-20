@@ -50,7 +50,7 @@ export function QueueStrip() {
                       if (event.key === 'Escape') setEditing(undefined)
                       if (event.key === 'Enter') void save()
                     }}
-                    class="min-w-0 flex-1 rounded-control border border-line-strong bg-ink-900 px-1.5 py-0.5 text-code text-parchment focus:outline-none"
+                    class="min-w-0 flex-1 rounded-control border border-line-strong bg-ink-900 px-1.5 py-0.5 text-code text-parchment"
                   />
                 </Show>
                 <Show when={item.kind === 'queued' && editing()?.entryId !== item.entryId}>

@@ -154,6 +154,46 @@ test('every page keeps its content on the page\u2019s own edge', async () => {
   await app.close()
 })
 
+test('a page\u2019s body starts the same distance under its band', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
+
+  // The band's rule is the page's own head line: what the page holds starts under it by one
+  // number on every page whose body begins below it — 1.5rem (C5.4) — or the two pages look like
+  // they were assembled by two people.
+  const BODY_OFFSET = 24
+  const underTheBand = async (body: Locator): Promise<number> => {
+    const [bandBox, bodyBox] = await Promise.all([box(window.getByRole('main').locator('header').first()), box(body)])
+    return bodyBox.y - (bandBox.y + bandBox.h)
+  }
+
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  const tasksBody = await underTheBand(window.getByRole('main').getByText('A task runs its prompt'))
+
+  await window.getByRole('button', { name: 'New conversation' }).click()
+  await window.getByRole('link', { name: 'Settings' }).click()
+  const settingsBody = await underTheBand(window.getByRole('main').getByRole('paragraph').first())
+
+  expect({ tasksBody, settingsBody }).toEqual({ tasksBody: BODY_OFFSET, settingsBody: BODY_OFFSET })
+
+  // The conversation is the exception the glass explains: its transcript slides *under* the head,
+  // so what has to hold there is that no entry comes to rest beneath it.
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window
+    .getByRole('complementary')
+    .getByRole('button', { name: /say something/ })
+    .first()
+    .click()
+  const [band, entry] = await Promise.all([
+    box(window.getByRole('main').locator('div[class*="h-14"]').first()),
+    box(window.getByRole('main').locator('[data-role="user"]').first()),
+  ])
+  expect(entry.y).toBeGreaterThanOrEqual(band.y + band.h)
+
+  await app.close()
+})
+
 test('the composer writes on the same x the entries write on', async () => {
   const { app, window } = await launch()
   await ask(window, 'say something')

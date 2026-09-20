@@ -11,14 +11,14 @@ import {
 import { createSignal, For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, FIELD_FRAME, TEXT_ACTION } from './controls.ts'
 import { BAND } from './ledger.ts'
 
 /**
  * The head's own control: the same body as every other control in the window — one height, one
  * radius, one hairline — because it stands in a row beside actions that are words.
  */
-const SELECT_CLASS = `${CONTROL_HEIGHT} rounded-control border border-line bg-ink-700 px-2 text-xs text-parchment-dim transition-colors hover:text-parchment focus:border-line-strong focus:outline-none`
+const SELECT_CLASS = `${CONTROL_HEIGHT} px-2 text-xs text-parchment-dim transition-colors hover:text-parchment ${FIELD_FRAME}`
 
 /** What the session has spent. Cost is shown only when the model's own cost data is non-zero. */
 function UsageReadout() {

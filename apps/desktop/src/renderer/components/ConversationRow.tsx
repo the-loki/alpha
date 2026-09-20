@@ -3,7 +3,7 @@ import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, TEXT_ACTION } from './controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, FIELD_FRAME, ROW_HOVER, TEXT_ACTION } from './controls.ts'
 import { MoreIcon } from './icons.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
@@ -85,7 +85,7 @@ export function ConversationRow(props: {
               void conversationActions.rename(props.conversation.id, next)
             }
           }}
-          class={`w-full rounded-control border border-line-strong bg-ink-700 px-2 text-ui text-parchment focus:outline-none ${CONTROL_HEIGHT}`}
+          class={`w-full border-line-strong px-2 text-ui text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
         />
       </li>
     </Show>
@@ -139,7 +139,7 @@ function RowActions(props: { conversation: ConversationSummary; archived: boolea
         <div
           role="menu"
           aria-label={t('sidebar.actions', { title: props.conversation.title })}
-          class="absolute top-full right-0 z-50 w-44 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 overlay-in shadow-overlay"
+          class="absolute top-full right-0 z-50 w-44 overflow-hidden rounded-overlay border border-line bg-surface-overlay py-1 overlay-in shadow-overlay"
         >
           <button
             type="button"
@@ -148,7 +148,7 @@ function RowActions(props: { conversation: ConversationSummary; archived: boolea
               setOpen(false)
               props.onRename()
             }}
-            class={`block w-full px-3 py-1.5 text-left ${TEXT_ACTION}`}
+            class={`block w-full px-3 py-1.5 text-left ${ROW_HOVER} ${TEXT_ACTION}`}
           >
             {t('sidebar.renameAction')}
           </button>
@@ -163,7 +163,7 @@ function RowActions(props: { conversation: ConversationSummary; archived: boolea
                 ? conversationActions.unarchive(props.conversation.id)
                 : conversationActions.archive(props.conversation.id))
             }}
-            class={`block w-full px-3 py-1.5 text-left ${TEXT_ACTION} disabled:cursor-not-allowed disabled:text-parchment-faint disabled:hover:text-parchment-faint`}
+            class={`block w-full px-3 py-1.5 text-left ${ROW_HOVER} ${TEXT_ACTION} disabled:cursor-not-allowed disabled:text-parchment-faint disabled:hover:text-parchment-faint`}
           >
             {props.archived ? t('sidebar.unarchiveAction') : t('sidebar.archiveAction')}
             <Show when={blocked() && !props.archived}>
@@ -174,7 +174,7 @@ function RowActions(props: { conversation: ConversationSummary; archived: boolea
             type="button"
             role="menuitem"
             onClick={() => void conversationActions.remove(props.conversation.id)}
-            class={`block w-full px-3 py-1.5 text-left ${DESTRUCTIVE_ACTION}`}
+            class={`block w-full px-3 py-1.5 text-left ${ROW_HOVER} ${DESTRUCTIVE_ACTION}`}
           >
             {t('sidebar.deleteAction')}
           </button>

@@ -158,5 +158,23 @@ test('the gate card and the dark palette draw as well as the rest', async () => 
   await expect(window.getByRole('button', { name: 'Ask', exact: true })).toBeVisible()
   await picture(window, 'dark-conversation')
 
+  // The overlays are where the dark palette is easiest to get wrong: a panel, a menu and a palette
+  // are all one step off the surface they float over, and in the dark that step is three percent.
+  await window.keyboard.press('Control+k')
+  await expect(window.getByRole('dialog', { name: 'Switch conversation' })).toBeVisible()
+  await picture(window, 'dark-palette')
+  await window.keyboard.press('Escape')
+
+  await window.getByRole('button', { name: 'Ask', exact: true }).click()
+  await expect(window.getByRole('menu', { name: 'Permission level' })).toBeVisible()
+  await picture(window, 'dark-level-menu')
+  await window.keyboard.press('Escape')
+
+  const actions = window.getByRole('button', { name: /^Actions for / }).first()
+  await actions.hover()
+  await actions.click()
+  await expect(window.getByRole('menuitem', { name: 'Archive' })).toBeVisible()
+  await picture(window, 'dark-rail-menu')
+
   await app.close()
 })

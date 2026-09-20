@@ -15,7 +15,7 @@ import { createSignal, For, Index, Match, Show, Switch } from 'solid-js'
 import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
+import { FIELD_FRAME, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -87,7 +87,7 @@ function EditBox(props: { message: ChatMessage; index: number; onDone: () => voi
         value={text()}
         aria-label={t('message.editLabel')}
         onInput={(event) => setText(event.target.value)}
-        class="block w-full resize-none rounded-control border border-line bg-ink-700 px-2.5 py-2 text-body leading-relaxed text-parchment focus:border-line-strong focus:outline-none"
+        class={`block w-full resize-none px-2.5 py-2 text-body leading-relaxed text-parchment ${FIELD_FRAME}`}
       />
       <div class="mt-2 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => submit('replace')} class={PRIMARY_ACTION}>

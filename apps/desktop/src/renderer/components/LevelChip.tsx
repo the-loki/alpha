@@ -2,7 +2,7 @@ import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS, type Permi
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { shell, shellActions, useText } from '../stores/shell.ts'
-import { CHIP } from './controls.ts'
+import { CHIP, ROW_CURRENT, ROW_HOVER } from './controls.ts'
 import { CheckIcon } from './icons.tsx'
 
 /** How each tone of the permission level reads: the settings page uses the same map. */
@@ -85,7 +85,7 @@ export function LevelChip() {
         <div
           role="menu"
           aria-label={t('level.chipTitle')}
-          class="absolute bottom-full left-0 overlay-in z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-ink-800 py-1 shadow-overlay"
+          class="absolute bottom-full left-0 overlay-in z-50 mb-2 w-64 overflow-hidden rounded-overlay border border-line bg-surface-overlay py-1 shadow-overlay"
         >
           <For each={PERMISSION_LEVELS}>
             {(candidate) => (
@@ -98,7 +98,7 @@ export function LevelChip() {
                   setOpen(false)
                 }}
                 class={`block w-full px-3 py-2 text-left transition-colors ${
-                  candidate === level() ? 'bg-ink-700' : 'hover:bg-ink-600'
+                  candidate === level() ? ROW_CURRENT : ROW_HOVER
                 }`}
               >
                 <span class="flex items-center gap-2 text-ui text-parchment">

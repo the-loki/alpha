@@ -50,6 +50,15 @@
   --color-info: #2f5399;
 
   /*
+   * An overlay is drawn on the page or on the rail, and it has to be a step off whichever it
+   * covers. Chrome alone is not: in the dark palette ink-800 sits two percent off the scrimmed
+   * page, which is a panel that is not there. A tint of the ink over the chrome lifts in both
+   * palettes — a shade darker than the page in the light one, a shade lighter than the rail in
+   * the dark one — and it follows the palette because the colours it mixes do (C5.2's ladder).
+   */
+  --color-surface-overlay: color-mix(in oklab, var(--color-parchment) 10%, var(--color-ink-800));
+
+  /*
    * Neither bundled family has CJK glyphs, so Chinese falls through to the machine's own: the
    * three names cover the three desktop systems, and they are named rather than left to
    * `sans-serif` so a Chinese window is drawn in a face someone chose (C5.3). Latin characters in

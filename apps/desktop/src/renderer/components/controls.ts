@@ -39,6 +39,19 @@ export const AMBER_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center rounded-
 export const PRIMARY_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center rounded-control bg-gradient-to-b from-accent to-accent-bright px-3 text-xs font-medium text-accent-ink shadow-glow transition-all hover:brightness-110 disabled:opacity-40 disabled:shadow-none`
 
 /**
+ * A field's frame, without its size or its voice: a form field is mono and one height, a box you
+ * write a message in is body text and taller, and both are this edge on this surface. The seven
+ * fields in the app agree on the frame and differ in the two things they should.
+ */
+export const FIELD_FRAME = 'rounded-control border border-line bg-ink-700 focus:border-line-strong'
+
+/** The row inside a menu that is the one in force: a tint of the surface it sits on (C5.2). */
+export const ROW_CURRENT = 'bg-ink-900/50'
+
+/** And the row a pointer is over: the same tint, lighter, so the two never read as the same state. */
+export const ROW_HOVER = 'hover:bg-ink-900/30'
+
+/**
  * A name with a state on it: the permission level, the model a message will run on. Same height as
  * a button, because with one open they stand in the same row.
  */

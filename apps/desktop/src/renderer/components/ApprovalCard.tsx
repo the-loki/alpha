@@ -2,7 +2,7 @@ import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/
 import { createSignal, onMount, Show } from 'solid-js'
 import { conversationActions } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON } from './controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON, FIELD_FRAME } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
 
 /**
@@ -88,7 +88,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
             aria-label={t('approval.rememberFor')}
             value={scope()}
             onInput={(event) => setScope(event.currentTarget.value as RuleScope)}
-            class="h-full border-l border-line bg-transparent px-1.5 text-micro text-parchment-dim focus:outline-none"
+            class="h-full border-l border-line bg-transparent px-1.5 text-micro text-parchment-dim"
           >
             <option value="conversation">{t('approval.scopeConversation')}</option>
             <option value="workspace">{t('approval.scopeWorkspace')}</option>
@@ -103,7 +103,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
           onInput={(event) => setReason(event.currentTarget.value)}
           aria-label={t('approval.reasonLabel')}
           placeholder={t('approval.reasonPlaceholder')}
-          class={`min-w-40 max-w-64 flex-1 rounded-control border border-line bg-ink-700 px-2.5 text-xs text-parchment placeholder:text-parchment-faint focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`}
+          class={`min-w-40 max-w-64 flex-1 px-2.5 text-xs text-parchment placeholder:text-parchment-faint ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
         />
 
         <button type="button" onClick={deny} disabled={busy()} class={DESTRUCTIVE_BUTTON}>

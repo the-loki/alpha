@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
+import { ROW_CURRENT } from './controls.ts'
 
 /** How many matches the palette shows at once: more than this is a list, not a shortcut. */
 const SHOWN = 8
@@ -55,7 +56,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
           if (event.target === event.currentTarget) props.onClose()
         }}
       >
-        <div class="w-full max-w-xl overflow-hidden rounded-overlay border border-line bg-ink-800 overlay-in shadow-overlay">
+        <div class="w-full max-w-xl overflow-hidden rounded-overlay border border-line bg-surface-overlay overlay-in shadow-overlay">
           <input
             ref={(element) => {
               field = element
@@ -79,7 +80,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
                 setChosen((index) => Math.max(index - 1, 0))
               }
             }}
-            class="w-full border-b border-line bg-transparent px-4 py-3 text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
+            class="w-full border-b border-line bg-transparent px-4 py-3 text-body text-parchment placeholder:text-parchment-faint"
           />
           <div role="listbox" aria-label={t('palette.list')} class="max-h-80 overflow-y-auto py-1">
             <For each={shown()}>
@@ -90,7 +91,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
                   aria-selected={index() === chosen()}
                   onMouseEnter={() => setChosen(index())}
                   onClick={() => go(conversation)}
-                  class={`flex w-full items-baseline gap-3 px-4 py-2 text-left ${index() === chosen() ? 'bg-ink-600' : ''}`}
+                  class={`flex w-full items-baseline gap-3 px-4 py-2 text-left ${index() === chosen() ? ROW_CURRENT : ''}`}
                 >
                   <span class="min-w-0 flex-1 truncate text-ui text-parchment">{conversation.title}</span>
                   <span class="shrink-0 font-mono text-micro text-parchment-faint">{conversation.status}</span>

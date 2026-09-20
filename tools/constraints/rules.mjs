@@ -484,6 +484,33 @@ export const RULES = [
   },
 
   {
+    id: '05-design:no-focus-outline-none',
+    constraint: '05-design.md',
+    description: 'the keyboard keeps its ring; a control never removes it',
+    // C5.7: `:focus-visible` draws the ring for the whole app. A control that writes
+    // `focus:outline-none` beats that rule on specificity and leaves the keyboard with nothing, so
+    // the class is not one this app writes — the composer, every settings field and the palette's
+    // search box had it, and a field may change its border on focus instead of, never without, the
+    // ring.
+    check({ path, text }) {
+      if (!path.startsWith('apps/desktop/src/renderer/')) return []
+      if (!/\.(ts|tsx|css)$/.test(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return
+        if (!/focus:outline-none/.test(line)) return
+        found.push({
+          line: index + 1,
+          message: 'focus:outline-none removes the ember focus ring; the ring is never removed (C5.7)',
+          text: trimmed,
+        })
+      })
+      return found
+    },
+  },
+
+  {
     id: '05-design:no-other-weights',
     constraint: '05-design.md',
     description: 'two weights exist: medium and semibold',

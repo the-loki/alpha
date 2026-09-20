@@ -2,7 +2,7 @@ import type { NetworkBind, NetworkPatch, NetworkState, Undef } from '@alpha/core
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { shell, useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT } from '../controls.ts'
+import { CONTROL_HEIGHT, FIELD_FRAME } from '../controls.ts'
 
 const BIND_LABELS: Record<NetworkBind, string> = {
   local: 'This machine only',
@@ -88,7 +88,7 @@ export function BrowserAccessSection() {
                   value={port()}
                   onInput={(event) => setPort(event.target.value.replace(/[^0-9]/g, ''))}
                   onBlur={() => change({ port: Number(port() === '' ? 0 : port()) })}
-                  class={`w-20 rounded-control border border-line bg-ink-700 px-2 text-right font-mono text-code text-parchment focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`}
+                  class={`w-20 px-2 text-right font-mono text-code text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
                 />
                 <span class="text-micro text-parchment-faint">{t('settings.portHint')}</span>
               </span>

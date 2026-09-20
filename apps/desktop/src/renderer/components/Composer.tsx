@@ -230,7 +230,7 @@ export function Composer(props: { streaming?: boolean }) {
                   queue: () => void redirect('queue'),
                 })
               }
-              class="field-sizing-content block max-h-40 min-h-6 w-full resize-none overflow-y-auto bg-transparent text-body text-parchment placeholder:text-parchment-faint focus:outline-none"
+              class="field-sizing-content block max-h-40 min-h-6 w-full resize-none overflow-y-auto bg-transparent text-body text-parchment placeholder:text-parchment-faint"
             />
           </div>
           <ComposerFoot

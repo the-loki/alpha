@@ -126,6 +126,30 @@ describe('05-design:control-voice', () => {
   })
 })
 
+describe('05-design:no-focus-outline-none', () => {
+  const rule = '05-design:no-focus-outline-none'
+
+  it('flags a control that removes the ring, and the same words in a stylesheet', () => {
+    const found = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.tsx', '<textarea className="field focus:outline-none" />'),
+    )
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('never removed')
+
+    const css = violationsFor(rule, file('apps/desktop/src/renderer/a.css', 'button:focus { outline: none }'))
+    expect(css).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/a.css', '.x { }'))).toEqual([])
+  })
+
+  it('allows a field that changes its border on focus, and the main process', () => {
+    expect(
+      violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', '<input className="focus:border-line-strong" />')),
+    ).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', "const a = 'focus:outline-none'"))).toEqual([])
+  })
+})
+
 describe('05-design:no-other-weights', () => {
   const rule = '05-design:no-other-weights'
 

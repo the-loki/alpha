@@ -31,7 +31,8 @@ third palette, and resolving it once keeps the stylesheet to plain selectors.
 | Token | Light (default) | Dark | Use |
 | --- | --- | --- | --- |
 | `--ink-900` | `#F6F4F0` | `#12100E` | The window behind the panels, and the insets that sit in the page |
-| `--ink-800` | `#F0EDE6` | `#1A1713` | Chrome: the stamp strip, the rail, a page's head band, the composer's bar, a grouped block in a panel, overlays |
+| `--ink-800` | `#F0EDE6` | `#1A1713` | Chrome: the stamp strip, the rail, a page's head band, the composer's bar, a grouped block in a panel |
+| `--surface-overlay` | a tint of `--parchment` over `--ink-800` | the same, mixed in the dark palette | A menu and the command palette: the step the ladder's overlay is drawn on |
 | `--ink-700` | `#FFFEFB` | `#211D18` | The page: the transcript, a settings panel, a task list, anything typed into |
 | `--ink-600` | `#E9E4DA` | `#2B2620` | Hover, and the selected row |
 | `--line` | `#E5E0D6` | `#363028` | Hairline borders — a pressed line, not a grey divider |
@@ -59,18 +60,31 @@ A surface is placed, never picked, and the placement alternates as it nests:
    reader reads as a document and anything they type into. It is a rounded panel with a hairline
    and `--shadow-card`, floating in the window beside the rail.
 3. **Chrome** is `--ink-800` — the rail (a rounded panel of its own), a page's head band, the
-   composer's bar, an overlay, and a block that *groups* rows inside a settings panel. This is why
+   composer's bar, and a block that *groups* rows inside a settings panel. This is why
    the step exists twice: the second grey is not the window behind the page, it is the page's own
    furniture.
 4. **An inset inside that** alternates once more: an expanded tool body is `--ink-900/60`, a
    thinking block `--ink-800/60`, a nested model row `--ink-800/60`. Half-alpha rather than a
    fourth token, so an inset is a tint of the surface it sits on in either palette.
 
+**An overlay is a lift, not a coat of chrome.** A menu, the command palette and a row's own menu are
+drawn on the page or on the rail, and they have to stand a readable step off whichever it covers:
+`--surface-overlay` is that step — a tint of the ink over the chrome (`color-mix(in oklab, …)`, so it
+follows the palette) rather than chrome itself, which in the dark palette sits two percent off the
+scrimmed page and leaves a panel that is not there. The rows *inside* an overlay are the same idea
+one level down: a tint (`--ink-900` at alpha), never a solid step of the ladder, because a solid one
+is the overlay's own colour in one of the two palettes. `e2e/surface.spec.ts` composites what the
+panel is drawn on — scrim included — in a canvas and requires a contrast of at least 1.1, in both
+palettes, for all four overlays.
+
 The alternation is what answers "how deep am I" without a border telling the reader: linen, white,
 linen, tinted. It also means one rule holds in both palettes — in light the sequence is
-`#F0EDE6 → #FFFEFB → #F0EDE6`, in dark `#1A1713 → #211D18 → #1A1713` — and every step is measured by
-the contrast test against whatever text sits on it. A surface never blends a colour of its own:
-these four steps and the scrim behind an overlay (`--ink-900` at alpha) are the whole vocabulary.
+`#F0EDE6 → #FFFEFB → #F0EDE6`, in dark `#1A1713 → #211D18 → #1A1713` — and every step is measured
+against whatever text sits on it: the four steps by `tools/design/theme.test.ts`, which reads the
+tokens out of the stylesheet, and the overlay step by `e2e/surface.spec.ts`, which composites it in
+a real window because a mixed colour is not a value that test can read as a hex. A surface never
+blends a colour of its own: these four steps, the overlay's tint and the scrim behind it
+(`--ink-900` at alpha) are the whole vocabulary.
 
 ### The accent is a slot, not a colour
 
@@ -215,7 +229,10 @@ the page.
 **A page wears a band.** One height (3.5rem), one padding (`PAGE`), a hairline under it, and the
 page's title in it at the left — so the title stands on the same x on the conversation, on the tasks
 list and on every settings panel, and the panel's own sentence is the first line of the body rather
-than a second line in the band. What acts on the page itself (adding a task) sits at the band's
+than a second line in the band. The body starts one distance under that rule on every page whose body begins
+below it (1.5rem), because a page whose first line sits four pixels higher than another page's is a
+page assembled apart from it. The conversation is the exception the glass explains: its transcript
+slides *under* the head, so what it needs is that no entry comes to rest beneath it, not an offset. What acts on the page itself (adding a task) sits at the band's
 right end; what acts on something in the page stays with that thing. A page's way back is the one
 row that may stand above its band — the tasks page carries one there, and settings carries its own
 in the menu instead, where the row belongs to the panel rather than to the page.
@@ -359,13 +376,18 @@ overlay entry, and the ember cursor. The one slow change is the hearth — the l
 the page — which fades over a full second when a turn starts and settles over one when it ends, at
 the pace of a room, not of a control. On hover, only two things change: colour and border — plus the
 one deliberate exception, a row's own actions fading in over the row (`opacity`, and `focus-within`
-reveals them for the keyboard as well, so nothing is hover-only). Nothing moves on hover.
+reveals them for the keyboard as well, so nothing is hover-only). Nothing moves on hover:
+`e2e/surface.spec.ts` hovers a chip, a rail row, a ledger row and an action and requires every one of
+them to keep its box, its borders, its padding and its transform.
 `prefers-reduced-motion: reduce` collapses every transition to 0ms and freezes the ember cursor.
 
 ## C5.7 — Accessibility floor
 
 Keyboard reachable: every control, including the approval buttons, with a visible 0.125rem ember focus
-ring that is never removed. The approval prompt takes focus when it appears and is operable with
+ring that is never removed — `:focus-visible` draws it for the whole app, and a control's own class
+does not take it away, so `focus:outline-none` is not a class this app writes
+(`05-design:no-focus-outline-none` fails `pnpm check` on one). A field may also change
+its border when it is focused; that is in addition to the ring, never instead of it. The approval prompt takes focus when it appears and is operable with
 `Enter` (allow once) and `Escape` (deny). Colour is never the only carrier of meaning: each level
 chip pairs its colour with its name, each tool status pairs its colour with a glyph, and the row you
 are in pairs its fill with `aria-current`. **A menu marks what is in force the same way everywhere**

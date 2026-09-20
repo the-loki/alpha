@@ -2,7 +2,7 @@ import type { ProviderApi, ProviderView, TextKey, Undef } from '@alpha/core'
 import { createSignal, Show } from 'solid-js'
 import { type ProviderTestOutcome, providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
+import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, FIELD_FRAME, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
 import { asDraft, type DraftModel, ModelFields, modelInput } from './ModelFields.tsx'
 
 const API_NAMES: Record<ProviderApi, TextKey> = {
@@ -107,7 +107,7 @@ export function ProviderCard(props: { provider: ProviderView }) {
           aria-label={t('settings.apiKeyFor', { provider: props.provider.name })}
           placeholder={t('settings.pasteKey')}
           onInput={(event) => setSecret(event.target.value)}
-          class={`min-w-0 flex-1 rounded-control border border-line bg-ink-700 px-2 font-mono text-xs text-parchment focus:border-line-strong focus:outline-none ${CONTROL_HEIGHT}`}
+          class={`min-w-0 flex-1 px-2 font-mono text-xs text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
         />
         <button
           type="button"
