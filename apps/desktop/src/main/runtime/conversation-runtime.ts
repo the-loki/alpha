@@ -135,12 +135,6 @@ export class ConversationRuntime {
     this.#emit(this.#queued(text))
   }
 
-  /** A message for after this run: the agent holds it and takes it up when the run is done. */
-  async followUp(text: string): Promise<void> {
-    this.#agent?.followUp(this.#userMessage(text))
-    this.#emit(this.#queued(text))
-  }
-
   /**
    * Emptying what the agent is holding. Its queue is its own and is emptied whole, which is why the
    * workbench keeps its own list for messages that are waiting for a turn: those are Alpha's, and
@@ -321,7 +315,7 @@ export class ConversationRuntime {
   }
 
   #note(event: RuntimeEvent): void {
-    if (event.type === 'user_message') this.#steerTaken(event)
+    if (event.type === 'user_message') this.#steerTaken()
     if (event.type === 'turn_finished' || event.type === 'run_failed') this.#endRun()
     this.#emit(event)
   }
@@ -338,18 +332,15 @@ export class ConversationRuntime {
   }
 
   /**
-   * A held message is held only until the agent puts it in the conversation it is running — the
-   * moment its own words land as a message of the transcript, it is being answered, not held, and
-   * the strip that shows what waits says so.
+   * A held message is held only until the agent puts it in the conversation it is running. Whether
+   * that has happened is the agent's own knowledge — its lane reports what it still holds — so the
+   * moment the lane has drained while a steer of ours is out, it is being answered, not held, and
+   * the strip that shows what waits says so. The words are not matched against anything: the agent
+   * decides, and the window believes it.
    */
-  #steerTaken(event: Extract<RuntimeEvent, { type: 'user_message' }>): void {
-    const held = this.#held
-    if (held === undefined) return
-    const said = event.message.blocks
-      .filter((block) => block.kind === 'text')
-      .map((block) => block.text)
-      .join('')
-    if (!said.includes(held)) return
+  #steerTaken(): void {
+    if (this.#held === undefined) return
+    if (this.#agent?.hasQueuedMessages() === true) return
     this.#held = undefined
     this.#emit({ conversationId: this.#conversationId, type: 'queue_updated', queued: [], paused: false })
   }

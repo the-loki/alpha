@@ -2,6 +2,8 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { IPC, type PermissionRule } from '@alpha/core'
+import type { AssistantMessage } from '@earendil-works/pi-ai'
+import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
 import { CHANNELS, type ChannelPorts, type NetworkPort, PUSHED_CHANNELS, type WindowPort } from './channels.ts'
 import { CredentialVault, type SecretCipher } from './providers/credential-vault.ts'
@@ -30,7 +32,9 @@ const stubNetwork: NetworkPort = {
   regenerateToken: async () => stubNetwork.state(),
 }
 
-const ports = (): ChannelPorts & { events: unknown[] } => {
+const ports = (
+  drives: Array<() => AssistantMessageEventStream> = [() => textStream('Noted.')],
+): ChannelPorts & { events: unknown[] } => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-channels-'))
   const events: unknown[] = []
   const store = new StateStore(dataDirectory)
@@ -61,7 +65,7 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
       sessionsRoot: join(dataDirectory, 'sessions'),
       keyProblem: () => undefined,
     },
-    models: () => scriptedModels([() => textStream('Noted.')]),
+    models: () => scriptedModels(drives),
     emit: (event) => events.push(event),
     emitRules: (rules: PermissionRule[]) => events.push(rules),
   })
@@ -85,6 +89,103 @@ const ports = (): ChannelPorts & { events: unknown[] } => {
     events,
   }
 }
+
+/** A drive that stays in flight for a while: the run is running, and the test can act inside it. */
+const slowStream =
+  (text: string, milliseconds: number): (() => AssistantMessageEventStream) =>
+  () => {
+    const stream = new AssistantMessageEventStream()
+    stream.push({ type: 'start', partial: partialAssistant('', 'pending') })
+    stream.push({ type: 'text_delta', contentIndex: 0, delta: text, partial: partialAssistant(text, 'pending') })
+    setTimeout(() => {
+      stream.push({ type: 'done', reason: 'stop', message: partialAssistant(text, 'stop') })
+    }, milliseconds)
+    return stream
+  }
+
+const failingStream = (message: string, reason: 'error' | 'aborted'): AssistantMessageEventStream => {
+  const stream = new AssistantMessageEventStream()
+  stream.push({ type: 'error', reason, error: { ...partialAssistant('', reason), errorMessage: message } })
+  return stream
+}
+
+const partialAssistant = (text: string, stopReason: AssistantMessage['stopReason']): AssistantMessage => ({
+  role: 'assistant',
+  content: [{ type: 'text', text }],
+  api: 'openai-completions',
+  provider: 'p',
+  model: 'm',
+  usage: {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  },
+  stopReason,
+  timestamp: Date.now(),
+})
+
+describe('[main] the queue the workbench owns', () => {
+  const turns = (events: unknown[], type: string): number =>
+    events.filter((event) => (event as { type?: string }).type === type).length
+
+  it('a finished turn sends the next queued one, in order', async () => {
+    const context = ports([
+      slowStream('working on the first thing...', 120),
+      () => textStream('the second answer.'),
+      () => textStream('the third answer.'),
+    ])
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-queue-'))
+    const created = (await CHANNELS.createConversation(context, [workspace])) as { conversation: { id: string } }
+    const id = created.conversation.id
+
+    await CHANNELS.sendPrompt(context, [id, 'the first thing'])
+    // Act inside the first turn: both messages wait behind it in the workbench's list.
+    await expect.poll(() => turns(context.events, 'turn_started')).toBeGreaterThan(0)
+    await CHANNELS.queueMessage(context, [id, 'the second thing'])
+    await CHANNELS.queueMessage(context, [id, 'the third thing'])
+
+    // The turns the queue started, one per message, and the transcript reading in the order sent.
+    await expect.poll(() => turns(context.events, 'turn_finished')).toBe(3)
+    const opened = (await CHANNELS.openConversation(context, [id])) as {
+      messages: { role: string; blocks: { kind: string; text?: string }[] }[]
+    }
+    const said = opened.messages
+      .filter((message) => message.role === 'user')
+      .map((message) =>
+        message.blocks
+          .filter((block) => block.kind === 'text')
+          .map((block) => block.text ?? '')
+          .join(''),
+      )
+    expect(said).toEqual(['the first thing', 'the second thing', 'the third thing'])
+  })
+
+  it('a failed turn stops the queue instead of firing it into the same failure', { timeout: 30_000 }, async () => {
+    const context = ports([
+      () => textStream('Noted.'),
+      () => textStream('Noted twice.'),
+      () => failingStream('the endpoint is down', 'error'),
+    ])
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-queue-'))
+    const created = (await CHANNELS.createConversation(context, [workspace])) as { conversation: { id: string } }
+    const id = created.conversation.id
+
+    await CHANNELS.sendPrompt(context, [id, 'the first thing'])
+    await expect.poll(() => turns(context.events, 'turn_started')).toBeGreaterThan(0)
+    await CHANNELS.queueMessage(context, [id, 'the second thing'])
+    await CHANNELS.queueMessage(context, [id, 'the third thing'])
+
+    // The second went out; the third's turn failed, and the queue stopped rather than firing
+    // whatever followed into the same failure.
+    // The default retry budget (2s + 8s backoffs) is spent before the failure is announced.
+    await expect.poll(() => turns(context.events, 'run_failed'), { timeout: 20_000 }).toBeGreaterThan(0)
+    const last = context.events.filter((event) => (event as { type?: string }).type === 'queue_updated').at(-1)
+    expect(last).toMatchObject({ paused: true, queued: [] })
+  })
+})
 
 describe('[main] the channel table', () => {
   it('has a handler for every channel the contract names, and only for those', () => {

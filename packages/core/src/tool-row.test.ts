@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ChatBlockTool } from './runtime-events.ts'
 import {
   emptyAnswerIsEvidence,
   exitCodeFromText,
@@ -9,7 +10,6 @@ import {
   toolOutcomeOf,
   toolRowOf,
 } from './tool-row.ts'
-import type { ChatBlockTool } from './runtime-events.ts'
 
 describe('[core] patchToolRow', () => {
   const row = (callId: string): ChatBlockTool => toolRowOf({ callId, name: 'bash', args: {} }, 1)
