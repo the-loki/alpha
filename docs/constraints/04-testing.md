@@ -19,60 +19,60 @@ inside a module. Alpha has four:
 | Seam | What it is | Test kind |
 | --- | --- | --- |
 | `core`'s domain functions | Pure functions and stores over domain types | Unit, no I/O |
-| The IPC contract | The typed surface preload exposes, driven end to end | Integration, real runtime, scripted agent |
-| The agent runtime | Conversation lifecycle: prompt → turn → tool → result | Integration, scripted agent |
+| The IPC contract | The typed surface preload exposes, driven end to end | Integration, real runtime, scripted provider |
+| The agent runtime | Conversation lifecycle: prompt → turn → tool → result | Integration, scripted provider |
 | The window | What a user sees and can do | E2E, Playwright + Electron |
 
 The IPC contract seam is the important one: it exercises the real runtime, the real permission
-gate, the real store, the real preload bridge, and a real child process speaking pi's protocol —
-so a passing suite means the wiring works, not that a mock agrees with itself.
+gate, the real store, the real preload bridge, and the real model-client dispatch against a
+scripted provider — so a passing suite means the wiring works, not that a mock agrees with itself.
 
 **Enforcement:** review. New test files declare the seam they target in the top-level `describe`.
 
-## C4.3 — The scripted agent, not a mocked runtime
+## C4.3 — The scripted provider, not a mocked runtime
 
-Integration tests replace the *agent* with the scripted stand-in in `tools/scripted-agent/`: a real
-child process that speaks pi's RPC protocol, keeps a session the way pi keeps one, asks Alpha's
-gate before a tool call, and really writes and runs what its script tells it to. Only the model's
-answers are decided in advance. They do not mock the agent process, the gate, the session, or the
-IPC transport: any of those being wrong is exactly the bug the test should catch.
+Tests replace the *model*, never the wiring. Unit and integration tests drive the assembled
+agent — the same plugin base the workbench runs — through the scripted provider fixture in
+`apps/desktop/src/main/runtime/scripted-provider.ts`: a real pi-ai `Models` whose one provider
+streams a scripted answer, so a run goes through the real dispatch, the real gate, and the real
+session store, with only the model's answers decided in advance. The e2e specs run the real
+window against a scripted OpenAI-completions provider on loopback (`e2e/scripted-provider.ts`),
+speaking the SSE frames pi-ai's client speaks. Neither mocks the agent, the gate, the session
+store, or the IPC transport: any of those being wrong is exactly the bug the test should catch.
 
-The things a stand-in cannot show are checked against a real `pi` when one is installed
-(`ALPHA_LIVE_PI`), with a scripted model endpoint on the other end
-(`tools/fake-provider/`): that Alpha's gate extension is loaded, and that a refusal reaches the
-model as a refusal.
+The things a script cannot show are checked against a real provider when the environment names
+one (C4.4): that the credential reaches the model runtime, and that a tool the model decided to
+call really runs.
 
-**Enforcement:** `pnpm check:constraints` fails if `vi.mock` is used inside an integration test.
+**Enforcement:** review — a test that reaches inside a module instead of driving the assembled
+agent through the scripted provider is the finding.
 
 ## C4.4 — The live tests, gated by an environment variable
 
-The tests that need a real agent run only when one is named, and they talk to a scripted model
-endpoint on the loopback interface rather than to a provider:
-
-| Variable | Meaning |
-| --- | --- |
-| `ALPHA_LIVE_PI` | Path to a real `pi`; anything else skips the live tests |
-| `FAKE_PROVIDER_PORT` | Port for the scripted model endpoint, `0` (any free port) by default |
-
-A second live seam is the person's own machine rather than a scripted model: a run against a real
-provider, which is what the spawn, the models file, the credential hand-off and a tool call the
-model decided to make are checked against, none of which a stand-in can show
-([ADR-0022](../adr/0022-a-live-run-may-reach-a-provider.md)). It needs the path above plus the
-provider's base URL, the model id to run there, and a key for it; naming fewer than all four skips
-it, so `e2e/live.spec.ts` is the only file in the repository that dials out.
+The suite's own seam is the scripted provider on the loopback interface — no network, no
+credential. The one test that needs a real provider runs only when the environment names one: it
+is what the credential's path to the model runtime and a tool call the model decided to make are
+checked against, none of which a script can show
+([ADR-0022](../adr/0022-a-live-run-may-reach-a-provider.md)).
 
 | Variable | Meaning |
 | --- | --- |
 | `ALPHA_LIVE_BASE_URL` | The provider's base URL, e.g. `https://ollama.com/v1` |
 | `ALPHA_LIVE_MODEL` | The model id to run there |
 | `ALPHA_LIVE_KEY` | A key for it: read from the environment, held in that run's own vault file, and committed nowhere |
+| `ALPHA_LIVE_API` | The wire protocol, `openai-completions` by default; `anthropic-messages` and `openai-responses` are the others Alpha speaks |
+| `ALPHA_LIVE_CONTEXT` / `ALPHA_LIVE_OUTPUT` | The model's context window and output room, 128000/8192 by default — this test's numbers, not the model's |
+| `ALPHA_LIVE_IMAGES` | `1` enables the attached-picture turn, for a model that takes images |
 
-No credential is ever committed, and the default test run starts no agent and makes no network
-request. CI skips them; a developer with `pi` installed runs them against the scripted model, or
-against their own provider when they want the real one.
+Naming fewer than the first three skips it, so `e2e/live.spec.ts` is the only file in the
+repository that dials out. It covers the whole surface a conversation has against a real model: a
+plain turn with the provider's own usage, regenerating an answer, closing and reopening the
+workbench onto the stored conversation, a tool call the gate waits on, an attached picture, and a
+thinking level the person picked. No credential is ever committed, and the default test run makes
+no network request. CI skips it; a developer names their own provider when they want the real one.
 
-**Enforcement:** each live test file skips itself when its variables are absent, and the scripted
-endpoint is started on `127.0.0.1` by the test that needs it.
+**Enforcement:** the live test file skips itself when its variables are absent, and the scripted
+provider is started on `127.0.0.1` by the specs that need it.
 
 ## C4.5 — What a test asserts
 

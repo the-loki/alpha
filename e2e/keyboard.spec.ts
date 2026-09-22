@@ -2,10 +2,13 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
+
+test.afterEach(() => closeScriptedProviders())
 
 /** A window on a workspace, with the model scripted so turns are cheap and deterministic. */
 async function launch() {
@@ -18,13 +21,13 @@ async function launch() {
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'ask',
     }),
     'utf-8',
   )
-  configureProvider(dataDirectory)
+  const scripted = await startScriptedProvider({ script: JSON.stringify(['Noted.']) })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
 
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -32,7 +35,6 @@ async function launch() {
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']),
       NODE_ENV: 'production',
     },
   })

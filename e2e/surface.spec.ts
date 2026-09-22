@@ -2,7 +2,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Locator, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 /**
  * The window seam (C4.2): what a surface is drawn *on*, and what happens under the hand. Three
@@ -15,6 +16,8 @@ import { APP_DIR, configureProvider, scriptedAgent } from './agent'
  */
 const SCRIPT = [{ tool: { name: 'read', args: { path: 'notes.txt' } } }, 'It says hello from the ledger.']
 
+test.afterEach(() => closeScriptedProviders())
+
 async function launch(options: { theme?: 'light' | 'dark' } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
@@ -26,21 +29,20 @@ async function launch(options: { theme?: 'light' | 'dark' } = {}) {
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
       theme: options.theme ?? 'light',
     }),
     'utf-8',
   )
-  configureProvider(dataDirectory)
+  const scripted = await startScriptedProvider({ script: JSON.stringify(SCRIPT) })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: APP_DIR,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(SCRIPT),
       NODE_ENV: 'production',
     },
   })
@@ -375,12 +377,14 @@ async function token(window: Page, name: string): Promise<string> {
 }
 
 /**
- * One pointer, one answer (C5.6). A control the hand can act on tells the hand the same thing
- * wherever it is drawn: it takes the panel's tint, `--ink-600` — the one step off the page in both
- * palettes, darker in the light and lighter in the dark. A translucent wash is not that: the same
- * wash over the rail and over the page is two different answers, and in the dark palette one of them
- * sinks back into the page instead of lifting off it. A fill that is the page's own colour is not an
- * answer either, and three of the settings panels used to give exactly that.
+ * One pointer, one answer per family (C5.6). A control the hand can act on tells the hand the
+ * same thing wherever its family is drawn. The row-and-frame family — rows, window commands,
+ * framed buttons — answers with the panel's tint, `--ink-600`, the one step off the page in both
+ * palettes, darker in the light and lighter in the dark; a translucent wash is not that, and a
+ * fill that is the page's own colour is not an answer either. The sentence family — the tool
+ * line, which is a measurement in the answer's own column rather than a row — answers with ink,
+ * the way the workbenches it is modelled on do: quiet text brightening to the reading voice,
+ * its arrow appearing with it.
  */
 test('the pointer is answered with one fill, on every surface', async () => {
   test.setTimeout(240_000)
@@ -401,6 +405,23 @@ test('the pointer is answered with one fill, on every surface', async () => {
       expect(`${theme} ${what} fades in ${fade}`).not.toBe(`${theme} ${what} fades in 0s`)
     }
 
+    // The sentence family: the answer is in the ink itself, read against a probe wearing the
+    // reading voice's own colour.
+    const inkAnswer = async (what: string, target: Locator) => {
+      await target.hover()
+      // Past the fade, as the fill family does.
+      await window.waitForTimeout(260)
+      const seen = await target.evaluate((node) => {
+        const probe = document.createElement('div')
+        probe.style.backgroundColor = 'var(--color-parchment)'
+        document.body.append(probe)
+        const expected = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return getComputedStyle(node).color === expected
+      })
+      expect(`${theme} ${what} answers in ink: ${seen}`).toBe(`${theme} ${what} answers in ink: true`)
+    }
+
     // The strip: a command beside the window's own controls. Both are one row of chrome, and the
     // three commands used to lift while the controls beside them darkened.
     await answer('the Tasks command', window.getByRole('button', { name: 'Tasks' }))
@@ -411,8 +432,8 @@ test('the pointer is answered with one fill, on every surface', async () => {
     await answer('a folder row', rail.getByRole('button', { name: 'sandbox' }).first())
     await answer('a glyph action', rail.getByRole('button', { name: 'Add a folder' }))
 
-    // The page: the ledger's rows.
-    await answer('a ledger row', window.getByRole('button', { name: /notes\.txt/ }).first())
+    // The page: the ledger's rows, which are sentences and answer in ink.
+    await inkAnswer('a tool line', window.getByRole('button', { name: /notes\.txt/ }).first())
 
     // And the pages: a choice, a decision card, a button with a frame.
     await window.getByRole('link', { name: 'Settings' }).click()
@@ -423,15 +444,6 @@ test('the pointer is answered with one fill, on every surface', async () => {
     await window.getByRole('link', { name: 'Permissions', exact: true }).click()
     const level = window.getByRole('main').getByRole('button', { name: /^Ask/ }).first()
     await answer('a permission card', level)
-
-    await window.getByRole('link', { name: 'Agent', exact: true }).click()
-    await answer(
-      'a settings button',
-      window
-        .getByRole('main')
-        .getByRole('button', { name: /Look again/ })
-        .first(),
-    )
 
     // The nav is the rail's panel in another place, and its rows answer like the rail's rows.
     await answer('a settings row', window.getByRole('link', { name: 'Providers', exact: true }))

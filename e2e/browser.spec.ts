@@ -3,7 +3,8 @@ import { createServer } from 'node:net'
 import { networkInterfaces, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Browser, chromium, _electron as electron, expect, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -11,6 +12,8 @@ const TOKEN = 'the-token-a-person-would-paste'
 const REPLY = 'Two files use that name. I can rename both.'
 /** A first reply that asks to write a file, so the gate has something to ask about. */
 const WRITE = { tool: { name: 'write', args: { path: 'made.txt', content: 'written by the agent' } } }
+
+test.afterEach(() => closeScriptedProviders())
 
 /** A port nothing is listening on, so the test does not collide with anything on this machine. */
 async function freePort(): Promise<number> {
@@ -36,7 +39,6 @@ async function launchServing(port: number, options: { token?: string; level?: st
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: options.level ?? 'full-access',
       network: { enabled: true, port, bind: 'local', token: options.token ?? TOKEN },
@@ -44,8 +46,10 @@ async function launchServing(port: number, options: { token?: string; level?: st
     'utf-8',
   )
 
-  // The suite hands a picture across the wire, so the connection serves a model that takes one.
-  configureProvider(dataDirectory, { images: true })
+  // The suite hands a picture across the wire, so the connection serves a model that takes one,
+  // and the provider it dials is the scripted endpoint this process started.
+  const scripted = await startScriptedProvider({ script: JSON.stringify(options.replies ?? [REPLY]) })
+  configureProvider(dataDirectory, { images: true, baseUrl: scripted.url })
 
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -53,7 +57,6 @@ async function launchServing(port: number, options: { token?: string; level?: st
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]),
       NODE_ENV: 'production',
     },
   })

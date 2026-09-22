@@ -2,7 +2,6 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
-import { scriptedAgent } from './agent'
 
 /**
  * The packaged build, launched as a user would launch it. This is the only test that runs the
@@ -26,7 +25,6 @@ test('the packaged app opens, remembers its workspace, and keeps a credential', 
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'ask',
     }),
@@ -36,7 +34,7 @@ test('the packaged app opens, remembers its workspace, and keeps a credential', 
   const app = await electron.launch({
     executablePath: PACKAGED,
     args: ['--no-sandbox'],
-    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, ALPHA_FAUX_REPLIES: '["ok"]' },
+    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory },
   })
   const window = await app.firstWindow()
   await window.waitForSelector('#root > *')
@@ -76,7 +74,7 @@ test('the packaged app opens, remembers its workspace, and keeps a credential', 
   const again = await electron.launch({
     executablePath: PACKAGED,
     args: ['--no-sandbox'],
-    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, ALPHA_FAUX_REPLIES: '["ok"]' },
+    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory },
   })
   const second = await again.firstWindow()
   await second.waitForSelector('#root > *')

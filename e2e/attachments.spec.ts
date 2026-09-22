@@ -2,7 +2,10 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+
+test.afterEach(() => closeScriptedProviders())
 
 /** A real one-pixel PNG, so what the transcript shows is a picture and not a broken box. */
 const PIXEL_PNG = Buffer.from(
@@ -15,10 +18,12 @@ const PIXEL_PNG = Buffer.from(
  * bytes, and kept in the transcript. These tests drive the picker the way a person does — through
  * the button, which opens the platform's dialog.
  */
+
 /** A connection whose model says whether it takes pictures, and a key, so a turn can be asked for. */
-function writeProvider(dataDirectory: string, images: boolean) {
+function writeProvider(dataDirectory: string, images: boolean, baseUrl: string) {
   configureProvider(dataDirectory, {
     id: 'local',
+    baseUrl,
     models: [{ id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images }],
   })
 }
@@ -36,13 +41,13 @@ async function launch(options: { vision?: boolean } = {}) {
         },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
-  writeProvider(dataDirectory, options.vision ?? true)
+  const scripted = await startScriptedProvider({ script: JSON.stringify(['I see it.']) })
+  writeProvider(dataDirectory, options.vision ?? true, scripted.url)
   const shot = join(workspace, 'screenshot.png')
   writeFileSync(shot, PIXEL_PNG)
   const note = join(workspace, 'notes.txt')
@@ -54,7 +59,6 @@ async function launch(options: { vision?: boolean } = {}) {
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(['I see it.']),
       NODE_ENV: 'production',
     },
   })

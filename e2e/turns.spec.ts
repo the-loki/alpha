@@ -2,7 +2,10 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+
+test.afterEach(() => closeScriptedProviders())
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -21,14 +24,17 @@ async function launch(
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
       // Full access: these tests are about turn control, so no approval card intervenes.
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
 
-  configureProvider(dataDirectory)
+  const scripted = await startScriptedProvider({
+    script: JSON.stringify(options.replies ?? ['Answer.']),
+    ...(options.slow === true ? { tokenSize: 4, tokensPerSecond: 20 } : {}),
+  })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
 
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -36,8 +42,6 @@ async function launch(
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? ['Answer.']),
-      ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '20', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
       NODE_ENV: 'production',
     },
   })

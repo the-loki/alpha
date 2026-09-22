@@ -2,7 +2,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 /**
  * The queue the workbench owns (ADR-0011): a message typed while the agent is working waits for
@@ -11,6 +12,8 @@ import { APP_DIR, configureProvider, scriptedAgent } from './agent'
  */
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
+
+test.afterEach(() => closeScriptedProviders())
 
 async function launch() {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
@@ -22,14 +25,20 @@ async function launch() {
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
 
-  configureProvider(dataDirectory)
+  // The first turn is long enough to type two messages behind it: what is being tested is the
+  // queue, not a race against a fast answer.
+  const scripted = await startScriptedProvider({
+    script: JSON.stringify([`${'a'.repeat(240)}.`, 'The second answer.']),
+    tokenSize: 3,
+    tokensPerSecond: 30,
+  })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
 
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -37,11 +46,6 @@ async function launch() {
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      // The first turn is long enough to type two messages behind it: what is being tested is the
-      // queue, not a race against a fast answer.
-      ALPHA_FAUX_REPLIES: JSON.stringify([`${'a'.repeat(240)}.`, 'The second answer.']),
-      ALPHA_FAUX_TOKENS_PER_SECOND: '30',
-      ALPHA_FAUX_TOKEN_SIZE: '3',
       NODE_ENV: 'production',
     },
   })

@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 /**
  * Every screen, drawn once, with a picture of each kept in `test-results/screens/`. The window seam
@@ -14,6 +15,8 @@ import { APP_DIR, configureProvider, scriptedAgent } from './agent'
  */
 const SHOTS = join(process.cwd(), 'test-results', 'screens')
 mkdirSync(SHOTS, { recursive: true })
+
+test.afterEach(() => closeScriptedProviders())
 
 const SCRIPT = [
   { tool: { name: 'read', args: { path: 'notes.txt' } } },
@@ -43,13 +46,13 @@ async function launch(options: { level?: string; replies?: unknown[]; noFolder?:
               },
               recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
             },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: options.level ?? 'full-access',
     }),
     'utf-8',
   )
-  configureProvider(dataDirectory)
+  const scripted = await startScriptedProvider({ script: JSON.stringify(options.replies ?? SCRIPT) })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
 
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -57,7 +60,6 @@ async function launch(options: { level?: string; replies?: unknown[]; noFolder?:
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? SCRIPT),
       NODE_ENV: 'production',
     },
   })
@@ -139,7 +141,7 @@ test('every settings panel draws under its own title', async () => {
   const { app, window } = await launch()
   await window.getByRole('link', { name: 'Settings' }).click()
 
-  for (const tab of ['Agent', 'Providers', 'Permissions', 'Appearance', 'Browser access']) {
+  for (const tab of ['Providers', 'Permissions', 'Appearance', 'Browser access']) {
     await window.getByRole('link', { name: tab, exact: true }).click()
     await expect(window.getByRole('main').getByRole('heading', { level: 1, name: tab })).toBeVisible()
     await picture(window, `settings-${tab.toLowerCase().replace(' ', '-')}`)
@@ -157,8 +159,8 @@ test('the tasks page and every settings panel draw in the dark palette too', asy
   await window.getByRole('link', { name: 'Settings' }).click()
   await window.getByRole('link', { name: 'Appearance', exact: true }).click()
   await window.getByRole('button', { name: 'Dark' }).click()
-  await window.getByRole('link', { name: 'Agent', exact: true }).click()
-  await picture(window, 'dark-settings-agent')
+  await window.getByRole('link', { name: 'Providers', exact: true }).click()
+  await picture(window, 'dark-settings-providers')
 
   for (const tab of ['Providers', 'Permissions', 'Browser access']) {
     await window.getByRole('link', { name: tab, exact: true }).click()

@@ -2,7 +2,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -18,6 +19,8 @@ const SCRIPT = [
   'The last one failed; the file does not exist.',
 ]
 
+test.afterEach(() => closeScriptedProviders())
+
 /** A workspace with one file, and a window pointed at it. */
 async function launch(options: { dataDirectory?: string; workspace?: string } = {}) {
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
@@ -31,14 +34,14 @@ async function launch(options: { dataDirectory?: string; workspace?: string } = 
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
       // Full access on purpose: this spec is about the ledger, not the gate, so no card intervenes.
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'full-access',
     }),
     'utf-8',
   )
 
-  configureProvider(dataDirectory)
+  const scripted = await startScriptedProvider({ script: JSON.stringify(SCRIPT) })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
 
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
@@ -46,7 +49,6 @@ async function launch(options: { dataDirectory?: string; workspace?: string } = 
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(SCRIPT),
       NODE_ENV: 'production',
     },
   })
@@ -105,13 +107,14 @@ test('a tool call becomes a ledger row in the transcript', async () => {
   await expect(bash).toContainText('Output')
   await expect(bash).toContainText('No such file')
 
-  // Rows that are open make the transcript taller than the pane. It scrolls, and it stays inside
-  // the pane: a transcript that grows past the composer is a transcript you cannot read.
+  // Rows that are open make the transcript taller than the pane, so it scrolls. The bar the next
+  // message is written in is docked at the foot of that same scroll, so what has to hold is not
+  // that the scroll stops above the bar — it does not, the transcript passes behind it — but that
+  // the rows come to rest clear of it, which is what the read at the end of this test measures. The
+  // pane is shrunk first, so the "taller than the pane" part is a fact the test sets up rather than
+  // a fact about how much chrome the window happens to spend above the page.
+  await window.setViewportSize({ width: 1440, height: 520 })
   const geometry = await window.evaluate(() => {
-    const box = (el: Element) => {
-      const rect = el.getBoundingClientRect()
-      return { top: Math.round(rect.top), bottom: Math.round(rect.bottom) }
-    }
     const last = [...document.querySelectorAll('[data-role]')].at(-1)
     let node: Element | null = last?.parentElement ?? null
     let scroller: Element | null = null
@@ -122,12 +125,10 @@ test('a tool call becomes a ledger row in the transcript', async () => {
     const field = document.querySelector('textarea')
     return {
       scrollable: scroller !== null && scroller.scrollHeight > scroller.clientHeight,
-      transcriptBottom: scroller === null ? 0 : box(scroller).bottom,
-      composerTop: field === null ? 0 : box(field).top,
+      composerTop: field === null ? 0 : Math.round(field.getBoundingClientRect().top),
     }
   })
   expect(geometry.scrollable).toBe(true)
-  expect(geometry.transcriptBottom).toBeLessThanOrEqual(geometry.composerTop)
 
   // Scrolling to the end is what puts the last row on screen, and it lands above the composer.
   const lastRowBottom = await window.evaluate(() => {

@@ -2,7 +2,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Locator, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 /**
  * The window seam (C4.2), measured rather than eyeballed: the app draws one content column, one height
@@ -13,7 +14,9 @@ import { APP_DIR, configureProvider, scriptedAgent } from './agent'
 const SCRIPT = [{ tool: { name: 'bash', args: { command: 'echo hello' } } }, 'It says hello from the ledger.']
 
 /** The settings panels, in the order the menu lists them: a sweep that visits them says this once. */
-const SETTINGS_TABS = ['Agent', 'Providers', 'Permissions', 'Appearance', 'Browser access'] as const
+const SETTINGS_TABS = ['Providers', 'Permissions', 'Appearance', 'Browser access'] as const
+
+test.afterEach(() => closeScriptedProviders())
 
 async function launch(options: { level?: string; replies?: unknown[]; noFolder?: boolean } = {}) {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
@@ -34,20 +37,19 @@ async function launch(options: { level?: string; replies?: unknown[]; noFolder?:
               },
               recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
             },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: options.level ?? 'full-access',
     }),
     'utf-8',
   )
-  configureProvider(dataDirectory)
+  const scripted = await startScriptedProvider({ script: JSON.stringify(options.replies ?? SCRIPT) })
+  configureProvider(dataDirectory, { baseUrl: scripted.url })
   const app = await electron.launch({
     args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
     cwd: APP_DIR,
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? SCRIPT),
       NODE_ENV: 'production',
     },
   })
@@ -137,31 +139,25 @@ test('the controls in one row are one height', async () => {
   const themeChoice = await heights(window.getByRole('main').getByRole('button', { name: 'Dark', exact: true }))
   await window.getByRole('link', { name: 'Browser access', exact: true }).click()
   const reachChoice = await heights(window.getByRole('main').getByRole('button', { name: 'This machine only' }))
-  // And a button with a frame is the control height in every panel — the agent's pair and the token's
-  // pair used to be 2px taller than every other framed button in the app.
   const tokenButtons = await heights(
     window.getByRole('main').getByRole('button', { name: 'Copy', exact: true }),
     window.getByRole('main').getByRole('button', { name: 'Replace' }),
   )
-  await window.getByRole('link', { name: 'Agent', exact: true }).click()
-  const agentButtons = await heights(
-    window.getByRole('main').getByRole('button', { name: 'Look again' }),
-    window.getByRole('main').getByRole('button', { name: 'Copy the command' }),
-  )
-  expect([...themeChoice, ...reachChoice, ...tokenButtons, ...agentButtons]).toEqual(
-    Array.from({ length: 6 }, () => CONTROL),
-  )
+  expect([...themeChoice, ...reachChoice, ...tokenButtons]).toEqual(Array.from({ length: 4 }, () => CONTROL))
   await window.getByRole('link', { name: 'Back to the workbench' }).click()
 
-  // An action that is only its glyph is the same box wherever it is drawn: the rail's own heading and
-  // the strip draw the same kind of control, and a 1.25rem glyph beside a 1.75rem one is two designs.
+  // An action that is only its glyph is the same box wherever it is drawn: the spine's own heading,
+  // the composer's foot and the head of the spine draw the same kind of control, and a 1.25rem glyph
+  // beside a 1.75rem one is two designs. The spine's places are rows, not glyphs — a row that is a
+  // place carries its name.
   const glyphs = await Promise.all(
-    [window.getByRole('button', { name: 'Add a folder' }), window.getByRole('button', { name: 'Search' })].map(
-      async (glyph) => {
-        const rect = await box(glyph)
-        return [rect.w, rect.h]
-      },
-    ),
+    [
+      window.getByRole('button', { name: 'Add a folder' }),
+      window.getByRole('button', { name: 'Attach a picture' }),
+    ].map(async (glyph) => {
+      const rect = await box(glyph)
+      return [rect.w, rect.h]
+    }),
   )
   expect(glyphs).toEqual([
     [CONTROL, CONTROL],
@@ -195,32 +191,32 @@ test('the decisions on a gate card are one height', async () => {
   await app.close()
 })
 
-test('every page keeps its content on the page\u2019s own edge', async () => {
+test('a form page keeps its content on the page\u2019s own edge', async () => {
   const { app, window } = await launch()
   await ask(window, 'say something')
   await settled(window)
 
-  const pageLeft = async (): Promise<number> => (await box(window.getByRole('main'))).x
-  const headingLeft = async (): Promise<number> =>
-    (await box(window.getByRole('main').getByRole('heading', { level: 1 }))).x
-
-  // The conversation's title is the reference: every other page's title is on the same x.
-  const conversation = (await headingLeft()) - (await pageLeft())
+  // Every page in this app is written from its own left edge — the conversation included (its own
+  // test measures the page's edges at 2400). These two pages are forms, and a form is written from
+  // the page's own edge — the title and the body under it start on the same x, one padding in — so
+  // a page that centred its content would leave the title where it is and move everything under it,
+  // which is the mistake this pass was about.
+  const offset = async (target: Locator) => (await box(target)).x - (await box(window.getByRole('main'))).x
 
   await window.getByRole('button', { name: 'Tasks' }).click()
-  const tasks = (await headingLeft()) - (await pageLeft())
-  // The body as well as the title: a page that centred its content would leave the title where it
-  // is and move everything under it, which is the mistake this pass was about.
-  const taskBody = (await box(window.getByRole('main').getByText('A task runs its prompt'))).x
+  const tasksTitle = await offset(window.getByRole('main').getByRole('heading', { level: 1 }))
+  const tasksBody = await offset(window.getByRole('main').getByText('A task runs its prompt'))
 
   await window.getByRole('button', { name: 'New conversation' }).click()
   await window.getByRole('link', { name: 'Settings' }).click()
-  const settings = (await headingLeft()) - (await pageLeft())
-  const settingsBody = (await box(window.getByRole('main').getByRole('paragraph').first())).x
+  const settingsTitle = await offset(window.getByRole('main').getByRole('heading', { level: 1 }))
+  const settingsBody = await offset(window.getByRole('main').getByRole('paragraph').first())
 
-  expect({ tasks, settings }).toEqual({ tasks: conversation, settings: conversation })
-  expect({ taskBody, settingsBody }).toEqual({ taskBody: settingsBody, settingsBody })
-  expect(taskBody - (await box(window.getByRole('main'))).x).toBe(conversation)
+  expect(tasksBody).toBe(tasksTitle)
+  expect(settingsBody).toBe(settingsTitle)
+  expect(settingsTitle).toBe(tasksTitle)
+  expect(settingsBody).toBe(tasksBody)
+
   await app.close()
 })
 
@@ -260,6 +256,34 @@ test('a page\u2019s body starts the same distance under its band', async () => {
     box(window.getByRole('main').locator('[data-role="user"]').first()),
   ])
   expect(entry.y).toBeGreaterThanOrEqual(band.y + band.h)
+
+  await app.close()
+})
+
+test('nothing escapes the column, however unbreakable the words are', async () => {
+  const { app, window } = await launch({
+    replies: [`the hash is ${'a'.repeat(400)} and https://example.com/${'b'.repeat(300)} ends it.`],
+  })
+  await window.setViewportSize({ width: 1024, height: 720 })
+  await ask(window, `look at ${'c'.repeat(400)}`)
+  await settled(window)
+
+  // A word that cannot break is the one thing prose spacing cannot hold: `white-space` keeps the
+  // line breaks and still lets one long token spill past the box that holds it. Nothing is allowed
+  // out of the column — the scroll the transcript owns gains no width to the side, and no
+  // sentence's own box carries words past its own edge.
+  const spill = await window.getByRole('main').evaluate((node) => {
+    const over = (element: Element) => element.scrollWidth - element.clientWidth
+    const scroller = [...node.querySelectorAll('*')].find(
+      (child) => getComputedStyle(child).overflowY === 'auto' && child.clientHeight > 0,
+    )
+    const words = [...node.querySelectorAll('[data-role="user"] p, [data-role="assistant"] p')].map(over)
+    return {
+      column: scroller === undefined ? 999 : over(scroller),
+      words: Math.max(...words, 0),
+    }
+  })
+  expect(spill).toEqual({ column: 0, words: 0 })
 
   await app.close()
 })
@@ -323,14 +347,14 @@ test('a block that groups things is inset by one number', async () => {
   for (const block of grouped) {
     expect(block.pad, `${block.kind} is ${block.pad}`).toBe(block.nested ? '8/8/8/8' : '16/16/16/16')
     // And the corner follows the same rule: a panel's block is a card, a block inside one is not.
-    expect(block.radius, `${block.kind} is ${block.radius}`).toBe(block.nested ? '10px' : '16px')
+    expect(block.radius, `${block.kind} is ${block.radius}`).toBe(block.nested ? '8px' : '12px')
   }
 
   // A notice, on the other hand, is a line and not a block: the same shape wherever it appears,
   // which is the control's radius rather than the card's.
   const notice = page.getByText('This system offers no keychain')
   expect(await paddingOf(notice)).toBe(NOTICE)
-  expect(await notice.evaluate((node) => getComputedStyle(node).borderRadius)).toBe('10px')
+  expect(await notice.evaluate((node) => getComputedStyle(node).borderRadius)).toBe('8px')
 
   await window.getByRole('link', { name: 'Back to the workbench' }).click()
   await window.getByRole('button', { name: 'Tasks' }).click()
@@ -351,16 +375,153 @@ test('a block that groups things is inset by one number', async () => {
   await app.close()
 })
 
-test('the composer writes on the same x the entries write on', async () => {
+test('the composer\u2019s bar stands on the column the answers stand on', async () => {
   const { app, window } = await launch()
   await ask(window, 'say something')
   await settled(window)
 
-  const entry = await box(window.getByRole('main').locator('[data-role="user"]').first().getByText('say something'))
-  const words = await box(window.getByRole('textbox', { name: 'Message the agent' }))
-  // The bar's own hairline is between the two, so the words land on the entries' column to within
-  // the pixel the border costs — the eye cannot see the difference, and nothing else is allowed.
-  expect(Math.abs(words.x - entry.x)).toBeLessThanOrEqual(1)
+  // The bar is the page's own input card: its left edge is the x the answers start on, and it
+  // does not drift for anything the transcript does around it.
+  const [columnX, barX] = await window.getByRole('main').evaluate((node) => {
+    const words = node.querySelector('[data-role="assistant"] p')
+    const field = node.querySelector('textarea')
+    let card: Element | null = field
+    while (card !== null && !card.className.toString().includes('rounded-card')) card = card.parentElement
+    if (card === null || field === null || words === null) throw new Error('the composer has no bar')
+    return [Math.round(words.getBoundingClientRect().x), Math.round(card.getBoundingClientRect().x)]
+  })
+  expect(barX).toBe(columnX)
+
+  await app.close()
+})
+
+/**
+ * One column, whatever the window is. A conversation is written on one column and everything in it
+ * stands on that column's edges — the prose, the code and tables inside it, the tool lines, the
+ * reader's bubble and the bar the next message is written in. Without it the page is whatever the
+ * window is: the prose caps out at its measure in the middle of a maximized window while code,
+ * tables and the composer keep stretching to the panel's edges, which is a page that lost its
+ * column rather than a wide one. Every one of these is measured at the same time, because a column
+ * is a fact about all of them agreeing (C5.4, ADR-0024).
+ */
+test('the conversation is one column, however wide the window is', async () => {
+  const { app, window } = await launch({
+    replies: [
+      { tool: { name: 'read', args: { path: 'notes.txt' } } },
+      `A sentence of prose.\n\n| one | two | three |\n| --- | --- | --- |\n| a cell | another | third |\n\n\`\`\`ts\nconst line = 1\n\`\`\`\n`,
+    ],
+  })
+  await window.setViewportSize({ width: 2400, height: 1200 })
+  await ask(window, 'say something')
+  await settled(window)
+
+  const edges = await window.getByRole('main').evaluate((node) => {
+    const r = (x: number) => Math.round(x)
+    const box = (selector: string) => {
+      const element = node.querySelector(selector)
+      if (element === null) return null
+      const rect = element.getBoundingClientRect()
+      return { left: r(rect.left), right: r(rect.right), width: r(rect.width) }
+    }
+    return {
+      column: box('[data-column="conversation"]'),
+      title: box('[class*="h-14"] h1'),
+      prose: box('[data-role="assistant"] p'),
+      code: box('[data-role="assistant"] pre'),
+      table: box('[data-role="assistant"] table'),
+      tool: box('[data-role="tool"]'),
+      bubble: box('[data-role="user"] > div'),
+      composer:
+        box('main textarea') === null
+          ? null
+          : (() => {
+              let card: Element | null = node.querySelector('textarea')
+              while (card !== null && !card.className.toString().includes('rounded-card')) card = card.parentElement
+              if (card === null) return null
+              const rect = card.getBoundingClientRect()
+              return { left: r(rect.left), right: r(rect.right), width: r(rect.width) }
+            })(),
+    }
+  })
+
+  // The window is 2400 wide and the conversation uses it: everything the page holds is written on
+  // the page's own pair of edges, and nothing is left standing on a second, narrower one. The page's
+  // first line of prose starts exactly where the band's title does — one padding in — so no resize
+  // can set the answer drifting away from the edge the title stands on.
+  expect(edges.column).not.toBeNull()
+  expect(edges.title).not.toBeNull()
+  expect(edges.prose!.left - edges.column!.left, `the page is written one padding in: ${JSON.stringify(edges)}`).toBe(
+    24,
+  )
+  expect(edges.title!.left, `the title and the body share the page's padding: ${JSON.stringify(edges.title)}`).toBe(
+    edges.prose!.left,
+  )
+
+  // Everything that writes across the page shares both of its edges: the prose, the code and the
+  // table inside an answer, a tool line, and the bar the next message is written in.
+  const across = {
+    prose: edges.prose,
+    code: edges.code,
+    table: edges.table,
+    tool: edges.tool,
+    composer: edges.composer,
+  }
+  for (const [what, part] of Object.entries(across)) {
+    expect(part, `${what} is on the page`).not.toBeNull()
+    expect({ what, left: part!.left, right: part!.right }).toEqual({
+      what,
+      left: edges.prose!.left,
+      right: edges.prose!.right,
+    })
+  }
+
+  // And the reader's own bubble is the one thing with a width of its own — capped near the measure,
+  // so a short message stays a bubble — and it is set against the page's right edge, because what
+  // the reader typed is a visitor in the column the answer owns.
+  expect(edges.bubble).not.toBeNull()
+  expect(edges.bubble!.right).toBe(edges.prose!.right)
+  expect(edges.bubble!.width, `the bubble stays a bubble: ${JSON.stringify(edges.bubble)}`).toBeLessThanOrEqual(608)
+
+  await app.close()
+})
+
+/**
+ * The head of the page holds its title. The band is a row of one height with the title at its left
+ * and the page's own controls at its right, and the quiet facts between them — the folder, when it
+ * was last touched — are the first thing that may give way, because a band that keeps its controls
+ * by squeezing the title to nothing has stopped saying what the page is.
+ */
+test('the band keeps its title, at every width', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
+
+  /** How much of the band the title keeps, and whether anything in the band runs past it. */
+  const title = async () =>
+    await window
+      .getByRole('main')
+      .getByRole('heading', { level: 1 })
+      .evaluate((node) => {
+        const rect = node.getBoundingClientRect()
+        const band = node.closest('[class*="h-14"]')
+        const controls = [...(band?.querySelectorAll('button, select, a[href]') ?? [])]
+        const right = Math.max(-1, ...controls.map((control) => control.getBoundingClientRect().right))
+        return {
+          width: Math.round(rect.width),
+          // Nothing in the band may be drawn past the band's own right edge, whatever the width.
+          overhang: band === null ? -1 : Math.round(right - band.getBoundingClientRect().right),
+        }
+      })
+
+  // Every width the window can actually be — the frameless window's own minimum is 1024 — including
+  // the one where the band is most crowded, with the page's controls and the window's three in it.
+  for (const width of [1440, 1200, 1024] as const) {
+    await window.setViewportSize({ width, height: 760 })
+    await window.waitForTimeout(200)
+    const seen = await title()
+    expect(seen.width, `the title at ${width}: ${JSON.stringify(seen)}`).toBeGreaterThan(60)
+    expect(seen.overhang, `the band at ${width}: ${JSON.stringify(seen)}`).toBeLessThanOrEqual(0)
+  }
 
   await app.close()
 })
@@ -424,21 +585,111 @@ test('no control with a body is square', async () => {
   await app.close()
 })
 
+/**
+ * The window's own controls are the window's corner, and the corner is the top right. They live at
+ * the right end of every page's band — after what acts on the page, past a hairline, because the
+ * window is not one of the page's concerns — and they are in no band's head and on no screen twice.
+ * A frameless window has to be closable from wherever its corner is, on every screen that has a
+ * corner, including the one that has no band at all.
+ */
+test('the window\u2019s own controls sit in the top-right corner', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch()
+  // Before the first question the page is a folder's title page, and it wears no band either: the
+  // corner is drawn there too, at the top of the pane, or a fresh workbench has no way to close.
+  const titleClose = window.getByRole('main').getByRole('button', { name: 'Close window' })
+  await expect(titleClose).toHaveCount(1)
+  const titleBox = (await titleClose.boundingBox())!
+  expect(titleBox.y, `the title page keeps the corner at the top: ${JSON.stringify(titleBox)}`).toBeLessThan(60)
+  await ask(window, 'say something')
+  await settled(window)
+
+  const corner = async (
+    where: string,
+  ): Promise<{ where: string; trio: number; closeRight: number; headTrio: number }> => {
+    const band = window.getByRole('main').locator('[class*="h-14"][class*="border-b"]').first()
+    const head = window.getByRole('complementary').locator('header')
+    const names = ['Minimize window', 'Maximize window', 'Restore window', 'Close window']
+    const close = band.getByRole('button', { name: 'Close window' })
+    const [trio, closeRight, headTrio] = await Promise.all([
+      Promise.all(names.map((name) => band.getByRole('button', { name }).count())).then((counts) =>
+        counts.reduce((a, b) => a + b, 0),
+      ),
+      close
+        .count()
+        .then(async (count) =>
+          count === 0 ? -1 : Math.round((await close.boundingBox())!.x + (await close.boundingBox())!.width),
+        ),
+      Promise.all(names.map((name) => head.getByRole('button', { name }).count())).then((counts) =>
+        counts.reduce((a, b) => a + b, 0),
+      ),
+    ])
+    return { where, trio, closeRight, headTrio }
+  }
+
+  const found: ReturnType<typeof corner> extends Promise<infer T> ? T[] : never = []
+  const visit = async (where: string, go: () => Promise<void>): Promise<void> => {
+    await go()
+    await window.waitForTimeout(300)
+    found.push({ ...(await corner(where)), where })
+  }
+  await visit('the conversation', async () => {})
+  await visit('the tasks page', () => window.getByRole('button', { name: 'Tasks' }).click())
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await visit('a settings panel', async () => {})
+
+  for (const one of found) {
+    expect(one, `the window controls on ${one.where}`).toEqual({
+      where: one.where,
+      trio: 3,
+      closeRight: expect.any(Number),
+      headTrio: 0,
+    })
+    expect(one.closeRight, `close is the corner on ${one.where}`).toBeGreaterThan(0)
+  }
+  // The close button is the rightmost thing on every page: it is the corner.
+  const rights = new Set(found.map((one) => one.closeRight))
+  expect([...rights], `the corner is one x on every page: ${JSON.stringify(found)}`).toHaveLength(1)
+
+  // And the screen that has no band still closes: its corner holds the trio too.
+  const first = await launch({ noFolder: true })
+  const alone = first.window.getByRole('main')
+  await expect(alone.getByRole('button', { name: 'Close window' })).toHaveCount(1)
+  await first.app.close()
+
+  await app.close()
+})
+
 test('the rail and the settings menu are the same panel', async () => {
   const { app, window } = await launch()
   const rail = await box(window.getByRole('complementary'))
+  // Where a row of the rail puts its name, and where a row of the menu puts its: the two screens are
+  // the same window twice, so the index and the menu are read on one x, not on two.
+  const rowName = async (row: Locator): Promise<number> =>
+    Math.round(await row.evaluate((node) => (node.querySelector('span.min-w-0') as Element).getBoundingClientRect().x))
+  const place = await rowName(window.getByRole('complementary').getByRole('button', { name: /^Search/ }))
   await window.getByRole('link', { name: 'Settings' }).click()
   const menu = await box(window.getByRole('navigation', { name: 'Settings sections' }))
+  const tab = await rowName(
+    window.getByRole('navigation', { name: 'Settings sections' }).getByRole('link', { name: 'Providers', exact: true }),
+  )
   expect(menu).toEqual(rail)
+  expect(tab, "the menu reads on the rail's own x").toBe(place)
   await app.close()
 })
 
 /**
- * Where the page's column stops on the right. A wheel that appears when the content grows takes its
- * room out of the column it scrolls, so a page whose transcript is long ends 8px short of a page
- * whose content fits — and the band above it, which never scrolls and so never gives up the room,
- * ends 8px past the body it names. One page, one right edge, and the edge does not move when the
- * page grows (C5.4).
+ * Where the page's chrome stops on the right. The wheel's room is reserved whether or not the wheel
+ * is there (`SCROLLS`), so a page whose transcript is long ends on the same edge as a page whose
+ * content fits — and the band above it, which never scrolls, gives up the same room on purpose
+ * (`BESIDE_SCROLLS`), or it would end 8px past the body it names. One page, one right edge, and it
+ * does not move when the page grows (C5.4).
+ *
+ * The page fills the pane, so that edge is one x for everything on it: the band's right end, the
+ * entries and the composer's bar stop on the same x — the page's padding, with the wheel's room
+ * outside the scroll on a form page and shared inside it on the conversation — and it is the same x
+ * on the conversation, the tasks page and every settings panel.
  */
 test('a page ends on one right edge, whether or not it has grown long', async () => {
   const { app, window } = await launch({
@@ -449,21 +700,33 @@ test('a page ends on one right edge, whether or not it has grown long', async ()
   await ask(window, 'and again')
   await settled(window)
 
-  /** Where the three things on a page stop: the entries, the band's last control, the composer's card. */
+  /**
+   * Where the three things on a page stop: the entries, the band's content, the composer's card.
+   * Rounded to the pixel: the band carries `backdrop-blur`, which puts its subtree on a composited
+   * layer, and a layer can land a hundredth of a pixel off the row beside it. A hundredth of a
+   * pixel is not a second right edge.
+   */
   const edges = async (): Promise<{ entry: number; band: number; composer: number; scrolls: boolean }> =>
     await window.getByRole('main').evaluate((node) => {
-      const round = (value: number) => Math.round(value * 100) / 100
+      const round = (value: number) => Math.round(value)
       const of = (element: Element | null | undefined) =>
         element === null || element === undefined ? -1 : round(element.getBoundingClientRect().right)
+      const band = node.querySelector('[class*="h-14"][class*="border-b"]')
+      // The band's own right end: the control the page keeps at its right, whichever page it is.
+      const bandRight = Math.max(
+        -1,
+        ...[...(band?.querySelectorAll('button, select, a[href]') ?? [])].map(
+          (control) => control.getBoundingClientRect().right,
+        ),
+      )
       const scroller = [...node.querySelectorAll('*')].find(
         (child) => getComputedStyle(child).overflowY === 'auto' && child.clientHeight > 0,
       )
-      const band = node.querySelector('[class*="h-14"][class*="border-b"]')
       let card: Element | null = node.querySelector('textarea')
       while (card !== null && !card.className.toString().includes('rounded-card')) card = card.parentElement
       return {
         entry: of(node.querySelector('[data-role="tool"]')),
-        band: of(band?.lastElementChild?.lastElementChild),
+        band: round(bandRight),
         composer: of(card),
         scrolls: scroller !== undefined && scroller.scrollHeight > scroller.clientHeight + 4,
       }
@@ -476,7 +739,8 @@ test('a page ends on one right edge, whether or not it has grown long', async ()
 
   // The two reads are only worth comparing if the wheel really came and went between them.
   expect({ roomy: roomy.scrolls, tight: tight.scrolls }).toEqual({ roomy: false, tight: true })
-  // One page, one right edge: what the band ends on, what the entries end on, what the composer ends on.
+  // One page, one right edge, on both reads: the page fills the pane, so the band's right end, the
+  // entries and the composer's bar all stop on the same x — wheel or no wheel.
   const { scrolls: _roomy, ...whileItFits } = roomy
   const { scrolls: _tight, ...onceItScrolls } = tight
   expect(whileItFits, `the page while it fits: ${JSON.stringify(roomy)}`).toEqual({
@@ -490,29 +754,38 @@ test('a page ends on one right edge, whether or not it has grown long', async ()
     composer: roomy.entry,
   })
 
-  // And the same edge on a page that never grows long enough to have a wheel at all.
+  // And the chrome's own edge is one x wherever you are: the band's right end is the same on the
+  // conversation, on the tasks page and on a settings panel.
+  const chromeRight = async (): Promise<number> =>
+    await window.getByRole('main').evaluate((node) => {
+      const band = node.querySelector('[class*="h-14"][class*="border-b"]')
+      const controls = [...(band?.querySelectorAll('button, select, a[href]') ?? [])]
+      const right =
+        controls.length === 0
+          ? (band?.lastElementChild?.getBoundingClientRect().right ?? -1)
+          : Math.max(...controls.map((control) => control.getBoundingClientRect().right))
+      return Math.round(right)
+    })
   await window.getByRole('button', { name: 'Tasks' }).click()
-  const tasks = await window.getByRole('main').evaluate((node) => {
-    const last = node.querySelector('[class*="h-14"][class*="border-b"]')?.lastElementChild
-    const button = last?.lastElementChild ?? last
-    let card: Element | null =
-      [...node.querySelectorAll('p')].find((line) => (line.textContent ?? '').includes('No tasks')) ?? null
-    while (card !== null && !card.className.toString().includes('rounded-card')) card = card.parentElement
-    return {
-      band: button === null || button === undefined ? -1 : Math.round(button.getBoundingClientRect().right * 100) / 100,
-      card: card === null ? -1 : Math.round(card.getBoundingClientRect().right * 100) / 100,
-    }
+  await window.waitForTimeout(300)
+  const tasksBand = await chromeRight()
+  await window.getByRole('link', { name: 'Settings' }).click()
+  await window.waitForTimeout(300)
+  const settingsBand = await chromeRight()
+  expect({ tasksBand, settingsBand, conversationBand: roomy.band }).toEqual({
+    tasksBand: roomy.band,
+    settingsBand: roomy.band,
+    conversationBand: roomy.band,
   })
-  expect(tasks, `the tasks page: ${JSON.stringify(tasks)}`).toEqual({ band: roomy.entry, card: roomy.entry })
 
   await app.close()
 })
 
 /**
- * A line of prose, measured in the unit that matters to a reader: characters. The page's column is
- * wide, and prose that fills it is a hundred characters to the line — a wall a reader loses their
- * place in on every sweep back. The one voice is the display voice of the empty state, and the other
- * is the body voice of an answer, and both are capped by `--container-measure` (C5.4).
+ * A line of prose, measured in the unit that matters to a reader: characters. An answer's own prose
+ * fills the pane — that is the room the reader asked the window for — and what still keeps the
+ * reading measure is the interface's own voice: a panel's note, a hint, an empty state's line,
+ * capped at seventy characters because they are labels and not content (C5.3, C5.4).
  */
 test('a line of prose is a measure, not a wall', async () => {
   const paragraph =
@@ -548,19 +821,24 @@ test('a line of prose is a measure, not a wall', async () => {
 
   await ask(window, 'show me the notes')
   await settled(window)
+  // An answer's own prose is the page filling the pane — that is the room the reader asked the
+  // window for. What still keeps a measure is the *interface's* prose, measured in the sweep below.
   const body = await perLine(window.getByRole('main').locator('p').filter({ hasText: 'comfortable measure' }).first())
-  expect(body.chars, `an answer: ${body.voice}`).toBeLessThanOrEqual(READABLE)
+  expect(body.chars, `an answer fills the pane: ${body.voice}`).toBeGreaterThanOrEqual(READABLE)
 
-  // And every sentence the interface itself writes, on every panel that writes one: the line that
-  // explains a section is prose like any other, and it was the only prose in the app with no cap — the
-  // appearance panel's three ran to a hundred and forty-five characters on one line.
+  // Every sentence the interface itself writes, on every panel that writes one: the line that
+  // explains a section is prose too, and it keeps the measure the content no longer does.
   const long: string[] = []
   let measured = 0
   const proseOn = async (where: string): Promise<void> => {
-    // Prose is the sans voice: what a path, a count or a diff does with its width is its own business.
-    // Every line is measured, with no length filter — a short line is short by its own measurement.
+    // The interface's prose is the sans voice *below* the body size — a note, a hint, an empty
+    // state's sentence. What a path, a count or a diff does with its width is its own business, and
+    // an answer's own paragraphs fill the page by design.
     for (const line of await window.getByRole('main').locator('p, span.block').all()) {
-      const sans = await line.evaluate((node) => getComputedStyle(node as Element).fontFamily.includes('Plex Sans'))
+      const sans = await line.evaluate((node) => {
+        const style = getComputedStyle(node as Element)
+        return style.fontFamily.includes('Inter') && Number.parseFloat(style.fontSize) < 15
+      })
       if (!sans) continue
       const { chars, voice } = await perLine(line)
       if (chars === 0) continue
@@ -627,9 +905,9 @@ test('a thing is named in the display voice, and a part of it in the label voice
     await window.getByRole('link', { name: tab, exact: true }).click()
     await named(tab)
   }
-  expect(titles.length, `the pages name themselves in: ${titles.join(' / ')}`).toBe(7)
+  expect(titles.length, `the pages name themselves in: ${titles.join(' / ')}`).toBe(6)
   expect(new Set(titles).size, `the page titles are ${JSON.stringify([...new Set(titles)])}`).toBe(1)
-  expect(titles[0]).toContain('Newsreader')
+  expect(titles[0]).toContain('Inter')
   expect(titles[0]).toContain('20px')
 
   // And every part of one thing, wherever it is named, is named the same way.
@@ -689,7 +967,7 @@ test('a thing is named in the display voice, and a part of it in the label voice
   // that stands on its own uses.
   const alone = await launch({ noFolder: true })
   const own = await voice(alone.window.getByRole('main').getByRole('heading', { level: 1 }))
-  expect(own, `the first screen names itself: ${own}`).toBe('Newsreader 24px 500 none')
+  expect(own, `the first screen names itself: ${own}`).toBe('Inter 24px 600 none')
   await alone.app.close()
 })
 
@@ -813,7 +1091,7 @@ test('every control answers the pointer, in one of the three ways', async () => 
   quiet.push(...(await silent(window, 'a conversation', window.getByRole('complementary'))))
 
   // The strip, which is chrome rather than a page.
-  quiet.push(...(await silent(window, 'the strip', window.getByRole('banner'))))
+  quiet.push(...(await silent(window, 'the band', window.getByRole('main').locator('[class*="h-14"]').first())))
 
   // The command palette, and the two menus a chip opens.
   await window.keyboard.press('Control+k')
@@ -881,4 +1159,298 @@ test('the controls of a gate and of the first screen answer too', async () => {
     `these controls answer the pointer with nothing:\n  ${onTheFirstScreen.join('\n  ')}`,
   ).toEqual([])
   await first.app.close()
+})
+
+/**
+ * A form page fills the pane the rail leaves it, and it keeps the page's own edge. The filling is
+ * the point: a settings row is a label and the control that belongs to it, and a panel that caps
+ * itself leaves the window's right half as dead weight the controls could have used. What it may not
+ * do is centre itself or drift: the band's title stands on the page's own padding at every width, so
+ * growing the window never moves the page the reader was reading (C5.3, C5.4).
+ */
+test('a form page fills the pane, and it keeps the page’s own edge', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch()
+
+  /** Where a form page's parts stand: the column, the title, what the band acts with, the widest block. */
+  const parts = async (): Promise<{
+    column: number[]
+    width: number
+    title: number
+    action: number
+    block: number
+    edge: number
+  }> =>
+    await window.getByRole('main').evaluate((node) => {
+      const round = (value: number) => Math.round(value)
+      const box = (element: Element) => {
+        const rect = element.getBoundingClientRect()
+        return { x: round(rect.x), right: round(rect.right) }
+      }
+      const columns = [...node.querySelectorAll('[data-column="form"]')].map(box)
+      const band = node.querySelector('[class*="h-14"][class*="border-b"]')
+      const actions = [...(band?.querySelectorAll('button, select, a[href]') ?? [])]
+      const blocks = [...node.querySelectorAll('[class*="rounded-card"]')].filter(
+        (block) => !(band?.contains(block) ?? false),
+      )
+      return {
+        // The column's own left edge, once per wrapper that claims it: they have to agree.
+        column: [...new Set(columns.map((one) => one.x))],
+        width: columns.length === 0 ? -1 : Math.max(...columns.map((one) => one.right - one.x)),
+        title: round(band?.querySelector('h1')?.getBoundingClientRect().x ?? -1),
+        action:
+          actions.length === 0 ? -1 : Math.max(...actions.map((action) => round(action.getBoundingClientRect().right))),
+        block:
+          blocks.length === 0 ? -1 : Math.max(...blocks.map((block) => round(block.getBoundingClientRect().right))),
+        // The page's own right edge: the pane's hairline, then the page padding and the wheel's room.
+        edge: round(node.getBoundingClientRect().right - 33),
+      }
+    })
+
+  const seen: Record<string, number> = {}
+  const measure = async (page: string, name: string): Promise<void> => {
+    await expect(window.getByRole('main').getByRole('heading', { level: 1 })).toHaveText(name)
+    const found = await parts()
+    // One left edge, whatever the page carries: a page is a fact about its parts agreeing.
+    expect(found.column, `the columns on ${page}: ${JSON.stringify(found)}`).toHaveLength(1)
+    expect(found.title, `the band's title on ${page}`).toBe(found.column[0])
+    // The page fills the pane the rail leaves: the widest block reaches the page's own right edge,
+    // not up to a cap of its own.
+    if (found.block > 0) {
+      expect({ page, block: found.block }, `the body fills the page on ${page}`).toEqual({ page, block: found.edge })
+    }
+    // And what acts on the page — up to and including the window's three — ends on that same edge.
+    if (found.action > 0) {
+      expect({ page, action: found.action }, `the band's action on ${page}`).toEqual({ page, action: found.edge })
+    }
+    seen[page] = found.title
+  }
+
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await measure('the tasks page', 'Tasks')
+  await window.getByRole('link', { name: 'Settings' }).click()
+  for (const tab of SETTINGS_TABS) {
+    await window.getByRole('link', { name: tab, exact: true }).click()
+    await measure(`settings: ${tab}`, tab)
+  }
+
+  // And the same six pages again in a narrower window: the title's x is the page's own, so it is the
+  // same x. This is the whole point of not centring a form's column — a page whose heading moved when
+  // the window did is a page that looks like it was shifted sideways.
+  const wide = seen
+  const narrow: Record<string, number> = {}
+  await window.setViewportSize({ width: 1000, height: 700 })
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await window.getByRole('main').getByRole('heading', { level: 1 }).waitFor()
+  narrow['the tasks page'] = (await parts()).title
+  await window.getByRole('link', { name: 'Settings' }).click()
+  for (const tab of SETTINGS_TABS) {
+    await window.getByRole('link', { name: tab, exact: true }).click()
+    await window.getByRole('main').getByRole('heading', { level: 1 }).waitFor()
+    narrow[`settings: ${tab}`] = (await parts()).title
+  }
+  expect(narrow, `the titles move with the window: ${JSON.stringify({ wide, narrow })}`).toEqual(wide)
+
+  await app.close()
+})
+
+/**
+ * A panel is groups, and the groups are one rhythm apart. The panel's sentence is not a group: it is
+ * the panel, said once, and the first group starts under it — the same distance on every panel, or
+ * the five panels read as five pages assembled by five people. Between one group and the next is the
+ * panel's own rule and its own lead-in; a group whose first line touches the block above it belongs
+ * to no rhythm at all, which is how the keychain notice came to sit on the sentence under it.
+ */
+test('a panel\u2019s groups are one rhythm apart', async () => {
+  test.setTimeout(120_000)
+  const { app, window } = await launch()
+  await window.getByRole('link', { name: 'Settings' }).click()
+
+  /**
+   * What the container gives each group it holds: the rule above it, the lead-in inside it, and where
+   * its first line therefore starts. Measured on the group's own box — its padding is the lead-in —
+   * because that is where the rhythm is drawn, and measured against the group above it because two
+   * groups that touch are the thing that has no rhythm at all.
+   */
+  const rhythm = async (): Promise<{ lead: number; rules: number[]; seams: number[]; touches: number[] }> =>
+    await window.getByRole('main').evaluate((node) => {
+      const round = (value: number) => Math.round(value)
+      const container = node.querySelector('[data-groups="panel"]')
+      const note = container?.previousElementSibling
+      const groups = [...(container?.children ?? [])]
+      const boxes = groups.map((group) => group.getBoundingClientRect())
+      const inside = groups.map((group) => {
+        const rect = group.getBoundingClientRect()
+        const style = getComputedStyle(group)
+        return {
+          top: rect.top + Number.parseFloat(style.paddingTop),
+          bottom: rect.bottom - Number.parseFloat(style.paddingBottom),
+        }
+      })
+      const rules: number[] = []
+      const seams: number[] = []
+      const touches: number[] = []
+      for (let i = 1; i < groups.length; i += 1) {
+        // The rule between two groups, wherever the container draws it: `divide-y` puts it under the
+        // group above, a card brings its own border with it.
+        const above = Number.parseFloat(getComputedStyle(groups[i - 1]).borderBottomWidth) || 0
+        const below = Number.parseFloat(getComputedStyle(groups[i]).borderTopWidth) || 0
+        rules.push(above + below)
+        seams.push(round(boxes[i].top - boxes[i - 1].bottom))
+        touches.push(round(inside[i].top - inside[i - 1].bottom))
+      }
+      return {
+        // The panel's own sentence, and where its first group starts under it — the box, because what
+        // is inside the group is the group's own business.
+        lead:
+          note === null || note === undefined || boxes.length === 0
+            ? -1
+            : round(boxes[0].top - note.getBoundingClientRect().bottom),
+        rules,
+        seams,
+        touches,
+      }
+    })
+
+  const leads: Record<string, number> = {}
+  const seams: number[] = []
+  for (const tab of SETTINGS_TABS) {
+    await window.getByRole('link', { name: tab, exact: true }).click()
+    // The window's three live in the band now, so a band button is no proof the panel has drawn
+    // itself: wait for the groups the panel actually holds.
+    await expect
+      .poll(async () => await window.getByRole('main').locator('[data-groups="panel"] > *').count(), {
+        timeout: 5_000,
+        message: `${tab} has no groups to space`,
+      })
+      .toBeGreaterThan(0)
+    const found = await rhythm()
+    // Every panel has to have been measured, not merely visited.
+    expect({ tab, lead: found.lead }).not.toEqual({ tab, lead: -1 })
+    leads[tab] = found.lead
+    // A rule between every two groups: that is what says two groups are two.
+    expect(
+      { tab, unruled: found.rules.filter((rule) => rule < 1) },
+      `the rules on ${tab}: ${JSON.stringify(found)}`,
+    ).toEqual({ tab, unruled: [] })
+    // And the room between two groups is one number, the same in every panel: a panel whose groups
+    // were 0, 8, 16 and 37px apart would be a panel assembled in four sittings.
+    seams.push(...found.seams)
+    // Nothing touches: a group whose last line and the next group's first line are within a rule of
+    // each other is a group the panel never spaced.
+    expect(
+      { tab, touches: found.touches.filter((gap) => gap < 16) },
+      `the panels touch: ${JSON.stringify(found)}`,
+    ).toEqual({ tab, touches: [] })
+  }
+  // The sweep has to have found what it is about: five panels, and more than one of them grouped.
+  expect(
+    seams.length,
+    `the panels that have groups to space: ${JSON.stringify({ leads, seams })}`,
+  ).toBeGreaterThanOrEqual(3)
+  expect([...new Set(seams)], `the room between two groups: ${JSON.stringify(seams)}`).toEqual([20])
+  // And the first group of every panel starts the same distance under the panel's own sentence.
+  const distinct = [...new Set(Object.values(leads))]
+  expect(distinct, `the panels lead with: ${JSON.stringify(leads)}`).toHaveLength(1)
+
+  await app.close()
+})
+
+/**
+ * The rail is a tree, and a tree is read in one x per level. The places one can go, the folders and
+ * the door to settings are the rail's own rows and stand on one x — including their names, which is
+ * where a rail starts looking hand-assembled, because a 2px difference between one row's name and the
+ * next reads as a mistake rather than as a hierarchy. A task runs in a folder and is *in* it, so it
+ * indents one step past the folder it belongs to rather than standing where the folder stands, and the
+ * runs under a task indent one step further. Every step is the same step.
+ */
+test('the rail is a tree, and a tree is read in one x per level', async () => {
+  test.setTimeout(180_000)
+  const { app, window } = await launch({ replies: ['Noted from the first turn.', 'The nightly check found nothing.'] })
+
+  // A folder with a conversation in it, and a task that has run once: the rail's three levels.
+  await ask(window, 'first question')
+  await settled(window)
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await window.getByRole('button', { name: 'New task', exact: true }).click()
+  await window.getByLabel('Name').fill('Nightly check')
+  await window.getByLabel('What to ask').fill('read the notes and report')
+  await window.getByRole('button', { name: 'Save task' }).click()
+  // The card in the list is the way in to a task: its history is where a run's outcome is written.
+  await window.getByRole('main').getByRole('button', { name: 'Nightly check' }).first().click()
+  await window.getByRole('button', { name: 'Run now' }).click()
+  await expect(
+    window
+      .getByRole('main')
+      .getByText(/Finished/)
+      .first(),
+  ).toBeVisible({ timeout: 30_000 })
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window
+    .getByRole('complementary')
+    .getByRole('button', { name: /Expand the tasks in/ })
+    .click()
+
+  const rail = window.getByRole('complementary')
+
+  /** A row's own box, and the box of the name inside it: the row's step and the name's x. */
+  const rowAt = async (target: Locator): Promise<{ x: number; name: number }> =>
+    await target.evaluate((node) => {
+      const round = (value: number) => Math.round(value)
+      const label = (row: Element) => {
+        const name = row.querySelector('span.min-w-0')
+        return name === null ? -1 : round(name.getBoundingClientRect().x)
+      }
+      return { x: round(node.getBoundingClientRect().x), name: label(node) }
+    })
+
+  /**
+   * The first row a row *holds* — the list that follows it — measured the same way. A run is titled
+   * with its task's name and shows its age, so it has no name of its own to ask for: what it is, is
+   * what holds it.
+   */
+  const heldBy = async (row: Locator): Promise<{ x: number; name: number }> =>
+    await row.evaluate((node) => {
+      const round = (value: number) => Math.round(value)
+      const holder = node.closest('div') ?? node.parentElement
+      const held = holder?.nextElementSibling?.querySelector('button')
+      if (held === null || held === undefined) return { x: -1, name: -1 }
+      const name = held.querySelector('span.min-w-0')
+      return {
+        x: round(held.getBoundingClientRect().x),
+        name: name === null ? -1 : round(name.getBoundingClientRect().x),
+      }
+    })
+
+  const place = await rowAt(rail.getByRole('button', { name: /^Search/ }))
+  const folderRow = rail.getByRole('button', { name: 'Collapse sandbox' })
+  const folder = await rowAt(folderRow)
+  const door = await rowAt(rail.getByRole('link', { name: /^Settings/ }))
+  const taskRow = rail.getByRole('button', { name: /the tasks in Nightly check/ })
+  const conversation = await heldBy(folderRow)
+  const task = await rowAt(taskRow)
+  const run = await heldBy(taskRow)
+
+  // Every one of them was found, names included: a part measured as -1 is a part that is not there.
+  const found = { place, folder, door, conversation, task, run }
+  expect(
+    Object.entries(found).filter(([, row]) => row.x <= 0 || row.name <= 0),
+    `the rows the rail did not draw: ${JSON.stringify(found)}`,
+  ).toEqual([])
+
+  // The rail's own rows — a place, a folder, the door — are one row in one x, names included.
+  expect({ place, folder, door }).toEqual({ place, folder: place, door: place })
+
+  // And what a row holds stands one step past it, the same step at every level.
+  const step = conversation.x - folder.x
+  expect(step, `the rail's step is ${step}px`).toBeGreaterThanOrEqual(8)
+  expect({ task: task.x - folder.x, run: run.x - task.x }).toEqual({ task: step, run: step })
+  expect({ conversation: conversation.name - folder.name, task: task.name - folder.name }).toEqual({
+    conversation: step,
+    task: step,
+  })
+  expect(run.name).toBeGreaterThan(task.name)
+
+  await app.close()
 })

@@ -2,7 +2,10 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, type Locator, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider, scriptedAgent } from './agent'
+import { APP_DIR, configureProvider } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+
+test.afterEach(() => closeScriptedProviders())
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -32,9 +35,15 @@ async function launch(
 ) {
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
+  // The scripted endpoint in this process is what providers.json points at; the slow stream is
+  // what makes a turn catchable mid-answer, for the frames that are about streaming.
+  const scripted = await startScriptedProvider({
+    script: JSON.stringify(options.replies ?? [REPLY]),
+    ...(options.slow === true ? { tokenSize: 4, tokensPerSecond: 10 } : {}),
+  })
   // A turn is refused without a connection to run on, so the turns here get one; the tests about
   // the model controls bring their own, and the no-model test asks for none.
-  if (options.provider !== false && options.models !== true) configureProvider(dataDirectory)
+  if (options.provider !== false && options.models !== true) configureProvider(dataDirectory, { baseUrl: scripted.url })
   writeFileSync(
     join(dataDirectory, 'workbench-state.json'),
     JSON.stringify({
@@ -42,34 +51,24 @@ async function launch(
         selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
         recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
       },
-      ...scriptedAgent,
       language: 'en',
       permissionLevel: 'ask',
     }),
     'utf-8',
   )
 
-  // Written once, so a relaunch over the same directory keeps whatever the test changed there.
+  // Written once, so a relaunch over the same directory keeps whatever the test changed there
+  // (the chosen default among them).
   if (options.models === true && !existsSync(join(dataDirectory, 'providers.json'))) {
-    writeFileSync(
-      join(dataDirectory, 'providers.json'),
-      JSON.stringify({
-        version: 1,
-        providers: [
-          {
-            id: 'local',
-            name: 'Local',
-            api: 'openai-completions',
-            baseUrl: 'https://llm.internal.example/v1',
-            models: [
-              { id: 'local-7b', name: 'Local 7B', contextWindow: 32000, maxTokens: 4096, reasoning: false },
-              { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: false },
-            ],
-          },
-        ],
-      }),
-      'utf-8',
-    )
+    configureProvider(dataDirectory, {
+      id: 'local',
+      name: 'Local',
+      baseUrl: scripted.url,
+      models: [
+        { id: 'local-7b', name: 'Local 7B', contextWindow: 32000, maxTokens: 4096, reasoning: false },
+        { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: false },
+      ],
+    })
   }
 
   const app = await electron.launch({
@@ -78,9 +77,6 @@ async function launch(
     env: {
       ...process.env,
       ALPHA_DATA_DIR: dataDirectory,
-      ALPHA_FAUX_REPLIES: JSON.stringify(options.replies ?? [REPLY]),
-      // slow: a stream a test can catch mid-answer, for the frames that are about streaming.
-      ...(options.slow === true ? { ALPHA_FAUX_TOKENS_PER_SECOND: '10', ALPHA_FAUX_TOKEN_SIZE: '4' } : {}),
       NODE_ENV: 'production',
     },
   })
