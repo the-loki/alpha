@@ -8,13 +8,12 @@ import {
   type ChatMessage,
   type EditEffect,
   formatDuration,
-  type TextKey,
-  type TextParams,
 } from '@alpha/core'
 import { createSignal, For, Index, type JSX, Match, Show, Switch } from 'solid-js'
-import { copyText, markdownOf } from '../lib/clipboard.ts'
+import { markdownOf } from '../lib/clipboard.ts'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
+import { CopyButton } from './CopyButton.tsx'
 import { FIELD_FRAME, GROUP_LABEL, NOTICE, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
@@ -295,38 +294,5 @@ export function MessageView(props: { message: ChatMessage; index: number; last?:
     >
       <QuestionView message={props.message} index={props.index} />
     </Show>
-  )
-}
-
-/**
- * Copies what is on screen: a message as markdown, a tool row as its output. Its words are keys,
- * not strings: this button is used in three places and the three say different things.
- */
-export function CopyButton(props: {
-  /** What the accessible name says it copies. */
-  what: TextKey
-  text: string
-  /** What the button itself says. */
-  label: TextKey
-  params?: TextParams
-  class?: string
-}) {
-  const t = useText()
-  const [state, setState] = createSignal<'idle' | 'done' | 'failed'>('idle')
-
-  return (
-    <button
-      type="button"
-      aria-label={t(props.what, props.params)}
-      onClick={() => {
-        void copyText(props.text).then((ok) => setState(ok ? 'done' : 'failed'))
-      }}
-      class={`${TEXT_ACTION} ${state() === 'done' ? 'text-success' : ''} ${state() === 'failed' ? 'text-danger' : ''} ${props.class ?? ''}`}
-    >
-      {t(
-        state() === 'done' ? 'message.copied' : state() === 'failed' ? 'message.copyFailed' : props.label,
-        props.params,
-      )}
-    </button>
   )
 }

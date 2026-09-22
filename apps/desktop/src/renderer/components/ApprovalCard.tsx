@@ -2,9 +2,9 @@ import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/
 import { createSignal, onMount, Show } from 'solid-js'
 import { conversationActions } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
+import { CopyButton } from './CopyButton.tsx'
 import { CONTROL_HEIGHT, FIELD_FRAME, GHOST_DANGER, PRIMARY_ACTION } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
-import { CopyButton } from './MessageView.tsx'
 
 /**
  * The gate in the transcript, drawn as an inline card (C5.5): a raised surface with a frame, a

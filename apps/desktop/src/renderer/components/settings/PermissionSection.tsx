@@ -1,9 +1,8 @@
 import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { shell, shellActions, useText } from '../../stores/shell.ts'
-import { GROUP_LABEL } from '../controls.ts'
+import { GROUP_LABEL, TONE_CLASS } from '../controls.ts'
 import { CheckIcon } from '../icons.tsx'
-import { TONE_CLASS } from '../LevelChip.tsx'
 
 /** The level a new conversation in this workspace starts at. */
 export function PermissionSection() {

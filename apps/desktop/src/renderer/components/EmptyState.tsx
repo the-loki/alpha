@@ -2,8 +2,8 @@ import type { TextKey } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
 import { Composer, seedComposer } from './Composer.tsx'
-import { CHIP as CHIP_SHAPE, PRIMARY_ACTION } from './controls.ts'
-import { WindowCorner } from './TitleBar.tsx'
+import { CHIP_QUIET, CHIP as CHIP_SHAPE, PRIMARY_ACTION } from './controls.ts'
+import { WindowCorner } from './WindowCorner.tsx'
 
 /** The hour decides the greeting; three periods, one line. */
 const greetingKey = (): TextKey => {
@@ -21,11 +21,7 @@ function Starters() {
     <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
       <For each={STARTERS}>
         {(key) => (
-          <button
-            type="button"
-            onClick={() => seedComposer(t(key))}
-            class={`${CHIP_SHAPE} text-xs text-muted transition-colors duration-normal hover:border-line-strong hover:text-foreground`}
-          >
+          <button type="button" onClick={() => seedComposer(t(key))} class={`${CHIP_SHAPE} ${CHIP_QUIET}`}>
             {t(key)}
           </button>
         )}

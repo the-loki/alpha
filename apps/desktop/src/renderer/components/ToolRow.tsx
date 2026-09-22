@@ -11,9 +11,9 @@ import {
 } from '@alpha/core'
 import { createEffect, createSignal, type JSX, Show } from 'solid-js'
 import { languageOf, shell, useText } from '../stores/shell.ts'
+import { CopyButton } from './CopyButton.tsx'
 import { GROUP_LABEL } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
-import { CopyButton } from './MessageView.tsx'
 
 const GLYPH: Record<ChatBlockTool['risk'], string> = { read: '◇', write: '◆', execute: '▶' }
 

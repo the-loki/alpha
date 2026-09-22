@@ -1,14 +1,22 @@
 import type { ConversationModel } from '@alpha/core'
-import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createSignal, For, onMount, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { providerActions, providers, runningModel } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
-import { CHIP as CHIP_SHAPE, GROUP_LABEL, MENU_ROW_CURRENT, MENU_ROW_HOVER } from './controls.ts'
+import {
+  CHIP_QUIET,
+  CHIP as CHIP_SHAPE,
+  GROUP_LABEL,
+  MENU_ROW_CURRENT,
+  MENU_ROW_HOVER,
+  MENU_SURFACE,
+  useDismissed,
+} from './controls.ts'
 import { CheckIcon } from './icons.tsx'
 import { SCROLLS } from './ledger.ts'
 
 /** A model's name is a proper noun the machine measures by — mono, set plain (C5.3). */
-const CHIP = `${CHIP_SHAPE} max-w-56 text-xs text-muted transition-colors duration-normal hover:border-line-strong hover:text-foreground`
+const CHIP = `${CHIP_SHAPE} max-w-56 ${CHIP_QUIET}`
 
 /**
  * Which model the next message runs on, at the foot of the composer beside the send control.
@@ -28,21 +36,11 @@ export function ModelChip() {
     void providerActions.load()
   })
 
-  createEffect(() => {
-    if (!open()) return
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (container && !container.contains(event.target as Node)) setOpen(false)
-    }
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', closeOnOutsideClick)
-    document.addEventListener('keydown', closeOnEscape)
-    onCleanup(() => {
-      document.removeEventListener('mousedown', closeOnOutsideClick)
-      document.removeEventListener('keydown', closeOnEscape)
-    })
-  })
+  useDismissed(
+    open,
+    () => setOpen(false),
+    () => container,
+  )
 
   const running = runningModel()
   const title = () => {
@@ -77,7 +75,7 @@ export function ModelChip() {
         <div
           role="menu"
           aria-label={t('model.menuLabel')}
-          class={`slip-in absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 rounded-xl border border-line bg-surface-3 py-1 shadow-medium ${SCROLLS}`}
+          class={`absolute right-0 bottom-full mb-2 max-h-80 w-64 ${MENU_SURFACE} ${SCROLLS}`}
         >
           <For each={providers.snapshot.providers}>
             {(provider) => (

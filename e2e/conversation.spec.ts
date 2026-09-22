@@ -65,6 +65,44 @@ async function launch(
   return launchWorkbench(settings)
 }
 
+test('every menu closes the way every menu does', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'open a menu on my row')
+  await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 15_000 })
+
+  // The level chip's menu: Escape closes it, and so does a pointer down anywhere else.
+  const level = window.getByRole('button', { name: 'Ask', exact: true })
+  await level.click()
+  const levelMenu = window.getByRole('menu', { name: 'Permission level' })
+  await expect(levelMenu).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(levelMenu).toHaveCount(0)
+  await level.click()
+  await window.getByRole('main').click({ position: { x: 10, y: 10 } })
+  await expect(levelMenu).toHaveCount(0)
+
+  // The model chip's menu answers the same two ways.
+  const model = window.getByRole('button', { name: 'Scripted model' })
+  await model.click()
+  const modelMenu = window.getByRole('menu', { name: 'The model this runs on' })
+  await expect(modelMenu).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(modelMenu).toHaveCount(0)
+
+  // The row's own menu, from its ⋯, is the same kind of thing: Escape and outside.
+  await window.getByRole('button', { name: /^open a menu on my row/ }).first().hover()
+  await window.getByRole('button', { name: 'Actions for open a menu on my row' }).click()
+  const actions = window.getByRole('menu', { name: 'Actions for open a menu on my row' })
+  await expect(actions).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(actions).toHaveCount(0)
+  await window.getByRole('button', { name: 'Actions for open a menu on my row' }).click()
+  await window.getByRole('main').click({ position: { x: 10, y: 10 } })
+  await expect(actions).toHaveCount(0)
+
+  await app.close()
+})
+
 test('a message streams a reply into the transcript', async () => {
   const { app, window } = await launch()
   await window.setViewportSize({ width: 1440, height: 900 })

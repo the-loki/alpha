@@ -1,40 +1,18 @@
 import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS, type PermissionLevel } from '@alpha/core'
-import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { shell, shellActions, useText } from '../stores/shell.ts'
-import { CHIP, MENU_ROW_CURRENT, MENU_ROW_HOVER } from './controls.ts'
+import {
+  CHIP,
+  DOT_CLASS,
+  MENU_ROW_CURRENT,
+  MENU_ROW_HOVER,
+  MENU_SURFACE,
+  TONE_CLASS,
+  TONE_HOVER,
+  useDismissed,
+} from './controls.ts'
 import { CheckIcon } from './icons.tsx'
-
-/**
- * How each tone of the permission level reads in the two-ink palette: the four level stamps —
- * info, warning, success and danger — one semantic hue per level, `full-access` wearing the red
- * because unbounded is the risky one (C5.2). The settings page uses the same map.
- */
-export const TONE_CLASS: Record<string, string> = {
-  info: 'text-info border-info/50',
-  warning: 'text-warning border-warning/50',
-  success: 'text-success border-success/50',
-  danger: 'text-danger border-danger/50',
-}
-
-/** Square state marks, like every dot of state in the window: a mark is the smallest radius (C5.4). */
-export const DOT_CLASS: Record<string, string> = {
-  info: 'bg-info',
-  warning: 'bg-warning',
-  success: 'bg-success',
-  danger: 'bg-danger',
-}
-
-/**
- * What the pointer does to a chip: brighten its own frame and keep its fill — a chip answers in
- * its frame, because its colour is the level it is named for (C5.6).
- */
-export const TONE_HOVER: Record<string, string> = {
-  info: 'hover:border-info',
-  warning: 'hover:border-warning',
-  success: 'hover:border-success',
-  danger: 'hover:border-danger',
-}
 
 /**
  * The permission level, always visible, at the foot of the composer: what the message about to be
@@ -60,21 +38,11 @@ export function LevelChip() {
     else await shellActions.setPermissionLevel(next)
   }
 
-  createEffect(() => {
-    if (!open()) return
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (container && !container.contains(event.target as Node)) setOpen(false)
-    }
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', closeOnOutsideClick)
-    document.addEventListener('keydown', closeOnEscape)
-    onCleanup(() => {
-      document.removeEventListener('mousedown', closeOnOutsideClick)
-      document.removeEventListener('keydown', closeOnEscape)
-    })
-  })
+  useDismissed(
+    open,
+    () => setOpen(false),
+    () => container,
+  )
 
   const tone = () => levelTone(level())
   return (
@@ -102,7 +70,7 @@ export function LevelChip() {
         <div
           role="menu"
           aria-label={t('level.chipTitle')}
-          class="slip-in absolute bottom-full left-0 z-50 mb-2 w-64 rounded-xl border border-line bg-surface-3 py-1 shadow-medium"
+          class={`absolute bottom-full left-0 mb-2 w-64 ${MENU_SURFACE}`}
         >
           <For each={PERMISSION_LEVELS}>
             {(candidate) => (

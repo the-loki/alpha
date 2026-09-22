@@ -5,6 +5,8 @@
  * apparatus, so every button here is set in mono, and a row's name — which is a thing, not a
  * command — is set in the text voice where the row is drawn.
  */
+import type { Undef } from '@alpha/core'
+import { type Accessor, createEffect, onCleanup } from 'solid-js'
 
 /**
  * The height of everything with a body: a button, a chip, a field. One number, because a row that
@@ -120,3 +122,73 @@ export const CHIP = `inline-flex ${CONTROL_HEIGHT} items-center gap-2 rounded-md
  * warning for a warning, danger for a failure — and its own padding. The caller colours the bar.
  */
 export const NOTICE = 'border-l-2 bg-surface-1 px-3 py-2'
+
+/**
+ * The floating surface a menu opens on: the lifted step (surface-3), a frame, the medium shadow,
+ * arriving with its own motion (C5.4). A caller adds where it anchors — `bottom-full mb-2` for a
+ * chip on the window's floor, `top-full` for a row's `⋯` — and how wide it is.
+ */
+export const MENU_SURFACE = 'slip-in absolute z-50 rounded-xl border border-line bg-surface-3 py-1 shadow-medium'
+
+/**
+ * What the pointer does to a quiet chip: it brightens the chip's own frame and no more — a chip
+ * with no colour of its own answers in its frame (C5.6).
+ */
+export const CHIP_QUIET =
+  'text-xs text-muted transition-colors duration-normal hover:border-line-strong hover:text-foreground'
+
+/**
+ * How each tone of the permission level reads in the two-ink palette: the four level stamps —
+ * info, warning, success and danger — one semantic hue per level, `full-access` wearing the red
+ * because unbounded is the risky one (C5.2). The settings page uses the same map.
+ */
+export const TONE_CLASS: Record<string, string> = {
+  info: 'text-info border-info/50',
+  warning: 'text-warning border-warning/50',
+  success: 'text-success border-success/50',
+  danger: 'text-danger border-danger/50',
+}
+
+/** Square state marks, like every dot of state in the window: a mark is the smallest radius (C5.4). */
+export const DOT_CLASS: Record<string, string> = {
+  info: 'bg-info',
+  warning: 'bg-warning',
+  success: 'bg-success',
+  danger: 'bg-danger',
+}
+
+/**
+ * What the pointer does to a chip that carries a tone: brighten its own frame and keep its fill —
+ * a chip answers in its frame, because its colour is the level it is named for (C5.6).
+ */
+export const TONE_HOVER: Record<string, string> = {
+  info: 'hover:border-info',
+  warning: 'hover:border-warning',
+  success: 'hover:border-success',
+  danger: 'hover:border-danger',
+}
+
+/**
+ * How every menu in the app closes: Escape, or a pointer down anywhere outside the element that
+ * opened it (C5.4). The listeners exist only while the menu is open, and "outside" is measured
+ * from the container itself — a pointer down on what opened the menu is inside it, and toggles.
+ * The container is read at event time, so the ref does not have to exist yet when this is called.
+ */
+export function useDismissed(open: Accessor<boolean>, close: () => void, container: Accessor<Undef<Node>>): void {
+  createEffect(() => {
+    if (!open()) return
+    const onOutside = (event: MouseEvent) => {
+      const element = container()
+      if (element !== undefined && !element.contains(event.target as Node)) close()
+    }
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    document.addEventListener('mousedown', onOutside)
+    document.addEventListener('keydown', onEscape)
+    onCleanup(() => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('keydown', onEscape)
+    })
+  })
+}

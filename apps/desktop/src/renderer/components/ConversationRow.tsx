@@ -1,6 +1,6 @@
 import { type ConversationSummary, canArchive, formatAge } from '@alpha/core'
 import { useNavigate } from '@solidjs/router'
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
 import {
@@ -9,9 +9,11 @@ import {
   FIELD_FRAME,
   LIVE_SPINE,
   MENU_ROW_HOVER,
+  MENU_SURFACE,
   RAIL_ROW,
   ROW_LIVE,
   TEXT_ACTION,
+  useDismissed,
 } from './controls.ts'
 import { MoreIcon } from './icons.tsx'
 
@@ -134,21 +136,11 @@ function RowActions(props: {
   let container!: HTMLSpanElement
   const t = useText()
 
-  createEffect(() => {
-    if (!open()) return
-    const onMouseDown = (event: MouseEvent) => {
-      if (!container.contains(event.target as Node)) setOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onMouseDown)
-    document.addEventListener('keydown', onKeyDown)
-    onCleanup(() => {
-      document.removeEventListener('mousedown', onMouseDown)
-      document.removeEventListener('keydown', onKeyDown)
-    })
-  })
+  useDismissed(
+    open,
+    () => setOpen(false),
+    () => container,
+  )
 
   // A conversation that is working, or waiting on an answer, is not offered for archiving: the
   // reason is written on the item rather than left to a greyed-out word.
@@ -174,7 +166,7 @@ function RowActions(props: {
         <div
           role="menu"
           aria-label={t('sidebar.actions', { title: props.conversation.title })}
-          class="slip-in absolute top-full right-0 z-50 w-44 rounded-xl border border-line bg-surface-3 py-1 shadow-medium"
+          class={`absolute top-full right-0 w-44 ${MENU_SURFACE}`}
         >
           <button
             type="button"

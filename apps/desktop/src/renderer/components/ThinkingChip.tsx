@@ -2,7 +2,7 @@ import { THINKING_LEVELS, type ThinkingLevel, thinkingKey } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CHIP as CHIP_SHAPE } from './controls.ts'
+import { CHIP_QUIET, CHIP as CHIP_SHAPE } from './controls.ts'
 
 /**
  * How hard the next turn thinks, at the model chip's right hand (C5.4): the effort is a decision
@@ -19,7 +19,7 @@ export function ThinkingChip() {
           title={t('composer.thinking')}
           value={summary().thinkingLevel}
           onInput={(event) => void conversationActions.setThinkingLevel(event.currentTarget.value as ThinkingLevel)}
-          class={`${CHIP_SHAPE} max-w-32 text-xs text-muted transition-colors duration-normal hover:border-line-strong hover:text-foreground`}
+          class={`${CHIP_SHAPE} max-w-32 ${CHIP_QUIET}`}
         >
           <For each={THINKING_LEVELS}>{(level) => <option value={level}>{t(thinkingKey(level))}</option>}</For>
         </select>

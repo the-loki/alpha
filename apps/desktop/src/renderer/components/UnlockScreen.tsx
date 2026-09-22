@@ -2,7 +2,7 @@ import { createSignal, Show } from 'solid-js'
 import { rememberedToken } from '../lib/network-bridge.ts'
 import { shellActions, useText } from '../stores/shell.ts'
 import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL, PRIMARY_ACTION } from './controls.ts'
-import { WindowCorner } from './TitleBar.tsx'
+import { WindowCorner } from './WindowCorner.tsx'
 
 /**
  * What a browser sees before it holds a session. One field, one button, and where to find the
