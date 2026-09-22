@@ -19,6 +19,15 @@ export const PROVIDER_APIS = ['openai-completions', 'openai-responses', 'anthrop
 
 export type ProviderApi = (typeof PROVIDER_APIS)[number]
 
+/**
+ * How the stored key rides the request — a fact about the endpoint, not about the key. Absent (the
+ * whole default) is the wire's own api-key header; `bearer` is Authorization: Bearer, for the
+ * gateways that take nothing else even on a wire whose native style is the other one.
+ */
+export const PROVIDER_AUTH_STYLES = ['api-key', 'bearer'] as const
+
+export type ProviderAuthStyle = (typeof PROVIDER_AUTH_STYLES)[number]
+
 export interface ProviderModelDefinition {
   id: string
   name: string
@@ -39,6 +48,8 @@ export interface StoredProvider {
   name: string
   api: ProviderApi
   baseUrl: string
+  /** How the key rides: absent is the wire's own api-key header, `bearer` is Authorization. */
+  authStyle?: ProviderAuthStyle
   models: ProviderModelDefinition[]
 }
 
@@ -61,6 +72,10 @@ export function isProviderApi(value: unknown): value is ProviderApi {
   return typeof value === 'string' && (PROVIDER_APIS as readonly string[]).includes(value)
 }
 
+export function isProviderAuthStyle(value: unknown): value is ProviderAuthStyle {
+  return typeof value === 'string' && (PROVIDER_AUTH_STYLES as readonly string[]).includes(value)
+}
+
 const ModelSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
@@ -79,6 +94,9 @@ const ProviderSchema = Type.Object({
   name: Type.String(),
   api: Type.Union(PROVIDER_APIS.map((api) => Type.Literal(api))),
   baseUrl: Type.String(),
+  // Optional in the schema like `images` above: a file written before this setting existed is
+  // still a valid file, read as the wire's own api-key style.
+  authStyle: Type.Optional(Type.Union(PROVIDER_AUTH_STYLES.map((style) => Type.Literal(style)))),
   models: Type.Array(ModelSchema),
 })
 
@@ -112,6 +130,7 @@ export interface ProviderInput {
   name: string
   api: ProviderApi
   baseUrl: string
+  authStyle?: ProviderAuthStyle
 }
 
 export interface ProviderResult {
@@ -136,7 +155,19 @@ export function readProvider(input: unknown): ProviderResult {
   const baseUrl = typeof candidate.baseUrl === 'string' ? candidate.baseUrl.trim() : ''
   if (!/^https?:\/\/[^\s]+$/.test(baseUrl)) return { error: 'the base url must be an http(s) address' }
 
-  return { provider: { id, name, api: candidate.api, baseUrl } }
+  if (candidate.authStyle !== undefined && !isProviderAuthStyle(candidate.authStyle)) {
+    return { error: 'the auth style must be api-key or bearer' }
+  }
+
+  return {
+    provider: {
+      id,
+      name,
+      api: candidate.api,
+      baseUrl,
+      ...(candidate.authStyle === undefined ? {} : { authStyle: candidate.authStyle }),
+    },
+  }
 }
 
 export interface ModelsResult {

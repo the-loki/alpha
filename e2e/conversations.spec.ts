@@ -171,7 +171,13 @@ test('exporting writes a markdown file beside the workspace', async () => {
   await ask(window, 'what is the answer')
   await expect(window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
 
-  await window.getByRole('button', { name: 'Export' }).click()
+  // Export is done to a conversation, so it lives on the conversation's own row (C5.4).
+  await window
+    .getByRole('button', { name: /what is the answer/ })
+    .first()
+    .hover()
+  await window.getByRole('button', { name: 'Actions for what is the answer' }).click()
+  await window.getByRole('menuitem', { name: 'Export' }).click()
 
   await expect(window.getByText(/Exported to/)).toBeVisible()
   const path = join(workspace, 'what-is-the-answer.md')

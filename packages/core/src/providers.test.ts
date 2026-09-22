@@ -73,6 +73,11 @@ describe('[core] readProvider', () => {
     expect(readProvider({ ...input, api: 'carrier-pigeon' }).error).toContain('protocol')
   })
 
+  it('reads an auth style and refuses one it does not know', () => {
+    expect(readProvider({ ...input, authStyle: 'bearer' }).provider?.authStyle).toBe('bearer')
+    expect(readProvider({ ...input, authStyle: 'pigeon' }).error).toContain('auth')
+  })
+
   it('says nothing about models: a connection is not a model list', () => {
     expect(readProvider({ ...input, models: 'whatever' }).provider).toBeDefined()
     expect(Object.keys(readProvider(input).provider ?? {})).toEqual(['id', 'name', 'api', 'baseUrl'])
@@ -140,6 +145,13 @@ describe('[core] parseProviders', () => {
       ],
     }
     expect(parseProviders(legacy).providers[0]?.models[0]?.images).toBe(false)
+  })
+
+  it('keeps the auth style a provider was stored with, and says nothing when there was none', () => {
+    const bearer = parseProviders({ version: 1, providers: [{ ...stored.providers[0], authStyle: 'bearer' }] })
+    expect(bearer.providers[0]?.authStyle).toBe('bearer')
+    const plain = parseProviders({ version: 1, providers: [stored.providers[0]] })
+    expect(plain.providers[0]?.authStyle).toBeUndefined()
   })
 
   it('treats a file it cannot trust as empty', () => {

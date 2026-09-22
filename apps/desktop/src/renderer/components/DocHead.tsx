@@ -1,44 +1,9 @@
-import { formatCost, formatTokens, THINKING_LEVELS, type ThinkingLevel, thinkingKey, totalUsage } from '@alpha/core'
-import { createSignal, For, Show } from 'solid-js'
-import { conversationActions, conversations } from '../stores/conversations.ts'
+import { formatCost, formatTokens, totalUsage } from '@alpha/core'
+import { Show } from 'solid-js'
+import { conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, FIELD_FRAME, TEXT_ACTION } from './controls.ts'
 import { BAND, BESIDE_SCROLLS } from './ledger.ts'
 import { RailToggle, WindowControls } from './TitleBar.tsx'
-
-/**
- * The view head's own control: the same body as every other control in the window — one height,
- * one hairline — set in the apparatus voice, because it is a measurement the turn is made under.
- */
-const SELECT_CLASS = `${CONTROL_HEIGHT} px-2 font-mono text-label text-muted transition-colors hover:text-foreground ${FIELD_FRAME}`
-
-/** Exporting and deleting are things you do to a conversation, so they live with its title. */
-function ConversationActions() {
-  const t = useText()
-  const [written, setWritten] = createSignal('')
-
-  return (
-    <span class="flex shrink-0 items-center gap-3">
-      <Show when={written() !== ''}>
-        <span class="font-mono text-label text-success">{t('header.exportedTo', { path: written() })}</span>
-      </Show>
-      <button
-        type="button"
-        onClick={() => void conversationActions.exportMarkdown(conversations.activeId).then(setWritten)}
-        class={TEXT_ACTION}
-      >
-        {t('header.export')}
-      </button>
-      <button
-        type="button"
-        onClick={() => void conversationActions.remove(conversations.activeId)}
-        class={DESTRUCTIVE_ACTION}
-      >
-        {t('header.delete')}
-      </button>
-    </span>
-  )
-}
 
 /**
  * The title of the page — the text voice at its title size, so the page says what it is in the
@@ -85,38 +50,19 @@ function ConversationTitle() {
  * and to a test. The heading inside is what carries the meaning.
  */
 export function DocHead() {
-  const t = useText()
-
   return (
     <Show when={conversations.transcript.summary}>
-      {(summary) => (
-        <div class={`${BAND} ${BESIDE_SCROLLS}`}>
-          <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
-            <RailToggle />
-          </span>
-          <ConversationTitle />
-          <div class="no-drag flex shrink-0 items-center gap-3">
-            <ConversationActions />
-            {/* How hard this conversation should think: told apart by a rule rather than by a row
-                of controls of equal weight. Which model it runs on is chosen at the foot of the
-                composer, next to the message that will use it. */}
-            <span class="h-4 w-px bg-line" aria-hidden="true" />
-            <select
-              aria-label={t('header.thinking')}
-              value={summary().thinkingLevel}
-              onInput={(event) => void conversationActions.setThinkingLevel(event.currentTarget.value as ThinkingLevel)}
-              class={SELECT_CLASS}
-            >
-              <For each={THINKING_LEVELS}>{(level) => <option value={level}>{t(thinkingKey(level))}</option>}</For>
-            </select>
-          </div>
-          {/* What acts on the window is not one of the page's concerns: past a rule, at the corner. */}
-          <span class="no-drag flex shrink-0 items-center gap-4">
-            <span class="h-4 w-px bg-line" aria-hidden="true" />
-            <WindowControls />
-          </span>
-        </div>
-      )}
+      <div class={`${BAND} ${BESIDE_SCROLLS}`}>
+        <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
+          <RailToggle />
+        </span>
+        <ConversationTitle />
+        {/* What acts on the window is not one of the page's concerns: at the corner itself, in
+            the head's own right padding — the mirror of the rail's toggle on the left. */}
+        <span class="no-drag -mr-8 flex shrink-0 items-center">
+          <WindowControls />
+        </span>
+      </div>
     </Show>
   )
 }

@@ -29,6 +29,8 @@ export function configureProvider(
     models?: unknown[]
     /** What the agent is told to dial, for the one spec that dials something real. */
     api?: string
+    /** How the key rides the request, when the endpoint only takes one door. */
+    authStyle?: string
     baseUrl?: string
     key?: string
   } = {},
@@ -54,6 +56,7 @@ export function configureProvider(
           name: options.name ?? 'Scripted',
           api: options.api ?? 'openai-completions',
           baseUrl: options.baseUrl ?? 'https://llm.internal.example/v1',
+          ...(options.authStyle === undefined ? {} : { authStyle: options.authStyle }),
           models: model,
         },
       ],

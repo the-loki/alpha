@@ -1,18 +1,19 @@
-import type { ProviderApi } from '@alpha/core'
+import type { ProviderApi, ProviderAuthStyle } from '@alpha/core'
 import { createSignal, Show } from 'solid-js'
 import { providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
 import { GROUP_LABEL, NOTICE, PRIMARY_ACTION } from '../controls.ts'
-import { ApiField, TextField } from './Fields.tsx'
+import { ApiField, AuthStyleField, TextField } from './Fields.tsx'
 
 interface Draft {
   id: string
   name: string
   api: ProviderApi
   baseUrl: string
+  authStyle: ProviderAuthStyle
 }
 
-const emptyDraft = (): Draft => ({ id: '', name: '', api: 'openai-completions', baseUrl: '' })
+const emptyDraft = (): Draft => ({ id: '', name: '', api: 'openai-completions', baseUrl: '', authStyle: 'api-key' })
 
 /**
  * Adding a provider is describing a connection: what to call it, how to reach it, and which of the
@@ -63,6 +64,10 @@ export function ProviderForm() {
           />
         </div>
         <ApiField api={draft().api} onChange={(api) => setDraft((current) => ({ ...current, api }))} />
+        <AuthStyleField
+          authStyle={draft().authStyle}
+          onChange={(authStyle) => setDraft((current) => ({ ...current, authStyle }))}
+        />
       </div>
       <Show when={error() !== ''}>
         {/* A notice is a line: the danger bar of a failure down its left edge and a surface-1

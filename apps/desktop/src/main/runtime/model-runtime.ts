@@ -58,7 +58,12 @@ export function createModelRuntime(options: {
             name: `${provider.name} API key`,
             resolve: async () => {
               const key = options.credential(provider.id)
-              return key === undefined ? undefined : { auth: { apiKey: key }, source: 'Alpha vault' }
+              if (key === undefined) return undefined
+              // The key travels the way the endpoint expects it: the wire's own api-key header by
+              // default, Authorization: Bearer where that is the only door (ADR-0015).
+              const auth =
+                provider.authStyle === 'bearer' ? { headers: { authorization: `Bearer ${key}` } } : { apiKey: key }
+              return { auth, source: 'Alpha vault' }
             },
           },
         },

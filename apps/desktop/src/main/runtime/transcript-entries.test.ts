@@ -77,6 +77,31 @@ describe('[runtime] entriesToMessages', () => {
     ])
   })
 
+  it('carries why a message failed, not only that it did', () => {
+    const [message] = entriesToMessages([
+      entry({
+        type: 'message',
+        id: 'e1',
+        parentId: null,
+        timestamp: 1,
+        message: {
+          role: 'assistant',
+          content: [],
+          timestamp: 1,
+          stopReason: 'error',
+          errorMessage: 'the provider refused the key',
+        },
+      }),
+    ])
+    expect(message.status).toBe('failed')
+    expect(message.error).toBe('the provider refused the key')
+  })
+
+  it('keeps no empty answer where nothing was answered', () => {
+    const messages = entriesToMessages([userEntry(1, 'fix the parser'), assistantEntry(2, [])])
+    expect(messages.map((message) => message.role)).toEqual(['user'])
+  })
+
   it('marks a message that was interrupted', () => {
     const [message] = entriesToMessages([
       entry({

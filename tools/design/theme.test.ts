@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * The Caliper palette, checked as numbers. docs/constraints/05-design.md C5.2 says every text
  * pair clears 4.5:1 (faint is metadata and clears 3:1), that the four permission levels are four
- * distinct hues, and that the stacks are Inter + JetBrains Mono with no third face; this reads
+ * distinct hues, and that the stacks are Geist Sans + Geist Mono with no third face; this reads
  * the tokens out of the stylesheet itself, so a colour changed in CSS cannot quietly go
  * unmeasured.
  *
@@ -154,24 +154,24 @@ function declaration(name: string): string {
 }
 
 describe('[design] the font stacks', () => {
-  it('gives the text voice Inter with a chosen CJK sans behind it', () => {
+  it('gives the text voice Geist Sans with a chosen CJK sans behind it', () => {
     const text = declaration('--font-text')
-    expect(text).toContain('Inter')
+    expect(text).toContain('Geist Sans')
     for (const family of ['PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC']) {
       expect(text).toContain(family)
     }
     // A Latin sans first, so Latin characters in Chinese prose keep the text voice.
-    expect(text.indexOf('Inter')).toBeLessThan(text.indexOf('PingFang SC'))
+    expect(text.indexOf('Geist Sans')).toBeLessThan(text.indexOf('PingFang SC'))
     // And no serif anywhere in the stack: the serif voice left with Codex (C5.3).
     expect(text).not.toMatch(/Iowan|Charter|Georgia|Liberation Serif|Noto Serif|Source Han Serif|Songti|SimSun/)
   })
 
-  it('keeps JetBrains Mono and a CJK-capable family in the apparatus stack', () => {
+  it('keeps Geist Mono and a CJK-capable family in the apparatus stack', () => {
     const mono = declaration('--font-mono')
-    expect(mono).toContain('JetBrains Mono')
+    expect(mono).toContain('Geist Mono')
     expect(mono).toContain('Noto Sans Mono CJK SC')
     expect(mono).toContain('monospace')
-    expect(mono.indexOf('JetBrains Mono')).toBeLessThan(mono.indexOf('Noto Sans Mono CJK SC'))
+    expect(mono.indexOf('Geist Mono')).toBeLessThan(mono.indexOf('Noto Sans Mono CJK SC'))
   })
 
   it('declares no third face', () => {

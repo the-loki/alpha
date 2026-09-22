@@ -194,15 +194,41 @@ test('the answer fills the page, and a sentence of the interface keeps a measure
   await window.setViewportSize({ width: 2400, height: 900 })
 
   // The answer's own prose fills the room the reader asked the window for; only a sentence the
-  // interface itself writes — the title page's one line — is capped at the reading measure (C5.3).
+  // interface itself writes is capped at the reading measure (C5.3).
   const answer = await box(window.getByRole('main').locator('[data-role="assistant"]').first())
   expect(answer.w).toBeGreaterThan(1200)
+  await app.close()
 
+  // The interface's capped sentence: the folder-less page's one explanation, at the measure while
+  // the page under it fills the room.
+  const bare = await launch({ noFolder: true })
+  await bare.window.setViewportSize({ width: 2400, height: 900 })
+  const sentence = bare.window.getByText('A folder is what the agent reads and edits')
+  await expect(sentence).toBeVisible()
+  expect((await box(bare.window.getByRole('main'))).w).toBeGreaterThan(2000)
+  expect((await box(sentence)).w).toBeLessThan(800)
+  await bare.app.close()
+})
+
+test('a new conversation greets you: the box in the middle, ways to start under it', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
   await window.getByRole('button', { name: 'New conversation' }).click()
-  const hint = window.getByText('Say what you want changed here')
-  await expect(hint).toBeVisible()
-  expect((await box(window.getByRole('main'))).w).toBeGreaterThan(2000)
-  expect((await box(hint)).w).toBeLessThan(800)
+
+  // The greeting is the page's one line in the text voice — the hour decides which — the writing
+  // box stands in the middle of the room rather than at its foot, and what can be started sits
+  // under it (C5.4).
+  const greeting = window.getByRole('heading', { level: 1 })
+  await expect(greeting).toContainText(/Good (morning|afternoon|evening)/)
+  const composer = await box(window.getByRole('textbox', { name: 'Message the agent' }))
+  const viewport = window.viewportSize()
+  if (viewport === null) throw new Error('no viewport')
+  expect(composer.y).toBeGreaterThan(viewport.height * 0.2)
+  expect(composer.y).toBeLessThan(viewport.height * 0.65)
+  await expect(
+    window.getByRole('button', { name: /Fix the last error|Review what changed|Write tests|Explain this folder/ }),
+  ).toHaveCount(4)
 
   await app.close()
 })
@@ -234,17 +260,34 @@ test('a name is set in the text voice and a label in the apparatus — two voice
   await ask(window, 'say something')
   await settled(window)
 
-  // The text voice (C5.3): the title of the page and the answer itself — Inter, and no serif.
+  // The text voice (C5.3): the title of the page and the answer itself — Geist Sans, and no serif.
   const title = window.getByRole('main').getByRole('heading', { level: 1 })
-  expect(await style(title, 'font-family')).toContain('Inter')
+  expect(await style(title, 'font-family')).toContain('Geist Sans')
   const answer = window.getByRole('main').locator('[data-role="assistant"]').first()
-  expect(await style(answer, 'font-family')).toContain('Inter')
+  expect(await style(answer, 'font-family')).toContain('Geist Sans')
 
   // The apparatus voice: the index's headings, the chips, the shortcuts.
   const heading = window.getByRole('complementary').getByRole('heading', { name: 'Folders' })
-  expect(await style(heading, 'font-family')).toContain('JetBrains Mono')
+  expect(await style(heading, 'font-family')).toContain('Geist Mono')
   const chip = window.getByRole('button', { name: 'Full access' })
-  expect(await style(chip, 'font-family')).toContain('JetBrains Mono')
+  expect(await style(chip, 'font-family')).toContain('Geist Mono')
+
+  await app.close()
+})
+
+test('the thinking knob sits at the model chip’s right hand, at the foot of the composer', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
+
+  // The effort is a decision about the model's room, so it is chosen where the model is (C5.4).
+  const thinking = window.getByLabel('Thinking effort')
+  const model = window.getByRole('button', { name: 'Scripted model' })
+  const knob = await thinking.boundingBox()
+  const chip = await model.boundingBox()
+  if (knob === null || chip === null) throw new Error('both chips are on screen')
+  expect(Math.abs(knob.y - chip.y)).toBeLessThan(8)
+  expect(knob.x).toBeGreaterThan(chip.x)
 
   await app.close()
 })

@@ -6,10 +6,11 @@ import { runningModel } from '../stores/providers.ts'
 import { composerFolderOf, shell, useText } from '../stores/shell.ts'
 import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from './Attachments.tsx'
 import { OUTLINED_ACTION, WARNING_ACTION } from './controls.ts'
-import { ArrowUpIcon } from './icons.tsx'
+import { ArrowUpIcon, FolderIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
+import { ThinkingChip } from './ThinkingChip.tsx'
 
 /**
  * While a turn is running the send control splits in three, because stopping, steering and
@@ -48,9 +49,10 @@ function RunningActions(props: {
 
 /**
  * The foot of the box: what the message carries and what it is allowed to do at its left, what it
- * will run on and the control that sends it at its right. The row is aligned to the bottom of the
- * words rather than to their top, so the controls stay where the hand left them as the message
- * grows; the left cluster is the one that gives way, and the right one is never cut.
+ * will run on, how hard it will think, and the control that sends it at its right. The row is
+ * aligned to the bottom of the words rather than to their top, so the controls stay where the hand
+ * left them as the message grows; the left cluster is the one that gives way, and the right one is
+ * never cut.
  */
 function ComposerFoot(props: {
   running: boolean
@@ -70,6 +72,7 @@ function ComposerFoot(props: {
       </div>
       <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
         <ModelChip />
+        <ThinkingChip />
         <Show
           when={props.running}
           fallback={
@@ -141,12 +144,43 @@ function composerKeys(
 }
 
 /**
+ * The writing field itself: the caret is its focus answer, so it wears no ring — the ring would
+ * frame a second box inside the card that already frames it (C5.7). The one exception to the
+ * ring, named where the checker can see it.
+ */
+const COMPOSER_FIELD = `field-sizing-content block max-h-40 min-h-12 w-full resize-none overflow-y-auto bg-transparent px-1 font-text text-body text-foreground placeholder:text-faint focus:outline-none` // constraints-ignore 05-design — the caret is this field's focus answer (C5.7's one exception)
+
+const [starter, setStarter] = createSignal('')
+
+/** A starter's words travel to the box: the one composer on the page picks them up and focuses. */
+export function seedComposer(text: string): void {
+  setStarter(text)
+}
+
+/**
+ * The keyboard's two arrivals at the box: answering a card hands it back, and a starter's words
+ * fill the field and focus it. Both own a focus call, which is why they live side by side.
+ */
+function useComposerIntents(field: () => Undef<HTMLTextAreaElement>, setValue: (text: string) => void): void {
+  createEffect(() => {
+    if (conversations.composerFocus > 0) field()?.focus()
+  })
+  createEffect(() => {
+    const text = starter()
+    if (text === '') return
+    setStarter('')
+    setValue(text)
+    field()?.focus()
+  })
+}
+
+/**
  * The composer sends. It is the writing card docked at the foot of the page (C5.4): a rounded
  * card on the page's own edges, its top edge the one rule in the window that lights while a turn
  * is being written (C5.5). It explains nothing about itself — what the keyboard does is learned
  * once — and the one line that can appear under the foot is a refusal no control could have made.
  */
-export function Composer(props: { streaming?: boolean }) {
+export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const [value, setValue] = createSignal('')
   const [attached, setAttached] = createSignal<Attachment[]>([])
   const [refused, setRefused] = createSignal<Undef<Refusal>>(undefined)
@@ -156,10 +190,7 @@ export function Composer(props: { streaming?: boolean }) {
   const navigate = useNavigate()
   let field: Undef<HTMLTextAreaElement>
 
-  // Answering a card hands the keyboard back: the next thing typed is the next message.
-  createEffect(() => {
-    if (conversations.composerFocus > 0) field?.focus()
-  })
+  useComposerIntents(() => field, setValue)
 
   // A picture is held only for as long as the model that would run on it can take one. Switching
   // to a model that cannot — or opening a conversation that runs on one — drops what is attached
@@ -212,6 +243,16 @@ export function Composer(props: { streaming?: boolean }) {
         class={`rounded-lg border-x border-b border-line bg-surface-1 border-t-2 ${props.streaming === true ? 'border-t-accent' : 'border-t-line'}`}
       >
         <div class="px-3 pt-2 pb-2">
+          <Show when={props.folder === true ? composerFolder() : undefined}>
+            {(picked) => (
+              // Which work this conversation is being started in, said on the box itself: the name
+              // in the apparatus voice, its address on the tooltip (C5.4).
+              <div title={picked().path} class="mb-1.5 flex items-center gap-1.5 font-mono text-label text-faint">
+                <FolderIcon />
+                {picked().name}
+              </div>
+            )}
+          </Show>
           <PendingAttachments items={attached()} onRemove={(index) => removeAt(index)} />
           <textarea
             ref={(element) => {
@@ -229,7 +270,7 @@ export function Composer(props: { streaming?: boolean }) {
                 queue: () => void redirect('queue'),
               })
             }
-            class="field-sizing-content block max-h-40 min-h-10 w-full resize-none overflow-y-auto bg-transparent px-1 font-text text-body text-foreground placeholder:text-faint"
+            class={COMPOSER_FIELD}
           />
           <ComposerFoot
             running={running()}

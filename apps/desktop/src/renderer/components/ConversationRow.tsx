@@ -118,9 +118,10 @@ export function ConversationRow(props: {
 }
 
 /**
- * The `⋯` and what is behind it: rename, archive (or unarchive), delete. The menu is a floating
- * layer — the floating surface, a frame, no motion but its own arrival (C5.4). It closes on
- * Escape and on a click anywhere else, the way every menu in the app does.
+ * The `⋯` and what is behind it: rename, archive (or unarchive), export, delete. What is done to
+ * a conversation lives on the conversation's own row (C5.4). The menu is a floating layer — the
+ * floating surface, a frame, no motion but its own arrival (C5.4). It closes on Escape and on a
+ * click anywhere else, the way every menu in the app does.
  */
 function RowActions(props: {
   conversation: ConversationSummary
@@ -129,6 +130,7 @@ function RowActions(props: {
   onRename: () => void
 }) {
   const [open, setOpen] = createSignal(false)
+  const [written, setWritten] = createSignal('')
   let container!: HTMLSpanElement
   const t = useText()
 
@@ -203,6 +205,20 @@ function RowActions(props: {
               <span class="mt-0.5 block font-text text-name text-faint">{t('sidebar.archiveBlocked')}</span>
             </Show>
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            // The menu stays open on export: where it wrote is said right here, under the act.
+            onClick={() => void conversationActions.exportMarkdown(props.conversation.id).then(setWritten)}
+            class={`block w-full px-3 py-1.5 text-left ${MENU_ROW_HOVER} ${TEXT_ACTION}`}
+          >
+            {t('sidebar.exportAction')}
+          </button>
+          <Show when={written() !== ''}>
+            <p class="px-3 font-mono text-label text-success wrap-anywhere">
+              {t('sidebar.exportedTo', { path: written() })}
+            </p>
+          </Show>
           <button
             type="button"
             role="menuitem"

@@ -89,8 +89,8 @@ test('the workbench draws every screen it has, and they are kept as pictures', a
   test.setTimeout(120_000)
   const { app, window } = await launch()
 
-  // The page with nothing said on it yet, and the palette over it.
-  await expect(window.getByRole('main').getByRole('heading', { level: 1, name: 'sandbox' })).toBeVisible()
+  // The welcome with nothing said on it yet, and the palette over it.
+  await expect(window.getByRole('main').getByText('sandbox')).toBeVisible()
   await picture(window, 'empty')
   await window.keyboard.press('Control+k')
   await expect(window.getByRole('dialog', { name: 'Switch conversation' })).toBeVisible()

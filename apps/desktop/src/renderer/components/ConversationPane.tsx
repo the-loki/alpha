@@ -1,6 +1,7 @@
 import { type Undef, visibleMessages } from '@alpha/core'
 import { createEffect, createMemo, Show } from 'solid-js'
 import { conversations } from '../stores/conversations.ts'
+import { composerFolderOf, shell } from '../stores/shell.ts'
 import { Composer } from './Composer.tsx'
 import { DocHead } from './DocHead.tsx'
 import { EmptyState } from './EmptyState.tsx'
@@ -14,6 +15,7 @@ import { MessageList } from './MessageList.tsx'
  */
 export function ConversationPane() {
   const streaming = () => conversations.transcript.status === 'running'
+  const composerFolder = () => composerFolderOf(shell)
   const hasSummary = () => conversations.transcript.summary !== undefined
   const hasMessages = () =>
     conversations.transcript.messages.length > 0 || conversations.transcript.streaming !== undefined
@@ -64,13 +66,17 @@ export function ConversationPane() {
         </div>
       </div>
 
-      {/* The writing box, docked at the foot: the margin above it is the one line in the window
-          that is lit while a turn is being written (C5.5). It stands beside the scroll above it,
-          so it gives up the wheel's room on the same side (BESIDE_SCROLLS) and lands on the exact
-          edge the rows end on (C5.4). */}
-      <div class={`w-full shrink-0 pb-4 ${BESIDE_SCROLLS}`} data-column="conversation">
-        <Composer streaming={streaming()} />
-      </div>
+      {/* The writing box, docked at the foot of a conversation: the margin above it is the one line
+          in the window that is lit while a turn is being written (C5.5). It stands beside the
+          scroll above it, so it gives up the wheel's room on the same side (BESIDE_SCROLLS) and
+          lands on the exact edge the rows end on (C5.4). A folder's title page carries its own box
+          in the welcome instead — but with no folder at all the box stays here, saying a folder
+          comes first. */}
+      <Show when={hasMessages() || composerFolder() === undefined}>
+        <div class={`w-full shrink-0 pb-4 ${BESIDE_SCROLLS}`} data-column="conversation">
+          <Composer streaming={streaming()} />
+        </div>
+      </Show>
     </div>
   )
 }

@@ -1,10 +1,10 @@
 @import 'tailwindcss';
 
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/jetbrains-mono/500.css';
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
 
 /*
  * Caliper — docs/constraints/05-design.md is the source of truth for these values (ADR-0027).
@@ -57,8 +57,8 @@
    * generic, so a Chinese window is drawn in a face someone chose. Latin characters in Chinese
    * text keep the text voice, which is what the bundled family being first is for.
    */
-  --font-text: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Noto Sans Mono CJK SC', monospace;
+  --font-text: 'Geist Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', 'Noto Sans Mono CJK SC', monospace;
 
   /*
    * The type scale of C5.3, in rem so the window's scaling is respected. Label and code have no

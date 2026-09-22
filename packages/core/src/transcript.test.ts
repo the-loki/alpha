@@ -142,6 +142,28 @@ describe('[core] reduceTranscript', () => {
     expect(state.messages[0].status).toBe('failed')
   })
 
+  it('records a failure as its own message when nothing was streamed', () => {
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'run_failed', message: 'the provider refused the key' }),
+    ])
+    expect(state.status).toBe('failed')
+    expect(state.messages).toHaveLength(1)
+    expect(state.messages[0]).toMatchObject({
+      role: 'assistant',
+      status: 'failed',
+      error: 'the provider refused the key',
+    })
+  })
+
+  it('keeps no empty answer where nothing was answered', () => {
+    const state = reduce([
+      event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
+      event({ type: 'assistant_message_finished', messageId: 'a1', interrupted: false }),
+    ])
+    expect(state.messages).toEqual([])
+  })
+
   it('replaces everything when the conversation is opened', () => {
     const opened = reduce([
       event({ type: 'assistant_message_started', messageId: 'stale', createdAt: 5 }),

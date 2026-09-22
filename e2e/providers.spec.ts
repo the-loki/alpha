@@ -147,6 +147,7 @@ test('the protocol is chosen from the three Alpha speaks, and it is what gets st
       name: 'gpt-endpoint',
       api: 'openai-responses',
       baseUrl: 'https://api.internal.example/v1',
+      authStyle: 'api-key',
       models: [],
     },
   ])

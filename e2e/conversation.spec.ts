@@ -260,7 +260,9 @@ test('a long line wraps inside the box, and a long code line scrolls in its bloc
 
   const box = window.getByRole('textbox', { name: 'Message the agent' })
   const before = await boxOf(box)
-  await box.fill('A sentence with no break in it at all, written to see what the box does with it. '.repeat(3).trim())
+  // Long enough to wrap past the field's own floor in any face a font swap may bring: the growth
+  // being measured has to exceed min-height whatever the metrics are.
+  await box.fill('A sentence with no break in it at all, written to see what the box does with it. '.repeat(6).trim())
   const after = await boxOf(box)
 
   // It wraps instead of widening — the box is the page's column either way — and it grows downwards.

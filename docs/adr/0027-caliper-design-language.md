@@ -34,11 +34,12 @@ the text voice *reads*, and nothing on screen is a costume. Concretely, all of i
   success/warning/info. Permission levels are re-stamped: `plan`=info blue, `ask`=amber,
   `accept-edits`=green, `full-access`=red (supersedes 0026's lapis/amber/jade/rubric set and
   the five-accent ban of 0023/0005 — colour is semantic here, not identity).
-- **Two voices, sans and mono.** Inter speaks the text (self-hosted, OFL, CJK falls through to
-  the system); JetBrains Mono speaks the apparatus — labels, code, paths, counts, shortcuts —
-  in **sentence case** (Codex's uppercase wide-tracked micro labels retire). Weights are 400,
-  500, 600. No serif and no third face (supersedes 0026's serif text voice and 0019's display
-  voice alike).
+- **Two voices, sans and mono.** Geist Sans speaks the text (self-hosted, SIL OFL, CJK falls
+  through to the system); Geist Mono speaks the apparatus — labels, code, paths, counts,
+  shortcuts — in **sentence case** (Codex's uppercase wide-tracked micro labels retire). Weights
+  are 400, 500, 600. No serif and no third face (supersedes 0026's serif text voice and 0019's
+  display voice alike; the faces are re-chosen within this same rule — both SIL OFL, no
+  copyright exposure — replacing Inter + JetBrains Mono for a more precise tool voice).
 - **Soft shape, measured motion.** Radius scale 0.25–0.75rem, five shadow levels for floating
   layers only, hairlines where kinds meet and space elsewhere ("structure should be felt, not
   seen"). Motion tokens 100/160/250ms on ease-out-quad; hover answers in colour and never moves
@@ -56,11 +57,11 @@ the text voice *reads*, and nothing on screen is a costume. Concretely, all of i
 
 ## Consequences
 
-- `tools/design/theme.test.ts` re-measures two new palettes, the Inter/JetBrains stacks and the
+- `tools/design/theme.test.ts` re-measures two new palettes, the Geist stacks and the
   level set; `e2e/design.spec.ts` re-cuts its geometry per the re-decided invariants (radius
-  scale instead of square, 2rem instead of 1.75rem, Inter+Mono instead of serif+Mono); the
+  scale instead of square, 2rem instead of 1.75rem, Geist Sans+Mono instead of serif+Mono); the
   `05-design` constraint rules change meaning: `two-voices` bans sans/serif/display classes
-  (the text voice is `font-text`, now backed by Inter) and `no-other-weights` bans everything
+  (the text voice is `font-text`, now backed by Geist Sans) and `no-other-weights` bans everything
   outside 400/500/600.
 - Codex vocabulary leaves the code and the docs with the print form: `paper`/`press`/`sunk`/
   `rubric`/`docket`/`colophon` tokens and comments are renamed as the components are rewritten;

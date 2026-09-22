@@ -245,13 +245,19 @@ function assistantWith(tool: ChatBlockTool): ChatMessage {
   return { id: `tool-${tool.callId}`, role: 'assistant', blocks: [tool], createdAt: tool.startedAt, status: 'complete' }
 }
 
-/** A failure keeps whatever was streamed: the half-written answer is evidence, not debris. */
+/** A failure keeps whatever was streamed: the half-written answer is evidence, not debris. With
+ * nothing streamed, the failure is itself the message — a run that produced nothing still says
+ * what went wrong. */
 function failRun(state: TranscriptState, message: string): TranscriptState {
-  const streaming = state.streaming
-  const failed = streaming === undefined ? undefined : { ...streaming, status: 'failed' as const, error: message }
+  const streamed = state.streaming
+  const failed: ChatMessage = {
+    ...(streamed ?? { id: `failure-${state.messages.length}`, role: 'assistant', blocks: [], createdAt: Date.now() }),
+    status: 'failed',
+    error: message,
+  }
   return {
     ...state,
-    messages: failed === undefined ? state.messages : [...state.messages, failed],
+    messages: [...state.messages, failed],
     streaming: undefined,
     approvals: [],
     status: 'failed',
@@ -314,6 +320,9 @@ function appendDelta(
 function finishStreaming(state: TranscriptState, interrupted: boolean): TranscriptState {
   const streaming = state.streaming
   if (streaming === undefined) return state
+  // An answer that carried nothing and ended as it began is not a message: the empty shell would
+  // be an empty row. A stop keeps even an empty one, because the marker is the evidence.
+  if (streaming.blocks.length === 0 && !interrupted) return { ...state, streaming: undefined }
   const finished: ChatMessage = { ...streaming, status: interrupted ? 'interrupted' : 'complete' }
   return { ...state, messages: [...state.messages, finished], streaming: undefined }
 }

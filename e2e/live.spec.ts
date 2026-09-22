@@ -18,6 +18,7 @@ const live = {
   model: process.env.ALPHA_LIVE_MODEL ?? '',
   key: process.env.ALPHA_LIVE_KEY ?? '',
   api: process.env.ALPHA_LIVE_API ?? 'openai-completions',
+  authStyle: process.env.ALPHA_LIVE_AUTH_STYLE ?? 'api-key',
   contextWindow: Number(process.env.ALPHA_LIVE_CONTEXT ?? 128_000),
   maxTokens: Number(process.env.ALPHA_LIVE_OUTPUT ?? 8192),
   images: process.env.ALPHA_LIVE_IMAGES === '1',
@@ -71,6 +72,7 @@ function redSquarePng(): Buffer {
 async function launchLive(
   workspace: string,
   dataDirectory: string = mkdtempSync(join(tmpdir(), 'alpha-live-')),
+  key: string = live.key,
 ): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
   window: Page
@@ -94,7 +96,8 @@ async function launchLive(
     id: 'live',
     api: live.api,
     baseUrl: live.baseUrl,
-    key: live.key,
+    authStyle: live.authStyle,
+    key,
     // The numbers are this test's, not the model's: the turn it makes does not turn on them.
     models: [
       {
@@ -126,8 +129,11 @@ async function ask(window: Page, text: string): Promise<void> {
   await composer.press('Enter')
 }
 
-/** A turn is over when the box that sends is back: the stop control is what stands in its place. */
-const settled = (window: Page) => expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible()
+/** A turn is over when the box that sends is back: the stop control is what stands in its place.
+ * The provider can trail the last word before its stream closes, so the box coming back gets a
+ * real minute rather than an expect's default. */
+const settled = (window: Page) =>
+  expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible({ timeout: 60_000 })
 
 test.describe.configure({ mode: 'serial' })
 
@@ -145,11 +151,15 @@ test('a turn runs on the provider itself, and its answer lands in the transcript
   await settled(plain.window)
   await plain.window.screenshot({ path: join(SHOT_DIR, 'live-answer.png') })
 
-  // What the turn cost is on the page: usage comes from the provider's own accounting, shown
-  // when the model reported any.
-  await expect(plain.window.locator('span[title="Tokens and cost for this conversation"]')).toContainText(/token/i, {
-    timeout: 30_000,
-  })
+  // What the turn cost is on the page: usage comes from the provider's own accounting, said as a
+  // tooltip on the page's own title (C5.4), shown when the model reported any.
+  await expect(plain.window.getByRole('heading', { level: 1 })).toHaveAttribute(
+    'title',
+    /Tokens for this conversation/,
+    {
+      timeout: 30_000,
+    },
+  )
 })
 
 test('the answer can be regenerated from its own question', async () => {
@@ -238,5 +248,21 @@ test('the thinking effort the person picks is the turn the model runs', async ()
   await settled(window)
   await window.screenshot({ path: join(SHOT_DIR, 'live-thinking.png') })
 
+  await app.close()
+})
+
+test('a refused key is said out loud: one failed answer carrying the reason, and no empty rows', async () => {
+  test.setTimeout(300_000)
+  const { app, window } = await launchLive(mkdtempSync(join(tmpdir(), 'alpha-live-ws-')), undefined, 'not the key')
+  await ask(window, 'Reply with exactly this and nothing else: ALPHA LIVE OK')
+
+  // The provider refuses the key; the window says so. Silence — and empty rows for the attempts
+  // tried before giving up — is the bug this guards against (#157).
+  await expect(window.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 60_000 })
+  await settled(window)
+  const answersIn = window.getByRole('main').locator('[data-role="assistant"]')
+  await expect(answersIn).toHaveCount(1, { timeout: 30_000 })
+  await expect(answersIn.first()).not.toHaveText('')
+  await window.screenshot({ path: join(SHOT_DIR, 'live-refused.png') })
   await app.close()
 })

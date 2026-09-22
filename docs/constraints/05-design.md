@@ -71,9 +71,9 @@ four distinct hues. All of it is asserted in `theme.test.ts`.
 
 ## C5.3 — Type
 
-Two voices, and only two. **The text voice is sans** — Inter, self-hosted (OFL): it is what is
-*read* — messages, prose, titles, names, a field's value. **The apparatus voice is mono** —
-JetBrains Mono: it is what is *operated or measured* — labels, buttons, chips, shortcuts, paths,
+Two voices, and only two. **The text voice is sans** — Geist Sans, self-hosted (OFL): it is what
+is *read* — messages, prose, titles, names, a field's value. **The apparatus voice is mono** —
+Geist Mono: it is what is *operated or measured* — labels, buttons, chips, shortcuts, paths,
 counts, timestamps, code, tool lines. The whole interface is these two faces at these sizes, set
 in rem, so the window's own scale applies:
 
@@ -99,7 +99,7 @@ and `tracking-widest` in the renderer.
 
 There is no third face: `05-design:two-voices` fails `pnpm check` on `font-sans`, `font-serif`,
 `font-display` or an arbitrary `font-[…]` anywhere under the renderer — the text voice's name is
-`font-text`, and it is backed by Inter. Neither bundled family has CJK glyphs, so Chinese falls
+`font-text`, and it is backed by Geist Sans. Neither bundled family has CJK glyphs, so Chinese falls
 through the stack to the machine's own — `PingFang SC`, `Microsoft YaHei`, `Noto Sans CJK SC`
 for the text voice, the system mono CJK for the apparatus — named rather than left to generics so
 a Chinese window is drawn in a face someone chose.
@@ -141,9 +141,11 @@ its conversations flat beneath — name at the left, mono meta right-aligned at 
 dot leaders and no two-level tree — then Settings at its foot. A folder with nothing under it is
 a heading, not a control.
 
-**No band: the view head is embedded in the page.** The page's title, its own actions and the
-rail's toggle stand in one row at the top of the content area — there is no separate 3rem strip
-between the window and the page. **The window's own three** — minimize, maximize, close — are
+**No band: the view head is embedded in the page.** The page's title and the rail's toggle stand
+in one row at the top of the content area — there is no separate 3rem strip between the window
+and the page. What is done *to* a conversation — rename, archive, export, delete — lives on the
+conversation's own row in the rail, never in the head. **The window's own three** — minimize,
+maximize, close — are
 locked to the *window's* top-right corner and keep the same x and the same y on every page of
 the app; a page that grows a row does not drag them down with it (asserted by
 `e2e/design.spec.ts`). The whole top edge is the drag region; its interactive children wear
@@ -155,11 +157,20 @@ replaces the rail** — it is a place, so its own navigation takes the same colu
 width, and the way back lives at its top. The tasks page has no return row of its own: the rail
 beside it *is* the way back.
 
-**The composer is docked at the foot of the page** — an inset card on the page's own edges,
-growing with what is written into it (`field-sizing-content`, up to its cap), carrying the level
-chip, model chip and attach control in one foot row with send at the right. While a run is live
+**The composer is docked at the foot of a conversation** — an inset card on the page's own edges,
+growing with what is written into it (`field-sizing-content`, up to its cap), carrying the attach
+control, the level chip, the model chip and the thinking-effort knob in one foot row with send at
+the right. The knob stands at the model chip's right hand: the effort is a decision about the
+model's room, so it is chosen where the model is. While a run is live
 its top edge lights `--accent`: the margin is lit where the turn is being written. Queue,
 attachments and approval keep their existing behaviour — this is skin, not plumbing.
+
+**A new conversation is a welcome.** Before its first question the page holds a composition in
+the middle of the room: the app's name faint above (decoration, hidden from a reader), a greeting
+in the largest text voice — the hour decides which — the writing box standing there rather than
+at the foot, the folder the message will be written in said on the box's own top edge with its
+address on the tooltip, and starter chips under it that lay their words in the box. With no
+folder at all there is no welcome: the foot keeps the box, saying a folder comes first.
 
 **Where a hairline goes**: between two *different kinds* of thing — the view head from the body,
 the rail from the page, one settings group from the next. Two of the same thing repeating get
@@ -214,7 +225,10 @@ Keyboard reachable: every control, including the approval's decisions, with a vi
 **`--accent` focus ring, 0.125rem wide, offset 0.125rem** (scaling with the root), never
 removed —
 `:focus-visible` draws it for the whole app, so `focus:outline-none` is not a class this app
-writes (`05-design:no-focus-outline-none`). A field may also change its border when focused;
+writes (`05-design:no-focus-outline-none`) — **one exception: the composer's writing field**,
+where the caret is the focus answer and the ring would frame a second box inside the card that
+already frames it; its `focus:outline-none` line carries a `constraints-ignore` marker and
+nothing else may. A field may also change its border when focused;
 that is in addition to the ring. The approval card takes focus on Allow once when it appears and
 Tab cycles its decisions; **Escape never decides** — it only moves focus away, because denial is
 an act, not a dismissal. Colour is never the only carrier of meaning: each level chip pairs its

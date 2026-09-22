@@ -1,4 +1,10 @@
-import { PROVIDER_APIS, type ProviderApi, type TextKey } from '@alpha/core'
+import {
+  PROVIDER_APIS,
+  PROVIDER_AUTH_STYLES,
+  type ProviderApi,
+  type ProviderAuthStyle,
+  type TextKey,
+} from '@alpha/core'
 import { For } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL } from '../controls.ts'
@@ -62,5 +68,33 @@ export function ApiField(props: { api: ProviderApi; onChange: (api: ProviderApi)
       </label>
       <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-faint">{t(API_NOTES[props.api])}</p>
     </div>
+  )
+}
+
+/** The header the key rides in. Most endpoints take the wire's own; a few only take Bearer. */
+const AUTH_STYLE_LABELS: Record<ProviderAuthStyle, TextKey> = {
+  'api-key': 'settings.authStyleApiKey',
+  bearer: 'settings.authStyleBearer',
+}
+
+export function AuthStyleField(props: {
+  authStyle: ProviderAuthStyle
+  onChange: (authStyle: ProviderAuthStyle) => void
+}) {
+  const t = useText()
+  return (
+    <label class="block">
+      <span class={`mb-1 block ${GROUP_LABEL}`}>{t('settings.authStyle')}</span>
+      <select
+        aria-label={t('settings.authStyle')}
+        value={props.authStyle}
+        onInput={(event) => props.onChange(event.target.value as ProviderAuthStyle)}
+        class={FIELD}
+      >
+        <For each={PROVIDER_AUTH_STYLES}>
+          {(candidate) => <option value={candidate}>{t(AUTH_STYLE_LABELS[candidate])}</option>}
+        </For>
+      </select>
+    </label>
   )
 }

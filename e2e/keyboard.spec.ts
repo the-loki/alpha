@@ -134,9 +134,9 @@ test('Control-N starts a new conversation and Control-comma opens settings', asy
   ).toBeVisible()
 
   await window.keyboard.press('ControlOrMeta+n')
-  // The pane is empty, and the message that follows is a conversation of its own rather than one
-  // more turn in the old one.
-  await expect(window.getByRole('main').getByRole('heading', { name: 'sandbox' })).toBeVisible()
+  // The pane is empty — the welcome names the folder on the box that starts it — and the message
+  // that follows is a conversation of its own rather than one more turn in the old one.
+  await expect(window.getByRole('main').getByText('sandbox')).toBeVisible()
   await expect(window.getByRole('main').locator('[data-role]')).toHaveCount(0)
 
   await ask(window, 'a second question')

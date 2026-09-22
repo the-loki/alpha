@@ -64,9 +64,10 @@ test('the remembered workspace is restored on launch', async () => {
   await expect(window.locator('header')).toContainText('ALPHA')
   await expect(window.getByRole('button', { name: /Accept edits/ })).toBeVisible()
   // The folder it remembers is in the sidebar; the pane says which folder the next message lands
-  // in, because several can be in play at once.
+  // in — named on the box that starts it, its address on the tooltip — because several can be in
+  // play at once.
   await expect(window.getByRole('complementary').getByRole('heading', { name: 'alpha-e2e-workspace' })).toBeVisible()
-  await expect(window.getByRole('main').getByText('/tmp/alpha-e2e-workspace')).toBeVisible()
+  await expect(window.getByRole('main').getByTitle('/tmp/alpha-e2e-workspace')).toBeVisible()
 
   await window.setViewportSize({ width: 1440, height: 900 })
   await window.screenshot({ path: join(SHOT_DIR, 'shell-restored-workspace.png') })
@@ -106,11 +107,11 @@ test('every remembered folder is in the sidebar, and the next message lands in t
   await expect(sidebar.getByRole('heading', { name: 'beta' })).toBeVisible()
   await expect(sidebar.getByRole('heading', { name: 'alpha' })).toBeVisible()
   await expect(sidebar.getByText('No conversations yet')).toHaveCount(2)
-  await expect(window.getByRole('main').getByRole('heading', { name: 'beta' })).toBeVisible()
+  await expect(window.getByRole('main').getByTitle(beta)).toBeVisible()
 
   // Picking a folder moves the composer, which is the only thing "current" means here.
   await sidebar.getByRole('button', { name: 'Start a conversation in alpha' }).click()
-  await expect(window.getByRole('main').getByRole('heading', { name: 'alpha' })).toBeVisible()
+  await expect(window.getByRole('main').getByTitle(alpha)).toBeVisible()
 
   await window.setViewportSize({ width: 1440, height: 900 })
   await window.screenshot({ path: join(SHOT_DIR, 'sidebar-folders.png') })

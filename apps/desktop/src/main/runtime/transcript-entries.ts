@@ -36,6 +36,8 @@ export interface AgentEntryMessage {
   role: string
   content?: unknown
   stopReason?: string
+  /** Why a message ended in error, when it did: the row keeps the reason, not only the state. */
+  errorMessage?: string
   toolCallId?: string
   /** The tool the call named, kept so a session reloaded into an agent replays faithfully. */
   toolName?: string
@@ -116,12 +118,17 @@ export function entriesToMessages(entries: AgentEntry[], decisions: DecisionLook
     if (message.role === 'assistant') {
       const interrupted = message.stopReason === 'aborted'
       const failed = message.stopReason === 'error'
+      const blocks = blocksOf(listOf(message.content), at(entry.timestamp), decisions)
+      // An answer that carried nothing is not a message — unless it failed, where the failure
+      // itself is what the row says (the same rule the live reducer applies).
+      if (blocks.length === 0 && !failed && !interrupted) continue
       messages.push({
         id: entry.id,
         role: 'assistant',
-        blocks: blocksOf(listOf(message.content), at(entry.timestamp), decisions),
+        blocks,
         createdAt: at(entry.timestamp),
         status: failed ? 'failed' : interrupted ? 'interrupted' : 'complete',
+        ...(failed ? { error: message.errorMessage } : {}),
       })
     }
     if (message.role === 'toolResult') {

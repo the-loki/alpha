@@ -167,9 +167,8 @@ export function TasksPage() {
         <button type="button" onClick={() => start()} class={`no-drag ${PRIMARY_ACTION}`}>
           {t('tasks.new')}
         </button>
-        {/* What acts on the window is not one of the page's concerns: past a rule, at the corner. */}
-        <span class="no-drag flex shrink-0 items-center gap-4">
-          <span class="h-4 w-px bg-line" aria-hidden="true" />
+        {/* What acts on the window is not one of the page's concerns: at the corner itself. */}
+        <span class="no-drag -mr-8 flex shrink-0 items-center">
           <WindowControls />
         </span>
       </header>

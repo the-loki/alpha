@@ -144,6 +144,17 @@ describe('05-design:no-focus-outline-none', () => {
     ).toEqual([])
     expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', "const a = 'focus:outline-none'"))).toEqual([])
   })
+
+  it('honours the constraints-ignore marker on the line, the way every rule does', () => {
+    const marked = violationsFor(
+      rule,
+      file(
+        'apps/desktop/src/renderer/a.tsx',
+        'const F = `focus:outline-none` // constraints-ignore 05-design — the caret is the answer',
+      ),
+    )
+    expect(marked).toEqual([])
+  })
 })
 
 describe('05-design:no-other-weights', () => {

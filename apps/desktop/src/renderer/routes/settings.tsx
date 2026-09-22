@@ -97,9 +97,8 @@ export function Settings() {
         <h1 class="min-w-0 flex-1 truncate font-text text-title font-semibold tracking-tight text-foreground">
           {t(TAB_LABELS[tab()])}
         </h1>
-        {/* What acts on the window is not one of the panel's concerns: past a rule, at the corner. */}
-        <span class="no-drag flex shrink-0 items-center gap-4">
-          <span class="h-4 w-px bg-line" aria-hidden="true" />
+        {/* What acts on the window is not one of the panel's concerns: at the corner itself. */}
+        <span class="no-drag -mr-8 flex shrink-0 items-center">
           <WindowControls />
         </span>
       </header>

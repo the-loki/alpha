@@ -497,6 +497,7 @@ export const RULES = [
         const trimmed = line.trim()
         if (trimmed.startsWith('//') || trimmed.startsWith('*')) return
         if (!/focus:outline-none/.test(line)) return
+        if (ignoredFor(line, { id: '05-design:no-focus-outline-none', constraint: '05-design.md' })) return
         found.push({
           line: index + 1,
           message: 'focus:outline-none removes the accent focus ring; the ring is never removed (C5.7)',

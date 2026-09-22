@@ -39,6 +39,17 @@ describe('the model runtime Alpha dials with', () => {
     })
   })
 
+  it('a bearer-style key rides the Authorization header instead of the api-key one', async () => {
+    const models = createModelRuntime({
+      providers: [aProvider({ authStyle: 'bearer' })],
+      credential: () => 'the vault key',
+    })
+    const model = models.getModel('scripted', 'scripted-model')
+    expect(model === undefined ? undefined : await models.getAuth(model)).toMatchObject({
+      auth: { headers: { authorization: 'Bearer the vault key' } },
+    })
+  })
+
   it('a missing key is no key: the model exists and is simply not available', async () => {
     const models = createModelRuntime({ providers: [aProvider()], credential: () => undefined })
     const model = models.getModel('scripted', 'scripted-model')
