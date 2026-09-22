@@ -1,9 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, type Page, test } from '@playwright/test'
+import { launchWorkbench, ask as send } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -12,39 +10,11 @@ test.afterEach(() => closeScriptedProviders())
 
 /** A window on a workspace, with the model scripted so turns are cheap and deterministic. */
 async function launch() {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: 'ask',
-    }),
-    'utf-8',
-  )
-  const scripted = await startScriptedProvider({ script: JSON.stringify(['Noted.']) })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
-  })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
+  const launched = await launchWorkbench({ level: 'ask', replies: ['Noted.'] })
   // The folder arrives with the launch state; a shortcut pressed before it lands lands in a
   // workbench that does not know where it is yet.
-  await window.getByRole('complementary').getByRole('heading', { name: 'sandbox' }).waitFor()
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window, workspace }
+  await launched.window.getByRole('complementary').getByRole('heading', { name: 'sandbox' }).waitFor()
+  return launched
 }
 
 /**
@@ -52,9 +22,7 @@ async function launch() {
  * scripted model restarts its script for every conversation, so answers repeat between them.
  */
 async function ask(window: Page, text: string) {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
+  await send(window, text)
   await expect(window.getByRole('main').locator('[data-role="user"]').last()).toContainText(text)
   // Send is back when the run is over, and it is the only signal the composer gives: it says
   // nothing about the turn it is in. The reply is what makes that wait a real one — Send is also

@@ -1,9 +1,9 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, test } from '@playwright/test'
+import { launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 test.afterEach(() => closeScriptedProviders())
 
@@ -19,52 +19,31 @@ const PIXEL_PNG = Buffer.from(
  * the button, which opens the platform's dialog.
  */
 
-/** A connection whose model says whether it takes pictures, and a key, so a turn can be asked for. */
-function writeProvider(dataDirectory: string, images: boolean, baseUrl: string) {
-  configureProvider(dataDirectory, {
-    id: 'local',
-    baseUrl,
-    models: [{ id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images }],
-  })
-}
-
 async function launch(options: { vision?: boolean } = {}) {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-shots-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-shots-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: {
-          kind: 'selected',
-          workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() },
-        },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: 'full-access',
-    }),
-    'utf-8',
-  )
-  const scripted = await startScriptedProvider({ script: JSON.stringify(['I see it.']) })
-  writeProvider(dataDirectory, options.vision ?? true, scripted.url)
   const shot = join(workspace, 'screenshot.png')
   writeFileSync(shot, PIXEL_PNG)
   const note = join(workspace, 'notes.txt')
   writeFileSync(note, 'not a picture')
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
+  const { app, window } = await launchWorkbench({
+    workspace,
+    level: 'full-access',
+    replies: ['I see it.'],
+    // A connection whose model says whether it takes pictures, and a key, so a turn can be asked for.
+    providerOptions: {
+      id: 'local',
+      models: [
+        {
+          id: 'local-7b',
+          name: 'Local 7B',
+          contextWindow: 32_000,
+          maxTokens: 4_096,
+          reasoning: false,
+          images: options.vision ?? true,
+        },
+      ],
     },
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
   return { app, window, shot, note }
 }
 

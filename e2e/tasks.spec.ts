@@ -1,9 +1,8 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, type Page, test } from '@playwright/test'
+import { launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 /**
  * Scheduled tasks, from the window: a task is made on the tasks page, "run now" runs it once while
@@ -16,37 +15,10 @@ const SHOT_DIR = join(REPO_ROOT, 'test-results')
 test.afterEach(() => closeScriptedProviders())
 
 async function launch() {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: 'full-access',
-    }),
-    'utf-8',
-  )
-
-  const scripted = await startScriptedProvider({ script: JSON.stringify(['The nightly check found nothing.']) })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
+  return launchWorkbench({
+    level: 'full-access',
+    replies: ['The nightly check found nothing.'],
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window, dataDirectory }
 }
 
 /** The form is a region of its own, so its fields are not confused with the header's controls. */

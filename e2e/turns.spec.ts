@@ -1,9 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, test } from '@playwright/test'
+import { ask, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 test.afterEach(() => closeScriptedProviders())
 
@@ -14,47 +12,14 @@ const SHOT_DIR = join(REPO_ROOT, 'test-results')
 async function launch(
   options: { replies?: unknown[]; dataDirectory?: string; workspace?: string; slow?: boolean } = {},
 ) {
-  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      // Full access: these tests are about turn control, so no approval card intervenes.
-      language: 'en',
-      permissionLevel: 'full-access',
-    }),
-    'utf-8',
-  )
-
-  const scripted = await startScriptedProvider({
-    script: JSON.stringify(options.replies ?? ['Answer.']),
-    ...(options.slow === true ? { tokenSize: 4, tokensPerSecond: 20 } : {}),
+  // Full access: these tests are about turn control, so no approval card intervenes.
+  return launchWorkbench({
+    level: 'full-access',
+    dataDirectory: options.dataDirectory,
+    workspace: options.workspace,
+    replies: options.replies ?? ['Answer.'],
+    ...(options.slow === true ? { slow: { tokenSize: 4, tokensPerSecond: 20 } } : {}),
   })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
-  })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window, dataDirectory, workspace }
-}
-
-async function ask(window: Page, text: string) {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
 }
 
 test('Escape stops a running turn and keeps the part that arrived', async () => {

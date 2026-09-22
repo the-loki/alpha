@@ -1,9 +1,9 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, test } from '@playwright/test'
+import { ask, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -12,53 +12,16 @@ test.afterEach(() => closeScriptedProviders())
 
 /** A window on a chosen workspace, sharing a data directory when the test wants continuity. */
 async function launch(options: { dataDirectory?: string; workspace?: string; keepState?: boolean } = {}) {
-  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  // keepState reuses the file the previous launch left behind, memory included.
-  if (options.keepState === true) return start({ dataDirectory, workspace })
-
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: {
-          kind: 'selected',
-          workspace: { path: workspace, name: workspace.split('/').pop(), lastOpenedAt: Date.now() },
-        },
-        recents: [{ path: workspace, name: workspace.split('/').pop(), lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: 'full-access',
-    }),
-    'utf-8',
-  )
-
-  return start({ dataDirectory, workspace })
-}
-
-async function start({ dataDirectory, workspace }: { dataDirectory: string; workspace: string }) {
-  const scripted = await startScriptedProvider({ script: JSON.stringify(['The answer.']) })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
+  return launchWorkbench({
+    dataDirectory: options.dataDirectory,
+    workspace,
+    workspaceName: workspace.split('/').pop(),
+    level: 'full-access',
+    replies: ['The answer.'],
+    // keepState reuses the state file the previous launch left behind, memory included.
+    keepState: options.keepState === true,
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window, dataDirectory, workspace }
-}
-
-async function ask(window: Page, text: string) {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
 }
 
 const sessionsHaveTranscripts = (dataDirectory: string): boolean => {

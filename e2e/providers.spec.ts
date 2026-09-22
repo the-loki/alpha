@@ -1,34 +1,22 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR } from './agent'
+import { expect, type Page, test } from '@playwright/test'
+import { launchWorkbench } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 
 async function launch(dataDirectory?: string) {
-  const directory = dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(directory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: 'ask',
-    }),
-    'utf-8',
-  )
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(directory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: { ...process.env, ALPHA_DATA_DIR: directory, NODE_ENV: 'production' },
+  const {
+    app,
+    window,
+    dataDirectory: directory,
+    workspace,
+  } = await launchWorkbench({
+    provider: false,
+    dataDirectory,
+    viewport: false,
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
   return { app, window, directory, workspace }
 }
 

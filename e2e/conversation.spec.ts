@@ -1,9 +1,8 @@
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Locator, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, type Locator, test } from '@playwright/test'
+import { ask, type LaunchOptions, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 test.afterEach(() => closeScriptedProviders())
 
@@ -33,62 +32,37 @@ async function launch(
     models?: boolean
   } = {},
 ) {
-  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  // The scripted endpoint in this process is what providers.json points at; the slow stream is
-  // what makes a turn catchable mid-answer, for the frames that are about streaming.
-  const scripted = await startScriptedProvider({
-    script: JSON.stringify(options.replies ?? [REPLY]),
-    ...(options.slow === true ? { tokenSize: 4, tokensPerSecond: 10 } : {}),
-  })
-  // A turn is refused without a connection to run on, so the turns here get one; the tests about
-  // the model controls bring their own, and the no-model test asks for none.
-  if (options.provider !== false && options.models !== true) configureProvider(dataDirectory, { baseUrl: scripted.url })
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: 'ask',
-    }),
-    'utf-8',
-  )
-
-  // Written once, so a relaunch over the same directory keeps whatever the test changed there
-  // (the chosen default among them).
-  if (options.models === true && !existsSync(join(dataDirectory, 'providers.json'))) {
-    configureProvider(dataDirectory, {
-      id: 'local',
-      name: 'Local',
-      baseUrl: scripted.url,
-      models: [
-        { id: 'local-7b', name: 'Local 7B', contextWindow: 32000, maxTokens: 4096, reasoning: false },
-        { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: false },
-      ],
-    })
+  // The workbench opens at the size a person's opens at, and the tests that want another size ask
+  // for it themselves.
+  const settings: LaunchOptions = {
+    level: 'ask',
+    dataDirectory: options.dataDirectory,
+    workspace: options.workspace,
+    replies: options.replies ?? [REPLY],
+    // The slow stream is what makes a turn catchable mid-answer, for the frames about streaming.
+    ...(options.slow === true ? { slow: { tokenSize: 4, tokensPerSecond: 10 } } : {}),
+    viewport: false,
   }
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
-  })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  return { app, window, dataDirectory, workspace }
-}
-
-async function ask(window: Page, text: string) {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
+  if (options.provider === false) {
+    settings.provider = false
+  } else if (options.models === true) {
+    // Written once: a relaunch over the same directory keeps whatever the test changed in
+    // providers.json (the chosen default among them), so it neither rewrites the file nor starts
+    // an endpoint it will not use — the first one is still running within the test.
+    if (options.dataDirectory === undefined) {
+      settings.providerOptions = {
+        id: 'local',
+        name: 'Local',
+        models: [
+          { id: 'local-7b', name: 'Local 7B', contextWindow: 32000, maxTokens: 4096, reasoning: false },
+          { id: 'local-70b', name: 'Local 70B', contextWindow: 128000, maxTokens: 8192, reasoning: false },
+        ],
+      }
+    } else {
+      settings.provider = false
+    }
+  }
+  return launchWorkbench(settings)
 }
 
 test('a message streams a reply into the transcript', async () => {

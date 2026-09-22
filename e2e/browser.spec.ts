@@ -1,10 +1,10 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { networkInterfaces, tmpdir } from 'node:os'
+import { networkInterfaces } from 'node:os'
 import { join } from 'node:path'
-import { type Browser, chromium, _electron as electron, expect, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { type Browser, chromium, expect, test } from '@playwright/test'
+import { ask, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -30,39 +30,16 @@ async function freePort(): Promise<number> {
  * window opens too: the point of the test is that a browser is a second client, not a replacement.
  */
 async function launchServing(port: number, options: { token?: string; level?: string; replies?: unknown[] } = {}) {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: options.level ?? 'full-access',
-      network: { enabled: true, port, bind: 'local', token: options.token ?? TOKEN },
-    }),
-    'utf-8',
-  )
-
-  // The suite hands a picture across the wire, so the connection serves a model that takes one,
-  // and the provider it dials is the scripted endpoint this process started.
-  const scripted = await startScriptedProvider({ script: JSON.stringify(options.replies ?? [REPLY]) })
-  configureProvider(dataDirectory, { images: true, baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
+  const launch = await launchWorkbench({
+    level: options.level ?? 'full-access',
+    network: { port, token: options.token ?? TOKEN },
+    replies: options.replies ?? [REPLY],
+    // The suite hands a picture across the wire, so the connection serves a model that takes one,
+    // and the provider it dials is the scripted endpoint this launch started.
+    providerOptions: { images: true },
+    viewport: false,
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  return { app, window, dataDirectory, workspace, url: `http://127.0.0.1:${port}` }
+  return { ...launch, url: `http://127.0.0.1:${port}` }
 }
 
 /** A browser on this machine, opening the served workbench and unlocking it. */
@@ -79,12 +56,6 @@ async function openInBrowser(browser: Browser, url: string, token: string) {
 async function openBrowserAccess(window: Awaited<ReturnType<Browser['newPage']>>) {
   await window.getByRole('link', { name: 'Settings' }).click()
   await window.getByRole('link', { name: 'Browser access' }).click()
-}
-
-async function ask(page: Awaited<ReturnType<Browser['newPage']>>, text: string) {
-  const composer = page.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
 }
 
 /** Where another device on this network would reach this machine — not its loopback address. */

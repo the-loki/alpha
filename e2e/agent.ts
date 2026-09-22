@@ -1,16 +1,63 @@
 /**
- * The seam the suites test through: Alpha as launched for real, with a provider that answers from
- * a script. Alpha ships no agent of its own to stand in — the agent is embedded in its main
- * process, and the honest seam ends at the provider's wire — so the stand-in is an endpoint on
- * loopback (`startScriptedProvider`, in ./scripted-provider), and a spec points providers.json at
- * it the way a person points theirs at a host. The vault key stays a plaintext entry; the
- * endpoint never checks it, and no credential requirement is ever seen by anything in the test.
+ * The seams the suites test through. One is the provider's wire: Alpha ships no agent of its own
+ * to stand in — the agent is embedded in its main process, and the honest seam ends at the
+ * provider's wire — so the stand-in is an endpoint on loopback (`startScriptedProvider`, in
+ * ./scripted-provider), and a spec points providers.json at it the way a person points theirs at
+ * a host. The other is the launch itself: `launchWorkbench` writes the state a person's first run
+ * would have, starts the scripted endpoint, and opens the window, so a spec says only what makes
+ * it different — the replies, the level, the absence of a folder.
  */
-import { writeFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { type ElectronApplication, _electron as electron, type Page } from '@playwright/test'
+
+import { startScriptedProvider } from './scripted-provider'
 
 /** Where the workbench lives: one package under apps/, and every spec launches its built bundle. */
 export const APP_DIR = join(process.cwd(), 'apps', 'desktop')
+
+/** What a launch hands back: the app, its first window, and the two folders it was given. */
+export type Launch = {
+  app: ElectronApplication
+  window: Page
+  dataDirectory: string
+  workspace: string
+}
+
+/** How a launch differs from a person's first run. Every field is optional and says one fact. */
+export type LaunchOptions = {
+  /** Reuses a data directory across launches, so a relaunch sees what the last run left. */
+  dataDirectory?: string
+  workspace?: string
+  /** The name the workspace wears in the sidebar and the header ('sandbox'). */
+  workspaceName?: string
+  /** Further recents beside the workspace itself. */
+  recents?: unknown[]
+  /** A workbench that has never been given a folder: the first screen a person ever sees. */
+  noFolder?: boolean
+  /** The state file verbatim, instead of the composed one. */
+  state?: unknown
+  /** Leaves workbench-state.json as the last launch left it — a relaunch keeps its state, a
+      first run has none. */
+  keepState?: boolean
+  language?: string
+  level?: string
+  network?: { port: number; token: string }
+  /** Seeds conversations.json, so the workbench opens with conversations already in it. */
+  conversations?: unknown[]
+  /** False starts no scripted endpoint and writes no providers.json. */
+  provider?: boolean
+  /** What configureProvider is told besides the scripted endpoint's URL. */
+  providerOptions?: Parameters<typeof configureProvider>[1]
+  /** What the scripted endpoint answers, one reply per turn. */
+  replies?: unknown[]
+  /** Slows the stream, so a turn is catchable mid-answer. */
+  slow?: { tokenSize: number; tokensPerSecond: number }
+  env?: Record<string, string>
+  /** False leaves the window at the size the workbench opens at (1200x800). */
+  viewport?: boolean
+}
 
 /**
  * A connection for the conversation to run on, with a key for it. A turn is refused before the
@@ -71,4 +118,66 @@ export function configureProvider(
     }),
     'utf-8',
   )
+}
+
+/** The state file: either what the spec said verbatim, the last launch's, or the composed one. */
+function writeLaunchState(dataDirectory: string, workspace: string, options: LaunchOptions): void {
+  if (options.state !== undefined) {
+    writeFileSync(join(dataDirectory, 'workbench-state.json'), JSON.stringify(options.state), 'utf-8')
+    return
+  }
+  if (options.keepState === true) return
+  const name = options.workspaceName ?? 'sandbox'
+  const folder = { path: workspace, name, lastOpenedAt: Date.now() }
+  const state = {
+    workspace:
+      options.noFolder === true
+        ? { selection: { kind: 'none' }, recents: [] }
+        : { selection: { kind: 'selected', workspace: folder }, recents: [folder, ...(options.recents ?? [])] },
+    language: options.language ?? 'en',
+    permissionLevel: options.level ?? 'ask',
+    ...(options.network === undefined ? {} : { network: { enabled: true, bind: 'local', ...options.network } }),
+  }
+  writeFileSync(join(dataDirectory, 'workbench-state.json'), JSON.stringify(state), 'utf-8')
+}
+
+/** Alpha as launched for real, with whatever makes the spec's situation different filled in. */
+export async function launchWorkbench(options: LaunchOptions = {}): Promise<Launch> {
+  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
+  const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
+
+  // A turn is refused before the provider is asked unless Alpha knows a model and holds a key
+  // (#114), so a launch that means to answer writes both files.
+  if (options.provider !== false) {
+    const scripted = await startScriptedProvider({
+      script: JSON.stringify(options.replies ?? ['Answer.']),
+      ...(options.slow === undefined ? {} : options.slow),
+    })
+    configureProvider(dataDirectory, { baseUrl: scripted.url, ...options.providerOptions })
+  }
+  if (options.conversations !== undefined) {
+    writeFileSync(
+      join(dataDirectory, 'conversations.json'),
+      JSON.stringify({ version: 1, conversations: options.conversations }),
+      'utf-8',
+    )
+  }
+  writeLaunchState(dataDirectory, workspace, options)
+
+  const app = await electron.launch({
+    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
+    cwd: APP_DIR,
+    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production', ...options.env },
+  })
+  const window = await app.firstWindow()
+  await window.waitForSelector('#root > *')
+  if (options.viewport !== false) await window.setViewportSize({ width: 1440, height: 900 })
+  return { app, window, dataDirectory, workspace }
+}
+
+/** The one way every spec speaks: fill the composer and press Enter. */
+export async function ask(window: Page, text: string): Promise<void> {
+  const composer = window.getByRole('textbox', { name: 'Message the agent' })
+  await composer.fill(text)
+  await composer.press('Enter')
 }

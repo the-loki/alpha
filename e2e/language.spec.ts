@@ -1,9 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, test } from '@playwright/test'
+import { type Launch, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -14,49 +12,17 @@ test.afterEach(() => closeScriptedProviders())
  * A window on a folder, in a chosen language. The language is a workbench setting like the
  * permission level, so a test writes it down rather than hoping the machine is in English.
  */
-interface Launch {
-  app: Awaited<ReturnType<typeof electron.launch>>
-  window: Page
-  dataDirectory: string
-}
-
 async function launch(
   language: string,
   options: { replies?: unknown[]; network?: { port: number; token: string } } = {},
 ): Promise<Launch> {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language,
-      permissionLevel: 'ask',
-      ...(options.network === undefined ? {} : { network: { ...options.network, enabled: true, bind: 'local' } }),
-    }),
-    'utf-8',
-  )
-
-  const scripted = await startScriptedProvider({
-    script: JSON.stringify(options.replies ?? [{ text: 'A short answer.' }]),
+  return launchWorkbench({
+    language,
+    level: 'ask',
+    network: options.network,
+    replies: options.replies ?? [{ text: 'A short answer.' }],
+    viewport: false,
   })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
-  })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  return { app, window, dataDirectory }
 }
 
 test('the interface is written in the language the workbench was told to use', async () => {

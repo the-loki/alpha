@@ -1,9 +1,9 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, type Page, test } from '@playwright/test'
+import { ask, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -23,50 +23,21 @@ test.afterEach(() => closeScriptedProviders())
 
 /** A workspace with one file, and a window pointed at it. */
 async function launch(options: { dataDirectory?: string; workspace?: string } = {}) {
-  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
+  // A workspace handed in is reused as it stands; one made here gets the note the ledger reads.
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   if (options.workspace === undefined) writeFileSync(join(workspace, 'notes.txt'), 'hello from the ledger')
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      // Full access on purpose: this spec is about the ledger, not the gate, so no card intervenes.
-      language: 'en',
-      permissionLevel: 'full-access',
-    }),
-    'utf-8',
-  )
-
-  const scripted = await startScriptedProvider({ script: JSON.stringify(SCRIPT) })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
+  // Full access on purpose: this spec is about the ledger, not the gate, so no card intervenes.
+  return launchWorkbench({
+    dataDirectory: options.dataDirectory,
+    workspace,
+    level: 'full-access',
+    replies: SCRIPT,
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window, dataDirectory, workspace }
 }
 
 /** Two painted frames: the window is at rest before anything is captured. */
 async function settle(window: Page) {
   await window.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-}
-
-async function ask(window: Page, text: string) {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
 }
 
 /** The ledger row for one tool, which the transcript shows instead of prose. */

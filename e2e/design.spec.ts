@@ -1,9 +1,9 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Locator, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, type Locator, type Page, test } from '@playwright/test'
+import { launchWorkbench, ask as send } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 /**
  * The window seam (C4.2), measured rather than eyeballed: the Caliper language is a 16rem rail
@@ -17,52 +17,20 @@ const SCRIPT = [{ tool: { name: 'bash', args: { command: 'echo hello' } } }, 'It
 test.afterEach(() => closeScriptedProviders())
 
 async function launch(options: { level?: string; replies?: unknown[]; noFolder?: boolean; slow?: boolean } = {}) {
-  const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   writeFileSync(join(workspace, 'notes.txt'), 'hello from the ledger')
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      // A workbench that has never been given a folder: the title page a person sees first.
-      workspace:
-        options.noFolder === true
-          ? { selection: { kind: 'none' }, recents: [] }
-          : {
-              selection: {
-                kind: 'selected',
-                workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() },
-              },
-              recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-            },
-      language: 'en',
-      permissionLevel: options.level ?? 'full-access',
-    }),
-    'utf-8',
-  )
-  const scripted = await startScriptedProvider({
-    script: JSON.stringify(options.replies ?? SCRIPT),
-    ...(options.slow === true ? { tokenSize: 4, tokensPerSecond: 20 } : {}),
+  return launchWorkbench({
+    workspace,
+    // A workbench that has never been given a folder: the title page a person sees first.
+    noFolder: options.noFolder === true,
+    level: options.level ?? 'full-access',
+    replies: options.replies ?? SCRIPT,
+    ...(options.slow === true ? { slow: { tokenSize: 4, tokensPerSecond: 20 } } : {}),
   })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
-  })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window }
 }
 
 async function ask(window: Page, text: string): Promise<void> {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
+  await send(window, text)
   await expect(window.getByRole('main').locator('[data-role="user"]').filter({ hasText: text }).last()).toBeVisible({
     timeout: 30_000,
   })

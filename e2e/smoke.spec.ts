@@ -1,8 +1,8 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { type ElectronApplication, _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR } from './agent'
+import { type ElectronApplication, expect, type Page, test } from '@playwright/test'
+import { launchWorkbench } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -10,17 +10,15 @@ const SHOT_DIR = join(REPO_ROOT, 'test-results')
 async function launchApp(
   options: { state?: unknown; dataDirectory?: string; env?: Record<string, string> } = {},
 ): Promise<{ app: ElectronApplication; window: Page; dataDirectory: string }> {
-  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  if (options.state !== undefined) {
-    writeFileSync(join(dataDirectory, 'workbench-state.json'), JSON.stringify(options.state), 'utf-8')
-  }
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: { ...process.env, ALPHA_DATA_DIR: dataDirectory, NODE_ENV: 'production', ...options.env },
+  const { app, window, dataDirectory } = await launchWorkbench({
+    // No state given means a first run: no state file is written at all.
+    state: options.state,
+    keepState: options.state === undefined,
+    provider: false,
+    dataDirectory: options.dataDirectory,
+    env: options.env,
+    viewport: false,
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
   return { app, window, dataDirectory }
 }
 

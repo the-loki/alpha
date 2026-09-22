@@ -1,9 +1,8 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { _electron as electron, expect, type Page, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
-import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+import { expect, type Page, test } from '@playwright/test'
+import { ask, launchWorkbench } from './agent'
+import { closeScriptedProviders } from './scripted-provider'
 
 test.afterEach(() => closeScriptedProviders())
 
@@ -16,43 +15,12 @@ const WRITE = { tool: { name: 'write', args: { path: 'made.txt', content: 'writt
 async function launch(
   options: { level?: string; dataDirectory?: string; workspace?: string; replies?: unknown[] } = {},
 ) {
-  const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
-  const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
-  writeFileSync(
-    join(dataDirectory, 'workbench-state.json'),
-    JSON.stringify({
-      workspace: {
-        selection: { kind: 'selected', workspace: { path: workspace, name: 'sandbox', lastOpenedAt: Date.now() } },
-        recents: [{ path: workspace, name: 'sandbox', lastOpenedAt: Date.now() }],
-      },
-      language: 'en',
-      permissionLevel: options.level ?? 'ask',
-    }),
-    'utf-8',
-  )
-
-  const scripted = await startScriptedProvider({ script: JSON.stringify(options.replies ?? [WRITE, 'Done.']) })
-  configureProvider(dataDirectory, { baseUrl: scripted.url })
-
-  const app = await electron.launch({
-    args: [APP_DIR, '--lang=en-US', `--user-data-dir=${join(dataDirectory, 'chromium')}`],
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      ALPHA_DATA_DIR: dataDirectory,
-      NODE_ENV: 'production',
-    },
+  return launchWorkbench({
+    level: options.level ?? 'ask',
+    dataDirectory: options.dataDirectory,
+    workspace: options.workspace,
+    replies: options.replies ?? [WRITE, 'Done.'],
   })
-  const window = await app.firstWindow()
-  await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
-  return { app, window, dataDirectory, workspace }
-}
-
-async function ask(window: Page, text: string) {
-  const composer = window.getByRole('textbox', { name: 'Message the agent' })
-  await composer.fill(text)
-  await composer.press('Enter')
 }
 
 const card = (window: Page) => window.getByRole('region', { name: 'Waiting for your decision' })
