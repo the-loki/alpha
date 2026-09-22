@@ -64,7 +64,7 @@ const [shell, setShell] = createStore<ShellState>({
   workspaceLevel: DEFAULT_LEVEL,
   workspaceLevels: {},
   theme: DEFAULT_THEME,
-  accent: 'ember',
+  accent: 'iris',
   language: DEFAULT_LANGUAGE,
   model: { kind: 'none' },
   lastConversationId: '',

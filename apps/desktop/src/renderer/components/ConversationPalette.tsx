@@ -52,7 +52,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
         role="dialog"
         aria-modal="true"
         aria-label={t('palette.dialog')}
-        class="fixed inset-0 z-50 flex items-start justify-center bg-ink-900/60 pt-24"
+        class="fixed inset-0 z-50 flex items-start justify-center bg-ink-900/60 pt-24 backdrop-blur-sm"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) props.onClose()
         }}

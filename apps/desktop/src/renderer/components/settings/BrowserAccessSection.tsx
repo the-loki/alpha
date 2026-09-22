@@ -1,12 +1,12 @@
-import type { NetworkBind, NetworkPatch, NetworkState, Undef } from '@alpha/core'
+import type { NetworkBind, NetworkPatch, NetworkState, TextKey, Undef } from '@alpha/core'
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { shell, useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON, FIELD_FRAME, OUTLINED_ACTION } from '../controls.ts'
 
-const BIND_LABELS: Record<NetworkBind, string> = {
-  local: 'This machine only',
-  network: 'Anything on this network',
+const BIND_LABELS: Record<NetworkBind, TextKey> = {
+  local: 'settings.bindLocal',
+  network: 'settings.bindNetwork',
 }
 
 /**
@@ -44,7 +44,7 @@ export function BrowserAccessSection() {
             <p class="max-w-measure text-xs text-parchment-faint">{t('settings.browserHost')}</p>
           </Show>
 
-          <div class="mt-3 space-y-3 rounded-card border border-line bg-ink-800 p-4">
+          <div class="space-y-3 rounded-card border border-line bg-ink-800 p-4">
             <label class="flex items-center justify-between gap-4">
               <span class="text-ui text-parchment">{t('settings.serve')}</span>
               <input
@@ -71,7 +71,7 @@ export function BrowserAccessSection() {
                           : 'border-line text-parchment-dim hover:bg-ink-600'
                       }`}
                     >
-                      {BIND_LABELS[bind]}
+                      {t(BIND_LABELS[bind])}
                     </button>
                   )}
                 </For>
@@ -80,7 +80,7 @@ export function BrowserAccessSection() {
 
             <div class="flex items-center justify-between gap-4">
               <label class="text-ui text-parchment" for="network-port">
-                Port
+                {t('settings.port')}
               </label>
               <span class="flex items-center gap-2">
                 <input

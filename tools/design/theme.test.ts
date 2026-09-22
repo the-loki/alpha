@@ -102,11 +102,11 @@ describe('the accent attribute', () => {
   const ACCENT_TOKENS = ['accent', 'accent-bright', 'accent-ink']
 
   it('means the same as its absence for the default accent', () => {
-    // `ember` is written both as the default and as an attribute, because the settings page shows
+    // `iris` is written both as the default and as an attribute, because the settings page shows
     // an accent by wearing it. The two spellings drifting apart would show there first.
     const pick = (palette: Palette) => Object.fromEntries(ACCENT_TOKENS.map((token) => [token, palette[token]]))
-    expect(pick(paletteOf("[data-accent='ember']"))).toEqual(pick(light))
-    expect(pick(paletteOf("[data-theme='dark'][data-accent='ember']"))).toEqual(pick(dark))
+    expect(pick(paletteOf("[data-accent='iris']"))).toEqual(pick(light))
+    expect(pick(paletteOf("[data-theme='dark'][data-accent='iris']"))).toEqual(pick(dark))
   })
 })
 
@@ -175,7 +175,7 @@ describe('[design] the font stacks', () => {
       expect(sans).toContain(family)
     }
     // First, so Latin characters in Chinese prose keep the bundled voice.
-    expect(sans.indexOf('IBM Plex Sans')).toBeLessThan(sans.indexOf('PingFang SC'))
+    expect(sans.indexOf('Inter')).toBeLessThan(sans.indexOf('PingFang SC'))
   })
 
   it('keeps a CJK-capable family last in the mono stack too', () => {

@@ -1,7 +1,6 @@
 import { Index } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, OUTLINED_ACTION } from '../controls.ts'
-import { entryNumber, MARK_COLUMN } from '../ledger.ts'
 import { TextField } from './Fields.tsx'
 
 /** One model as the form holds it: every field is a string until the save reads it. */
@@ -13,6 +12,9 @@ export interface DraftModel {
   reasoning: boolean
   images: boolean
 }
+
+/** Two digits, so a column of ordinals reads as a column. */
+const ordinal = (index: number): string => String(index + 1).padStart(2, '0')
 
 const emptyModel = (): DraftModel => ({
   id: '',
@@ -73,9 +75,11 @@ export function ModelFields(props: { models: DraftModel[]; onChange: (models: Dr
               class="m-0 flex min-w-0 gap-3 border-0 p-0"
               aria-label={t('settings.modelRow', { index: String(nth) })}
             >
-              {/* The row's number, in the page's own language: a column of ordinal marks beside the
+              {/* The row's number, in the measuring voice: a column of ordinal marks beside the
                   rows they number, so the fields themselves stay unlabelled by position. */}
-              <span class={MARK_COLUMN}>{entryNumber(index)}</span>
+              <span class="w-4 shrink-0 pt-2 text-right font-mono text-micro text-parchment-faint">
+                {ordinal(index)}
+              </span>
               <div class="min-w-0 flex-1 rounded-control border border-line bg-ink-700 p-2">
                 <div class="grid grid-cols-2 gap-2">
                   <TextField

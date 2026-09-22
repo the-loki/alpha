@@ -38,7 +38,7 @@ export function ProviderForm() {
     // A section of the panel, not a box with a legend on its border: the label is a heading, the
     // fields sit under it in the panel's own grid, and the one primary action is in the footer the
     // section ends with — where every form in the app ends.
-    <section aria-label={t('settings.addProvider')} class="mt-4 rounded-card border border-line bg-ink-800/50 p-4">
+    <section aria-label={t('settings.addProvider')} class="rounded-card border border-line bg-ink-800 p-4">
       <h3 class={GROUP_LABEL}>{t('settings.addProvider')}</h3>
       <div class="mt-3 grid grid-cols-2 gap-3">
         <TextField

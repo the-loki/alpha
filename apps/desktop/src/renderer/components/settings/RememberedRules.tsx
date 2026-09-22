@@ -41,7 +41,7 @@ export function RememberedRules() {
         <ul class="mt-3 space-y-1.5">
           <For each={rules()}>
             {(rule) => (
-              <li class="flex items-center gap-3 rounded-card border border-line bg-ink-800/60 px-3 py-2">
+              <li class="flex items-center gap-3 rounded-control border border-line bg-ink-800 px-3 py-2">
                 <span class="shrink-0 font-mono text-xs text-parchment">{rule.toolName}</span>
                 <span class="min-w-0 flex-1 truncate font-mono text-xs text-parchment-dim" title={rule.pattern}>
                   {rule.pattern === '' ? t('settings.anyPattern') : rule.pattern}

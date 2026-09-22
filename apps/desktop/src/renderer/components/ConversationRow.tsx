@@ -3,13 +3,22 @@ import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_ACTION, FIELD_FRAME, ROW_HOVER, TEXT_ACTION } from './controls.ts'
+import {
+  CONTROL_HEIGHT,
+  DESTRUCTIVE_ACTION,
+  FIELD_FRAME,
+  LIVE_SPINE,
+  RAIL_ROW,
+  ROW_HOVER,
+  ROW_LIVE,
+  TEXT_ACTION,
+} from './controls.ts'
 import { MoreIcon } from './icons.tsx'
 
 /** The three states a conversation can be in, told apart by colour and by a word. */
 const STATE = {
   idle: { dot: 'bg-line-strong', key: 'sidebar.idle' },
-  running: { dot: 'bg-accent', key: 'sidebar.working' },
+  running: { dot: 'bg-accent status-live', key: 'sidebar.working' },
   waiting: { dot: 'bg-amber', key: 'sidebar.waiting' },
 } as const
 
@@ -17,6 +26,10 @@ const STATE = {
  * One conversation. At rest it is the name and nothing else; the things you can do to it appear
  * where its tail was, on hover or keyboard focus, behind a single `⋯` (ticket #80 — a row of
  * icons covered the name it was drawn over).
+ *
+ * The row you are in is lit by the accent, not lifted: a solid whisper of the signal over the
+ * chrome, with a spine of it at the left edge — the two stops of light that say "here" without a
+ * shadow pretending the rail has shelves in it (C5.6).
  */
 export function ConversationRow(props: {
   conversation: ConversationSummary
@@ -31,6 +44,7 @@ export function ConversationRow(props: {
   const [title, setTitle] = createSignal(props.conversation.title)
   const t = useText()
   const state = () => STATE[props.conversation.status]
+  const current = () => props.conversation.id === conversations.activeId
 
   return (
     <Show
@@ -40,13 +54,14 @@ export function ConversationRow(props: {
           <button
             type="button"
             onClick={() => navigate(`/c/${props.conversation.id}`)}
-            aria-current={props.conversation.id === conversations.activeId}
-            class={`flex min-w-0 flex-1 items-center gap-2 rounded-control py-1.5 pr-2 pl-3 text-left transition-colors ${
-              props.conversation.id === conversations.activeId
-                ? 'bg-ink-700 text-parchment shadow-soft'
-                : 'text-parchment-dim hover:bg-ink-600'
+            aria-current={current()}
+            class={`relative flex min-w-0 flex-1 items-center rounded-control py-1.5 text-left transition-colors ${RAIL_ROW} ${
+              current() ? `${ROW_LIVE} text-parchment` : 'text-parchment-dim hover:bg-ink-600'
             }`}
           >
+            <Show when={current()}>
+              <span class={LIVE_SPINE} aria-hidden="true" />
+            </Show>
             <span class="flex w-4 shrink-0 justify-center">
               <span class={`h-1.5 w-1.5 rounded-full ${state().dot}`} aria-hidden="true" />
             </span>
@@ -63,6 +78,7 @@ export function ConversationRow(props: {
           <RowActions
             conversation={props.conversation}
             archived={props.archived === true}
+            current={current()}
             onRename={() => setRenaming(true)}
           />
         </li>
@@ -96,7 +112,12 @@ export function ConversationRow(props: {
  * The `⋯` and what is behind it: rename, archive (or unarchive), delete. It closes on Escape and
  * on a click anywhere else, the way the level chip's menu does — one menu behaviour in the app.
  */
-function RowActions(props: { conversation: ConversationSummary; archived: boolean; onRename: () => void }) {
+function RowActions(props: {
+  conversation: ConversationSummary
+  archived: boolean
+  current: boolean
+  onRename: () => void
+}) {
   const [open, setOpen] = createSignal(false)
   let container!: HTMLSpanElement
   const t = useText()
@@ -123,7 +144,13 @@ function RowActions(props: { conversation: ConversationSummary; archived: boolea
 
   return (
     <span ref={container} class="absolute inset-y-0 right-0">
-      <span class="flex h-full items-center rounded-control bg-ink-700 pr-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+      {/* The patch the actions fade in on wears the row's own fill — the solid whisper of the
+            live row, or the step the pointer's hover painted — so the fade reveals nothing. */}
+      <span
+        class={`flex h-full items-center rounded-control pr-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 ${
+          props.current ? ROW_LIVE : 'bg-ink-600'
+        }`}
+      >
         <button
           type="button"
           aria-label={t('sidebar.actions', { title: props.conversation.title })}

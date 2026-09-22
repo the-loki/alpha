@@ -1,16 +1,13 @@
 @import 'tailwindcss';
 
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/500.css';
-@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
-@import '@fontsource/newsreader/400.css';
-@import '@fontsource/newsreader/500.css';
-@import '@fontsource/newsreader/500-italic.css';
 
 /*
- * Ember Ink — docs/constraints/05-design.md is the source of truth for these values.
+ * Iris — docs/constraints/05-design.md is the source of truth for these values.
  * Components use the token names, never the hex values.
  *
  * The values in `@theme` are the default palette, which is the light one (C5.2): the window is
@@ -20,34 +17,34 @@
  */
 @theme {
   /*
-   * Paper, not grey. Every surface carries the warmth of the lamp the app is named for: the page
-   * is unbleached paper, the chrome is linen a step darker, the page itself is warm white, and the
-   * hairlines are the colour of a pressed line rather than of a grey divider. Warmth here is a
-   * whisper — two to four percent off neutral — because paper that announces itself is beige, and
-   * beige is the one thing this must not be (C5.1, C5.2).
+   * Porcelain, not paper and not grey. Every surface carries a whisper of blue — two percent off
+   * neutral, because a grey that announces itself is cold and a white that does not is sterile.
+   * The page is a clean white sheet, the chrome is porcelain a step down, the window is the cool
+   * air behind both, and the hairlines are the colour of a scored edge rather than of a divider
+   * (C5.1, C5.2).
    */
-  --color-ink-900: #f6f4f0;
-  --color-ink-800: #f0ede6;
-  --color-ink-700: #fffefb;
-  --color-ink-600: #e9e4da;
-  --color-line: #e5e0d6;
-  --color-line-strong: #c9c2b4;
+  --color-ink-900: #eceef3;
+  --color-ink-800: #f4f5f9;
+  --color-ink-700: #ffffff;
+  --color-ink-600: #e5e8ef;
+  --color-line: #e3e5ec;
+  --color-line-strong: #c9cdd9;
 
-  --color-parchment: #201b15;
-  --color-parchment-dim: #5c554a;
-  --color-parchment-faint: #7b7365;
+  --color-parchment: #181a21;
+  --color-parchment-dim: #4d5262;
+  --color-parchment-faint: #767d8e;
 
-  --color-accent: #a8481a;
-  --color-accent-bright: #8f3c13;
-  --color-accent-ink: #fff8f0;
+  --color-accent: #4f46e5;
+  --color-accent-bright: #3f39c4;
+  --color-accent-ink: #ffffff;
 
   /* The four level colours, fixed: a level is not the user's accent, or half of them would be
-     green at once. `--color-warm` is what the full-access level is painted in. */
-  --color-warm: #a8481a;
-  --color-jade: #1f6b4c;
-  --color-amber: #7a520e;
-  --color-danger: #b02a25;
-  --color-info: #2f5399;
+     the accent's own hue at once. `--color-warm` is what the full-access level is painted in. */
+  --color-warm: #c2410c;
+  --color-jade: #047857;
+  --color-amber: #b45309;
+  --color-danger: #c52222;
+  --color-info: #2563eb;
 
   /*
    * An overlay is drawn on the page or on the rail, and it has to be a step off whichever it
@@ -62,53 +59,54 @@
    * Neither bundled family has CJK glyphs, so Chinese falls through to the machine's own: the
    * three names cover the three desktop systems, and they are named rather than left to
    * `sans-serif` so a Chinese window is drawn in a face someone chose (C5.3). Latin characters in
-   * Chinese text keep IBM Plex, which is the point of putting the bundled family first.
+   * Chinese text keep Inter, which is the point of putting the bundled family first.
    */
   --font-sans:
-    'IBM Plex Sans', ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC',
-    'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+    'Inter', ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC',
+    'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Noto Sans Mono CJK SC', monospace;
 
   /*
-   * The display voice (C5.3): what a page is about, and what the reader asked, set like print.
-   * Newsreader carries the Latin; the CJK serif faces named after it are the printing tradition a
-   * Chinese title belongs to — a title in 宋体 is a heading, where a title in 黑体 is a sign.
+   * The display voice (C5.3): what a page is about, and what the reader asked — the same
+   * grotesque as the interface, tightened. The distinction between the person's words and the
+   * machine's is carried by size, weight and tracking instead of by a second face (C5.3).
    */
   --font-display:
-    'Newsreader', 'Iowan Old Style', 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', Georgia, serif;
+    'Inter', ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC',
+    'Microsoft YaHei', sans-serif;
 
   /*
-   * Soft corners, and generous ones (C5.4): a control is rounded enough to read as a shape rather
-   * than as a box, a card is a full sweep, and a menu is rounder still. The three steps are the
-   * whole scale — nothing in the window is square, and nothing invents a fourth radius.
+   * Crisp corners, and nothing is square (C5.4): a control is rounded enough to read as a shape
+   * rather than as a box, a card is a quarter-sweep more, and a menu is rounder still. The three
+   * steps are the whole scale — nothing invents a fourth radius.
    */
-  --radius-control: 0.625rem;
-  --radius-card: 1rem;
-  --radius-overlay: 1.25rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-overlay: 1rem;
 
   /*
-   * Two shadows, both soft and both low: `card` is what a panel floating on the page wears, and
+   * Two shadows, both cool and both low: `card` is what a panel floating on the window wears, and
    * `soft` is for what floats a little less — the composer's bar, a row lifted on hover. Neither
    * is a border: the page has a hairline where it needs an edge, and a shadow where it needs
    * height.
    */
-  --shadow-card: 0 1px 2px rgb(43 33 22 / 0.05), 0 12px 32px rgb(43 33 22 / 0.08);
-  --shadow-soft: 0 1px 2px rgb(43 33 22 / 0.06), 0 6px 16px rgb(43 33 22 / 0.06);
+  --shadow-card: 0 1px 2px rgb(23 26 38 / 0.05), 0 10px 28px rgb(23 26 38 / 0.09);
+  --shadow-soft: 0 1px 2px rgb(23 26 38 / 0.05), 0 4px 14px rgb(23 26 38 / 0.07);
   /*
    * What a menu wears, which is more than a card: it is further off the page than anything else
    * and it has to be read against whatever is under it. Still low-alpha and wide — a menu that
    * casts a black halo is the thing that makes a soft interface look cheap in one screenshot.
    */
-  --shadow-overlay: 0 2px 4px rgb(43 33 22 / 0.05), 0 18px 44px rgb(43 33 22 / 0.16);
+  --shadow-overlay: 0 2px 6px rgb(23 26 38 / 0.06), 0 18px 44px rgb(23 26 38 / 0.16);
 
   /*
    * The glow is different in kind: the first three are light *falling on* a surface, this is light
-   * *coming from* one — the ember behind the streaming answer, the lamp inside the primary button.
+   * *coming from* one — the signal inside the primary button, the cursor at the streaming edge.
    * It is drawn with the accent's own colour so it follows whatever palette the user picked.
    */
   --shadow-glow:
-    0 0 0 1px color-mix(in oklab, var(--color-accent) 18%, transparent),
-    0 4px 20px -4px color-mix(in oklab, var(--color-accent) 45%, transparent);
+    0 0 0 1px color-mix(in oklab, var(--color-accent) 22%, transparent),
+    0 4px 18px -4px color-mix(in oklab, var(--color-accent) 50%, transparent);
 
   /*
    * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
@@ -151,42 +149,55 @@
     color-scheme: dark;
 
     /*
-     * The dark palette is not an inversion: it is the same room with the lamp turned most of the
-     * way down. Warm near-blacks, a page that is one step of ember-glow above the chrome, and text
-     * with the same paper warmth the light mode's ink has.
+     * The dark palette is graphite: the same room with every lamp off but the signal. Deep
+     * blue-blacks rather than an inversion of the light greys, a page one step above the chrome,
+     * and text the colour of chalk rather than of paper gone dim.
      */
-    --color-ink-900: #12100e;
-    --color-ink-800: #1a1713;
-    --color-ink-700: #211d18;
-    --color-ink-600: #2b2620;
-    --color-line: #363028;
-    --color-line-strong: #4d453a;
+    --color-ink-900: #0c0e13;
+    --color-ink-800: #12151c;
+    --color-ink-700: #181b23;
+    --color-ink-600: #222633;
+    --color-line: #262b38;
+    --color-line-strong: #3b4254;
 
-    --color-parchment: #f4f1ea;
-    --color-parchment-dim: #aca394;
-    --color-parchment-faint: #857c6d;
+    --color-parchment: #eceef3;
+    --color-parchment-dim: #a3a8ba;
+    --color-parchment-faint: #6f7889;
 
-    --color-accent: #e2762f;
-    --color-accent-bright: #f08a45;
-    --color-accent-ink: #1a0f07;
+    --color-accent: #8a90ff;
+    --color-accent-bright: #a7acff;
+    --color-accent-ink: #0f1126;
 
-    --color-warm: #e2762f;
-    --color-jade: #56b394;
-    --color-amber: #dfa947;
-    --color-danger: #e46b64;
-    --color-info: #7b9ada;
+    --color-warm: #fb923c;
+    --color-jade: #34d399;
+    --color-amber: #fbbf24;
+    --color-danger: #f87171;
+    --color-info: #60a5fa;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px rgb(0 0 0 / 0.45);
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 18px rgb(0 0 0 / 0.38);
-    --shadow-overlay: 0 2px 5px rgb(0 0 0 / 0.5), 0 20px 48px rgb(0 0 0 / 0.6);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 14px 36px rgb(0 0 0 / 0.5);
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.45), 0 6px 18px rgb(0 0 0 / 0.42);
+    --shadow-overlay: 0 2px 5px rgb(0 0 0 / 0.55), 0 20px 48px rgb(0 0 0 / 0.62);
   }
 
   /*
-   * Ember is the default accent: its values are the ones above, used when the attribute is absent.
+   * Iris is the default accent: its values are the ones above, used when the attribute is absent.
    * They are repeated here so the attribute means the same thing as its absence — the settings
    * page shows each accent by wearing it, and it cannot wear "no attribute" — and the design test
    * asserts the two spellings agree.
    */
+  [data-accent='iris'] {
+    --color-accent: #4f46e5;
+    --color-accent-bright: #3f39c4;
+    --color-accent-ink: #ffffff;
+  }
+
+  [data-theme='dark'][data-accent='iris'] {
+    --color-accent: #8a90ff;
+    --color-accent-bright: #a7acff;
+    --color-accent-ink: #0f1126;
+  }
+
+  /* Ember — burnt orange, clear of `warm`, which belongs to the full-access level. */
   [data-accent='ember'] {
     --color-accent: #a8481a;
     --color-accent-bright: #8f3c13;
@@ -212,19 +223,6 @@
     --color-accent-ink: #14180a;
   }
 
-  /* Iris — blue-violet, clear of `info`, which is the neutral-notice blue. */
-  [data-accent='iris'] {
-    --color-accent: #4f46b0;
-    --color-accent-bright: #403898;
-    --color-accent-ink: #f6f5ff;
-  }
-
-  [data-theme='dark'][data-accent='iris'] {
-    --color-accent: #9a92ee;
-    --color-accent-bright: #aea7f5;
-    --color-accent-ink: #100e26;
-  }
-
   /* Rose — pink enough that it never reads as `danger`. */
   [data-accent='rose'] {
     --color-accent: #a83a63;
@@ -238,10 +236,11 @@
     --color-accent-ink: #2a0f19;
   }
 
-  /* Plum — the purple side of violet, where iris is the blue side. */
+  /* Plum — the red side of violet, where iris is the blue side. */
   [data-accent='plum'] {
     --color-accent: #7241a8;
     --color-accent-bright: #623691;
+    --color-accent-ink: #faf5ff;
   }
   [data-theme='dark'][data-accent='plum'] {
     --color-accent: #b98ae0;
@@ -279,13 +278,13 @@
   }
 
   ::selection {
-    background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    background-color: color-mix(in oklab, var(--color-accent) 28%, transparent);
   }
 
   /*
-   * Lamplight (C5.5): a wash of the accent across the top of the page, the way a desk lamp pools
-   * on paper. Decoration, not information — it carries nothing a reader needs, so it is hidden
-   * from readers too and frozen under reduced motion like everything else.
+   * Signal flare (C5.5): a wash of the accent across the top of the page, dim enough to read as
+   * light rather than as a banner. Decoration, not information — it carries nothing a reader
+   * needs, so it is hidden from readers too and frozen under reduced motion like everything else.
    */
   .page-glow::before {
     content: '';
@@ -295,7 +294,7 @@
     pointer-events: none;
     background: radial-gradient(
       60% 100% at 50% 0%,
-      color-mix(in oklab, var(--color-accent) 7%, transparent),
+      color-mix(in oklab, var(--color-accent) 6%, transparent),
       transparent
     );
   }
@@ -348,9 +347,15 @@
     height: 1em;
     vertical-align: text-bottom;
     background-color: var(--color-accent);
-    /* The cursor is a live ember, not a block: it carries a little of its own light. */
+    /* The cursor is a live signal, not a block: it carries a little of its own light. */
     box-shadow: 0 0 0.75rem var(--color-accent);
     animation: accent-pulse 1.2s ease-in-out infinite;
+  }
+
+  /* A conversation that is working says so without moving: the dot breathes, once a slow cycle. */
+  .status-live {
+    animation: accent-pulse 1.6s ease-in-out infinite;
+    box-shadow: 0 0 0.5rem color-mix(in oklab, var(--color-accent) 60%, transparent);
   }
 
   /*
@@ -380,7 +385,8 @@
       transition-duration: 0.001ms !important;
     }
 
-    .caret {
+    .caret,
+    .status-live {
       animation: none;
     }
   }

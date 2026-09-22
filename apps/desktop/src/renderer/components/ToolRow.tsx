@@ -64,14 +64,14 @@ const STATUS_WORD: Record<ChatBlockTool['status'], TextKey> = {
 
 /**
  * One line per tool call: what ran, on what, for how long. Expanding shows the arguments the
- * model sent and the output the tool produced, because a ledger you cannot audit is decoration.
+ * model sent and the output the tool produced, because a call you cannot audit is decoration.
  *
- * A row is a ruled line rather than a card: the ledger reads as a log, the answer beside it stays
- * the loudest thing in the transcript, and a run of calls stacks as one ruled block (C5.5). The
- * row directly under an entry's own rule is the one that does not draw a rule of its own — two of
- * them a few pixels apart read as a mistake rather than as two things.
+ * A call is an inline summary, not a card and not a ruled row of a table: the line reads as a
+ * sentence in the answer's own column — glyph, name, what it touched, how it went — and only
+ * the pointer's arrow reveals that it turns at all. The answer's prose stays the loudest thing
+ * in the transcript; a run of calls stacks as a quiet list of lines (C5.5).
  */
-export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
+export function ToolRow(props: { block: ChatBlockTool }) {
   const t = useText()
   const language = () => languageOf(shell.language)
   const [open, setOpen] = createSignal(props.block.status === 'failed')
@@ -92,23 +92,21 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
   }
 
   return (
-    // The columns are fixed rather than fitted, so a stack of rows is a table: what ran, on what,
-    // how it went, how long. That is what makes it a ledger instead of a list of sentences.
-    <article class={props.first === true ? '' : 'border-t border-line'} data-role="tool" data-tool={props.block.name}>
+    <article class="w-full" data-role="tool" data-tool={props.block.name}>
+      {/* The line dims into the column and answers the pointer with ink: what it names is quiet,
+          what it points at is not. The arrow is the affordance — hidden until the hand arrives,
+          turned when the call is open, so an open call is visible from across the page. */}
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open()}
-        class="flex w-full items-center gap-3 rounded-control px-2 py-2 text-left transition-colors hover:bg-ink-600"
+        class="group/tool inline-flex max-w-full cursor-pointer items-center gap-2 self-start text-left font-mono text-code text-parchment-dim transition-colors hover:text-parchment"
       >
-        <span
-          class={`w-3 shrink-0 text-center font-mono text-micro ${TONE[props.block.status]}`}
-          title={t(riskKey(props.block.risk))}
-        >
+        <span class={`shrink-0 font-mono text-micro ${TONE[props.block.status]}`} title={t(riskKey(props.block.risk))}>
           {GLYPH[props.block.risk]}
         </span>
-        <span class="w-24 shrink-0 truncate font-mono text-code text-parchment">{props.block.name}</span>
-        <span class="min-w-0 flex-1 truncate font-mono text-code text-parchment-dim">{props.block.summary}</span>
+        <span class="shrink-0">{props.block.name}</span>
+        <span class="min-w-0 truncate text-parchment-faint">{props.block.summary}</span>
         <Show when={mark()}>
           {(key) => (
             <span class={`shrink-0 rounded-full border px-2 font-mono text-micro tracking-wide ${markTone()}`}>
@@ -116,19 +114,33 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
             </span>
           )}
         </Show>
-        <span class={`w-14 shrink-0 text-right font-mono text-micro ${TONE[props.block.status]}`}>
+        <span class={`shrink-0 font-mono text-micro ${TONE[props.block.status]}`}>
           {t(STATUS_WORD[props.block.status])}
         </span>
-        <span class="w-12 shrink-0 text-right font-mono text-micro text-parchment-faint">
+        <span class="shrink-0 font-mono text-micro text-parchment-faint">
           {formatDuration(props.block.startedAt, props.block.endedAt)}
         </span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          class={`h-3.5 w-3.5 shrink-0 transition-all duration-200 ${
+            open()
+              ? 'rotate-90 opacity-100'
+              : 'rotate-0 opacity-0 group-focus-visible/tool:opacity-100 group-hover/tool:opacity-100'
+          }`}
+        >
+          <path d="M6 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
       </button>
 
       <Show when={open()}>
-        {/* Recessed: the audit of a row belongs to the row, and the surface says so without a box
-            drawn around the whole thing. It is a record and it is laid out as one — a label column
-            and a value column — so the panel is scanned rather than read line by line. */}
-        <div class="mb-2 rounded-card border border-line bg-ink-900/50 px-3 py-2.5">
+        {/* The audit hangs straight under the line it belongs to, unboxed: it is part of the same
+            sentence, indented by nothing, separated by the page's own air. It is laid out as a
+            record — a label column and a value column — so it is scanned rather than read. */}
+        <div class="pt-2">
           <Show when={approval()}>
             {(record) => (
               <AuditRow label={t('tool.gate')}>
@@ -149,11 +161,7 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
           </Show>
           <Show when={props.block.output !== ''}>
             <AuditRow
-              label={
-                props.block.details?.exitCode === undefined
-                  ? t('tool.output')
-                  : `${t('tool.output')} · exit ${props.block.details.exitCode}`
-              }
+              label={t('tool.output')}
               // The button belongs to the value it copies: two rows on screen can each have an
               // output, and "copy" alone would not say which one it takes.
               action={
@@ -168,11 +176,16 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
               <pre class="max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
                 {props.block.output}
               </pre>
+              <Show when={props.block.details?.exitCode !== undefined}>
+                <p class="mt-1 font-mono text-micro text-parchment-faint">exit {props.block.details?.exitCode}</p>
+              </Show>
             </AuditRow>
           </Show>
           <Show when={props.block.details?.fullOutputPath}>
             {(path) => (
-              <p class="mt-1 font-mono text-micro text-parchment-faint">{t('tool.truncated', { path: path() })}</p>
+              <p class="mt-1 break-all font-mono text-micro text-parchment-faint">
+                {t('tool.truncated', { path: path() })}
+              </p>
             )}
           </Show>
         </div>
@@ -188,10 +201,13 @@ export function ToolRow(props: { block: ChatBlockTool; first?: boolean }) {
 function AuditRow(props: { label: string; action?: JSX.Element; children: JSX.Element }) {
   return (
     <div class="mt-1.5 flex gap-3 first:mt-0">
-      <span class={`w-16 shrink-0 pt-0.5 ${GROUP_LABEL}`}>{props.label}</span>
+      {/* Wide enough for "OUTPUT · exit 12" on one line: a label that wraps is a row that reads as two. */}
+      <span class={`w-20 shrink-0 pt-0.5 ${GROUP_LABEL}`}>{props.label}</span>
       <div class="min-w-0 flex-1">
         <div class="flex items-start gap-3">
-          <div class="min-w-0 flex-1 font-mono text-micro leading-relaxed text-parchment-faint">{props.children}</div>
+          <div class="min-w-0 flex-1 wrap-anywhere font-mono text-micro leading-relaxed text-parchment-faint">
+            {props.children}
+          </div>
           <Show when={props.action !== undefined}>
             <span class="shrink-0">{props.action}</span>
           </Show>

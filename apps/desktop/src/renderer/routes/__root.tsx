@@ -2,7 +2,7 @@ import { useLocation } from '@solidjs/router'
 import { createEffect, createSignal, type JSX, onCleanup, onMount, Show } from 'solid-js'
 import { ConversationPalette, useShortcuts } from '../components/ConversationPalette.tsx'
 import { Sidebar } from '../components/Sidebar.tsx'
-import { TitleBar } from '../components/TitleBar.tsx'
+import { SpineHead } from '../components/TitleBar.tsx'
 import { UnlockScreen } from '../components/UnlockScreen.tsx'
 import { bridge } from '../lib/bridge.ts'
 import { conversationActions } from '../stores/conversations.ts'
@@ -45,26 +45,26 @@ export function RootLayout(props: { children?: JSX.Element }) {
 
   return (
     <Show when={!shell.locked} fallback={<UnlockScreen />}>
-      {/* The window is a page and a rail, both floating: a soft gutter all the way round, one
-          rounded surface for the workbench's contents and one for the page being worked in (C5.4).
-          The page takes everything left beside the rail — the workbench does not park a narrower
-          page in the middle of a wide window, because the room beside it is empty either way and a
-          blank margin is worse than a long line (C5.3 keeps prose to its measure instead). */}
-      <div class="flex h-screen flex-col bg-ink-900">
-        <TitleBar onSearch={() => setPaletteOpen(true)} inSettings={inSettings()} />
-        <div class="flex min-h-0 flex-1 gap-2 px-2 pb-2">
-          {/* One slot, two panels: the workbench's index and the settings menu are the same panel
-              in the same place, because settings is a place the window goes rather than a page with
-              a menu inside it (C5.4). */}
-          <Show when={inSettings()} fallback={<Sidebar />}>
+      {/* The window is a spine and a page, both floating in one gutter: the spine is everything
+          that is the workbench rather than the work — identity, places, the index, the door to
+          settings — and the page takes everything beside it, at the full height of the window.
+          There is no strip above them: a second row of chrome across the top spent height the
+          page reads on, and its commands live just as well in the spine (C5.4). The head of the
+          spine is the panel's first child, so its banner role is implicit and its hairline runs
+          the full width of the panel; the rail and the settings menu are the two contents the
+          panel holds, one at a time. */}
+      <div class="flex h-screen gap-2 bg-ink-900 p-2">
+        <div class="flex w-64 shrink-0 flex-col rounded-card bg-ink-800">
+          <SpineHead />
+          <Show when={inSettings()} fallback={<Sidebar onSearch={() => setPaletteOpen(true)} />}>
             <SettingsNav />
           </Show>
-          <main class="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
-            {props.children}
-          </main>
         </div>
-        <ConversationPalette open={paletteOpen()} onClose={() => setPaletteOpen(false)} />
+        <main class="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
+          {props.children}
+        </main>
       </div>
+      <ConversationPalette open={paletteOpen()} onClose={() => setPaletteOpen(false)} />
     </Show>
   )
 }

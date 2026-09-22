@@ -42,7 +42,9 @@ function Inline(props: { node: MdNode }): JSX.Element {
       return <del>{children()}</del>
     case 'inlineCode':
       return (
-        <code class="rounded bg-ink-600 px-1 py-0.5 font-mono text-code text-parchment">{props.node.value ?? ''}</code>
+        <code class="rounded border border-line bg-ink-800 px-1 py-0.5 font-mono text-code text-parchment">
+          {props.node.value ?? ''}
+        </code>
       )
     case 'link':
       return (
@@ -67,11 +69,11 @@ function Inline(props: { node: MdNode }): JSX.Element {
 const Heading = (props: { children: JSX.Element; depth: number }): JSX.Element => {
   switch (props.depth) {
     case 1:
-      return <h1 class="mb-2 mt-4 max-w-measure text-lg font-semibold">{props.children}</h1>
+      return <h1 class="mb-2 mt-4 text-lg font-semibold">{props.children}</h1>
     case 2:
-      return <h2 class="mb-2 mt-4 max-w-measure text-base font-semibold">{props.children}</h2>
+      return <h2 class="mb-2 mt-4 text-base font-semibold">{props.children}</h2>
     case 3:
-      return <h3 class="mb-1.5 mt-3 max-w-measure text-body font-semibold">{props.children}</h3>
+      return <h3 class="mb-1.5 mt-3 text-body font-semibold">{props.children}</h3>
     case 4:
       return <h4>{props.children}</h4>
     case 5:
@@ -186,7 +188,7 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
   switch (props.node.type) {
     case 'paragraph':
       return (
-        <p class="mb-3 max-w-measure last:mb-0 whitespace-pre-wrap">
+        <p class="mb-3 last:mb-0 whitespace-pre-wrap">
           <Tail node={props.node} caret={props.caret} end={props.end}>
             {children()}
           </Tail>
@@ -194,7 +196,7 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
       )
     case 'blockquote':
       return (
-        <blockquote class="mb-3 max-w-measure border-l-2 border-line-strong pl-3 text-parchment-dim">
+        <blockquote class="mb-3 border-l-2 border-accent/40 pl-3 text-parchment-dim">
           <Tail node={props.node} caret={props.caret} end={props.end}>
             {children()}
           </Tail>
@@ -202,12 +204,10 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
       )
     case 'code':
       return (
-        <pre class="mb-3 overflow-x-auto rounded-card border border-line bg-ink-800 p-3 font-mono text-code">
-          {/* The block's own code element wears the inline pill's classes, which is what it looked
-              like before and is not this file's business to change. */}
-          <code class="rounded bg-ink-600 px-1 py-0.5 font-mono text-code text-parchment">
-            {props.node.value ?? ''}
-          </code>
+        <pre class="mb-3 overflow-x-auto rounded-card border border-line bg-ink-900 p-3 font-mono text-code text-parchment-dim">
+          {/* The block's code is set plain: the well around it is the frame, and a pill inside a
+              well was the inline mark wearing two coats. */}
+          <code>{props.node.value ?? ''}</code>
           <Show when={endsHere(props.node, props.caret, props.end)}>{CARET()}</Show>
         </pre>
       )
@@ -221,7 +221,7 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
       return <hr class="my-4 border-line" />
     // A block of raw HTML, printed the way an inline one is.
     case 'html':
-      return <p class="mb-3 max-w-measure last:mb-0 whitespace-pre-wrap">{props.node.value ?? ''}</p>
+      return <p class="mb-3 last:mb-0 whitespace-pre-wrap">{props.node.value ?? ''}</p>
     default:
       return children()
   }
@@ -233,7 +233,9 @@ export function Markdown(props: { text: string; caret?: boolean }) {
   const caret = () => props.caret === true
 
   return (
-    <div class="text-body text-parchment">
+    // `break-words` inherits down the tree: prose keeps its measure and its line breaks, and a
+    // token too long for either breaks instead of carrying the column away with it.
+    <div class="wrap-anywhere text-body text-parchment">
       <For each={tree().children ?? []}>{(one) => <Block node={one} caret={caret()} end={end()} />}</For>
     </div>
   )

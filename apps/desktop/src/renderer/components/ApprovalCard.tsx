@@ -43,20 +43,24 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
           deny()
         }
       }}
-      class="overflow-hidden rounded-card border border-amber/30 bg-amber/5 shadow-soft"
+      class="relative overflow-hidden rounded-card border border-amber/40 bg-ink-700 shadow-soft"
     >
-      <header class="flex items-baseline gap-2 px-3.5 pb-1 pt-2.5">
+      {/* The spine: a stop of the deciding colour down the card's left edge, so a waiting card is
+          told apart from a finished one before a word of it is read. */}
+      <span aria-hidden="true" class="absolute inset-y-0 left-0 w-1 bg-amber/60" />
+      <header class="flex items-baseline gap-2 px-4 pb-1 pt-3">
         <span class="font-mono text-micro uppercase tracking-wider text-amber">
           {t(props.request.risk === 'execute' ? 'approval.command' : 'approval.change')}
         </span>
         <span class="text-micro text-parchment-faint">· {t(levelKey(props.request.level))}</span>
       </header>
 
-      <div class="px-3.5 pb-1">
-        <pre class="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment">
+      <div class="px-4 pb-1">
+        {/* The thing about to run, in its own well: recessed, mono, and honest about line breaks. */}
+        <pre class="max-h-40 overflow-auto rounded-control border border-line bg-ink-900/60 px-3 py-2 font-mono text-code whitespace-pre-wrap wrap-anywhere text-parchment">
           {props.request.detail === '' ? t(riskKey(props.request.risk)) : props.request.detail}
         </pre>
-        <p class="mt-0.5 font-mono text-micro text-parchment-faint">
+        <p class="mt-1.5 break-all font-mono text-micro text-parchment-faint">
           {t('approval.inFolder', { path: props.request.cwd })}
         </p>
         <Show when={props.request.diff}>{(diff) => <DiffView diff={diff()} />}</Show>
@@ -65,7 +69,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
       {/* One row of decisions, one height: Allow once, Always allow with the scope it is
           remembered for, a reason, and Deny. The reason field is the same height as the buttons —
           a field that is taller than the decision beside it is the row reading as two rows. */}
-      <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-3.5 py-2.5">
+      <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-amber/20 px-4 py-3">
         <button type="button" onClick={allowOnce} disabled={busy()} class={PRIMARY_ACTION}>
           {t('approval.allowOnce')}
         </button>

@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { languageOf, shell, shellActions, useText } from '../stores/shell.ts'
 import { ConversationRow } from './ConversationRow.tsx'
+import { RAIL_ROW, RAIL_STEP } from './controls.ts'
 import { ChevronDownIcon, FolderIcon, PlusIcon } from './icons.tsx'
 import { TaskGroup } from './TaskGroup.tsx'
 
@@ -33,13 +34,10 @@ export function FolderSection(props: {
   const rowTone = () => (props.current ? 'text-parchment' : 'text-parchment-dim')
   const label = () => (
     <>
-      {/* The column the chevron was in stays, empty: the rail's columns are what line a folder up
-          with the conversations under it, and a folder is not the place to break that grid. */}
-      <span class="w-4 shrink-0" aria-hidden="true" />
-      <span class="ml-1 flex min-w-0 items-center gap-2">
-        <FolderIcon class={props.current ? 'text-accent' : undefined} />
-        <span class="min-w-0 truncate">{props.folder.name}</span>
-      </span>
+      {/* The folder's glyph, then its name: the row a child indents under, so the name starts at
+          the x every name under it starts past (C5.4). */}
+      <FolderIcon class={props.current ? 'text-accent' : undefined} />
+      <span class="min-w-0 truncate">{props.folder.name}</span>
     </>
   )
 
@@ -61,7 +59,7 @@ export function FolderSection(props: {
             when={foldable()}
             fallback={
               <span
-                class={`flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-ui font-medium ${rowTone()}`}
+                class={`flex w-full min-w-0 items-center rounded-control py-1.5 text-ui font-medium ${RAIL_ROW} ${rowTone()}`}
               >
                 {label()}
               </span>
@@ -77,7 +75,7 @@ export function FolderSection(props: {
               }
               title={props.folder.path}
               onClick={() => setCollapsed((value) => !value)}
-              class={`flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui font-medium transition-colors hover:bg-ink-600 ${rowTone()}`}
+              class={`flex w-full min-w-0 items-center rounded-control py-1.5 text-left text-ui font-medium transition-colors hover:bg-ink-600 ${RAIL_ROW} ${rowTone()}`}
             >
               {label()}
             </button>
@@ -106,7 +104,7 @@ export function FolderSection(props: {
 
       <Show when={!collapsed()}>
         {count() === 0 && props.tasks.length === 0 ? (
-          <p class="py-1 pr-2 pl-11 text-micro text-parchment-faint">{t('sidebar.noConversations')}</p>
+          <p class={`py-1 text-micro text-parchment-faint ${RAIL_ROW} ${RAIL_STEP}`}>{t('sidebar.noConversations')}</p>
         ) : (
           <ConversationList conversations={props.folder.conversations} />
         )}
@@ -132,7 +130,7 @@ function ConversationList(props: { conversations: ConversationSummary[] }) {
 
   return (
     <>
-      <ul class="space-y-0.5">
+      <ul class={`space-y-0.5 ${RAIL_STEP}`}>
         <For each={shown()}>{(conversation) => <ConversationRow conversation={conversation} />}</For>
       </ul>
       <Show when={hidden() > 0 || all()}>
@@ -140,7 +138,7 @@ function ConversationList(props: { conversations: ConversationSummary[] }) {
           type="button"
           onClick={() => setAll((value) => !value)}
           aria-label={all() ? t('sidebar.showFewer') : t('sidebar.showAll', { count: props.conversations.length })}
-          class="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
+          class={`w-full rounded-control py-1 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim ${RAIL_ROW} ${RAIL_STEP}`}
         >
           {all() ? t('sidebar.showFewer') : t('sidebar.more', { count: hidden() })}
         </button>
@@ -171,14 +169,14 @@ export function ArchivedSection(props: { conversations: ConversationSummary[] })
           aria-label={open() ? t('sidebar.collapseArchived') : t('sidebar.expandArchived')}
           title={t('sidebar.archivedHint')}
           onClick={() => setOpen((value) => !value)}
-          class="flex w-full items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui font-medium text-parchment-dim transition-colors hover:bg-ink-600"
+          class={`flex w-full items-center gap-1 rounded-control py-1.5 text-left text-ui font-medium text-parchment-dim transition-colors hover:bg-ink-600 ${RAIL_ROW}`}
         >
           <ChevronDownIcon class={`transition-transform ${open() ? '' : '-rotate-90'}`} />
           <span class="ml-1 min-w-0 flex-1 truncate">{t('sidebar.archived')}</span>
           <span class="font-mono text-micro text-parchment-faint">{props.conversations.length}</span>
         </button>
         <Show when={open()}>
-          <ul class="space-y-0.5">
+          <ul class={`space-y-0.5 ${RAIL_STEP}`}>
             <For each={shown()}>
               {(conversation) => (
                 <ConversationRow conversation={conversation} detail={folderName(conversation.workspacePath)} archived />
@@ -190,7 +188,7 @@ export function ArchivedSection(props: { conversations: ConversationSummary[] })
               type="button"
               onClick={() => setAll(true)}
               aria-label={t('sidebar.showAll', { count: props.conversations.length })}
-              class="w-full rounded-control py-1 pr-2 pl-11 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim"
+              class={`w-full rounded-control py-1 text-left font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment-dim ${RAIL_ROW} ${RAIL_STEP}`}
             >
               {t('sidebar.more', { count: hidden() })}
             </button>

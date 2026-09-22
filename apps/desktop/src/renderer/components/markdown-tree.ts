@@ -61,7 +61,7 @@ const hasTasks = (list: MdNode): boolean => childrenOf(list).some(isTaskItem)
  * named it `contains-task-list`, and that name took the place of the list's own styling.
  */
 export const listClassOf = (list: MdNode, ordered: boolean): string =>
-  hasTasks(list) ? 'contains-task-list' : `mb-3 max-w-measure list-${ordered ? 'decimal' : 'disc'} space-y-1 pl-5`
+  hasTasks(list) ? 'contains-task-list' : `mb-3 list-${ordered ? 'decimal' : 'disc'} space-y-1 pl-5`
 
 /** An item in a list with blank lines in it keeps its paragraphs; a tight one is text and marks. */
 export const isLoose = (list: MdNode): boolean => list.spread === true

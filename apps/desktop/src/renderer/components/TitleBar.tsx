@@ -1,10 +1,19 @@
-import { useNavigate } from '@solidjs/router'
-import { type JSX, Show } from 'solid-js'
+import { Show } from 'solid-js'
 import { bridge } from '../lib/bridge.ts'
-import { composerFolderOf, shell, useText } from '../stores/shell.ts'
-import { ClockIcon, PlusIcon, SearchIcon, TuneIcon } from './icons.tsx'
+import { shell, useText } from '../stores/shell.ts'
 
-function WindowControls() {
+/**
+ * The window's own buttons are wider than they are tall on a strip, but the spine's head is a row
+ * of peers: the same square box every glyph action wears (ICON_ACTION).
+ */
+const WINDOW_BUTTON = 'grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors'
+
+/**
+ * The window's own three, and the one place they are drawn: at the right end of every page's band —
+ * the corner of the window, where a frameless window is closed. A browser has no window of ours to
+ * move, and macOS draws its own controls anyway.
+ */
+export function WindowControls() {
   const t = useText()
   const client = bridge()
   // A browser has no window of ours to move, and macOS draws its own controls anyway.
@@ -12,12 +21,12 @@ function WindowControls() {
 
   return (
     <Show when={ours()}>
-      <div class="no-drag flex items-center">
+      <span class="no-drag flex items-center gap-0.5">
         <button
           type="button"
           aria-label={t('window.minimize')}
           onClick={() => void client.sendWindowCommand('minimize')}
-          class="grid h-7 w-10 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          class={`${WINDOW_BUTTON} hover:bg-ink-600 hover:text-parchment`}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <rect x="0" y="4.5" width="10" height="1" fill="currentColor" />
@@ -27,7 +36,7 @@ function WindowControls() {
           type="button"
           aria-label={shell.windowMaximized ? t('window.restore') : t('window.maximize')}
           onClick={() => void client.sendWindowCommand('toggle-maximize')}
-          class="grid h-7 w-10 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
+          class={`${WINDOW_BUTTON} hover:bg-ink-600 hover:text-parchment`}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" />
@@ -37,105 +46,65 @@ function WindowControls() {
           type="button"
           aria-label={t('window.close')}
           onClick={() => void client.sendWindowCommand('close')}
-          class="grid h-7 w-10 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-danger hover:text-ink-900"
+          class={`${WINDOW_BUTTON} hover:bg-danger hover:text-white`}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <path d="M0 0 L10 10 M10 0 L0 10" stroke="currentColor" stroke-width="1" />
           </svg>
         </button>
-      </div>
+      </span>
     </Show>
   )
 }
 
 /**
- * One command in the strip: a glyph, named for a reader and said again in a tooltip, and separated
- * from its neighbours by a hairline — a strip of glyph buttons is a toolbar, and a toolbar without
- * rules between its items is a row of unlabelled glyphs.
+ * The corner a screen without a band keeps the window's three in. Two screens have no band — the
+ * workbench before a folder is chosen, and a folder's title page before its first question is asked
+ * — and a frameless window has to be closable from both, so each carries the three in a corner of
+ * its own, at the same y every band keeps (C5.4).
  */
-function Command(props: { icon: JSX.Element; label: string; hint?: string; onClick: () => void }) {
+export function WindowCorner() {
   return (
-    <button
-      type="button"
-      aria-label={props.label}
-      title={props.hint ?? props.label}
-      onClick={() => props.onClick()}
-      class="no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
-    >
-      {props.icon}
-    </button>
+    <span class="drag-region absolute inset-x-0 top-0 flex h-14 items-center justify-end gap-4 pr-4">
+      <WindowControls />
+    </span>
   )
 }
 
-/** A hairline between two commands of the strip. */
-function Rule() {
-  return <span aria-hidden="true" class="mx-1 h-4 w-px bg-line-strong/40" />
+/**
+ * The mark, and the one colour gradient the window signs itself with: the signal running into its
+ * own deeper edge, the same light the primary action carries. It is the only place a gradient is
+ * drawn as a shape rather than as light (C5.5).
+ */
+export function Mark() {
+  return (
+    <span
+      aria-hidden="true"
+      class="grid h-4.5 w-4.5 place-items-center rounded-control bg-gradient-to-br from-accent to-accent-bright font-mono text-micro font-medium text-accent-ink shadow-glow"
+    >
+      A
+    </span>
+  )
 }
 
 /**
- * The strip at the top of the window, and the workbench's global commands live here: the mark, then
- * the three things one does from anywhere — start a conversation, search, see the tasks — each in
- * its own ruled place, then the workbench's settings beside the window's own controls. The rail
- * below is the index; this strip is what one does about it.
+ * The head of the spine, and the window's one banner: the mark, and the whole of it a drag handle —
+ * with the page's band, this is how a frameless window is moved. The window's own controls do not
+ * live here: they are the window's corner, and the corner is the top right of the window, which is
+ * the right end of the page's band (C5.4). There is no strip above the workbench: identity, commands,
+ * the index and settings are one column, and the window's height belongs to the page.
+ *
+ * The banner role is implicit, and it is why the head stands directly in its panel: a `header`
+ * nested inside a complementary or navigation landmark is not a banner by ancestry, so the panel
+ * is a plain container and this header is its first child.
  */
-export function TitleBar(props: { onSearch: () => void; inSettings: boolean }) {
-  const t = useText()
-  const navigate = useNavigate()
-  const composerFolder = () => composerFolderOf(shell)
-  const modifier = () => (shell.platform === 'darwin' ? '⌘' : 'Ctrl+')
-
-  const newConversationHint = () => {
-    const folder = composerFolder()
-    return folder !== undefined
-      ? `${t('sidebar.newConversationIn', { folder: folder.name })} · ${modifier()}N`
-      : `${t('sidebar.newConversationNowhere')} · ${modifier()}N`
-  }
-
+export function SpineHead() {
   return (
-    <header class="drag-region flex h-10 shrink-0 items-center justify-between pl-2.5">
-      <div class="flex items-center">
-        <span class="drag-region flex items-center gap-2 pr-1.5" title={`Alpha ${shell.appVersion}`}>
-          <span
-            aria-hidden="true"
-            class="grid h-4.5 w-4.5 place-items-center rounded-control bg-accent font-mono text-micro text-accent-ink"
-          >
-            A
-          </span>
-          <span class="font-mono text-micro tracking-widest text-parchment-dim uppercase">Alpha</span>
-        </span>
-
-        <Rule />
-        <Command
-          icon={<PlusIcon />}
-          label={t('sidebar.newConversation')}
-          hint={newConversationHint()}
-          onClick={() => navigate('/')}
-        />
-        <Rule />
-        <Command
-          icon={<SearchIcon />}
-          label={t('sidebar.search')}
-          hint={`${t('sidebar.search')} · ${modifier()}K`}
-          onClick={props.onSearch}
-        />
-        <Rule />
-        <Command icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => navigate('/tasks')} />
-        <Rule />
-      </div>
-
-      <div class="flex items-center">
-        <Show when={!props.inSettings}>
-          <a
-            href="#/settings"
-            aria-label={t('settings.open')}
-            title={t('settings.open')}
-            class="no-drag mr-1 grid h-7 w-7 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment"
-          >
-            <TuneIcon />
-          </a>
-        </Show>
-        <WindowControls />
-      </div>
+    <header class="drag-region flex h-14 shrink-0 items-center gap-2 border-b border-line pl-3">
+      <span class="drag-region flex items-center gap-2" title={`Alpha ${shell.appVersion}`}>
+        <Mark />
+        <span class="font-mono text-micro tracking-[0.2em] text-parchment uppercase">Alpha</span>
+      </span>
     </header>
   )
 }

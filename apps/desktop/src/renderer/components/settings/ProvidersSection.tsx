@@ -13,12 +13,16 @@ export function ProvidersSection() {
     void providerActions.load()
   })
 
-  // No heading of its own: the panel's name is in the band above, and saying it twice is the
-  // same sentence in two places. The list and the form are the whole panel.
+  // No heading of its own and no wrapper either: the panel's name is in the band above, and what
+  // this panel holds is a *list of groups* — what protects the keys, the model a new conversation
+  // starts on, the providers, the form that adds one. They are siblings, so the container's rhythm
+  // (one rule and one lead-in between groups) reaches every one of them; a group wrapped away inside
+  // a section of its own is a group the rhythm cannot space, which is how the keychain notice came to
+  // sit with its last line on the sentence of the group beneath it.
   return (
-    <section aria-label={t('settings.tabProviders')}>
+    <>
       <Show when={providers.snapshot.protection === 'plaintext'}>
-        <p class="mt-2 rounded-control border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
+        <p class="rounded-control border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
           {t('settings.noKeychain')}
         </p>
       </Show>
@@ -33,19 +37,19 @@ export function ProvidersSection() {
       <Show
         when={providers.snapshot.providers.length === 0}
         fallback={
-          <ul class="mt-4 space-y-3">
+          <ul class="space-y-3">
             <For each={providers.snapshot.providers}>{(provider) => <ProviderCard provider={provider} />}</For>
           </ul>
         }
       >
         {/* The empty state is a sentence in the panel's own voice, not a bare line: it says what
             the list is empty of and points at the form under it, which is the next action. */}
-        <p class="mt-4 rounded-card border border-dashed border-line px-3 py-3 text-xs leading-relaxed text-parchment-faint">
+        <p class="rounded-card border border-dashed border-line px-3 py-3 text-xs leading-relaxed text-parchment-faint">
           {t('settings.noProviders')}
         </p>
       </Show>
 
       <ProviderForm />
-    </section>
+    </>
   )
 }

@@ -8,7 +8,7 @@ import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from '
 import { AMBER_ACTION, OUTLINED_ACTION } from './controls.ts'
 import { ArrowUpIcon } from './icons.tsx'
 import { LevelChip } from './LevelChip.tsx'
-import { BESIDE_SCROLLS } from './ledger.ts'
+import { COLUMN } from './ledger.ts'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
 
@@ -48,8 +48,23 @@ function RunningActions(props: {
 }
 
 /**
- * The foot of the box: what the message carries, what it is allowed to do, and the control that
- * sends it. One row under the words, so the words keep the whole width to themselves.
+ * The bar's own surface: the page lifted one step and framed, on the same card radius as every
+ * other block that holds something. It is opaque and takes no light of its own — what makes the
+ * foot of the page readable is the page colour under it, which the rows fade into as they pass —
+ * and it answers the two things that are about it: the keyboard inside it, and the turn running
+ * through it.
+ */
+const CARD = (streaming: boolean) =>
+  `rounded-card border bg-ink-800 p-3 transition-colors focus-within:border-accent/50 ${
+    streaming ? 'border-accent/30 shadow-glow' : 'border-line'
+  }`
+
+/**
+ * The foot of the box: what the message carries and what it is allowed to do at its left, what it
+ * will run on and the control that sends it at its right. The row is aligned to the bottom of the
+ * words rather than to their top, so the two controls that stand on the baseline of a growing
+ * message stay where the hand left them, and neither cluster may push the other out of the card:
+ * the left one is the one that gives way, and the right one is the one that is never cut.
  */
 function ComposerFoot(props: {
   running: boolean
@@ -62,30 +77,32 @@ function ComposerFoot(props: {
 }) {
   const t = useText()
   return (
-    <div class="mt-1 flex items-center gap-2">
-      <AttachButton onPicked={props.onPicked} />
-      <LevelChip />
-      <span class="flex-1" />
-      {/* The right end of the foot, where the message is sent from: what it is about to run on. */}
-      <ModelChip />
-      <Show
-        when={props.running}
-        fallback={
-          <button
-            type="button"
-            onClick={() => props.onSend()}
-            disabled={!props.canSend}
-            aria-label={t('composer.send')}
-            // The accent means "this does something". A disabled send wears the quiet surface
-            // instead, so the ember in the corner always means a message can go.
-            class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-gradient-to-b from-accent to-accent-bright text-accent-ink shadow-glow transition-all hover:brightness-110 disabled:bg-none disabled:bg-ink-600 disabled:text-parchment-faint disabled:shadow-none"
-          >
-            <ArrowUpIcon />
-          </button>
-        }
-      >
-        <RunningActions canRedirect={props.canRedirect} onStop={props.onStop} onRedirect={props.onRedirect} />
-      </Show>
+    <div class="flex items-end gap-3">
+      <div class="flex min-w-0 flex-1 items-center gap-1">
+        <AttachButton onPicked={props.onPicked} />
+        <LevelChip />
+      </div>
+      <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
+        <ModelChip />
+        <Show
+          when={props.running}
+          fallback={
+            <button
+              type="button"
+              onClick={() => props.onSend()}
+              disabled={!props.canSend}
+              aria-label={t('composer.send')}
+              // The accent means "this does something". A disabled send wears the quiet surface
+              // instead, so the ember in the corner always means a message can go.
+              class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-gradient-to-b from-accent to-accent-bright text-accent-ink shadow-glow transition-all hover:brightness-110 disabled:bg-none disabled:bg-ink-600 disabled:text-parchment-faint disabled:shadow-none"
+            >
+              <ArrowUpIcon />
+            </button>
+          }
+        >
+          <RunningActions canRedirect={props.canRedirect} onStop={props.onStop} onRedirect={props.onRedirect} />
+        </Show>
+      </div>
     </div>
   )
 }
@@ -109,12 +126,6 @@ function useEscapeToStop(stop: () => Promise<void>, running: () => boolean): voi
     onCleanup(() => document.removeEventListener('keydown', onKeyDown))
   })
 }
-
-/** The bar's own surface: glass at rest, and carrying a little of its own light while the agent works. */
-const BAR = (streaming: boolean) =>
-  `rounded-card border bg-ink-800/80 px-4 pt-3 pb-2.5 shadow-soft backdrop-blur-xl transition-all focus-within:border-line-strong ${
-    streaming ? 'border-accent/30 shadow-glow' : 'border-line'
-  }`
 
 /**
  * The keyboard on the line being typed: Enter sends it, Shift+Enter is a new line, and
@@ -202,37 +213,37 @@ export function Composer(props: { streaming?: boolean }) {
   }
 
   return (
-    // The line the next message is written on: a soft bar floating at the foot of the page. It is
-    // set on the words' own column — the entry number's column plus the gap after it, less the
-    // bar's own padding — so what is typed starts on the x every entry's words start on (C5.4).
-    <div class={`shrink-0 pt-2 pb-4 ${BESIDE_SCROLLS}`}>
-      {/* One column in from the page's edge, and the bar's own padding makes up the difference: what
-          is typed starts on the words' column, and everything the composer stacks — what waits, the
-          pictures, the words — shares that one edge. */}
-      <div class="ml-6">
+    // The bar the next message is written in: the last thing in the conversation's own scroll and
+    // stuck to its foot, so the transcript slides under it while it scrolls and it comes to rest
+    // after the last row rather than sitting in a strip of its own (ADR-0024). It stands on the
+    // page's column, the same edges every answer stands on.
+    //
+    // The shell takes no pointer at all: the air beside the bar is still the page, so a wheel over
+    // it scrolls the transcript the way the reader expects. The page-coloured foot under the bar is
+    // what the rows fade into as they pass behind it.
+    <div class={`pointer-events-none sticky bottom-0 z-20 mt-auto w-full ${COLUMN}`} data-column="conversation">
+      <div class="pointer-events-auto bg-gradient-to-t from-ink-700 via-ink-700/85 to-transparent pt-10 pb-4">
         <QueueStrip />
-        <div class={BAR(props.streaming === true)}>
+        <div class={CARD(props.streaming === true)}>
           <PendingAttachments items={attached()} onRemove={(index) => removeAt(index)} />
-          <div class="flex items-start">
-            <textarea
-              ref={(element) => {
-                field = element
-              }}
-              rows={1}
-              aria-label={t('composer.messageLabel')}
-              value={value()}
-              placeholder={hasWorkspace() ? t('composer.placeholder') : t('composer.placeholderNoFolder')}
-              onInput={(event) => setValue(event.target.value)}
-              onKeyDown={(event) =>
-                composerKeys(event, {
-                  running: running(),
-                  send: () => void send(),
-                  queue: () => void redirect('queue'),
-                })
-              }
-              class="field-sizing-content block max-h-40 min-h-6 w-full resize-none overflow-y-auto bg-transparent text-body text-parchment placeholder:text-parchment-faint"
-            />
-          </div>
+          <textarea
+            ref={(element) => {
+              field = element
+            }}
+            rows={1}
+            aria-label={t('composer.messageLabel')}
+            value={value()}
+            placeholder={hasWorkspace() ? t('composer.placeholder') : t('composer.placeholderNoFolder')}
+            onInput={(event) => setValue(event.target.value)}
+            onKeyDown={(event) =>
+              composerKeys(event, {
+                running: running(),
+                send: () => void send(),
+                queue: () => void redirect('queue'),
+              })
+            }
+            class="field-sizing-content block max-h-40 min-h-10 w-full resize-none overflow-y-auto bg-transparent text-body text-parchment placeholder:text-parchment-faint"
+          />
           <ComposerFoot
             running={running()}
             canSend={canSend()}

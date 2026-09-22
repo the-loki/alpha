@@ -8,8 +8,9 @@ import { For } from 'solid-js'
 const LINE_CLASS = (line: string): string => {
   if (line.startsWith('@@')) return 'text-info'
   if (line.startsWith('+++') || line.startsWith('---')) return 'text-parchment-faint'
-  if (line.startsWith('+')) return 'text-jade'
-  if (line.startsWith('-')) return 'text-danger'
+  // What the file now says, and what it no longer does: a wash of the verdict under the words.
+  if (line.startsWith('+')) return 'bg-jade/10 text-jade'
+  if (line.startsWith('-')) return 'bg-danger/10 text-danger'
   return 'text-parchment-dim'
 }
 
@@ -33,9 +34,11 @@ export function DiffView(props: { diff: string }) {
       <p class="mb-1 font-mono text-micro text-parchment-faint">
         <span class="text-jade">+{added()}</span> <span class="text-danger">−{removed()}</span>
       </p>
-      <pre class="overflow-x-auto rounded-control border border-line bg-ink-800 p-2 font-mono text-code">
+      <pre class="overflow-x-auto rounded-control border border-line bg-ink-900 py-2 font-mono text-code">
         <For each={keyedLines(lines())}>
-          {(entry) => <span class={`block ${LINE_CLASS(entry.line)}`}>{entry.line === '' ? ' ' : entry.line}</span>}
+          {(entry) => (
+            <span class={`block px-3 ${LINE_CLASS(entry.line)}`}>{entry.line === '' ? ' ' : entry.line}</span>
+          )}
         </For>
       </pre>
     </div>

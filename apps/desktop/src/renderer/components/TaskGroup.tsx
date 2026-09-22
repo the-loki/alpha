@@ -4,6 +4,7 @@ import { createSignal, For, Show } from 'solid-js'
 import { useText } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
 import { ConversationRow } from './ConversationRow.tsx'
+import { RAIL_ROW, RAIL_STEP } from './controls.ts'
 import { ClockIcon } from './icons.tsx'
 
 /** How many of a task's runs the rail shows; the task's own page holds the rest. */
@@ -32,7 +33,7 @@ export function TaskGroup(props: { node: TaskNode }) {
         : 'text-amber'
 
   return (
-    <div class="mt-1">
+    <div class={`mt-1 ${RAIL_STEP}`}>
       <div class="group flex items-center gap-1">
         <h3 class="min-w-0 flex-1">
           <button
@@ -40,15 +41,13 @@ export function TaskGroup(props: { node: TaskNode }) {
             aria-expanded={open()}
             aria-label={t(open() ? 'sidebar.collapseTasks' : 'sidebar.expandTasks', { folder: props.node.task.name })}
             onClick={() => setOpen((value) => !value)}
-            class="flex w-full min-w-0 items-center gap-1 rounded-control px-2 py-1.5 text-left text-ui transition-colors hover:bg-ink-600"
+            class={`flex w-full min-w-0 items-center rounded-control py-1.5 text-left text-ui transition-colors hover:bg-ink-600 ${RAIL_ROW}`}
           >
-            {/* The column a folder leaves empty, left empty here too: folding is the row's own
-                click, so a chevron to aim at would be a control the rail does not have. */}
-            <span class="w-4 shrink-0" aria-hidden="true" />
-            <span class="ml-1 flex min-w-0 items-center gap-2">
-              <ClockIcon class="text-parchment-faint" />
-              <span class="min-w-0 truncate text-parchment-dim">{props.node.task.name}</span>
-            </span>
+            {/* The task's glyph, then its name. One step in from the folder, because a task runs *in*
+                a folder and is held by it: drawn on the folder's own x it reads as another folder, and
+                the runs under it would have no level of their own to stand on (C5.4). */}
+            <ClockIcon class="shrink-0 text-parchment-faint" />
+            <span class="min-w-0 truncate text-parchment-dim">{props.node.task.name}</span>
           </button>
         </h3>
         <Show when={verdict()}>
@@ -68,14 +67,14 @@ export function TaskGroup(props: { node: TaskNode }) {
       </div>
 
       <Show when={open()}>
-        <ul class="space-y-0.5">
+        <ul class={`space-y-0.5 ${RAIL_STEP}`}>
           <For each={shown()}>
             {(conversation) => (
               <ConversationRow conversation={conversation} label={formatAge(conversation.updatedAt, Date.now())} />
             )}
           </For>
         </ul>
-        <div class="flex items-center gap-2 pl-11">
+        <div class={`flex items-center gap-2 ${RAIL_ROW} ${RAIL_STEP}`}>
           <Show when={hidden() > 0}>
             <button
               type="button"

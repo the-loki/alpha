@@ -7,7 +7,6 @@
  * cookie once (see `unlock`) and keeps it in local storage so a reload does not ask again.
  */
 import {
-  type AgentSnapshot,
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
@@ -294,10 +293,5 @@ export function networkBridge(): AlphaBridge {
     answerApproval: (answer: ApprovalAnswerInput) => invoke('answerApproval', [answer]) as Promise<void>,
     ...taskCalls,
     onPermissionRules: (listener: (rules: PermissionRule[]) => void) => listen('permissionRulesChanged', listener),
-
-    agentSnapshot: () => invoke('agentSnapshot', []) as Promise<AgentSnapshot>,
-    setAgentPath: (path: string) => invoke('setAgentPath', [path]) as Promise<AgentSnapshot>,
-    installAgent: () => invoke('installAgent', []) as Promise<AgentSnapshot>,
-    onAgentChanged: (listener: (snapshot: AgentSnapshot) => void) => listen('agentChanged', listener),
   }
 }

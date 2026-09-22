@@ -2,11 +2,11 @@ import type { Attachment, Undef } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { readPicked } from '../lib/attachments.ts'
 import { useText } from '../stores/shell.ts'
+import { ICON_ACTION } from './controls.ts'
 import { CloseIcon, PaperclipIcon } from './icons.tsx'
 
-/** A quiet glyph button in the composer's foot, the shape the rest of the window's icons wear. */
-const FOOT_BUTTON =
-  'no-drag grid h-7 w-7 shrink-0 place-items-center rounded-control text-parchment-dim transition-colors hover:bg-ink-600 hover:text-parchment'
+/** A quiet glyph button in the composer's foot, the shape every glyph in the window wears. */
+const FOOT_BUTTON = `no-drag ${ICON_ACTION}`
 
 /**
  * The way in to the file picker. The picker is the platform's; this is a button that opens it, and

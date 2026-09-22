@@ -20,12 +20,13 @@ const THEME_LABELS: Record<Theme, TextKey> = {
 
 /**
  * A language is always listed in itself: someone who cannot read the interface they are looking at
- * is exactly the person looking for this row, and "Chinese" would not help them find it.
+ * is exactly the person looking for this row, and "Chinese" would not help them find it. The
+ * system option is not a language, so it alone goes through the dictionary.
  */
-const LANGUAGE_LABELS: Record<LanguageSetting, string> = {
-  system: 'Follow the system',
-  en: 'English',
-  zh: '简体中文',
+const LANGUAGE_LABELS: Record<LanguageSetting, { name?: string; key?: TextKey }> = {
+  system: { key: 'settings.themeSystem' },
+  en: { name: 'English' },
+  zh: { name: '简体中文' },
 }
 
 /** Not translated, for the same reason: a palette is named the same in every language. */
@@ -44,6 +45,10 @@ const RESTING = 'border-line text-parchment-dim hover:bg-ink-600'
 /** How the workbench looks and reads: the palette, the accent, and the language. */
 export function AppearanceSection() {
   const t = useText()
+  const labelOf = (candidate: LanguageSetting) => {
+    const label = LANGUAGE_LABELS[candidate]
+    return label.key === undefined ? (label.name ?? candidate) : t(label.key)
+  }
 
   return (
     <>
@@ -119,7 +124,7 @@ export function AppearanceSection() {
                 <Show when={candidate === shell.language}>
                   <CheckIcon />
                 </Show>
-                {LANGUAGE_LABELS[candidate]}
+                {labelOf(candidate)}
               </button>
             )}
           </For>

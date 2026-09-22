@@ -14,7 +14,7 @@ describe('[renderer] the markdown tree the message renders from', () => {
 
     // remark marks every item with `checked`, and only a GFM task item with true or false: the
     // difference between `null` and `false` is the whole of this bug, so it is pinned here.
-    expect(listClassOf(list, false)).toBe('mb-3 max-w-measure list-disc space-y-1 pl-5')
+    expect(listClassOf(list, false)).toBe('mb-3 list-disc space-y-1 pl-5')
     expect(childrenOf(list).map(isTaskItem)).toEqual([false, false])
   })
 
@@ -29,7 +29,7 @@ describe('[renderer] the markdown tree the message renders from', () => {
 
   it('an ordered list numbers itself, and starts where it says it starts', () => {
     const list = childrenOf(treeOf('1. first\n2. second\n'))[0]
-    expect(listClassOf(list, true)).toBe('mb-3 max-w-measure list-decimal space-y-1 pl-5')
+    expect(listClassOf(list, true)).toBe('mb-3 list-decimal space-y-1 pl-5')
   })
 
   it('keeps the addresses that are not a scheme, and drops the ones that would run', () => {
