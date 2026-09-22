@@ -1,10 +1,11 @@
 # Alpha
 
-A local-first desktop workbench for `pi`. Alpha ships no agent: it runs the `pi` you installed,
-against a folder you choose, with your own key — choose how much the agent may do without asking,
-and read every tool call it made in a ledger you can audit afterwards.
+A local-first desktop workbench with the agent built in. It works against a folder you choose,
+with your own key — choose how much the agent may do without asking, and read every tool call it
+made in a ledger you can audit afterwards.
 
-Alpha is an Electron app. The agent is a child process it drives over `pi`'s RPC protocol; the
+Alpha is an Electron app, and the agent runs inside it: an embedded agent core, assembled from a
+plugin base of Alpha's own — the coding tools, the permission gate, compaction, auto-retry. The
 window receives a projection of the conversation over a typed IPC contract, and the credential, the
 permission ladder and the decisions stay in the main process.
 
@@ -121,7 +122,7 @@ Layout:
 
 ```
 apps/desktop            the workbench: one package, three processes
-  src/main              the runtime: the agent process, the gate, providers, sessions, the IPC handlers
+  src/main              the runtime: the embedded agent, the gate, providers, sessions, the IPC handlers
   src/preload           the bridge: the only functions the window gets
   src/renderer          Solid, @solidjs/router, Tailwind, remark — the window and nothing else
 packages/core           pure: the transcript projection, the permission table, the IPC contract

@@ -1,8 +1,10 @@
 # Context: Alpha
 
-Alpha is a local-first desktop workbench for running an AI agent against a folder on your
-machine. This file is the glossary: the words the project uses, and the words it refuses to
-use as synonyms. It holds no implementation details.
+Alpha is a local-first desktop workbench that embeds its agent: a conversation runs in the
+workbench's own process, on an agent assembled from a plugin base of Alpha's own — the coding
+tools, the permission gate, compaction, auto-retry — against a folder on your machine. This file
+is the glossary: the words the project uses, and the words it refuses to use as synonyms. It
+holds no implementation details.
 
 ## Vocabulary
 
@@ -49,16 +51,28 @@ tool returned. Messages are the only thing the transcript stores.
 
 ### Entry
 
-One numbered thing the user asked for, with the number written in the page's leading column: a
-message the user typed, seen as a line of the ledger, with the work that answers it hanging under
-it. Avoid: *row*, *item*. `Entry` is the display word for the user's own messages and nothing else —
+One thing the user asked for, drawn as a bubble at the column's right edge: a message the user
+typed, seen as one turn's opening, with the work that answers it standing under it on the column.
+Avoid: *row*, *item*. `Entry` is the display word for the user's own messages and nothing else —
 the model's answers are `messages` and the calls it makes are `tools`.
 
 ### Page
 
-The surface a conversation is read on: a rounded panel floating in the window, with a leading
-column down its left side where each entry's number is written (ADR-0016, ADR-0017). Avoid:
-*card*, *panel*, *pane*, *sheet*.
+The surface a conversation is read on: a rounded panel floating in the window, one column wide, where
+the reader's bubble is set to the right and everything that answers it stands full width and unboxed
+(ADR-0016, ADR-0017, ADR-0024). A page wears a band that says what it is — and the band stands on the
+page's own padding rather than on its column, so that no part of a page's chrome moves when the window
+changes width. Avoid: *card*, *panel*, *pane*, *sheet*.
+
+### Column
+
+The width a page is written on: the page's own pair of edges, one padding in. The reader's message,
+the answers, the tool lines, the turn footers and the composer all stand on it, and the reader's
+message is set against its right end. Nothing is centred and nothing is capped — a centred column
+moves its reading edge every time the window changes width, and a capped one leaves the window's
+room unused — except a *sentence of the interface* (a panel's note, an empty state), which keeps the
+reading measure because it is a label and not content (C5.3, C5.4). Avoid: *margin*, *gutter*,
+*content area*, *container*.
 
 ### Attachment
 
@@ -176,4 +190,6 @@ knob, and it is unrelated to the permission level despite both being called mode
 ### Transcript
 
 The persisted, replayable record of a conversation: its messages, tool calls, and results.
-Rendered by the workbench; never edited by hand.
+Rendered by the workbench; never edited by hand. The store is Alpha's own — append-only JSONL
+entries, written as the run produces them — and a transcript written in the pi era is read in
+place, not converted.
