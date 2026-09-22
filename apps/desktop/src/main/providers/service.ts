@@ -1,20 +1,19 @@
 /**
  * What the settings screen is allowed to do with providers: store them, name their models, keep
  * their keys, say which one a new conversation runs on, and — when the person asks — find out
- * whether one answers. The last of those is asked *through the agent*, because the agent is what
- * talks to a provider: Alpha hands it the model to try and the key that goes with it, and reports
- * back what the agent made of it.
+ * whether one answers. The last of those is asked of the model runtime itself (ADR-0025): the
+ * same createModelRuntime a conversation dials, one trivial turn, so what is tested is the path a
+ * turn takes and not a second implementation of it that could disagree.
  *
  * The service never returns a credential. It can say whether one is stored, and it can replace
- * or delete one (docs/constraints/02-architecture.md C2.4).
+ * or delete one (docs/constraints/02-architecture.md C2.4). The vault is read at request time and
+ * no secret leaves the process.
  *
  * Two panels, two jobs: a provider is a connection (protocol, base url, key), and a model is a name
  * that connection serves with the limits that go with it. Every change answers with the whole
  * snapshot, so the window keeps one state instead of making a call after each edit.
  */
 
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
 import {
   type ConversationModel,
   credentialRequirement,
@@ -25,10 +24,8 @@ import {
   type StoredProvider,
   type Undef,
 } from '@alpha/core'
-import { AgentRpc, rpcArgs } from '../agent-cli/rpc.ts'
-import { writeModelsFile } from '../runtime/agent-models.ts'
-import { agentEnv } from '../runtime/agent-process.ts'
-import type { AgentPorts } from '../runtime/session-files.ts'
+import type { Api, AssistantMessage, Context, Model, Models, TextContent } from '@earendil-works/pi-ai'
+import { createModelRuntime } from '../runtime/model-runtime.ts'
 import type { ProviderStore } from './store.ts'
 
 export interface ProvidersSnapshot {
@@ -47,16 +44,19 @@ export interface ProviderTestResult {
   message: string
 }
 
+/** Long enough for a slow first token, short enough that the panel is not left hanging. */
+const TEST_TIMEOUT_MS = 15_000
+
+const TEST_PROMPT = 'Reply with the single word: ready'
+
 export class ProviderService {
   readonly #store: ProviderStore
-  readonly #agent: AgentPorts
-  /** Where a test's own session and workspace live: never the person's workspace. */
-  readonly #scratch: string
+  /** Builds the runtime a test dials with; tests script one, the app builds the real thing. */
+  readonly #models: Undef<() => Models>
 
-  constructor(store: ProviderStore, options: { agent: AgentPorts; scratch: string }) {
+  constructor(store: ProviderStore, options: { models?: () => Models } = {}) {
     this.#store = store
-    this.#agent = options.agent
-    this.#scratch = options.scratch
+    this.#models = options.models
   }
 
   snapshot(): ProvidersSnapshot {
@@ -107,10 +107,9 @@ export class ProviderService {
   }
 
   /**
-   * One real request, so a wrong key or a wrong base URL is caught here rather than mid-turn. It
-   * is the agent that makes it — with this provider and this model, and with the key in its
-   * environment — so what is tested is the path a conversation takes, not a second implementation
-   * of it that could disagree.
+   * One real request, so a wrong key or a wrong base URL is caught here rather than mid-turn. The
+   * refusals come before any dialing: no provider, no key, a model nobody serves — each a sentence
+   * the panel can show.
    */
   async test(providerId: string, modelId: string): Promise<ProviderTestResult> {
     const provider = this.#store.find(providerId)
@@ -118,53 +117,54 @@ export class ProviderService {
     if (!this.#store.hasCredential(providerId)) {
       return { ok: false, message: credentialRequirement({ hasCredential: false }).reason }
     }
-    const credential = this.#agent.credential(providerId)
-    if (credential.problem !== undefined) return { ok: false, message: credential.problem.message }
-    if (this.#agent.path() === '') {
-      return { ok: false, message: 'No agent is installed, so there is nothing here to ask the provider.' }
-    }
+    const problem = this.#store.keyProblem(providerId)
+    if (problem !== undefined) return { ok: false, message: problem }
+    const models = this.#models?.() ?? this.#modelRuntime(provider)
+    const model = models.getModel(providerId, modelId)
+    if (model === undefined) return { ok: false, message: `${providerId} does not serve ${modelId}.` }
+    return askOnce(models, model)
+  }
 
-    mkdirSync(this.#scratch, { recursive: true })
-    writeModelsFile(this.#store, this.#agent.directory)
-    const rpc = AgentRpc.open({
-      file: this.#agent.path(),
-      args: [
-        ...rpcArgs({
-          sessionsDirectory: join(this.#scratch, 'sessions'),
-          sessionId: `test-${Date.now()}`,
-          name: 'provider test',
-        }),
-        '--provider',
-        providerId,
-        '--model',
-        modelId,
-      ],
-      cwd: this.#scratch,
-      env: { ...agentEnv(this.#agent.env, this.#agent.directory), ...credential.env },
+  /** The throwaway runtime for one test: this provider alone, its key read per request. */
+  #modelRuntime(provider: StoredProvider): Models {
+    return createModelRuntime({
+      providers: [provider],
+      credential: (id) => this.#store.credential(id),
     })
-    try {
-      return await askOnce(rpc)
-    } finally {
-      await rpc.close()
-    }
   }
 }
 
 /** One question, one answer: the shortest thing that proves a provider is reachable. */
-async function askOnce(rpc: AgentRpc): Promise<ProviderTestResult> {
-  const settled = new Promise<void>((done) => {
-    const stop = rpc.onEvent((event) => {
-      if (event.type !== 'agent_settled' && event.type !== 'agent_end') return
-      stop()
-      done()
-    })
+async function askOnce(models: Models, model: Model<Api>): Promise<ProviderTestResult> {
+  const question: Context = {
+    messages: [{ role: 'user', content: TEST_PROMPT, timestamp: Date.now() }],
+  }
+  let timer: Undef<ReturnType<typeof setTimeout>>
+  const timeout = new Promise<never>((_, stop) => {
+    timer = setTimeout(
+      () => stop(new Error(`The provider did not answer within ${TEST_TIMEOUT_MS / 1000} seconds.`)),
+      TEST_TIMEOUT_MS,
+    )
   })
-  const asked = await rpc.send({ type: 'prompt', message: 'Reply with the single word: ready' })
-  if (!asked.ok) return { ok: false, message: asked.error ?? 'The provider refused the request.' }
-  await settled
-  const said = await rpc.send({ type: 'get_last_assistant_text' })
-  const data = said.data as Undef<{ text?: unknown }>
-  const answer = data?.text
-  const text = typeof answer === 'string' ? answer.trim() : ''
-  return text === '' ? { ok: false, message: 'The provider answered with nothing.' } : { ok: true, message: text }
+  try {
+    const answer = await Promise.race([models.completeSimple(model, question), timeout])
+    return answerOf(answer)
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'The provider did not answer.' }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** What the provider said, or why it said nothing. */
+function answerOf(answer: AssistantMessage): ProviderTestResult {
+  if (answer.errorMessage !== undefined && answer.errorMessage !== '') {
+    return { ok: false, message: `The provider did not answer: ${answer.errorMessage}` }
+  }
+  const said = answer.content
+    .filter((part): part is TextContent => part.type === 'text')
+    .map((part) => part.text)
+    .join('')
+    .trim()
+  return said === '' ? { ok: false, message: 'The provider answered with nothing.' } : { ok: true, message: said }
 }

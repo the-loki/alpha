@@ -1,12 +1,15 @@
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/core'
+import type { AssistantMessage, Model } from '@earendil-works/pi-ai'
+import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'
 import { ProviderStore } from '../providers/store.ts'
 import { StateStore } from '../state-store.ts'
 import { RuntimeManager } from './manager.ts'
+import { aModel, scriptedModels, textStream, toolUseStream } from './scripted-provider.ts'
 
 /** A cipher that does nothing, so the vault is real but the test never touches a keychain. */
 const testCipher: SecretCipher = {
@@ -15,40 +18,116 @@ const testCipher: SecretCipher = {
   decrypt: (payload) => payload.replace(/^enc:/, ''),
 }
 
+/** What the fixture saves about its one provider, whose models the scripted runtime serves. */
+const providerDefinition = (images: boolean) => ({
+  id: 'p',
+  name: 'Scripted',
+  api: 'openai-completions' as const,
+  baseUrl: 'https://llm.internal.example/v1',
+  models: [{ id: 'm', name: 'M', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images }],
+})
+
 /**
- * Conversation management, through the real manager and the real session store: renaming,
- * grouping, deleting a transcript from disk, and reading a conversation back after the runtime
- * compacted it.
+ * The manager over the embedded agent (ADR-0025): a real conversation runtime whose provider
+ * streams from a script, a real session store on disk, and a real index. Nothing spawns.
  */
-const freshManager = (env: NodeJS.ProcessEnv = {}, events: RuntimeEvent[] = []) => {
+interface FixtureOptions {
+  replies?: string[]
+  /** The sentence agent.credential answers with, for the missing-key refusal (#114). */
+  keyProblem?: string
+  /** No provider is configured at all, which is the no-model refusal. */
+  noProviders?: boolean
+  /** The one model takes pictures. It does not by default (ADR-0018). */
+  images?: boolean
+  /** A reply that stays in flight for a while, as the turn a window closes in the middle of. */
+  slowReply?: { text: string; afterMs: number }
+  /** The call the first scripted turn asks for, which puts the gate on the path. */
+  toolCall?: { name: string; args: Record<string, string> }
+  /** The compaction thresholds the assembled policy runs with, shrunk for the test. */
+  compactionSettings?: { reserveTokens: number; keepRecentTokens: number }
+}
+
+/** Waits until one event of `kind` has been seen, which is what a mid-run act needs. */
+const waitedFor = async (events: RuntimeEvent[], kind: string): Promise<void> => {
+  for (let attempt = 0; attempt < 500 && !events.some((event) => event.type === kind); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+}
+
+const freshManager = (options: FixtureOptions = {}) => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, testCipher)
-  const sessionsRoot = join(dataDirectory, 'sessions')
+  const providers = new ProviderStore(dataDirectory, vault)
+  if (options.noProviders !== true) providers.save(providerDefinition(options.images === true))
+  const events: RuntimeEvent[] = []
   const manager = new RuntimeManager({
     dataDirectory,
-    sessionsRoot,
-    providers: new ProviderStore(dataDirectory, vault),
+    sessionsRoot: join(dataDirectory, 'sessions'),
+    providers,
     store,
-    // The scripted agent stands in for pi, and the script reaches it the way a model's answers do.
+    // The slim ports: the sessions are Alpha's, and only the key problem is asked before a run.
     agent: {
-      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
-      directory: join(dataDirectory, 'agent'),
-      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
-      sessionsRoot,
-      credential: () => ({ env: {} }),
+      sessionsRoot: join(dataDirectory, 'sessions'),
+      keyProblem: () => options.keyProblem,
     },
+    models: () => scriptedModels(scriptOf(options)),
+    compactionSettings:
+      options.compactionSettings === undefined ? undefined : { enabled: true, ...options.compactionSettings },
     emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
-  return { manager, store, workspace, dataDirectory, events }
+  return { manager, providers, store, workspace, dataDirectory, events }
 }
 
-/**
- * A manager whose model collection is the configured providers rather than the scripted one, so
- * the models a conversation may run on are real. Nothing here dials out: no turn is ever started.
- */
+/** One script per open: the n-th turn hears the n-th reply, and one past the end hears the last again. */
+function scriptOf(options: FixtureOptions): Array<() => AssistantMessageEventStream> {
+  const replies = options.replies ?? ['Noted.']
+  const last = replies.at(-1) ?? 'Noted.'
+  const drives = [...replies, ...Array(4).fill(last)].map(
+    (reply) => (): AssistantMessageEventStream => textStream(reply),
+  )
+  if (options.toolCall !== undefined) {
+    const { name, args } = options.toolCall
+    drives.unshift(() => toolUseStream(name, args))
+  }
+  if (options.slowReply !== undefined) {
+    const { text, afterMs } = options.slowReply
+    drives[0] = () => {
+      const stream = new AssistantMessageEventStream()
+      stream.push({
+        type: 'start',
+        partial: partialAssistant(''),
+      })
+      setTimeout(() => stream.push({ type: 'done', reason: 'stop', message: partialAssistant(text) }), afterMs)
+      return stream
+    }
+  }
+  return drives
+}
+
+const partialAssistant = (text: string): AssistantMessage => ({
+  role: 'assistant',
+  content: [{ type: 'text', text }],
+  api: 'openai-completions',
+  provider: 'p',
+  model: 'm',
+  usage: {
+    input: 1,
+    output: 1,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 2,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  },
+  stopReason: 'stop',
+  timestamp: Date.now(),
+})
+
+/** A manager whose model collection serves two models under one provider, as the panel would. */
+const localModel = (id: string): Model<'openai-completions'> => ({ ...aModel(), id, provider: 'local' })
+
 const configuredManager = (dataDirectory?: string, seed = true, events: RuntimeEvent[] = []) => {
   const directory = dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-data-'))
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
@@ -80,17 +159,32 @@ const configuredManager = (dataDirectory?: string, seed = true, events: RuntimeE
     providers,
     store: new StateStore(directory),
     agent: {
-      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
-      directory: join(directory, 'agent'),
-      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']) },
       sessionsRoot: join(directory, 'sessions'),
-      credential: () => ({ env: {} }),
+      keyProblem: () => undefined,
     },
+    models: () => scriptedModels([() => textStream('Noted.')], [localModel('local-7b'), localModel('local-70b')]),
     emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
   return { manager, providers, workspace, dataDirectory: directory, events }
 }
+
+/** Sends a message and waits for the turn it started, which is what a reading test needs. */
+const tell = async (manager: RuntimeManager, events: RuntimeEvent[], id: string, text: string): Promise<void> => {
+  const ended = (): number =>
+    events.filter((event) => event.type === 'turn_finished' || event.type === 'run_failed').length
+  const before = ended()
+  await manager.prompt(id, text)
+  for (let attempt = 0; attempt < 500 && ended() === before; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+}
+
+/** Every text block of a transcript, in order, which is what a reader would see. */
+const texts = (messages: ChatMessage[]): string[] =>
+  messages.flatMap((message) => message.blocks.filter((block) => block.kind === 'text').map((block) => block.text))
+
+const REPLIES = ['THE FIRST ANSWER', 'THE SECOND ANSWER']
 
 describe('[runtime] what a conversation runs on', () => {
   it('is the default model to begin with, and its own choice from then on', async () => {
@@ -122,7 +216,7 @@ describe('[runtime] what a conversation runs on', () => {
   })
 
   it('refuses a picture for a model that does not take one, before the turn starts', async () => {
-    const { manager, providers, workspace, dataDirectory } = configuredManager()
+    const { manager, providers, workspace, dataDirectory, events } = freshManager()
     const created = await manager.create(workspace)
     const picture = { mimeType: 'image/png', data: 'AAAA' }
 
@@ -130,18 +224,38 @@ describe('[runtime] what a conversation runs on', () => {
       /does not take pictures/,
     )
     // The same message without the picture is not the boundary's business: it goes through.
-    await tell(manager, created.conversation.id, 'look at this')
+    await tell(manager, events, created.conversation.id, 'look at this')
     await manager.closeAll()
 
     // And turning the setting on is what lets it through the gate.
-    providers.saveModels('local', [
-      { id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images: true },
+    providers.saveModels('p', [
+      { id: 'm', name: 'M', contextWindow: 32_000, maxTokens: 4_096, reasoning: false, images: true },
     ])
     // The same directory, so the saved settings are the ones the new manager reads.
-    const after = configuredManager(dataDirectory, false)
+    const after = freshManagerAt(dataDirectory)
     const second = await after.manager.create(workspace)
     await expect(after.manager.prompt(second.conversation.id, 'look at this', [picture])).resolves.toBeUndefined()
     await after.manager.closeAll()
+  })
+
+  it('refuses a turn when no model is configured at all', async () => {
+    const { manager, workspace, events } = freshManager({ noProviders: true })
+    const created = await manager.create(workspace)
+
+    await expect(manager.prompt(created.conversation.id, 'hello')).rejects.toThrow(/No model/)
+    expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
+    await manager.closeAll()
+  })
+
+  it('refuses a turn before it runs when the key cannot be read (#114)', async () => {
+    const { manager, workspace, events } = freshManager({
+      keyProblem: 'Alpha has no key for p. Add one under Settings, Providers.',
+    })
+    const created = await manager.create(workspace)
+
+    await expect(manager.prompt(created.conversation.id, 'hello')).rejects.toThrow(/no key for p/)
+    expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
+    await manager.closeAll()
   })
 
   it('starts what is created later on the default the models panel chose', async () => {
@@ -151,6 +265,44 @@ describe('[runtime] what a conversation runs on', () => {
     const created = await manager.create(workspace)
     expect(created.conversation.model).toEqual({ providerId: 'local', modelId: 'local-70b' })
     await manager.closeAll()
+  })
+})
+
+describe('[runtime] open, prompt, and the events between', () => {
+  it('runs a turn end to end, and the window hears the whole of it', async () => {
+    const { manager, workspace, events } = freshManager({ replies: ['Noted.'] })
+    const created = await manager.create(workspace)
+
+    await tell(manager, events, created.conversation.id, 'hello')
+    await manager.closeAll()
+
+    expect(events.filter((event) => event.type === 'user_message')).toHaveLength(1)
+    expect(events.filter((event) => event.type === 'turn_started')).toHaveLength(1)
+    expect(events.filter((event) => event.type === 'assistant_message_finished')).toHaveLength(1)
+    expect(events.filter((event) => event.type === 'turn_finished')).toHaveLength(1)
+  })
+
+  it('answers a conversation reopened after a relaunch with the same transcript', async () => {
+    const { manager, workspace, dataDirectory, events } = freshManager({ replies: ['Noted.'] })
+    const created = await manager.create(workspace)
+    await tell(manager, events, created.conversation.id, 'remember this')
+    const live = await manager.transcriptFor(created.conversation.id)
+    await manager.closeAll()
+
+    const reopened = freshManagerAt(dataDirectory)
+    const opened = await reopened.manager.open(created.conversation.id)
+    expect(opened.messages).toEqual(live)
+    expect(opened.messages.map((message) => message.role)).toEqual(['user', 'assistant'])
+    await reopened.manager.closeAll()
+  })
+
+  it('marks a conversation as idle after a turn, however the turn went', async () => {
+    const { manager, workspace, events } = freshManager({ replies: ['Noted.'] })
+    const created = await manager.create(workspace)
+    await tell(manager, events, created.conversation.id, 'hello')
+    await manager.closeAll()
+
+    expect(manager.list()[0]?.status).toBe('idle')
   })
 })
 
@@ -164,7 +316,7 @@ describe('[runtime] naming a conversation', () => {
     await manager.closeAll()
 
     const reopened = freshManagerAt(dataDirectory)
-    expect(reopened.list().map((conversation) => conversation.title)).toEqual(['The parser rewrite'])
+    expect(reopened.manager.list().map((conversation) => conversation.title)).toEqual(['The parser rewrite'])
   })
 
   it('refuses to rename a conversation that is not there', async () => {
@@ -188,23 +340,13 @@ describe('[runtime] the conversation list', () => {
     expect(folders.map((folder) => folder.path).sort()).toEqual([workspace, second].sort())
     expect(folders.every((folder) => folder.conversations.length === 1)).toBe(true)
   })
-
-  it('marks a conversation as running while a turn is in flight, and idle after it', async () => {
-    const { manager, workspace } = freshManager()
-    const created = await manager.create(workspace)
-
-    await tell(manager, created.conversation.id, 'hello')
-    await manager.closeAll()
-
-    expect(manager.list()[0]?.status).toBe('idle')
-  })
 })
 
 describe('[runtime] deleting a conversation', () => {
   it('takes the transcript off the disk, not just off the list', async () => {
-    const { manager, workspace, dataDirectory } = freshManager()
+    const { manager, workspace, dataDirectory, events } = freshManager()
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'remember this')
+    await tell(manager, events, created.conversation.id, 'remember this')
     const sessionsRoot = join(dataDirectory, 'sessions')
     expect(existsSync(sessionsRoot)).toBe(true)
 
@@ -213,8 +355,8 @@ describe('[runtime] deleting a conversation', () => {
     expect(remaining).toEqual([])
     expect(() => manager.rename(created.conversation.id, 'still here')).toThrow()
     // Nothing is left on disk: no session directory with entries in it.
-    const leftovers = readdirDeep(sessionsRoot)
-    expect(leftovers.some((path) => path.endsWith('.jsonl'))).toBe(false)
+    const leftovers = readdirSync(sessionsRoot, { recursive: true })
+    expect(leftovers.some((path) => String(path).endsWith('.jsonl'))).toBe(false)
   })
 
   it('can be asked for a transcript that no longer exists without inventing one', async () => {
@@ -255,66 +397,11 @@ describe('[runtime] the conversation that was open', () => {
   })
 })
 
-describe('[runtime] the reason a tool call ran', () => {
-  it('is still in the ledger after a relaunch, and goes when the conversation does', async () => {
-    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
-    const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
-    const events: RuntimeEvent[] = []
-    const manager = new RuntimeManager({
-      dataDirectory,
-      sessionsRoot: join(dataDirectory, 'sessions'),
-      providers: new ProviderStore(dataDirectory, new CredentialVault(dataDirectory, testCipher)),
-      store: new StateStore(dataDirectory),
-      agent: {
-        path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
-        directory: join(dataDirectory, 'agent'),
-        env: {
-          ALPHA_FAUX_REPLIES: JSON.stringify([
-            { tool: { name: 'write', args: { path: 'notes.txt', content: 'written' } } },
-            'Written.',
-          ]),
-        },
-        sessionsRoot: join(dataDirectory, 'sessions'),
-        credential: () => ({ env: {} }),
-      },
-      emit: (event) => events.push(event),
-      emitRules: () => undefined,
-    })
-
-    // Level ask: the write has to go past the gate, and the answer is what gets remembered.
-    const created = await manager.create(workspace)
-    const running = tell(manager, created.conversation.id, 'write the file')
-    manager.answerApproval(created.conversation.id, await waitForApproval(events), { decision: 'once' })
-    await running
-    await manager.closeAll()
-
-    const reopened = freshManagerAt(dataDirectory)
-    const opened = await reopened.open(created.conversation.id)
-    const tool = opened.messages.flatMap((message) => message.blocks).find((block) => block.kind === 'tool')
-    expect(tool?.kind === 'tool' ? tool.approval : undefined).toEqual({ kind: 'once', level: 'ask' })
-    await reopened.closeAll()
-
-    // The note is part of the conversation: deleting it deletes the file too.
-    await manager.remove(created.conversation.id)
-    expect(existsSync(join(dataDirectory, 'decisions', `${created.conversation.id}.json`))).toBe(false)
-  })
-})
-
-/** The window learns about the card from the events, so the test does the same. */
-async function waitForApproval(events: RuntimeEvent[]): Promise<string> {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const request = events.find((event) => event.type === 'approval_requested')
-    if (request?.type === 'approval_requested') return request.request.requestId
-    await new Promise((resolve) => setTimeout(resolve, 25))
-  }
-  throw new Error('no approval was asked for')
-}
-
 describe('[runtime] exporting a conversation', () => {
   it('writes the markdown beside the workspace and reports where it went', async () => {
-    const { manager, workspace } = freshManager({ ALPHA_FAUX_REPLIES: JSON.stringify(['The answer is 42.']) })
+    const { manager, workspace, events } = freshManager({ replies: ['The answer is 42.'] })
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'what is the answer')
+    await tell(manager, events, created.conversation.id, 'what is the answer')
     manager.rename(created.conversation.id, 'The answer')
 
     const { path } = await manager.exportMarkdown(created.conversation.id)
@@ -327,72 +414,107 @@ describe('[runtime] exporting a conversation', () => {
   })
 })
 
-const freshManagerAt = (dataDirectory: string, env: NodeJS.ProcessEnv = {}) => {
+/**
+ * The gate is back on the path (ADR-0025), wired through the manager's own permission ports: the
+ * broker holds the card, the unattended runs refuse theirs, and the runtime announces each verdict.
+ */
+describe('[runtime] the gate on the full path', () => {
+  it('asks before a risky call, and the answer lets it run: the order the window sees', async () => {
+    const { manager, workspace, events } = freshManager({
+      toolCall: { name: 'bash', args: { command: 'echo manager-gate' } },
+    })
+    const created = await manager.create(workspace)
+
+    const turn = manager.prompt(created.conversation.id, 'run it')
+    await waitedFor(events, 'approval_requested')
+    const request = events.find((event) => event.type === 'approval_requested')
+    if (request?.type !== 'approval_requested') throw new Error('no approval was requested')
+    manager.answerApproval(created.conversation.id, request.request.requestId, { decision: 'once' })
+    await turn
+    await waitedFor(events, 'turn_finished')
+    await manager.closeAll()
+
+    const kinds = events
+      .map((event) => event.type)
+      .filter((type) => ['tool_started', 'approval_requested', 'tool_decided', 'tool_finished'].includes(type))
+    expect(kinds).toEqual(['tool_started', 'approval_requested', 'tool_decided', 'tool_finished'])
+    const decided = events.find((event) => event.type === 'tool_decided')
+    expect(decided?.type === 'tool_decided' ? decided.approval : {}).toMatchObject({ kind: 'once' })
+    const finished = events.find((event) => event.type === 'tool_finished')
+    expect(finished?.type === 'tool_finished' ? finished.output : '').toContain('manager-gate')
+  })
+
+  it('a run with nobody watching has its ask refused at once, and the refusal is counted', async () => {
+    const { manager, workspace, events } = freshManager({
+      toolCall: { name: 'bash', args: { command: 'echo nobody-home' } },
+    })
+    const created = await manager.create(workspace)
+
+    const refusals = await manager.runUnattended(created.conversation.id, 'run it')
+    await manager.closeAll()
+
+    expect(refusals).toBe(1)
+    expect(events.some((event) => event.type === 'approval_requested')).toBe(false)
+    const finished = events.find((event) => event.type === 'tool_finished')
+    expect(finished?.type === 'tool_finished' ? finished.output : '').toContain('Nobody is watching this run')
+  })
+})
+
+const freshManagerAt = (
+  dataDirectory: string,
+  options: FixtureOptions = {},
+): { manager: RuntimeManager; events: RuntimeEvent[] } => {
   const store = new StateStore(dataDirectory)
   const vault = new CredentialVault(dataDirectory, testCipher)
+  const providers = new ProviderStore(dataDirectory, vault)
+  if (options.noProviders !== true && providers.find('p') === undefined) providers.save(providerDefinition(false))
+  const events: RuntimeEvent[] = []
   const manager = new RuntimeManager({
     dataDirectory,
     sessionsRoot: join(dataDirectory, 'sessions'),
-    providers: new ProviderStore(dataDirectory, vault),
+    providers,
     store,
     agent: {
-      path: () => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
-      directory: join(dataDirectory, 'agent'),
-      env: { ALPHA_FAUX_REPLIES: JSON.stringify(['Noted.']), ...env },
       sessionsRoot: join(dataDirectory, 'sessions'),
-      credential: () => ({ env: {} }),
+      keyProblem: () => options.keyProblem,
     },
-    emit: () => undefined,
+    models: () => scriptedModels(scriptOf(options)),
+    emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
-  return manager
-}
-
-/** Every text block of a transcript, in order, which is what a reader would see. */
-const texts = (messages: ChatMessage[]): string[] =>
-  messages.flatMap((message) => message.blocks.filter((block) => block.kind === 'text').map((block) => block.text))
-
-const REPLIES = JSON.stringify(['THE FIRST ANSWER', 'THE SECOND ANSWER'])
-
-function readdirDeep(directory: string): string[] {
-  if (!existsSync(directory)) return []
-  const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs')
-  return readdirSync(directory).flatMap((entry) => {
-    const path = join(directory, entry)
-    return statSync(path).isDirectory() ? readdirDeep(path) : [path]
-  })
+  return { manager, events }
 }
 
 describe('[runtime] reading a conversation back', () => {
   // The branch tip is what the window shows, and answering again moves it. A reader that walks
   // the whole log instead brings back the answer that was replaced, and the question with it.
   it('shows the answer that is on the branch, not the one regenerate replaced', async () => {
-    const { manager, workspace, dataDirectory } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const { manager, workspace, dataDirectory, events } = freshManager({ replies: REPLIES })
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'a question')
+    await tell(manager, events, created.conversation.id, 'a question')
     await manager.regenerate(created.conversation.id)
     const live = await manager.transcriptFor(created.conversation.id)
     await manager.closeAll()
 
-    const reopened = freshManagerAt(dataDirectory, { ALPHA_FAUX_REPLIES: REPLIES })
-    const opened = await reopened.open(created.conversation.id)
-    await reopened.closeAll()
+    const reopened = freshManagerAt(dataDirectory)
+    const opened = await reopened.manager.open(created.conversation.id)
+    await reopened.manager.closeAll()
 
     expect(texts(live)).toEqual(['a question', 'THE SECOND ANSWER'])
     expect(texts(opened.messages)).toEqual(texts(live))
   })
 
   it('shows the branch after an edit replaced what followed', async () => {
-    const { manager, workspace, dataDirectory } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const { manager, workspace, dataDirectory, events } = freshManager({ replies: REPLIES })
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'a question')
+    await tell(manager, events, created.conversation.id, 'a question')
     await manager.editMessage(created.conversation.id, 0, 'a better question', 'replace')
     const live = await manager.transcriptFor(created.conversation.id)
     await manager.closeAll()
 
-    const reopened = freshManagerAt(dataDirectory, { ALPHA_FAUX_REPLIES: REPLIES })
-    const opened = await reopened.open(created.conversation.id)
-    await reopened.closeAll()
+    const reopened = freshManagerAt(dataDirectory)
+    const opened = await reopened.manager.open(created.conversation.id)
+    await reopened.manager.closeAll()
 
     expect(texts(live)).toEqual(['a better question', 'THE SECOND ANSWER'])
     expect(texts(opened.messages)).toEqual(texts(live))
@@ -405,10 +527,10 @@ describe('[runtime] reading a conversation back', () => {
  */
 describe('[runtime] telling the window the transcript changed', () => {
   it('replaces it after an edit that continued from the edit', async () => {
-    const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const { manager, workspace, events } = freshManager({ replies: REPLIES })
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'a question')
-    await tell(manager, created.conversation.id, 'a second question')
+    await tell(manager, events, created.conversation.id, 'a question')
+    await tell(manager, events, created.conversation.id, 'a second question')
     events.length = 0
 
     // No settling: the call resolving is the promise that the window has been told.
@@ -416,81 +538,64 @@ describe('[runtime] telling the window the transcript changed', () => {
 
     const replaced = events.filter((event) => event.type === 'transcript_replaced')
     expect(replaced).toHaveLength(1)
-    const handed = replaced[0].type === 'transcript_replaced' ? replaced[0].messages : []
+    const handed = replaced[0]?.type === 'transcript_replaced' ? replaced[0].messages : []
     expect(texts(handed)).toEqual(['a better question', 'THE SECOND ANSWER'])
   })
 
   it('leaves it alone when the edit forked instead, because this conversation did not change', async () => {
-    const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const { manager, workspace, events } = freshManager({ replies: REPLIES })
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'a question')
+    await tell(manager, events, created.conversation.id, 'a question')
     events.length = 0
 
     const forked = await manager.editMessage(created.conversation.id, 0, 'a better question', 'fork')
-    await settle()
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     expect(forked.conversation.id).not.toBe(created.conversation.id)
     // The copy is a conversation of its own, in the list, on a session of its own.
     expect(manager.list().map((one) => one.id)).toContain(forked.conversation.id)
     expect(forked.conversation.sessionId).not.toBe('')
-    // The copy carries the edit and the answer the script gave next, which is its own turn.
+    // The copy carries the edit and the script's first answer, which a fresh open hears again.
     expect(texts(forked.messages)).toEqual(['a better question', 'THE FIRST ANSWER'])
     expect(events.filter((event) => event.type === 'transcript_replaced')).toEqual([])
   })
 
   it('says nothing when a regenerate had nothing to run again', async () => {
-    const { manager, workspace, events } = freshManager({ ALPHA_FAUX_REPLIES: REPLIES })
+    const { manager, workspace, events } = freshManager({ replies: REPLIES })
     const created = await manager.create(workspace)
     events.length = 0
 
     await manager.regenerate(created.conversation.id)
-    await settle()
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     expect(events.filter((event) => event.type === 'transcript_replaced')).toEqual([])
   })
 
-  it('takes an edit after a relaunch that followed a kill mid-turn', async () => {
-    // Closing the window mid-turn leaves the index saying "running", and nothing will ever finish
-    // the turn that was in flight. The window's idea of it is a projection; what the agent has
-    // written is the fact, and the conversation that is edited here is the one behind it.
+  it('takes an edit after a relaunch that followed a close mid-turn', async () => {
+    // Closing the window mid-turn stops the run; what the agent had written by then is what the
+    // session holds. The window's idea of it is a projection; the store is the fact, and the
+    // conversation that is edited here is the one behind it.
     const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-data-'))
     const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
-    const first = freshManagerAt(dataDirectory, { ALPHA_FAUX_REPLIES: JSON.stringify(['The first answer.']) })
-    const created = await first.create(workspace)
-    await tell(first, created.conversation.id, 'a first question')
+    const first = freshManagerAt(dataDirectory, { replies: ['The first answer.'] })
+    const created = await first.manager.create(workspace)
+    await tell(first.manager, first.events, created.conversation.id, 'a first question')
 
-    // A second turn that will never finish: the app closes while the agent is still writing.
-    first.setConversationLevel(created.conversation.id, 'ask')
+    // A turn that takes a while: the app closes while it is still being written.
     const slow = freshManagerAt(dataDirectory, {
-      ALPHA_FAUX_REPLIES: JSON.stringify(['An answer long enough that the app is still writing it out.']),
-      ALPHA_FAUX_TOKENS_PER_SECOND: '20',
-      ALPHA_FAUX_TOKEN_SIZE: '4',
+      slowReply: { text: 'An answer long enough to be cut.', afterMs: 250 },
     })
-    const running = tell(slow, created.conversation.id, 'a long task')
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    await slow.closeAll()
-    await running.catch(() => undefined)
+    await slow.manager.prompt(created.conversation.id, 'a long task')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    await slow.manager.closeAll()
 
-    const second = freshManagerAt(dataDirectory, {
-      ALPHA_FAUX_REPLIES: JSON.stringify(['The corrected answer.']),
-    })
-    const opened = await second.editMessage(created.conversation.id, 0, 'a better question', 'replace')
-    await second.closeAll()
+    const second = freshManagerAt(dataDirectory, { replies: ['The corrected answer.'] })
+    const opened = await second.manager.editMessage(created.conversation.id, 0, 'a better question', 'replace')
+    await second.manager.closeAll()
 
     expect(texts(opened.messages)).toEqual(['a better question', 'The corrected answer.'])
   })
 })
-
-/** A negative assertion needs the chance to have passed, so it waits for anything in flight. */
-const settle = async (): Promise<void> => {
-  await new Promise((resolve) => setTimeout(resolve, 50))
-}
-
-/** Sends a message and waits for the turn it starts, which is what a reading test needs. */
-const tell = async (manager: RuntimeManager, id: string, text: string): Promise<void> => {
-  await manager.prompt(id, text)
-  await settle()
-}
 
 /**
  * The window keeps one copy of a conversation's summary, and the sidebar and the header both read
@@ -539,47 +644,34 @@ describe('[runtime] a change to a conversation', () => {
   })
 })
 
-describe('[runtime] compaction', () => {
-  it('marks where the history was summarised and keeps the summary readable', async () => {
-    const { manager, workspace } = freshManager({
-      ALPHA_FAUX_REPLIES: JSON.stringify(['The first answer.', 'Earlier turns were about naming things.']),
-    })
+describe('[runtime] putting a conversation away and taking it back', () => {
+  it('archive hides it from the list, unarchive returns it', async () => {
+    const { manager, workspace } = freshManager()
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'which name is better')
 
-    const compacted = await manager.compactConversation(created.conversation.id)
-    expect(compacted).toBe(true)
-    const messages = await manager.transcriptFor(created.conversation.id)
-
-    const marker = messages.flatMap((message) => message.blocks).find((block) => block.kind === 'compaction')
-    expect(marker).toMatchObject({ kind: 'compaction', summary: 'Earlier turns were about naming things.' })
-    // And how much it stood in for: the messages before the first entry the agent kept.
-    expect(marker?.kind === 'compaction' ? marker.replaced : undefined).toBe(2)
-    await manager.closeAll()
+    manager.archive(created.conversation.id)
+    expect(manager.list().find((one) => one.id === created.conversation.id)?.archivedAt).toBeDefined()
+    manager.unarchive(created.conversation.id)
+    expect(manager.list().find((one) => one.id === created.conversation.id)?.archivedAt).toBeUndefined()
   })
+})
 
-  it('takes a new prompt afterwards, and the turn after it renders', async () => {
-    const { manager, workspace } = freshManager({
-      ALPHA_FAUX_REPLIES: JSON.stringify([
-        'The first answer.',
-        'Earlier turns were about naming things.',
-        'The answer after the summary.',
-      ]),
+describe('[runtime] compacting a conversation by hand', () => {
+  it('compactConversation runs the compaction path, and the transcript shows the summary once', async () => {
+    const { manager, workspace, events } = freshManager({
+      replies: ['Noted.'],
+      compactionSettings: { reserveTokens: 4, keepRecentTokens: 4 },
     })
     const created = await manager.create(workspace)
-    await tell(manager, created.conversation.id, 'first question')
-    await manager.compactConversation(created.conversation.id)
+    await tell(manager, events, created.conversation.id, 'remember this')
 
-    await tell(manager, created.conversation.id, 'second question')
-    const messages = await manager.transcriptFor(created.conversation.id)
-    await manager.closeAll()
+    await expect(manager.compactConversation(created.conversation.id)).resolves.toBe(true)
 
-    const kinds = messages.flatMap((message) => message.blocks.map((block) => block.kind))
-    expect(kinds).toContain('compaction')
-    expect(kinds.indexOf('compaction')).toBeLessThan(kinds.length - 1)
-    const texts = messages
-      .filter((message) => message.role === 'assistant')
-      .flatMap((message) => message.blocks.filter((block) => block.kind === 'text').map((block) => block.text))
-    expect(texts).toContain('The answer after the summary.')
+    expect(events.some((event) => event.type === 'history_compacted')).toBe(true)
+    const blocks = (await manager.transcriptFor(created.conversation.id)).flatMap((message) =>
+      message.blocks.filter((block) => block.kind === 'compaction'),
+    )
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]?.kind).toBe('compaction')
   })
 })

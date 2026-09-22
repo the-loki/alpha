@@ -4,9 +4,10 @@ Chat replies use Chinese (简体中文).
 
 ## Alpha
 
-A local-first Electron workbench that runs the `pi` the person installed against a folder on your
-machine. Alpha ships no agent: it finds `pi`, drives it over its RPC protocol, and owns the window,
-the IPC contract, the permission gate, the decisions and the credentials. Read `CONTEXT.md` before
+A local-first Electron workbench with its agent embedded: the agent (built on `pi-agent-core`) runs
+in the main process, assembled from Alpha's own plugin base — the tools, the permission gate,
+compaction, auto-retry — against a folder on your machine. Alpha owns the window, the IPC contract,
+the permission gate, the decisions, the credentials and the session store. Read `CONTEXT.md` before
 naming anything in code, issues, or UI copy: it fixes the vocabulary (workspace, conversation, turn,
 permission level, approval, provider, credential, model).
 

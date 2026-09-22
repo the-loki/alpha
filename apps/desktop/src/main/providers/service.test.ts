@@ -2,8 +2,9 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ProviderModelDefinition } from '@alpha/core'
+import type { Models } from '@earendil-works/pi-ai'
 import { describe, expect, it } from 'vitest'
-import { credentialFor } from '../runtime/agent-models.ts'
+import { aModel, scriptedModels, textStream } from '../runtime/scripted-provider.ts'
 import { CredentialVault } from './credential-vault.ts'
 import { ProviderService } from './service.ts'
 import { ProviderStore } from './store.ts'
@@ -15,17 +16,10 @@ const cipher = {
   decrypt: (payload: string) => payload.replace('sealed:', ''),
 }
 
-const service = () => {
+const service = (models?: () => Models) => {
   const directory = mkdtempSync(join(tmpdir(), 'alpha-providers-'))
   const store = new ProviderStore(directory, new CredentialVault(directory, cipher))
-  const agent = {
-    path: (): string => join(import.meta.dirname, '../../../../../tools/scripted-agent/pi.mjs'),
-    directory: join(directory, 'agent'),
-    env: { ALPHA_FAUX_REPLIES: JSON.stringify(['ready']) },
-    sessionsRoot: join(directory, 'sessions'),
-    credential: (providerId: string) => credentialFor(store, providerId),
-  }
-  return { service: new ProviderService(store, { agent, scratch: join(directory, 'scratch') }), store, agent }
+  return { service: new ProviderService(store, models === undefined ? {} : { models }), store }
 }
 
 const endpoint = { id: 'local', name: 'Local', api: 'openai-completions' as const, baseUrl: 'https://llm.test/v1' }
@@ -38,6 +32,10 @@ const model = (id: string): ProviderModelDefinition => ({
   reasoning: false,
   images: true,
 })
+
+/** The scripted runtime for the stored connection: provider `local` serving model `a`. */
+const scripted = (): Models =>
+  scriptedModels([() => textStream('ready')], [{ ...aModel(), id: 'a', provider: 'local' }])
 
 describe('[main] adding a connection', () => {
   it('starts with no models: a connection is not a model list', () => {
@@ -135,12 +133,13 @@ describe('[main] credentials', () => {
 })
 
 /**
- * Whether a provider answers is asked through the agent, because the agent is what talks to one:
- * Alpha hands it the model and the key, and reports back what it made of it.
+ * Whether a provider answers is asked of the model runtime itself (ADR-0025): the same
+ * createModelRuntime a conversation dials, one trivial turn, and the reason spelled out when there
+ * is no answer — a wrong key, an unreachable base URL, a model nobody serves.
  */
 describe('[agent-runtime] asking a provider whether it answers', () => {
-  it('answers with the model’s own words, from a real run', async () => {
-    const { service: providers } = service()
+  it('answers with the model’s own words, from a real drive of the runtime', async () => {
+    const { service: providers } = service(scripted)
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
     providers.setCredential('local', 'sk-test')
@@ -148,8 +147,8 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
     expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
   })
 
-  it('refuses a provider with no key, without asking the agent', async () => {
-    const { service: providers } = service()
+  it('refuses a provider with no key, without dialing', async () => {
+    const { service: providers } = service(scripted)
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
 
@@ -158,18 +157,28 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
   })
 
   it('refuses a provider that is not there', async () => {
-    const { service: providers } = service()
+    const { service: providers } = service(scripted)
 
     expect(await providers.test('nobody', 'a')).toMatchObject({ ok: false, message: 'No provider nobody' })
   })
 
-  it('refuses when there is no agent to ask', async () => {
-    const { service: providers, agent } = service()
+  it('refuses a model the provider does not serve', async () => {
+    const { service: providers } = service(scripted)
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
     providers.setCredential('local', 'sk-test')
 
-    agent.path = () => ''
-    expect((await providers.test('local', 'a')).message).toContain('No agent is installed')
+    expect((await providers.test('local', 'ghost')).message).toContain('does not serve')
+  })
+
+  it('says why when the provider cannot be reached', async () => {
+    const { service: providers } = service()
+    providers.save({ ...endpoint, baseUrl: 'http://127.0.0.1:9/v1' }) // constraints-ignore 03-product-scope: loopback refuse port, dials nothing
+    providers.saveModels('local', [model('a')])
+    providers.setCredential('local', 'sk-test')
+
+    const answer = await providers.test('local', 'a')
+    expect(answer.ok).toBe(false)
+    expect(answer.message).toContain('did not answer')
   })
 })

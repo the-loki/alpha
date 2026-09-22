@@ -61,8 +61,7 @@ Everything arriving from outside the process — IPC frames, provider HTTP respo
 disk, environment variables — is validated once, at the edge, into a typed value. Past that edge
 the code trusts the type and does not re-check.
 
-Validation uses the schema library the runtime already depends on (TypeBox, via `pi`), not a
-second one.
+Validation uses the schema library the runtime already depends on (TypeBox), not a second one.
 
 **Enforcement:** review. The seam is named per package in [02-architecture.md](./02-architecture.md).
 

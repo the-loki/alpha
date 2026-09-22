@@ -1,114 +1,44 @@
 /**
- * The conversation's own files: reading a conversation that is not running, deleting it, and
- * writing it out as markdown.
- *
- * Reading a conversation means asking the agent to read it, because the session is the agent's:
- * this opens one short-lived agent for the conversation, reads what it is asked for, and closes it
- * again. Nothing here parses a session file, and nothing here writes one.
+ * The conversation's own files, answered by the session store: reading a conversation that is not
+ * running, forking one without disturbing the conversation on screen, and writing it out as
+ * markdown. The store is where a conversation lives now that Alpha owns its sessions, so nothing
+ * here asks an agent for anything.
  */
 
 import { writeFileSync } from 'node:fs'
-import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import {
-  type ChatMessage,
-  type ConversationSummary,
-  EMPTY_USAGE,
-  exportFileName,
-  exportMarkdown,
-  type Undef,
-  type UsageTotals,
-} from '@alpha/core'
-import { AgentRpc } from '../agent-cli/rpc.ts'
-import { agentProcessFor } from './agent-process.ts'
+import { type ChatMessage, type ConversationSummary, exportFileName, exportMarkdown, type Undef } from '@alpha/core'
 import type { DecisionLookup } from './decisions.ts'
-import { SessionReader } from './session-reader.ts'
+import { SessionStore, sessionIdOf } from './sessions.ts'
 
-/** Where the agent is and how it is run, which every read of a resting conversation needs. */
+/**
+ * Where the sessions are, and why a run is refused: the two things the workbench still needs to
+ * know about providers now that the agent is embedded — the sessions root every read goes through,
+ * and the sentence for a missing key (#114). The key itself is answered to the model runtime at
+ * request time, never through this door (C2.4).
+ */
 export interface AgentPorts {
-  /** The agent's program, or nothing when none is installed: then nothing can be read either. */
-  path: () => string
-  /** Alpha's own directory for the agent. */
-  directory: string
-  env: NodeJS.ProcessEnv
   sessionsRoot: string
-  /** The key for a provider, and why there is none when there is none (#114). */
-  credential: (providerId: string) => { env: NodeJS.ProcessEnv; problem?: { message: string } }
+  /** Why there is no key to dial with, when there is none (#114). Absent when there is one. */
+  keyProblem: (providerId: string) => Undef<string>
 }
 
-/** Reading a conversation that is not open: an agent is started for it, and stopped after. */
-async function withAgent<T>(
-  ports: AgentPorts,
-  conversation: ConversationSummary,
-  read: (reader: SessionReader) => Promise<T>,
-  absent: T,
-  decisions?: DecisionLookup,
-): Promise<T> {
-  const command = agentProcessFor({
-    agentPath: ports.path(),
-    agentDirectory: ports.directory,
-    env: ports.env,
-    workspacePath: conversation.workspacePath,
-    sessionsRoot: ports.sessionsRoot,
-    conversationId: conversation.id,
-    sessionId: conversation.sessionId,
-    name: conversation.title,
-    model: conversation.model,
-    credential: ports.credential(conversation.model.providerId).env,
-  })
-  if (command === undefined) return absent
-  const rpc = AgentRpc.open({ file: command.file, args: command.args, cwd: command.cwd, env: command.env })
-  try {
-    return await read(new SessionReader(rpc, decisions))
-  } finally {
-    await rpc.close()
-  }
-}
-
-export async function readSessionTranscript(
-  ports: AgentPorts,
+/** The transcript of a conversation that is not open: the store reads the same file a run wrote. */
+export function readSessionTranscript(
+  store: SessionStore,
   conversation: ConversationSummary,
   decisions?: DecisionLookup,
-): Promise<ChatMessage[]> {
-  return withAgent(ports, conversation, (reader) => reader.transcript(), [], decisions)
-}
-
-/** What a conversation that is not running has spent. */
-export async function readSessionUsage(ports: AgentPorts, conversation: ConversationSummary): Promise<UsageTotals> {
-  return withAgent(ports, conversation, (reader) => reader.usage(), EMPTY_USAGE)
-}
-
-/** Usage for a conversation that has just been opened: live when it runs, read when it does not. */
-export async function usageFor(
-  ports: AgentPorts,
-  conversation: ConversationSummary,
-  runtime?: { usage: () => Promise<UsageTotals> },
-): Promise<UsageTotals> {
-  if (runtime !== undefined) return runtime.usage()
-  return readSessionUsage(ports, conversation)
+): ChatMessage[] {
+  return store.transcript(sessionIdOf(conversation), conversation.workspacePath, decisions)
 }
 
 /**
- * Branches a conversation's session before an entry, on an agent of its own so the conversation
- * that is open is not disturbed. The answer is the id of the copy, which is a session the agent
- * names — a new conversation that continues from there is started with it.
+ * Branches a conversation's session before an entry, without touching the conversation that is
+ * open. The fork is a plain file copy, so it goes through a store of its own over the same root —
+ * what was replaced stays in the session it was written to, and the answer is the copy's id.
  */
-export async function forkSession(
-  ports: AgentPorts,
-  conversation: ConversationSummary,
-  entryId: string,
-): Promise<Undef<string>> {
-  return withAgent(ports, conversation, (reader) => reader.forkAt(entryId), undefined)
-}
-
-/**
- * Takes the session off the disk. A conversation that is deleted is deleted, not hidden — and the
- * file is the agent's, so where it is is asked for rather than worked out.
- */
-export async function deleteSession(ports: AgentPorts, conversation: ConversationSummary): Promise<void> {
-  const file = await withAgent(ports, conversation, (reader) => reader.file(), '')
-  if (file === '') return
-  await rm(file, { force: true })
+export function forkSession(ports: AgentPorts, conversation: ConversationSummary, entryId: string): Undef<string> {
+  return new SessionStore(ports.sessionsRoot).fork(sessionIdOf(conversation), conversation.workspacePath, entryId)
 }
 
 /** Writes the conversation beside its workspace, and answers with where it went. */

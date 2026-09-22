@@ -92,6 +92,25 @@ export class ProviderStore {
     return this.#vault.credential(id)
   }
 
+  /**
+   * Why a run or a test is refused before a provider is asked anything: there is no key to dial
+   * with, in the person's terms rather than the vault's (#114). Nothing to refuse means a key is
+   * there — answered to the model runtime at request time, never spoken here (C2.4).
+   */
+  keyProblem(id: string): Undef<string> {
+    if (this.find(id) === undefined) return `Alpha has no provider called ${id}.`
+    let secret: Undef<string>
+    try {
+      secret = this.credential(id)
+    } catch {
+      return `Alpha could not read the key for ${id}. Enter it again under Settings, Providers.`
+    }
+    if (secret === undefined || secret === '') {
+      return `Alpha has no key for ${id}. Add one under Settings, Providers.`
+    }
+    return undefined
+  }
+
   protection(): CredentialProtection {
     return this.#vault.protection()
   }

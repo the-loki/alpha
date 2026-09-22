@@ -4,7 +4,6 @@
  */
 
 import {
-  type AgentSnapshot,
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
@@ -117,15 +116,6 @@ const bridge: AlphaBridge = {
     const handler = (_event: unknown, rules: PermissionRule[]) => listener(rules)
     ipcRenderer.on(IPC.permissionRulesChanged, handler)
     return () => ipcRenderer.removeListener(IPC.permissionRulesChanged, handler)
-  },
-
-  agentSnapshot: () => ipcRenderer.invoke(IPC.agentSnapshot) as Promise<AgentSnapshot>,
-  setAgentPath: (path: string) => ipcRenderer.invoke(IPC.setAgentPath, path) as Promise<AgentSnapshot>,
-  installAgent: () => ipcRenderer.invoke(IPC.installAgent) as Promise<AgentSnapshot>,
-  onAgentChanged: (listener: (snapshot: AgentSnapshot) => void) => {
-    const handler = (_event: unknown, snapshot: AgentSnapshot) => listener(snapshot)
-    ipcRenderer.on(IPC.agentChanged, handler)
-    return () => ipcRenderer.removeListener(IPC.agentChanged, handler)
   },
 }
 

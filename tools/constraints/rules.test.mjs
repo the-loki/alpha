@@ -431,6 +431,29 @@ describe('02-architecture:renderer-has-no-model-client', () => {
   })
 })
 
+describe('02-architecture:no-agent-dependency', () => {
+  const rule = '02-architecture:no-agent-dependency'
+  const text = 'import { Agent } from "@earendil-works/pi-agent-core"'
+
+  it('flags the agent library in the renderer', () => {
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/a.ts', text))).toHaveLength(1)
+  })
+
+  it('flags it in core', () => {
+    expect(violationsFor(rule, file('packages/core/src/a.ts', text))).toHaveLength(1)
+  })
+
+  it('passes it in the runtime, where the agent lives', () => {
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/a.ts', text))).toEqual([])
+  })
+
+  it('passes a comment that only names the library', () => {
+    expect(
+      violationsFor(rule, file('apps/desktop/src/renderer/a.ts', '// pi-agent-core is main-process only')),
+    ).toEqual([])
+  })
+})
+
 describe('02-architecture:renderer-is-solid', () => {
   const rule = '02-architecture:renderer-is-solid'
 

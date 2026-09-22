@@ -1,5 +1,9 @@
 # Driving the pi coding agent from another process
 
+> **Superseded.** [ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)
+> ended the era this document describes: Alpha embeds the agent instead of driving the `pi` the
+> person installed. What follows is kept as the record of that era, not as the reference it was.
+
 Researched 2026-09-20 from `@earendil-works/pi-coding-agent` **0.86.0**, installed from npm, by
 reading its own documentation and README. Every claim below cites the file inside that package
 (`docs/…`, `README.md`); nothing here comes from the model's memory of similar tools.

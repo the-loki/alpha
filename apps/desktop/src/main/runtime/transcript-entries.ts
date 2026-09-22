@@ -37,6 +37,8 @@ export interface AgentEntryMessage {
   content?: unknown
   stopReason?: string
   toolCallId?: string
+  /** The tool the call named, kept so a session reloaded into an agent replays faithfully. */
+  toolName?: string
   isError?: boolean
   details?: unknown
   timestamp?: number

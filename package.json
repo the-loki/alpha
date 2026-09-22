@@ -1,7 +1,7 @@
 {
   "name": "alpha",
   "version": "0.1.0",
-  "description": "A local-first desktop workbench for a pi agent",
+  "description": "A local-first desktop workbench with its agent embedded",
   "author": "the-loki",
   "private": true,
   "license": "MIT",

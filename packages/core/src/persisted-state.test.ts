@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultLevelFor,
-  emptyAgentSettings,
   emptyNetworkAccess,
   emptyPersistedState,
   type PersistedState,
@@ -31,7 +30,6 @@ const valid = {
   permissionRules: [rule],
   lastConversationId: 'c1',
   network: { enabled: true, port: 4123, bind: 'network', token: 'a-token-kept-across-launches' },
-  agent: { path: '/opt/pi/bin/pi' },
 }
 
 describe('[core] emptyPersistedState', () => {
@@ -41,26 +39,20 @@ describe('[core] emptyPersistedState', () => {
     expect(state.workspace.recents).toEqual([])
     expect(state.permissionLevel).toBe('ask')
     expect(state.permissionRules).toEqual([])
-    // A fresh install opens light, in the accent the app is named after (C5.2).
+    // A fresh install opens light, in the signal accent (C5.2).
     expect(state.theme).toBe('light')
-    expect(state.accent).toBe('ember')
+    expect(state.accent).toBe('iris')
     // And in the language of the machine it is opened on.
     expect(state.language).toBe('system')
     // Browser access is off until it is asked for, and it listens only to this machine (C6.1, C6.2).
     expect(state.network).toEqual({ enabled: false, port: 4123, bind: 'local', token: '' })
-    // The agent is looked for along PATH until somebody says otherwise.
-    expect(state.agent).toEqual({ path: '' })
   })
 
-  it('keeps a path the person set for the agent, and forgets one that is not a path', () => {
-    expect(parsePersistedState(valid).agent).toEqual({ path: '/opt/pi/bin/pi' })
-    expect(parsePersistedState({ ...valid, agent: { path: 7 } }).agent).toEqual(emptyAgentSettings())
-    expect(parsePersistedState({ ...valid, agent: 'somewhere' }).agent).toEqual(emptyAgentSettings())
-  })
-
-  it('gives a file written before Alpha looked for an agent the empty path', () => {
-    const { agent: _dropped, ...older } = valid
-    expect(parsePersistedState(older).agent).toEqual(emptyAgentSettings())
+  it('parses a file that still carries the retired agent path, and ignores the key', () => {
+    // The RPC era wrote `agent: { path }` into this file; Alpha ships its agent now, and an old
+    // key must cost nothing — not the workspace, not the level, not the whole file.
+    const older = { ...valid, agent: { path: '/opt/pi/bin/pi' } }
+    expect(parsePersistedState(older)).toEqual(parsePersistedState(valid))
   })
 
   it('gives a file written before browser access existed the off default', () => {
@@ -119,7 +111,6 @@ describe('[core] parsePersistedState', () => {
       language: 'system',
       lastConversationId: '',
       network: emptyNetworkAccess(),
-      agent: emptyAgentSettings(),
     }
     expect(parsePersistedState(fresh)).toEqual(fresh)
   })

@@ -1,11 +1,11 @@
 /**
  * The conversations that are open, and the index of the ones that are not. One runtime per open
- * conversation — one agent process each — and everything else is read from the index file, so the
- * sidebar costs one read.
+ * conversation — one embedded agent each (ADR-0025) — and everything else is read from the index
+ * file, so the sidebar costs one read.
  *
- * The manager also owns the bookkeeping the window should not have to do: a conversation takes
- * its title from the user's first message, its status follows the run, and its model is the
- * configured default until the user picks another.
+ * The manager also owns the bookkeeping the window should not have to do: a conversation takes its
+ * title from the user's first message, its status follows the run, and its model is the configured
+ * default until the user picks another.
  */
 
 import {
@@ -23,43 +23,49 @@ import {
   type RuntimeEvent,
   type ThinkingLevel,
 } from '@alpha/core'
+import type { CompactionSettings } from '@earendil-works/pi-agent-core'
+import type { Models } from '@earendil-works/pi-ai'
 import type { ProviderStore } from '../providers/store.ts'
 import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
+import { openRuntime } from './assemble-runtime.ts'
 import { ConversationBookkeeper, DEFAULT_TITLE, NO_MODEL, newConversation } from './bookkeeping.ts'
-import type { ConversationRuntime, PermissionPorts } from './conversation-runtime.ts'
+import type { ConversationRuntime } from './conversation-runtime.ts'
 import { DecisionLog } from './decisions.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { defaultModel, describeRuntime, modelFor, refusesPictures } from './models.ts'
-import { type OpeningPorts, tryOpen } from './opening.ts'
-import { createPermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
+import { createPermissionPorts, type PermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
 import { QueueRunner } from './queue.ts'
-import {
-  type AgentPorts,
-  deleteSession,
-  readSessionTranscript,
-  usageFor,
-  writeSessionMarkdown,
-} from './session-files.ts'
+import { type AgentPorts, readSessionTranscript, writeSessionMarkdown } from './session-files.ts'
+import { SessionStore, sessionIdOf } from './sessions.ts'
 import { UnattendedRuns } from './unattended.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string
   sessionsRoot: string
   providers: ProviderStore
-  /** Where the agent is and how it is run: the same answers every part of the runtime needs. */
+  /** Where the sessions are and how a key is answered: the slim shape the embedded agent needs. */
   agent: AgentPorts
   /** The remembered level and the rules the user has stopped wanting to be asked about. */
   store: StateStore
+  /** Builds the model runtime an open conversation dials with; tests script one. */
+  models?: () => Models
+  /** The compaction thresholds and retry backoff, when the caller shrinks them; tests do. */
+  compactionSettings?: CompactionSettings
+  retryDelays?: number[]
   emit: (event: RuntimeEvent) => void
   /** Told when the rules change, so a settings page that is open can follow along. */
   emitRules: (rules: PermissionRule[]) => void
 }
 
+/** The sentence for a conversation whose model is gone, in the style of the other refusals. */
+const NO_MODEL_REFUSAL = 'No model is configured for this conversation. Choose one under Settings, Models.'
+
 export class RuntimeManager {
   readonly #options: RuntimeManagerOptions
   readonly #books: ConversationBookkeeper
+  readonly #sessions: SessionStore
   readonly #open = new Map<string, ConversationRuntime>()
   readonly #approvals: ApprovalBroker
   readonly #decisions: DecisionLog
@@ -71,6 +77,7 @@ export class RuntimeManager {
   constructor(options: RuntimeManagerOptions) {
     this.#options = options
     this.#books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
+    this.#sessions = new SessionStore(options.sessionsRoot)
     this.#approvals = new ApprovalBroker({ emit: options.emit })
     this.#decisions = new DecisionLog(options.dataDirectory)
     this.#queue = new QueueRunner({
@@ -110,12 +117,7 @@ export class RuntimeManager {
       permissionLevel: defaultLevelFor(this.#options.store.read(), workspacePath),
       model: this.#startingModel(),
     })
-    const runtime = tryOpen(this.#openingPorts(), {
-      conversationId: conversation.id,
-      conversation,
-      model: defaultModel(this.#options.providers),
-    })
-    if (runtime !== undefined) this.#open.set(conversation.id, runtime)
+    await this.#launch(conversation)
     this.#books.upsert(conversation)
     this.#options.store.rememberConversation(conversation.id)
 
@@ -131,29 +133,23 @@ export class RuntimeManager {
       return { conversation, messages: await existing.transcript(), usage: await existing.usage() }
     }
 
-    const runtime = tryOpen(this.#openingPorts(), {
-      conversationId: id,
-      conversation,
-      model: modelFor(this.#options.providers, conversation),
-    })
-    if (runtime !== undefined) this.#open.set(id, runtime)
+    const runtime = await this.#launch(conversation)
     if (conversation.title !== DEFAULT_TITLE) this.#books.markNamed(id)
 
-    return {
-      conversation,
-      messages: await this.transcriptFor(id),
-      usage: await usageFor(this.#options.agent, conversation, runtime),
-    }
+    return { conversation, messages: await runtime.transcript(), usage: await runtime.usage() }
   }
 
   /**
    * Runs one turn with nobody watching (a scheduled task, ADR-0012) and answers with what the gate
    * had to refuse. A run started by hand is attended: whoever pressed "run now" is right there.
+   * The run is waited out here, because a refusal only happens while the run is in flight — the
+   * watching ends when the run does, or the count would always be zero.
    */
   async runUnattended(id: string, text: string): Promise<number> {
     this.#unattended.start(id)
     try {
       await this.prompt(id, text)
+      await (await this.#openFor(id)).settle()
     } catch (error) {
       // A run that threw still stops being watched, and the caller hears about the failure.
       this.#unattended.finish(id)
@@ -164,11 +160,14 @@ export class RuntimeManager {
 
   async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
     const conversation = this.#requireConversation(id)
+    // No model to dial is refused here rather than failed mid-run: a conversation that cannot run
+    // says so before the person waits for a turn that never starts.
+    const model = modelFor(this.#options.providers, conversation)
+    if (model === undefined) throw new Error(NO_MODEL_REFUSAL)
     // A credential Alpha cannot read is reported as such, and the run is refused before the agent
     // is asked: a turn that fails at its first token is a worse answer than a sentence (#114).
-    const model = modelFor(this.#options.providers, conversation)
-    const key = model === undefined ? undefined : this.#options.agent.credential(model.providerId)
-    if (key?.problem !== undefined) throw new Error(key.problem.message)
+    const problem = this.#options.agent.keyProblem(model.providerId)
+    if (problem !== undefined) throw new Error(problem)
     // The last word on whether a picture may go: an agent handed a picture its model cannot read
     // answers about something it never saw, and a turn that refuses is better than that (ADR-0018).
     if ((attachments?.length ?? 0) > 0 && refusesPictures(this.#options.providers, conversation.model)) {
@@ -181,6 +180,14 @@ export class RuntimeManager {
 
   async steer(id: string, text: string): Promise<void> {
     await (await this.#openFor(id)).steer(text)
+  }
+
+  /**
+   * Compacting the conversation now, whatever the threshold says (ADR-0025). The answer says
+   * whether a compaction happened: a conversation with nothing to summarize is a no, not an error.
+   */
+  async compactConversation(id: string): Promise<boolean> {
+    return (await this.#openFor(id)).compact()
   }
 
   /**
@@ -223,10 +230,6 @@ export class RuntimeManager {
     return opened
   }
 
-  async compactConversation(id: string): Promise<boolean> {
-    return (await this.#openFor(id)).compact()
-  }
-
   async abort(id: string): Promise<void> {
     // An aborted run leaves nothing to decide, and a promise nobody will answer is a hang.
     this.#approvals.abandon(id, 'The run was stopped before this call was answered.')
@@ -260,7 +263,7 @@ export class RuntimeManager {
       await runtime.close()
       this.#open.delete(id)
     }
-    await deleteSession(this.#options.agent, conversation)
+    this.#sessions.remove(sessionIdOf(conversation), conversation.workspacePath)
     this.#decisions.forget(id)
     this.#queue.forget(id)
     this.#books.forget(id)
@@ -279,7 +282,7 @@ export class RuntimeManager {
     const runtime = this.#open.get(id)
     if (runtime !== undefined) return runtime.transcript()
     const conversation = this.#requireConversation(id)
-    return readSessionTranscript(this.#options.agent, conversation, this.#decisions.opened(id))
+    return readSessionTranscript(this.#sessions, conversation, this.#decisions.opened(id))
   }
 
   /**
@@ -352,7 +355,7 @@ export class RuntimeManager {
     if (open !== undefined) return open
     await this.open(id)
     const opened = this.#open.get(id)
-    if (opened === undefined) throw new Error('No agent is installed, so this conversation cannot run.')
+    if (opened === undefined) throw new Error(`No conversation ${id}`)
     return opened
   }
 
@@ -362,21 +365,36 @@ export class RuntimeManager {
     return conversation
   }
 
+  /** Where a new conversation starts, and what it is named while it has no name of its own. */
+  #startingModel(): ConversationSummary['model'] {
+    return defaultModel(this.#options.providers) ?? NO_MODEL
+  }
+
+  /** Opens a conversation's runtime, or returns the one already open. */
+  async #launch(conversation: ConversationSummary): Promise<ConversationRuntime> {
+    const runtime = await openRuntime({
+      conversation,
+      sessions: this.#sessions,
+      sessionsRoot: this.#options.sessionsRoot,
+      providers: this.#options.providers,
+      models: this.#options.models,
+      compactionSettings: this.#options.compactionSettings,
+      retryDelays: this.#options.retryDelays,
+      decisions: this.#decisions.opened(conversation.id),
+      permissions: () => this.#permissionPorts(),
+      emit: (event) => this.#observe(event),
+    })
+    this.#open.set(conversation.id, runtime)
+    return runtime
+  }
+
   /** A question nobody is there to answer becomes a refusal, or a card when somebody is. */
   #askOrRefuse(id: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
     const refusal = this.#unattended.refuse(id)
     return refusal === undefined ? this.#approvals.ask(id, ask) : Promise.resolve(refusal)
   }
 
-  #openingPorts(): OpeningPorts {
-    return {
-      agent: this.#options.agent,
-      decisions: this.#decisions,
-      permissions: () => this.#permissionPorts(),
-      emit: (event) => this.#observe(event),
-    }
-  }
-
+  /** The gate's ports over the workbench: the level in force, the rules, and the person to ask. */
   #permissionPorts(): PermissionPorts {
     return createPermissionPorts({
       store: this.#options.store,
@@ -384,10 +402,5 @@ export class RuntimeManager {
       ask: (id, ask) => this.#askOrRefuse(id, ask),
       changed: this.#options.emitRules,
     })
-  }
-
-  /** Where a new conversation starts, and what it is named while it has no name of its own. */
-  #startingModel(): ConversationSummary['model'] {
-    return defaultModel(this.#options.providers) ?? NO_MODEL
   }
 }

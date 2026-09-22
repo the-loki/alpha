@@ -12,6 +12,10 @@ session store and the model client that went with it. That build is gone. What s
 agent runs — the main process — and why: credentials and filesystem access stay out of the web
 context, and the renderer reaches the agent only through the IPC contract.
 
+[ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) retired the child-process
+half described below: the agent is a library Alpha embeds again, in the same main process. The half
+that stands is the process; the `pi` on the person's machine is no longer party to it.
+
 ## Context
 
 Two shapes were available once Alpha stopped embedding an agent. Ship one (a package Alpha

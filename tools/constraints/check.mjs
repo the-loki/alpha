@@ -15,6 +15,7 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const SKIP_DIRS = new Set([
   'node_modules',
   '.git',
+  '.venv',
   'out',
   'dist',
   'release',

@@ -1,18 +1,17 @@
 # 02 — Architecture
 
-## C2.0 — The agent is a program Alpha runs, not a library Alpha links
+## C2.0 — The agent is a library Alpha links, and it links into main alone
 
-Alpha ships **no agent**. A conversation is a child process — the `pi` the person installed, found
-through Settings and driven over its RPC protocol ([ADR-0001](../adr/0001-agent-runtime-in-main-process.md)).
-No package depends on a pi package, and nothing under `apps/desktop/src` or `packages/*/src` parses
-a session file, speaks a provider's wire, or implements a tool. What Alpha keeps of its own is the
-gate it writes as an extension, the `models.json` it writes for the agent to read, the conversation
-list, and the credentials.
+A conversation is an in-process agent session: Alpha embeds `@earendil-works/pi-agent-core` in the
+main process and builds each run on it ([ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)).
+There is no child process to find, install or keep alive, and no package of Alpha's ships a CLI.
+What Alpha builds on top of the library is its own: the plugin base the agent is assembled from,
+the gate, the session store, the conversation list, and the credentials. The window and `core`
+never import a pi package — they reach the agent through the contract, and so does everything else.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:no-agent-dependency` fails on an
 import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
-`apps/desktop/src` or `packages/*/src`. The install command Alpha offers is a string, not an
-import, and is exempt by being a string.
+`apps/desktop/src` except `main`, and anywhere under `packages/*/src`.
 
 ## C2.1 — One workbench, one library, one direction
 
@@ -76,13 +75,14 @@ The window is drawn by Solid (ADR-0021), and that is a boundary too: rule
 `02-architecture:renderer-is-solid` fails on a React, TanStack, zustand or react-markdown import
 under `apps/desktop/src/renderer/`, so the framework cannot creep back one file at a time.
 
-## C2.4 — A key goes from the vault to the agent's environment, and nowhere else
+## C2.4 — A key goes from the vault to the model runtime, and nowhere else
 
-A credential is read from encrypted storage inside `main` and handed to the agent as an
-environment variable named for one provider, for one conversation. It never crosses the IPC
-boundary in plaintext: the renderer may learn *that* a credential exists, and may send a new one
-*to* be stored, never read one back. Nor is it written into a file — the agent's `models.json`
-names the variable, and the key itself travels only in the environment of the process that dials.
+A credential is read from encrypted storage inside `main` and handed to the model runtime in
+memory, as the answer to an auth question asked at request time. It never crosses the IPC boundary
+in plaintext: the renderer may learn *that* a credential exists, and may send a new one *to* be
+stored, never read one back. Nor is it written into a file or an environment variable — there is
+no second process to hand it to, and a secret that sits in a file or an env line outlives the run
+that needed it.
 
 **Enforcement:** `pnpm check:constraints` fails if any renderer file reads a field whose name
 matches `/apiKey|secret|credential/i` off a provider payload; review covers the rest.

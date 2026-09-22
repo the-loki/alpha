@@ -374,18 +374,19 @@ export const RULES = [
   {
     id: '02-architecture:no-agent-dependency',
     constraint: '02-architecture.md',
-    description: 'the agent is a program Alpha runs, not a library it links',
+    description: 'the agent library links into main alone; the window and core stay clear of it',
     check({ path, text }) {
       if (!isSource(path) || !path.includes('/src/')) return []
+      // The runtime is where the agent lives now (ADR-0025); everywhere else the contract is the door.
+      if (path.startsWith('apps/desktop/src/main/')) return []
       const found = []
       text.split('\n').forEach((line, index) => {
-        // A string may name the package Alpha tells the person to install; an import may not.
         if (isComment(line) || line.includes('npm install')) return
         for (const specifier of importSpecifiers(line)) {
           if (specifier.startsWith('@earendil-works/') || /^pi-(agent-core|ai)$/.test(specifier)) {
             found.push({
               line: index + 1,
-              message: 'Alpha drives an agent it does not depend on: no pi package in the source',
+              message: 'the agent library is main-process only: reach it through the runtime or the contract',
               text: line.trim(),
             })
           }
