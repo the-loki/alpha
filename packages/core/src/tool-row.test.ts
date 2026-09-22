@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { exitCodeFromText, outputTextOf, summarizeToolCall, toolDetails, toolOutcomeOf, toolRowOf } from './tool-row.ts'
+import {
+  emptyAnswerIsEvidence,
+  exitCodeFromText,
+  outputTextOf,
+  patchToolRow,
+  summarizeToolCall,
+  toolDetails,
+  toolOutcomeOf,
+  toolRowOf,
+} from './tool-row.ts'
+import type { ChatBlockTool } from './runtime-events.ts'
+
+describe('[core] patchToolRow', () => {
+  const row = (callId: string): ChatBlockTool => toolRowOf({ callId, name: 'bash', args: {} }, 1)
+  const text = { kind: 'text' as const, text: 'hi' }
+
+  it('answers with new blocks where the row the call created stands', () => {
+    const blocks = patchToolRow([text, row('a')], 'a', (block) => ({ ...block, output: 'out', status: 'ok' as const }))
+    expect(blocks?.[1]).toMatchObject({ callId: 'a', output: 'out', status: 'ok' })
+    expect(blocks?.[0]).toEqual(text)
+  })
+
+  it('answers with nothing when no row carries the call', () => {
+    expect(patchToolRow([text], 'missing', (block) => block)).toBeUndefined()
+  })
+})
+
+describe('[core] emptyAnswerIsEvidence', () => {
+  it('keeps an empty answer only when it failed or was stopped', () => {
+    expect(emptyAnswerIsEvidence(false, false)).toBe(false)
+    expect(emptyAnswerIsEvidence(true, false)).toBe(true)
+    expect(emptyAnswerIsEvidence(false, true)).toBe(true)
+  })
+})
 
 describe('[core] summarizeToolCall', () => {
   it('names the file for the tools that work on one', () => {

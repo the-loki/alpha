@@ -7,7 +7,7 @@
  * thing keeping those three honest is that they ask these functions for the parts.
  */
 import type { Undef } from './maybe.ts'
-import type { ApprovalRecord, ChatBlockTool, ToolDetails } from './runtime-events.ts'
+import type { ApprovalRecord, ChatBlock, ChatBlockTool, ToolDetails } from './runtime-events.ts'
 import { toolRiskOf } from './tools.ts'
 
 const SUMMARY_LIMIT = 80
@@ -119,4 +119,32 @@ export function toolOutcomeOf(
     output,
     details: toolDetails(name, result.details, output),
   }
+}
+
+/**
+ * The result of a call lands on the row the call created, wherever that row stands in the message
+ * it belongs to. Answers with the new blocks, or with nothing when no row in them carries the call
+ * — the live reducer and the read-back interpreter ask here, so the one placement rule cannot
+ * drift between them.
+ */
+export function patchToolRow(
+  blocks: ChatBlock[],
+  callId: string,
+  change: (block: ChatBlockTool) => ChatBlockTool,
+): Undef<ChatBlock[]> {
+  const index = blocks.findIndex((block) => block.kind === 'tool' && block.callId === callId)
+  const block = index === -1 ? undefined : blocks[index]
+  if (block === undefined || block.kind !== 'tool') return undefined
+  const patched = [...blocks]
+  patched[index] = change(block)
+  return patched
+}
+
+/**
+ * An answer that carried nothing is not a message — unless it failed or was stopped, where the
+ * empty state is itself the evidence. The live reducer and the read-back interpreter apply this
+ * one rule when deciding whether an empty answer is a row at all.
+ */
+export function emptyAnswerIsEvidence(failed: boolean, interrupted: boolean): boolean {
+  return failed || interrupted
 }

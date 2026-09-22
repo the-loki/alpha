@@ -9,8 +9,10 @@ import {
   type ChatBlock,
   type ChatBlockTool,
   type ChatMessage,
+  emptyAnswerIsEvidence,
   listOf,
   type Null,
+  patchToolRow,
   toolOutcomeOf,
   toolRowOf,
   userBlocksOf,
@@ -66,17 +68,17 @@ function toolBlockOf(part: unknown, timestamp: number, decisions: DecisionLookup
   return toolRowOf({ callId, name, args: call.arguments ?? {}, approval: decisions.get(callId) }, timestamp)
 }
 
-/** The result of a call lands on the row the call created, wherever that row is. */
+/** The result of a call lands on the row the call created, wherever that row is — the shared
+ * placement rule in core, applied to the list being read back. */
 function finishTool(messages: ChatMessage[], result: ToolResultContent): void {
   for (const message of messages) {
-    const index = message.blocks.findIndex((block) => block.kind === 'tool' && block.callId === result.toolCallId)
-    if (index === -1) continue
-    const block = message.blocks[index] as ChatBlockTool
-    message.blocks[index] = {
+    const blocks = patchToolRow(message.blocks, result.toolCallId, (block) => ({
       ...block,
       ...toolOutcomeOf(block.name, { ...result, isError: result.isError === true }),
       endedAt: result.timestamp,
-    }
+    }))
+    if (blocks === undefined) continue
+    message.blocks = blocks
     return
   }
 }
@@ -119,9 +121,9 @@ export function entriesToMessages(entries: AgentEntry[], decisions: DecisionLook
       const interrupted = message.stopReason === 'aborted'
       const failed = message.stopReason === 'error'
       const blocks = blocksOf(listOf(message.content), at(entry.timestamp), decisions)
-      // An answer that carried nothing is not a message — unless it failed, where the failure
-      // itself is what the row says (the same rule the live reducer applies).
-      if (blocks.length === 0 && !failed && !interrupted) continue
+      // An empty answer is a row only when it is evidence: the one rule the live reducer applies
+      // too, and it lives in core so the two cannot drift.
+      if (blocks.length === 0 && !emptyAnswerIsEvidence(failed, interrupted)) continue
       messages.push({
         id: entry.id,
         role: 'assistant',

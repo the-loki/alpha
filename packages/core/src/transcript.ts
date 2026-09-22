@@ -17,7 +17,7 @@ import type {
   QueuedMessage,
   RuntimeEvent,
 } from './runtime-events.ts'
-import { toolRowOf } from './tool-row.ts'
+import { emptyAnswerIsEvidence, patchToolRow, toolRowOf } from './tool-row.ts'
 import { addUsage, EMPTY_USAGE, type UsageTotals } from './usage.ts'
 
 /** One turn's spending, in the order the turns happened. */
@@ -267,30 +267,28 @@ function failRun(state: TranscriptState, message: string): TranscriptState {
 
 /**
  * A tool row belongs to the assistant message that asked for the call. That message may still be
- * streaming or may already have moved into the transcript, so the search covers both.
+ * streaming or may already have moved into the transcript, so the search covers both. The
+ * placement itself is the shared rule in tool-row.
  */
 function mapToolBlocks(
   state: TranscriptState,
   callId: string,
   change: (block: ChatBlockTool) => ChatBlockTool,
 ): TranscriptState {
-  const isTool = (block: ChatBlock) => block.kind === 'tool' && block.callId === callId
-  const holdsRow = (message: ChatMessage): boolean => message.blocks.some(isTool)
-  const patch = (message: ChatMessage): ChatMessage => {
-    const index = message.blocks.findIndex(isTool)
-    const block = index === -1 ? undefined : message.blocks[index]
-    if (block === undefined || block.kind !== 'tool') return message
-    const blocks = [...message.blocks]
-    blocks[index] = change(block)
-    return { ...message, blocks }
+  const streaming = state.streaming
+  if (streaming !== undefined) {
+    const blocks = patchToolRow(streaming.blocks, callId, change)
+    if (blocks !== undefined) return { ...state, streaming: { ...streaming, blocks } }
   }
 
-  const streaming = state.streaming
-  if (streaming !== undefined && holdsRow(streaming)) {
-    return { ...state, streaming: patch(streaming) }
-  }
-  if (!state.messages.some(holdsRow)) return state
-  return { ...state, messages: state.messages.map((message) => patch(message)) }
+  let holds = false
+  const messages = state.messages.map((message) => {
+    const blocks = patchToolRow(message.blocks, callId, change)
+    if (blocks === undefined) return message
+    holds = true
+    return { ...message, blocks }
+  })
+  return holds ? { ...state, messages } : state
 }
 
 function appendDelta(
@@ -320,9 +318,11 @@ function appendDelta(
 function finishStreaming(state: TranscriptState, interrupted: boolean): TranscriptState {
   const streaming = state.streaming
   if (streaming === undefined) return state
-  // An answer that carried nothing and ended as it began is not a message: the empty shell would
-  // be an empty row. A stop keeps even an empty one, because the marker is the evidence.
-  if (streaming.blocks.length === 0 && !interrupted) return { ...state, streaming: undefined }
+  // An empty answer is a row only when it is evidence — a stop, here; a failure is run_failed's
+  // own answer below. The rule is the read-back's too, and it lives in tool-row.
+  if (streaming.blocks.length === 0 && !emptyAnswerIsEvidence(false, interrupted)) {
+    return { ...state, streaming: undefined }
+  }
   const finished: ChatMessage = { ...streaming, status: interrupted ? 'interrupted' : 'complete' }
   return { ...state, messages: [...state.messages, finished], streaming: undefined }
 }
