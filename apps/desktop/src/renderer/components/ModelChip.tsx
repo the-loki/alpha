@@ -1,7 +1,7 @@
 import type { ConversationModel } from '@alpha/core'
 import { createSignal, For, onMount, Show } from 'solid-js'
-import { conversationActions, conversations } from '../stores/conversations.ts'
-import { providerActions, providers, runningModel } from '../stores/providers.ts'
+import { inConversation, runningModel, setRunningModel } from '../stores/next-message.ts'
+import { providerActions, providers } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
 import {
   CHIP_QUIET,
@@ -19,18 +19,15 @@ import { SCROLLS } from './ledger.ts'
 const CHIP = `${CHIP_SHAPE} max-w-56 ${CHIP_QUIET}`
 
 /**
- * Which model the next message runs on, at the foot of the composer beside the send control.
- *
- * It follows the level chip's rule, because the two are the same kind of thing: with a
- * conversation open it changes *that conversation's* model, and with none open it chooses what new
- * conversations start on. The name is the model's own, since that is what the user recognises, and
- * the provider is the group it sits under in the menu.
+ * Which model the next message runs on, at the foot of the composer beside the send control. The
+ * name is the model's own, since that is what the user recognises, and the provider is the group it
+ * sits under in the menu. What it names, and what a change to it means, is the next-message rule —
+ * not this chip's.
  */
 export function ModelChip() {
   const t = useText()
   const [open, setOpen] = createSignal(false)
   let container!: HTMLDivElement
-  const inConversation = () => conversations.activeId !== '' && conversations.transcript.summary !== undefined
 
   onMount(() => {
     void providerActions.load()
@@ -49,10 +46,9 @@ export function ModelChip() {
       ? t('model.noneHint')
       : t(inConversation() ? 'model.chipTitleHere' : 'model.chipTitleDefault', { model: name })
   }
-  const choose = async (next: ConversationModel) => {
+  const choose = (next: ConversationModel) => {
     setOpen(false)
-    if (inConversation()) await conversationActions.setModel(next.providerId, next.modelId)
-    else await providerActions.setDefaultModel(next)
+    void setRunningModel(next)
   }
 
   return (

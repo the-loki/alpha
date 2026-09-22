@@ -1,7 +1,7 @@
-import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS, type PermissionLevel } from '@alpha/core'
+import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/core'
 import { createSignal, For, Show } from 'solid-js'
-import { conversationActions, conversations } from '../stores/conversations.ts'
-import { shell, shellActions, useText } from '../stores/shell.ts'
+import { inConversation, nextLevel, setNextLevel } from '../stores/next-message.ts'
+import { useText } from '../stores/shell.ts'
 import {
   CHIP,
   DOT_CLASS,
@@ -19,24 +19,12 @@ import { CheckIcon } from './icons.tsx'
  * typed is allowed to do, next to the message. Colour distinguishes the levels, but the label is
  * what carries the meaning, so the chip still reads for someone who cannot tell danger from success.
  *
- * With a conversation open the chip changes *that conversation's* level, and it shows that
- * conversation's level — a transcript and the level it ran under belong together. With no
- * conversation open it changes the folder's default, which is the level the next conversation
- * starts at.
+ * What it names, and what a change to it means, is the next-message rule — not this chip's.
  */
 export function LevelChip() {
   const t = useText()
   const [open, setOpen] = createSignal(false)
   let container!: HTMLDivElement
-  const inConversation = () => conversations.activeId !== '' && conversations.transcript.summary !== undefined
-  const level = (): PermissionLevel => {
-    const summary = conversations.transcript.summary
-    return conversations.activeId !== '' && summary !== undefined ? summary.permissionLevel : shell.workspaceLevel
-  }
-  const setPermissionLevel = async (next: PermissionLevel) => {
-    if (inConversation()) await conversationActions.setLevel(next)
-    else await shellActions.setPermissionLevel(next)
-  }
 
   useDismissed(
     open,
@@ -44,7 +32,7 @@ export function LevelChip() {
     () => container,
   )
 
-  const tone = () => levelTone(level())
+  const tone = () => levelTone(nextLevel())
   return (
     <div class="relative no-drag" ref={container}>
       <button
@@ -53,14 +41,14 @@ export function LevelChip() {
         aria-expanded={open()}
         title={
           inConversation()
-            ? t('level.chipTitleHere', { description: t(levelDescriptionKey(level())) })
+            ? t('level.chipTitleHere', { description: t(levelDescriptionKey(nextLevel())) })
             : t('level.chipTitle')
         }
         onClick={() => setOpen((value) => !value)}
         class={`${CHIP} text-label transition-colors duration-normal ${TONE_CLASS[tone()]} ${TONE_HOVER[tone()]}`}
       >
         <span class={`h-1.5 w-1.5 ${DOT_CLASS[tone()]}`} aria-hidden="true" />
-        {t(levelKey(level()))}
+        {t(levelKey(nextLevel()))}
       </button>
 
       <Show when={open()}>
@@ -77,13 +65,13 @@ export function LevelChip() {
               <button
                 type="button"
                 role="menuitemradio"
-                aria-checked={candidate === level()}
+                aria-checked={candidate === nextLevel()}
                 onClick={() => {
-                  void setPermissionLevel(candidate)
+                  void setNextLevel(candidate)
                   setOpen(false)
                 }}
                 class={`block w-full px-3 py-2 text-left transition-colors duration-normal ${
-                  candidate === level() ? MENU_ROW_CURRENT : MENU_ROW_HOVER
+                  candidate === nextLevel() ? MENU_ROW_CURRENT : MENU_ROW_HOVER
                 }`}
               >
                 <span class="flex items-center gap-2 font-text text-name text-foreground">
@@ -91,7 +79,7 @@ export function LevelChip() {
                   {t(levelKey(candidate))}
                   {/* The mark of the one in force, in the place every menu in the app puts it: the
                       dot says which level it is, the check says that it is the one being used. */}
-                  <CheckIcon class={`ml-auto ${candidate === level() ? 'text-accent' : 'invisible'}`} />
+                  <CheckIcon class={`ml-auto ${candidate === nextLevel() ? 'text-accent' : 'invisible'}`} />
                 </span>
                 <span class="mt-0.5 block font-mono text-xs leading-snug text-faint">
                   {t(levelDescriptionKey(candidate))}

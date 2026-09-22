@@ -90,7 +90,10 @@ test('every menu closes the way every menu does', async () => {
   await expect(modelMenu).toHaveCount(0)
 
   // The row's own menu, from its ⋯, is the same kind of thing: Escape and outside.
-  await window.getByRole('button', { name: /^open a menu on my row/ }).first().hover()
+  await window
+    .getByRole('button', { name: /^open a menu on my row/ })
+    .first()
+    .hover()
   await window.getByRole('button', { name: 'Actions for open a menu on my row' }).click()
   const actions = window.getByRole('menu', { name: 'Actions for open a menu on my row' })
   await expect(actions).toBeVisible()
