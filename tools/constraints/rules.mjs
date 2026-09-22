@@ -17,7 +17,7 @@ const isTs = (path) => /\.tsx?$/.test(path)
 const isDeclaration = (path) => /\.d\.ts$/.test(path)
 const isTest = (path) => /\.(test|spec)\.[cm]?tsx?$/.test(path)
 const isCheckerSource = (path) => path.startsWith('tools/constraints/')
-/** Machine-written tables: the dictionary, which has one line per string and no thoughts to fit. */
+/** Hand-written, and exempt on purpose: the dictionary grows as one table per language, and splitting it would cost more than the budget it borrows. */
 const isGenerated = (path) => /^packages\/core\/src\/i18n(\/|\/i18n\.ts)/.test(path)
 
 const stripStrings = (line) =>
