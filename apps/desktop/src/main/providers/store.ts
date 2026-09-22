@@ -10,6 +10,7 @@ import {
   defaultModelOf,
   effectiveModelOf,
   emptyProviderIndex,
+  type ModelIndex,
   type ProviderIndex,
   type ProviderModelDefinition,
   type ProviderView,
@@ -41,6 +42,11 @@ export class ProviderStore {
 
   find(id: string): Undef<StoredProvider> {
     return this.#index.providers.find((provider) => provider.id === id)
+  }
+
+  /** The two facts every model rule reads, in the shape core's rules take them. */
+  index(): ModelIndex {
+    return this.#index
   }
 
   save(provider: StoredProvider): void {

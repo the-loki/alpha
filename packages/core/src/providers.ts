@@ -273,7 +273,12 @@ export function definitionOf(index: ModelIndex, chosen: Undef<ConversationModel>
   return provider?.models.find((model) => model.id === chosen.modelId)
 }
 
-function servesModel(index: ModelIndex, chosen: ConversationModel): boolean {
+/**
+ * Whether the index still serves this exact model — the one guard every writer checks before it
+ * writes a choice and every reader checks before it trusts one. Main asks it of its own store
+ * through the same function, so there is one rule and two callers.
+ */
+export function servesModel(index: ModelIndex, chosen: ConversationModel): boolean {
   const provider = index.providers.find((candidate) => candidate.id === chosen.providerId)
   return provider?.models.some((model) => model.id === chosen.modelId) === true
 }

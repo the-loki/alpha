@@ -9,22 +9,15 @@ import type { LanguageSetting } from './i18n.ts'
 import type { Undef } from './maybe.ts'
 import type { PermissionLevel, PermissionRule } from './permission.ts'
 import type { NetworkBind, Theme } from './persisted-state.ts'
-import type { ProviderInput, ProviderView } from './providers.ts'
+import type { ProviderInput, ProviderModelDefinition, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationModel, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ScheduledTask } from './task.ts'
 import type { TasksSnapshot } from './tasks-snapshot.ts'
 import type { ThinkingLevel } from './thinking.ts'
 import type { UsageTotals } from './usage.ts'
 
-/** A model as the models panel sends it, before the boundary reads the fields one by one. */
-export interface ProviderModelInput {
-  id: string
-  name: string
-  contextWindow: number
-  maxTokens: number
-  reasoning: boolean
-  images: boolean
-}
+/** A model as the models panel sends it — the same shape it is stored as. */
+export type ProviderModelInput = ProviderModelDefinition
 
 /** Which model new conversations start on. Absent clears the choice, so the first model wins. */
 export type DefaultModelInput = Undef<ConversationModel>

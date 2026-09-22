@@ -11,6 +11,7 @@ import {
   parseProviders,
   readModels,
   readProvider,
+  servesModel,
 } from './providers.ts'
 
 const model = {
@@ -238,5 +239,14 @@ describe('[core] defaultModelOf', () => {
       defaultModelOf({ ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'deleted' } }),
     ).toBeUndefined()
     expect(defaultModelOf({ ...stored, defaultModel: { providerId: 'gone', modelId: 'local-7b' } })).toBeUndefined()
+  })
+})
+
+describe('[core] servesModel', () => {
+  it('says yes only when a provider on the index serves the exact model', () => {
+    const index = { ...stored, defaultModel: undefined }
+    expect(servesModel(index, { providerId: 'my-endpoint', modelId: 'local-7b' })).toBe(true)
+    expect(servesModel(index, { providerId: 'my-endpoint', modelId: 'local-70b' })).toBe(false)
+    expect(servesModel(index, { providerId: 'gone', modelId: 'local-7b' })).toBe(false)
   })
 })

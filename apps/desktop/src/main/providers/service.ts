@@ -17,10 +17,10 @@
 import {
   type ConversationModel,
   credentialRequirement,
-  type ProviderModelDefinition,
-  type ProviderView,
+  type ProvidersSnapshotMessage,
   readModels,
   readProvider,
+  servesModel,
   type StoredProvider,
   type Undef,
 } from '@alpha/core'
@@ -28,15 +28,8 @@ import type { Api, AssistantMessage, Context, Model, Models, TextContent } from 
 import { createModelRuntime } from '../runtime/model-runtime.ts'
 import type { ProviderStore } from './store.ts'
 
-export interface ProvidersSnapshot {
-  providers: ProviderView[]
-  /** 'plaintext' means the OS gave us no keychain and the UI must say so. */
-  protection: 'os' | 'plaintext'
-  /** What a new conversation starts on: the choice below, or the first model there is. */
-  defaultModel?: ConversationModel
-  /** The model the user chose for that, absent when they never chose one. */
-  defaultModelChoice?: ConversationModel
-}
+/** What the service answers with: the contract's own snapshot, so the window reads one shape. */
+export type ProvidersSnapshot = ProvidersSnapshotMessage
 
 export interface ProviderTestResult {
   ok: boolean
@@ -86,10 +79,8 @@ export class ProviderService {
 
   /** What new conversations start on. Absent hands the choice back to the first model found. */
   setDefaultModel(chosen: Undef<ConversationModel>): ProvidersSnapshot {
-    if (chosen !== undefined) {
-      const provider: Undef<StoredProvider> = this.#store.find(chosen.providerId)
-      const serves = provider?.models.some((model: ProviderModelDefinition) => model.id === chosen.modelId)
-      if (serves !== true) throw new Error(`${chosen.providerId} does not serve ${chosen.modelId}`)
+    if (chosen !== undefined && !servesModel(this.#store.index(), chosen)) {
+      throw new Error(`${chosen.providerId} does not serve ${chosen.modelId}`)
     }
     this.#store.setDefaultModel(chosen)
     return this.snapshot()

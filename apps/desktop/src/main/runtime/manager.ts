@@ -21,6 +21,7 @@ import {
   type PermissionLevel,
   type PermissionRule,
   type RuntimeEvent,
+  servesModel,
   type ThinkingLevel,
 } from '@alpha/core'
 import type { CompactionSettings } from '@earendil-works/pi-agent-core'
@@ -330,7 +331,7 @@ export class RuntimeManager {
 
   async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
     this.#requireConversation(id)
-    if (this.#options.providers.find(providerId)?.models.some((model) => model.id === modelId) !== true) {
+    if (!servesModel(this.#options.providers.index(), { providerId, modelId })) {
       throw new Error(`${providerId} does not serve ${modelId}`)
     }
     await this.#open.get(id)?.setModel(providerId, modelId)
