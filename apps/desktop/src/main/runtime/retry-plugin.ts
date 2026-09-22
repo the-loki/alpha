@@ -5,38 +5,22 @@
  * backoff and asks the base to continue, which drops the failed trailing turn and drives again.
  * A run that ends without a retry hands the next one a whole budget.
  *
- * The same decision keeps the window honest: the runtime reads `shouldRetry` when an `agent_end`
- * arrives carrying a failure, and marks the event `willRetry` so the translator leaves the turn
- * open. The annotation decides nothing and counts nothing — afterRun still owns the attempt.
+ * The same decision keeps the window honest: the translator consults `shouldRetry` when an
+ * `agent_end` arrives carrying a failure, and leaves the turn open while an attempt is planned.
+ * The decision decides and the hook acts — and nothing is written between the two.
  */
 
-import type { Undef } from '@alpha/core'
-import type { RpcLikeEvent } from './agent-events.ts'
-import type { AfterRunOutcome, AlphaPlugin } from './plugin-contract.ts'
+import type { AlphaPlugin, RetryDecider } from './plugin-contract.ts'
 
 /** How the plugin waits: one delay per retry, in order. coding-agent's two retries. */
 export interface RetryPluginPorts {
   delays?: number[]
 }
 
-/** The plugin plus the pure decision the runtime consults when annotating an `agent_end`. */
-export interface RetryPlugin extends AlphaPlugin {
-  shouldRetry(outcome: AfterRunOutcome): boolean
-}
+/** The plugin, which is the pure decision the run's end is judged with. */
+export interface RetryPlugin extends AlphaPlugin, RetryDecider {}
 
 const DEFAULT_DELAYS = [2000, 8000]
-
-/** The failure a raw `agent_end` carries, when its last message is an assistant one that erred. */
-export function failedMessageOf(event: RpcLikeEvent): Undef<string> {
-  if (event.type !== 'agent_end' || !Array.isArray(event.messages)) return undefined
-  const last = event.messages.at(-1)
-  if (typeof last !== 'object' || last === null) return undefined
-  const message = last as { role?: unknown; stopReason?: unknown; errorMessage?: unknown }
-  if (message.role !== 'assistant' || message.stopReason !== 'error') return undefined
-  return typeof message.errorMessage === 'string' && message.errorMessage !== ''
-    ? message.errorMessage
-    : 'The run failed.'
-}
 
 const sleep = (milliseconds: number): Promise<void> => new Promise((done) => setTimeout(done, milliseconds))
 

@@ -178,19 +178,36 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
     expect(events[1]).toMatchObject({ type: 'run_failed', message: 'the provider hung up' })
   })
 
-  it('keeps the run open while pi is going to try again', () => {
-    const events = translate([
-      { type: 'agent_start' },
-      {
-        type: 'agent_end',
-        willRetry: true,
-        messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'overloaded' }],
-      },
-      { type: 'agent_start' },
-      { type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'stop' }] },
-    ])
+  it('keeps the run open while the retry policy is going to try again', () => {
+    const events = translate(
+      [
+        { type: 'agent_start' },
+        {
+          type: 'agent_end',
+          messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'overloaded' }],
+        },
+        { type: 'agent_start' },
+        { type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'stop' }] },
+      ],
+      new AgentEventTranslator('c1', { shouldRetry: () => true }),
+    )
 
     expect(kinds(events)).toEqual(['turn_started', 'turn_finished'])
+  })
+
+  it('closes the run as the failure when the retry policy has had enough', () => {
+    const events = translate(
+      [
+        { type: 'agent_start' },
+        {
+          type: 'agent_end',
+          messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'overloaded' }],
+        },
+      ],
+      new AgentEventTranslator('c1', { shouldRetry: () => false }),
+    )
+
+    expect(kinds(events)).toEqual(['turn_started', 'run_failed'])
   })
 
   it('does not call an ordinary answer with no error field a failure', () => {

@@ -30,18 +30,15 @@ import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-c
 import type { Models } from '@earendil-works/pi-ai'
 import { runAfterRunHooks } from './after-run.ts'
 import { contextOf } from './agent-context.ts'
-import { AgentEventTranslator, type RpcLikeEvent } from './agent-events.ts'
+import { AgentEventTranslator } from './agent-events.ts'
 import type { DecisionLookup } from './decisions.ts'
-import type { AfterRunOutcome, AlphaPlugin } from './plugin-contract.ts'
-import { failedMessageOf } from './retry-plugin.ts'
+import type { AlphaPlugin, RetryDecider } from './plugin-contract.ts'
 import type { NewEntry, SessionStore } from './sessions.ts'
 import { tipPath } from './sessions.ts'
 import type { AgentEntry } from './transcript-entries.ts'
 
-/** The retry policy's pure decision, read when an `agent_end` arrives carrying a failure. */
-export interface RetryDecider {
-  shouldRetry(outcome: AfterRunOutcome): boolean
-}
+/** The retry policy's pure decision, kept with the other plugin faces in plugin-contract. */
+export type { RetryDecider } from './plugin-contract.ts'
 
 /** What one conversation is built from: the assembled agent, its session, and the store behind it. */
 export interface ConversationRuntimeOptions {
@@ -70,7 +67,6 @@ export class ConversationRuntime {
   readonly #store: SessionStore
   readonly #plugins: AlphaPlugin[]
   readonly #compact: Undef<() => Promise<boolean>>
-  readonly #retry: Undef<RetryDecider>
   readonly #decisions: Undef<DecisionLookup>
   readonly #emit: (event: RuntimeEvent) => void
   readonly #translator: AgentEventTranslator
@@ -78,13 +74,12 @@ export class ConversationRuntime {
   #sessionId: string
   readonly #workspacePath: string
   #inFlight: Undef<Promise<void>>
-  /** The whole of the run now ending — retries included — so the next one starts after it. */
+  /**
+   * The whole of the run now ending — retries included — so the next one starts after it. This is
+   * the one answer to "is a run in flight": assigned when a prompt is asked for, gone when the
+   * run's last half (the plugins' afterRun loop) has finished.
+   */
   #driving: Undef<Promise<void>>
-  /** Whether a run is in flight, read from the events the runtime already translates. */
-  #running = false
-  /** Whether the run that was just asked for has ended yet: what `settle` waits on. */
-  #waiting = false
-  #settled: Undef<() => void>
   /** The message announced as held for the running turn, until the agent takes it into the run. */
   #held: Undef<string>
 
@@ -95,12 +90,11 @@ export class ConversationRuntime {
     this.#store = options.store
     this.#plugins = options.plugins
     this.#compact = options.compact
-    this.#retry = options.retry
     this.#decisions = options.decisions
     this.#emit = options.emit
     this.#sessionId = options.session.id
     this.#workspacePath = options.session.workspacePath
-    this.#translator = new AgentEventTranslator(options.conversationId)
+    this.#translator = new AgentEventTranslator(options.conversationId, options.retry)
     options.agent?.subscribe((event) => this.#onEvent(event))
   }
 
@@ -119,7 +113,6 @@ export class ConversationRuntime {
       type: 'message',
       message: { role: 'user', content: [{ type: 'text', text }, ...images], timestamp: Date.now() },
     })
-    this.#waiting = true
     this.#emit({
       conversationId: this.#conversationId,
       type: 'user_message',
@@ -185,20 +178,16 @@ export class ConversationRuntime {
    * when this process is running it: a turn that was cut off by a closed window is over.
    */
   isRunning(): boolean {
-    return this.#running
+    return this.#driving !== undefined
   }
 
   /**
    * Waits for the run this runtime asked for to end. Whoever asked for one and then needs the whole
    * of it — a regenerate, which hands the window the transcript the new answer is on — waits here
-   * rather than guessing. The run's other half, the plugins' afterRun loop, is part of what ends.
+   * rather than guessing. The run's other half, the plugins' afterRun loop, is part of the promise
+   * waited on.
    */
   async settle(): Promise<void> {
-    while (this.#running || this.#waiting) {
-      await new Promise<void>((done) => {
-        this.#settled = done
-      })
-    }
     await this.#driving
   }
 
@@ -258,7 +247,7 @@ export class ConversationRuntime {
    * session nobody is driving (ADR-0008). There is nothing to reap — no child was ever started.
    */
   async close(): Promise<void> {
-    if (!this.#running && !this.#waiting) return
+    if (this.#driving === undefined) return
     this.#agent?.abort()
     await this.settle()
   }
@@ -272,27 +261,16 @@ export class ConversationRuntime {
       await runAfterRunHooks(agent, this.#plugins)
     } catch (error) {
       this.#failed(error instanceof Error ? error.message : 'The run failed.')
+    } finally {
+      // The run is over, however it went: the next prompt starts a run of its own.
+      this.#driving = undefined
     }
   }
 
-  /** Every agent event: annotated for a planned retry, persisted as it arrived, then translated. */
+  /** Every agent event: persisted as it arrived, then translated for the window. */
   #onEvent(event: AgentEvent): void {
-    this.#annotate(event)
     this.#persist(event)
     for (const translated of this.#translator.translate(event)) this.#note(translated)
-  }
-
-  /**
-   * A run that ended in a failure the retry policy is going to take is not over yet: marking the
-   * raw event `willRetry` is what keeps the translator from closing it as `run_failed`. The
-   * annotation decides nothing — the same pure decision the plugin's own `afterRun` consults —
-   * and counts nothing: an attempt is taken exactly once, inside the hook.
-   */
-  #annotate(event: AgentEvent): void {
-    if (this.#retry === undefined || event.type !== 'agent_end') return
-    const raw = event as RpcLikeEvent
-    const failed = failedMessageOf(raw)
-    if (failed !== undefined && this.#retry.shouldRetry({ failed, aborted: false })) raw.willRetry = true
   }
 
   /** What the run produced, written to the session the moment it exists — the store is the record. */
@@ -343,27 +321,20 @@ export class ConversationRuntime {
   }
 
   #note(event: RuntimeEvent): void {
-    if (event.type === 'turn_started') this.#running = true
-    if (event.type === 'turn_finished' || event.type === 'run_failed') this.#endRun()
     if (event.type === 'user_message') this.#steerTaken(event)
+    if (event.type === 'turn_finished' || event.type === 'run_failed') this.#endRun()
     this.#emit(event)
   }
 
   /**
-   * The run is over, however it went, and the one caller waiting on settle is told. Nothing is
-   * held for a turn that is over, so a steer that never reached the conversation stops being
-   * announced as held.
+   * The run is over, however it went. Nothing is held for a turn that is over, so a steer that
+   * never reached the conversation stops being announced as held.
    */
   #endRun(): void {
-    this.#running = false
-    this.#waiting = false
     if (this.#held !== undefined) {
       this.#held = undefined
       this.#emit({ conversationId: this.#conversationId, type: 'queue_updated', queued: [], paused: false })
     }
-    const settled = this.#settled
-    this.#settled = undefined
-    settled?.()
   }
 
   /**

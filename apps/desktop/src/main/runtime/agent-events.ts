@@ -32,6 +32,7 @@ import {
   usageTotals,
   userBlocksOf,
 } from '@alpha/core'
+import type { RetryDecider } from './plugin-contract.ts'
 
 /** A record off the agent's pipe, as it arrives: shaped by the agent, not by this file. */
 export interface RpcLikeEvent {
@@ -66,26 +67,31 @@ const isNothing = (usage: UsageTotals): boolean => usage.totalTokens === 0 && us
 const reportedUsage = (event: RpcLikeEvent): UsageTotals => usageTotals(recordOf(event.message).usage ?? event.usage)
 
 /**
- * Why the run failed, if it did. pi has no failure event: it ends the run with an assistant
- * message that says so, so the last one it produced is what is read here.
+ * The failure a raw `agent_end` carries, when its last message is an assistant one that erred —
+ * pi has no failure event of its own. This is the one decoder: the translator reads it to say
+ * `run_failed`, and the retry policy is asked about exactly what it read.
  */
-function failureOf(event: RpcLikeEvent): Undef<string> {
-  const messages = listOf(event.messages)
-  const last = recordOf(messages[messages.length - 1])
-  if (!Array.isArray(event.messages) || last.role !== 'assistant') return undefined
-  if (last.stopReason !== 'error') return undefined
-  const message = last.errorMessage
-  return typeof message === 'string' && message !== '' ? message : 'The run failed.'
+export function failedMessageOf(event: RpcLikeEvent): Undef<string> {
+  if (event.type !== 'agent_end' || !Array.isArray(event.messages)) return undefined
+  const last = event.messages.at(-1)
+  if (typeof last !== 'object' || last === null) return undefined
+  const message = last as { role?: unknown; stopReason?: unknown; errorMessage?: unknown }
+  if (message.role !== 'assistant' || message.stopReason !== 'error') return undefined
+  return typeof message.errorMessage === 'string' && message.errorMessage !== ''
+    ? message.errorMessage
+    : 'The run failed.'
 }
 
 export class AgentEventTranslator {
   readonly #conversationId: string
+  readonly #retry: Undef<RetryDecider>
   #usage: UsageTotals = EMPTY_USAGE
   #openMessageId: Undef<string>
   #runOpen = false
 
-  constructor(conversationId: string) {
+  constructor(conversationId: string, retry?: RetryDecider) {
     this.#conversationId = conversationId
+    this.#retry = retry
   }
 
   translate(event: RpcLikeEvent): RuntimeEvent[] {
@@ -113,17 +119,20 @@ export class AgentEventTranslator {
     return [{ conversationId: this.#conversationId, type: 'turn_started' }]
   }
 
-  /** A run that ended with the agent's own error message is a failure, not a finished turn. */
+  /**
+   * A run that ended with the agent's own error message is a failure, not a finished turn — and
+   * whether that failure is final is the retry policy's one decision, the same one its own hook
+   * consults when it takes an attempt. Nothing is written on the event to coordinate the two.
+   */
   #endRun(event: RpcLikeEvent): RuntimeEvent[] {
     if (!this.#runOpen) return []
-    // pi is going to try again: the run it is in is not over, and neither is ours.
-    if (event.willRetry === true) return []
+    const failed = failedMessageOf(event)
+    if (failed !== undefined && this.#retry?.shouldRetry({ failed, aborted: false }) === true) return []
     this.#runOpen = false
     this.#openMessageId = undefined
-    const error = failureOf(event)
-    return error === undefined
+    return failed === undefined
       ? [{ conversationId: this.#conversationId, type: 'turn_finished' }]
-      : [{ conversationId: this.#conversationId, type: 'run_failed', message: error }]
+      : [{ conversationId: this.#conversationId, type: 'run_failed', message: failed }]
   }
 
   /** `agent_settled` follows `agent_end`: whichever comes first closes the run, the other is quiet. */

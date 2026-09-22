@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { runAfterRunHooks } from './after-run.ts'
 import { assembleAgent } from './assemble-agent.ts'
 import type { AfterRunOutcome, AlphaPlugin } from './plugin-contract.ts'
-import { createRetryPlugin, failedMessageOf } from './retry-plugin.ts'
+import { failedMessageOf } from './agent-events.ts'
+import { createRetryPlugin } from './retry-plugin.ts'
 import { aModel, errorStream, scriptedModels, textStream } from './scripted-provider.ts'
 
 /** coding-agent's auto-retry (ADR-0025): a transient provider failure after a run retries with

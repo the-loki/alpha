@@ -52,3 +52,12 @@ export interface AlphaPlugin {
   beforeToolCall?: (call: PluginToolCall) => Promise<Undef<ToolVerdict>>
   afterRun?: (context: AfterRunContext) => Promise<Undef<AfterRunVerdict>>
 }
+
+/**
+ * The retry policy's pure decision — a failure, no abort, attempts to spend — consulted wherever a
+ * run's end is being judged: by the hook that takes an attempt, and by the translator that decides
+ * whether an ended run is over at all.
+ */
+export interface RetryDecider {
+  shouldRetry(outcome: AfterRunOutcome): boolean
+}
