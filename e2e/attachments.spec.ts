@@ -98,10 +98,10 @@ test('a picture goes with the message and stays in the transcript', async () => 
 
 test('a pile of pictures scrolls, and keeps its remove controls reachable', async () => {
   const { app, window } = await launch()
-  // More pictures than the box can show at once, each with its own name, so the bound is what the
-  // test is measuring.
+  // More pictures than the box can show at once at any window width, each with its own name, so
+  // the bound is what the test is measuring rather than how many thumbs fit in a row.
   const pileDirectory = mkdtempSync(join(tmpdir(), 'alpha-pile-'))
-  const pile = Array.from({ length: 20 }, (_, index) => join(pileDirectory, `pile-${index}.png`))
+  const pile = Array.from({ length: 50 }, (_, index) => join(pileDirectory, `pile-${index}.png`))
   for (const file of pile) writeFileSync(file, PIXEL_PNG)
   await attach(window, ...pile)
   await expect(window.locator('[aria-label="Attached pictures"] img')).toHaveCount(pile.length)

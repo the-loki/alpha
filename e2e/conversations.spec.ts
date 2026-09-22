@@ -182,15 +182,16 @@ test('exporting writes a markdown file beside the workspace', async () => {
   await app.close()
 })
 
-test('the header shows what the session spent, and the turn it was spent on', async () => {
+test('the header says what the session spent, on the title and nowhere else', async () => {
   const { app, window } = await launch()
   await ask(window, 'spend some tokens')
   await expect(window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
 
-  // The scripted model reports usage like any other provider; its cost data is zero, so no cost
-  // is shown — a made-up figure would be worse than none.
-  await expect(window.getByText(/tokens/).first()).toBeVisible()
-  await expect(window.getByText(/Turn · .* tokens/)).toBeVisible()
+  // What the session cost is one tooltip on the view head's title (C5.4): the transcript carries
+  // no tail lines under its messages, a single message shows no cost, and the scripted model's
+  // zero cost data means no figure is written — a made-up number would be worse than none.
+  await expect(window.getByRole('heading', { level: 1 })).toHaveAttribute('title', /Tokens for this conversation/)
+  await expect(window.getByText(/Turn ·/)).toHaveCount(0)
   await expect(window.getByText(/\$\d/)).toHaveCount(0)
   await window.screenshot({ path: join(SHOT_DIR, 'usage-header.png') })
   await app.close()

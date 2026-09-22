@@ -14,7 +14,7 @@ export function PermissionSection() {
       <h2 id="settings-level" class={GROUP_LABEL}>
         {t('settings.defaultLevel')}
       </h2>
-      <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.defaultLevelNote')}</p>
+      <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-muted">{t('settings.defaultLevelNote')}</p>
       <ul class="mt-3 space-y-1.5">
         <For each={PERMISSION_LEVELS}>
           {(candidate) => (
@@ -23,15 +23,15 @@ export function PermissionSection() {
                 type="button"
                 aria-pressed={candidate === shell.workspaceLevel}
                 onClick={() => void shellActions.setPermissionLevel(candidate)}
-                class={`flex w-full items-start gap-3 rounded-card border px-3 py-2.5 text-left transition-colors hover:bg-ink-600 ${
-                  candidate === shell.workspaceLevel
-                    ? TONE_CLASS[levelTone(candidate)]
-                    : 'border-line text-parchment-dim'
+                class={`flex w-full items-start gap-3 rounded-md border px-3 py-2.5 text-left transition-colors duration-normal hover:bg-surface-1 ${
+                  candidate === shell.workspaceLevel ? TONE_CLASS[levelTone(candidate)] : 'border-line text-muted'
                 }`}
               >
                 <span class="min-w-0 flex-1">
-                  <span class="block text-ui font-medium">{t(levelKey(candidate))}</span>
-                  <span class="mt-0.5 block text-xs text-parchment-faint">{t(levelDescriptionKey(candidate))}</span>
+                  <span class="block font-text text-name">{t(levelKey(candidate))}</span>
+                  <span class="mt-0.5 block font-text text-name leading-relaxed text-faint">
+                    {t(levelDescriptionKey(candidate))}
+                  </span>
                 </span>
                 {/* The chosen level is marked, not only tinted: the tints are the level's own colours
                     and someone who cannot tell them apart still has to see which one is on. */}

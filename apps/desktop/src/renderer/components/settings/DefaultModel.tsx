@@ -1,7 +1,7 @@
 import { For } from 'solid-js'
 import { providerActions, providers } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, FIELD_FRAME } from '../controls.ts'
+import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL } from '../controls.ts'
 
 /**
  * Which model a conversation with nothing chosen yet runs on, by provider and model. It is the one
@@ -18,7 +18,7 @@ export function DefaultModel() {
   return (
     <div>
       <label class="block">
-        <span class="mb-1 block text-micro text-parchment-faint">{t('settings.defaultModel')}</span>
+        <span class={`mb-1 block ${GROUP_LABEL}`}>{t('settings.defaultModel')}</span>
         <select
           aria-label={t('settings.defaultModel')}
           value={value()}
@@ -28,7 +28,7 @@ export function DefaultModel() {
               providerId === undefined || modelId === undefined ? undefined : { providerId, modelId },
             )
           }}
-          class={`w-full px-2 text-code text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
+          class={`w-full px-2 font-mono text-code ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
         >
           <option value="">{t('settings.defaultModelAuto')}</option>
           <For each={providers.snapshot.providers}>
@@ -42,7 +42,7 @@ export function DefaultModel() {
           </For>
         </select>
       </label>
-      <p class="mt-1 max-w-measure text-micro leading-relaxed text-parchment-faint">{t('settings.defaultModelNote')}</p>
+      <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-faint">{t('settings.defaultModelNote')}</p>
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { createSignal, For, Show } from 'solid-js'
 import { useText } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
 import { ConversationRow } from './ConversationRow.tsx'
-import { RAIL_ROW, RAIL_STEP } from './controls.ts'
+import { RAIL_ROW, RAIL_STEP, TEXT_ACTION } from './controls.ts'
 import { ClockIcon } from './icons.tsx'
 
 /** How many of a task's runs the rail shows; the task's own page holds the rest. */
@@ -24,13 +24,16 @@ export function TaskGroup(props: { node: TaskNode }) {
   const verdict = () => newTaskRun(props.node.lastRun)
   const shown = () => (all() ? props.node.runs : props.node.runs.slice(0, SHOWN_RUNS))
   const hidden = () => props.node.runs.length - shown().length
-  // The word at the end of the row, in the colour the transcript uses for the same fact.
-  const tone = () =>
-    verdict()?.key === 'tasks.runFailed'
-      ? 'text-danger'
-      : verdict()?.count === undefined
-        ? 'text-parchment-faint'
-        : 'text-amber'
+  // The word at the end of the row, in the colour the transcript uses for the same fact: danger
+  // for what failed, accent for a run in flight, warning for what waits, faint for no word at
+  // all (C5.2).
+  const tone = () => {
+    const current = verdict()
+    if (current === undefined) return 'text-faint'
+    if (current.key === 'tasks.runFailed') return 'text-danger'
+    if (current.key === 'tasks.runRunning') return 'text-accent'
+    return current.count === undefined ? 'text-faint' : 'text-warning'
+  }
 
   return (
     <div class={`mt-1 ${RAIL_STEP}`}>
@@ -41,17 +44,18 @@ export function TaskGroup(props: { node: TaskNode }) {
             aria-expanded={open()}
             aria-label={t(open() ? 'sidebar.collapseTasks' : 'sidebar.expandTasks', { folder: props.node.task.name })}
             onClick={() => setOpen((value) => !value)}
-            class={`flex w-full min-w-0 items-center rounded-control py-1.5 text-left text-ui transition-colors hover:bg-ink-600 ${RAIL_ROW}`}
+            class={`flex w-full min-w-0 items-center rounded-md py-1.5 text-left text-muted transition-colors duration-normal hover:bg-surface-2 hover:text-foreground ${RAIL_ROW}`}
           >
-            {/* The task's glyph, then its name. One step in from the folder, because a task runs *in*
-                a folder and is held by it: drawn on the folder's own x it reads as another folder, and
-                the runs under it would have no level of their own to stand on (C5.4). */}
-            <ClockIcon class="shrink-0 text-parchment-faint" />
-            <span class="min-w-0 truncate text-parchment-dim">{props.node.task.name}</span>
+            {/* The task's glyph, then its name in the text voice. One step in from the folder,
+                because a task runs *in* a folder and is held by it: drawn on the folder's own x it
+                reads as another folder, and the runs under it would have no level of their own to
+                stand on (C5.4). */}
+            <ClockIcon class="shrink-0 text-faint" />
+            <span class="min-w-0 truncate font-text text-name">{props.node.task.name}</span>
           </button>
         </h3>
         <Show when={verdict()}>
-          {(current) => <span class={`shrink-0 font-mono text-micro ${tone()}`}>{say(t, current())}</span>}
+          {(current) => <span class={`shrink-0 font-mono text-label ${tone()}`}>{say(t, current())}</span>}
         </Show>
         <span class="relative flex h-5 w-6 shrink-0 items-center justify-center">
           <button
@@ -59,7 +63,7 @@ export function TaskGroup(props: { node: TaskNode }) {
             aria-label={t('sidebar.openTask', { name: props.node.task.name })}
             title={t('sidebar.openTask', { name: props.node.task.name })}
             onClick={() => navigate('/tasks')}
-            class="absolute inset-0 grid place-items-center rounded-control font-mono text-micro text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment"
+            class="absolute inset-0 grid place-items-center rounded-md font-mono text-label text-faint transition-colors duration-normal hover:bg-surface-2 hover:text-foreground"
           >
             {props.node.runs.length}
           </button>
@@ -80,19 +84,19 @@ export function TaskGroup(props: { node: TaskNode }) {
               type="button"
               onClick={() => setAll(true)}
               aria-label={t('sidebar.showAll', { count: props.node.runs.length })}
-              class="rounded-control py-1 font-mono text-micro text-parchment-faint transition-colors hover:text-parchment-dim"
+              class={`py-1 ${TEXT_ACTION}`}
             >
               {t('sidebar.more', { count: hidden() })}
             </button>
           </Show>
           <Show when={props.node.runs.length === 0}>
-            <span class="py-1 text-micro text-parchment-faint">{t('tasks.noRuns')}</span>
+            <span class="py-1 font-text text-name text-faint">{t('tasks.noRuns')}</span>
           </Show>
           <button
             type="button"
             onClick={() => void taskActions.runNow(props.node.task.id)}
             aria-label={t('sidebar.runNow', { name: props.node.task.name })}
-            class="rounded-control py-1 text-micro text-parchment-faint transition-colors hover:text-parchment-dim"
+            class={`py-1 ${TEXT_ACTION}`}
           >
             {t('tasks.runNow')}
           </button>

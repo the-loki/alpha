@@ -88,13 +88,13 @@ export function Settings() {
 
   return (
     <div class="flex h-full min-h-0 flex-col">
-      {/* The page's band: what this panel is — the same band, height and padding the conversation
-          and the tasks page wear, so the title stands on the same x wherever you are, and on the
-          same y too on a page that carries no way back above its band. It is chrome and not glass:
-          this panel scrolls under itself rather than under the band, and a surface that blurs with
-          nothing beneath it lies about its own depth (C5.4, ADR-0020). */}
-      <header class={`${BAND} bg-ink-800 ${BESIDE_SCROLLS}`}>
-        <h1 class="min-w-0 flex-1 truncate font-display text-xl font-semibold tracking-tight text-parchment">
+      {/* The view head: what this panel is — the same head, height and padding the conversation
+          and the tasks page wear, so the title stands on the same x wherever you are, and the
+          window's three keep the same y on every page. Settings replaces the rail, so there is no
+          rail to fold here and no toggle in this head: the column beside it is this panel's own
+          menu (C5.4). One hairline under the head and nothing raised. */}
+      <header class={`${BAND} ${BESIDE_SCROLLS}`}>
+        <h1 class="min-w-0 flex-1 truncate font-text text-title font-semibold tracking-tight text-foreground">
           {t(TAB_LABELS[tab()])}
         </h1>
         {/* What acts on the window is not one of the panel's concerns: past a rule, at the corner. */}
@@ -105,15 +105,15 @@ export function Settings() {
       </header>
 
       {/* One rule between one panel section and the next, drawn by the container so a section
-          cannot forget it and two of them cannot draw it twice. The band has none of its own: it
-          is the first rule's subject, not a section under one. The sentence that says what the
+          cannot forget it and two of them cannot draw it twice. The view head has none of its own:
+          it is the first rule's subject, not a section under one. The sentence that says what the
           panel is about is above the rules, because it is not a section of the panel — it is the
           panel, said once, and it keeps the reading measure: it is a label and not content. The
-          panel itself fills the page, one padding in, on the same edges its band's title stands
-          on (C5.3, C5.4). */}
+          panel itself fills the page, one padding in, on the same edges its view head's title
+          stands on (C5.3, C5.4). */}
       <div class={`min-h-0 flex-1 py-6 ${PAGE} ${SCROLLS}`}>
         <div class={FORM_COLUMN} data-column="form">
-          <p class="max-w-measure text-xs leading-relaxed text-parchment-dim">{t(TAB_NOTES[tab()])}</p>
+          <p class="max-w-measure font-text text-body text-muted">{t(TAB_NOTES[tab()])}</p>
           <div class={`mt-5 ${PANEL_GROUPS}`} data-groups="panel">
             {panelOf(tab())}
           </div>
@@ -124,10 +124,11 @@ export function Settings() {
 }
 
 /**
- * The settings menu, filling the region of the spine's panel that the workbench's rail fills: the
- * same box, the same padding, under the same head, because the two screens are the same window
- * twice and a menu that is a panel *inside* the page gives the window a third surface it does not
- * have (C5.4). It replaces the rail rather than joining it: settings is a place, not a mode.
+ * The settings menu, filling the column the workbench's rail fills: the same box, the same width,
+ * the same padding, under the same head, because the two screens are the same window twice and a
+ * menu that is a panel *inside* the page gives the window a third surface it does not have (C5.4).
+ * It replaces the rail rather than joining it: settings is a place, not a mode, so it carries no
+ * rail toggle — the column beside it is this menu, and it is never folded away.
  */
 export function SettingsNav() {
   const t = useText()
@@ -138,12 +139,12 @@ export function SettingsNav() {
       {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
       <a
         href="#/"
-        class={`mt-2 flex items-center rounded-control py-1.5 text-ui text-parchment-faint transition-colors hover:bg-ink-600 hover:text-parchment ${RAIL_ROW}`}
+        class={`mt-2 flex items-center py-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground ${RAIL_ROW}`}
       >
-        <ArrowLeftIcon /> <span class="min-w-0 flex-1 truncate">{t('settings.back')}</span>
+        <ArrowLeftIcon /> <span class="min-w-0 flex-1 truncate font-text text-name">{t('settings.back')}</span>
       </a>
 
-      <h2 class="mt-5 px-2 font-display text-xl font-semibold tracking-tight text-parchment">{t('settings.title')}</h2>
+      <h2 class="mt-5 px-2 font-text text-title font-semibold tracking-tight text-foreground">{t('settings.title')}</h2>
 
       <For each={TAB_GROUPS}>
         {(group) => (
@@ -156,19 +157,19 @@ export function SettingsNav() {
                     <a
                       href={`#/settings?tab=${candidate}`}
                       aria-current={candidate === tab() ? 'page' : undefined}
-                      // The panel you are on is lit by the accent, the same mark the rail puts on
-                      // the conversation you are in (C5.6).
-                      class={`relative flex items-center rounded-control py-1.5 text-ui transition-colors ${RAIL_ROW} ${
+                      // The panel you are on carries the accent's margin tick, the same mark the
+                      // rail puts on the conversation you are in (C5.5).
+                      class={`relative flex items-center py-1.5 transition-colors ${RAIL_ROW} ${
                         candidate === tab()
-                          ? `${ROW_LIVE} font-medium text-parchment`
-                          : 'text-parchment-dim hover:bg-ink-600 hover:text-parchment'
+                          ? `${ROW_LIVE} text-foreground`
+                          : 'text-muted hover:bg-surface-2 hover:text-foreground'
                       }`}
                     >
                       <Show when={candidate === tab()}>
                         <span class={LIVE_SPINE} aria-hidden="true" />
                       </Show>
                       {TAB_ICONS[candidate]()}
-                      <span class="min-w-0 flex-1 truncate">{t(TAB_LABELS[candidate])}</span>
+                      <span class="min-w-0 flex-1 truncate font-text text-name">{t(TAB_LABELS[candidate])}</span>
                     </a>
                   </li>
                 )}

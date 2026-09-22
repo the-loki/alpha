@@ -2,11 +2,15 @@ import type { Attachment, Undef } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { readPicked } from '../lib/attachments.ts'
 import { useText } from '../stores/shell.ts'
-import { ICON_ACTION } from './controls.ts'
+import { NOTICE } from './controls.ts'
 import { CloseIcon, PaperclipIcon } from './icons.tsx'
 
-/** A quiet glyph button in the composer's foot, the shape every glyph in the window wears. */
-const FOOT_BUTTON = `no-drag ${ICON_ACTION}`
+/**
+ * The attach control in the composer's foot: the foot's own glyph button — the standard height
+ * it shares with the two chips and send beside it, on a card where the pointer's answer has to
+ * step *up* to surface-2 to be seen at all (C5.4, C5.6).
+ */
+const FOOT_BUTTON = `no-drag grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted transition-colors duration-normal hover:bg-surface-2 hover:text-foreground`
 
 /**
  * The way in to the file picker. The picker is the platform's; this is a button that opens it, and
@@ -74,13 +78,13 @@ export function PendingAttachments(props: { items: Attachment[]; onRemove: (inde
                   src={`data:${item.mimeType};base64,${item.data}`}
                   alt={item.name ?? ''}
                   title={item.name}
-                  class="h-12 w-12 rounded-control border border-line object-cover"
+                  class="h-12 w-12 rounded-md border border-line object-cover"
                 />
                 <button
                   type="button"
                   aria-label={t('composer.removeAttachment', { name: item.name ?? '' })}
                   onClick={() => props.onRemove(index())}
-                  class="absolute -top-1.5 -right-1.5 grid h-4 w-4 place-items-center rounded-full border border-line bg-ink-900 text-parchment-dim transition-colors hover:border-danger hover:text-danger"
+                  class="absolute -top-1.5 -right-1.5 grid h-4 w-4 place-items-center rounded-md border border-line bg-surface-0 text-muted transition-colors duration-normal hover:border-danger hover:bg-danger/10 hover:text-danger"
                 >
                   <CloseIcon class="h-2.5 w-2.5" />
                 </button>
@@ -108,13 +112,11 @@ export function AttachmentNote(props: { refused: Undef<Refusal>; model: Undef<st
   const t = useText()
   return (
     <Show when={props.refused !== undefined}>
-      {props.refused === 'model' ? (
-        <p class="mt-1 font-mono text-micro text-amber">
-          {t('composer.attachmentNoVision', { model: props.model ?? '' })}
-        </p>
-      ) : (
-        <p class="mt-1 px-1 text-micro text-amber">{t('composer.attachmentRefused')}</p>
-      )}
+      <p class={`mt-2 ${NOTICE} border-warning font-mono text-label text-warning`}>
+        {props.refused === 'model'
+          ? t('composer.attachmentNoVision', { model: props.model ?? '' })
+          : t('composer.attachmentRefused')}
+      </p>
     </Show>
   )
 }

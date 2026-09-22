@@ -4,20 +4,13 @@ import { conversations } from '../stores/conversations.ts'
 import { Composer } from './Composer.tsx'
 import { DocHead } from './DocHead.tsx'
 import { EmptyState } from './EmptyState.tsx'
-import { COLUMN, SCROLLS } from './ledger.ts'
+import { BESIDE_SCROLLS, COLUMN, SCROLLS } from './ledger.ts'
 import { MessageList } from './MessageList.tsx'
 
 /**
- * The middle column: the transcript if there is one, the next action if there is not.
- *
- * The page is one scroll. The band that names it and the bar the next message is written in are
- * both inside that scroll — the band pinned to its top, the bar docked at its foot — so the
- * transcript slides under both and the page keeps the whole height of the window instead of
- * spending a strip at each end on chrome that never moves. Everything drawn in it stands on one
- * column (C5.4, ADR-0024).
- *
- * The hearth under the bar is where the room's light comes from: it brightens while the agent
- * works and settles when it is done, which is the one thing in the window that is alive.
+ * The page itself: the view head that names it, the body that scrolls, and the writing box at its
+ * foot. This is the window's text — the transcript if there is one, the title page if there is not
+ * (C5.4) — and everything drawn in it stands on one pair of edges.
  */
 export function ConversationPane() {
   const streaming = () => conversations.transcript.status === 'running'
@@ -45,18 +38,14 @@ export function ConversationPane() {
   })
 
   return (
-    // The pane is a query container: how much room the band's quiet facts have is a question about
-    // the pane beside the rail, not about the window (C5.3).
-    <div class="@container/conversation relative flex h-full flex-col">
-      {/* The hearth: the agent's own light, pooled at the foot of the page. It is decoration and
-          nothing else, so it cannot be touched or read, and it dims to embers at rest. */}
-      <div
-        aria-hidden="true"
-        class={`pointer-events-none absolute -bottom-24 left-1/2 h-64 w-[42rem] max-w-full -translate-x-1/2 rounded-full bg-accent/15 blur-3xl transition-opacity duration-1000 ${
-          streaming() ? 'opacity-100' : 'opacity-40'
-        }`}
-      />
+    <div class="flex h-full flex-col">
+      <Show when={hasSummary()}>
+        <DocHead />
+      </Show>
 
+      {/* The body: one scroll, the wheel's room always reserved. Sideways is never the answer: a
+          wide table, a long path or a line of code that cannot break scrolls inside its own block
+          or breaks, and the page's own edges do not move. */}
       <div
         ref={(element) => {
           scroller = element
@@ -65,24 +54,22 @@ export function ConversationPane() {
           const element = event.currentTarget
           atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 48
         }}
-        // Sideways is never the answer: a wide table, a long path or a line of code that cannot
-        // break scrolls inside its own block or breaks, and the column's own edges do not move.
         class={`min-h-0 flex-1 overflow-x-hidden ${SCROLLS}`}
         data-region="transcript"
       >
-        <div class="flex min-h-full flex-col">
-          <Show when={hasSummary()}>
-            <DocHead />
+        <div class={`flex min-h-full flex-col pt-6 pb-2 ${COLUMN}`} data-column="conversation">
+          <Show when={hasMessages()} fallback={<EmptyState />}>
+            <MessageList transcript={conversations.transcript} />
           </Show>
-
-          <div class={`flex-1 pt-6 pb-2 ${COLUMN}`} data-column="conversation">
-            <Show when={hasMessages()} fallback={<EmptyState />}>
-              <MessageList transcript={conversations.transcript} />
-            </Show>
-          </div>
-
-          <Composer streaming={streaming()} />
         </div>
+      </div>
+
+      {/* The writing box, docked at the foot: the margin above it is the one line in the window
+          that is lit while a turn is being written (C5.5). It stands beside the scroll above it,
+          so it gives up the wheel's room on the same side (BESIDE_SCROLLS) and lands on the exact
+          edge the rows end on (C5.4). */}
+      <div class={`w-full shrink-0 pb-4 ${BESIDE_SCROLLS}`} data-column="conversation">
+        <Composer streaming={streaming()} />
       </div>
     </div>
   )

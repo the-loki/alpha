@@ -1,15 +1,7 @@
-import {
-  ACCENTS,
-  type Accent,
-  LANGUAGE_SETTINGS,
-  type LanguageSetting,
-  type TextKey,
-  THEMES,
-  type Theme,
-} from '@alpha/core'
+import { LANGUAGE_SETTINGS, type LanguageSetting, type TextKey, THEMES, type Theme } from '@alpha/core'
 import { For, Show } from 'solid-js'
 import { shell, shellActions, useText } from '../../stores/shell.ts'
-import { GROUP_LABEL } from '../controls.ts'
+import { CONTROL_HEIGHT, GROUP_LABEL } from '../controls.ts'
 import { CheckIcon } from '../icons.tsx'
 
 const THEME_LABELS: Record<Theme, TextKey> = {
@@ -29,20 +21,16 @@ const LANGUAGE_LABELS: Record<LanguageSetting, { name?: string; key?: TextKey }>
   zh: { name: '简体中文' },
 }
 
-/** Not translated, for the same reason: a palette is named the same in every language. */
-const ACCENT_LABELS: Record<Accent, string> = {
-  ember: 'Ember',
-  sage: 'Sage',
-  iris: 'Iris',
-  rose: 'Rose',
-  plum: 'Plum',
-}
-
-const CHOICE = 'flex h-7 items-center gap-2 rounded-control border px-3 text-xs transition-colors'
+/**
+ * A choice carries a mark, not only a colour (C5.7): the chosen one is tinted, and `aria-pressed`
+ * says the same to a reader. The tint is the accent — the one second ink — and the row answers the
+ * pointer by pooling ink, like every resting thing in the window (C5.6).
+ */
+const CHOICE = `inline-flex ${CONTROL_HEIGHT} items-center gap-2 rounded-md border px-3 font-mono text-label font-medium transition-colors duration-normal`
 const CHOSEN = 'border-accent/50 bg-accent/10 text-accent'
-const RESTING = 'border-line text-parchment-dim hover:bg-ink-600'
+const RESTING = 'border-line text-muted hover:bg-surface-1'
 
-/** How the workbench looks and reads: the palette, the accent, and the language. */
+/** How the workbench looks and reads: the palette and the language. */
 export function AppearanceSection() {
   const t = useText()
   const labelOf = (candidate: LanguageSetting) => {
@@ -56,7 +44,7 @@ export function AppearanceSection() {
         <h2 id="settings-theme" class={GROUP_LABEL}>
           {t('settings.theme')}
         </h2>
-        <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.themeNote')}</p>
+        <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-muted">{t('settings.themeNote')}</p>
         <div class="mt-3 flex gap-2">
           <For each={THEMES}>
             {(candidate) => (
@@ -76,42 +64,11 @@ export function AppearanceSection() {
         </div>
       </section>
 
-      <section aria-labelledby="settings-accent">
-        <h2 id="settings-accent" class={GROUP_LABEL}>
-          {t('settings.accent')}
-        </h2>
-        <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.accentNote')}</p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <For each={ACCENTS}>
-            {(candidate) => (
-              <button
-                type="button"
-                aria-pressed={candidate === shell.accent}
-                onClick={() => void shellActions.setAppearance({ accent: candidate })}
-                class={`${CHOICE} pr-3 pl-2 ${
-                  candidate === shell.accent ? 'border-line-strong bg-ink-600 font-medium text-parchment' : RESTING
-                }`}
-              >
-                {/* The swatch wears the accent it names, in the mode the workbench is in, so the
-                    choice shows what it changes instead of describing it. */}
-                <span
-                  aria-hidden="true"
-                  data-accent-swatch={candidate}
-                  data-accent={candidate}
-                  class="h-3.5 w-3.5 rounded-full border border-line-strong/40 bg-accent"
-                />
-                {ACCENT_LABELS[candidate]}
-              </button>
-            )}
-          </For>
-        </div>
-      </section>
-
       <section aria-labelledby="settings-language">
         <h2 id="settings-language" class={GROUP_LABEL}>
           {t('settings.language')}
         </h2>
-        <p class="mt-1 max-w-measure text-xs text-parchment-dim">{t('settings.languageNote')}</p>
+        <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-muted">{t('settings.languageNote')}</p>
         <div class="mt-3 flex gap-2">
           <For each={LANGUAGE_SETTINGS}>
             {(candidate) => (

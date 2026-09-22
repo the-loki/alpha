@@ -1,5 +1,6 @@
 # A display voice: the person's words are set like print
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 The type system gains a third voice. **Newsreader** — a serif cut for reading, bundled, no runtime
 fetch — is the display voice: a page's title, an entry's question, the title page of a conversation
 that has not started, the sentence that introduces what a panel is. IBM Plex Sans stays the voice of

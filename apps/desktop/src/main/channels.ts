@@ -309,7 +309,6 @@ export function launchState(store: StateStore, runtime: RuntimeManager): LaunchS
     workspaceLevel: currentWorkspace(store) === undefined ? store.read().permissionLevel : defaultLevel(store),
     workspaceLevels: store.read().workspaceLevels,
     theme: store.read().theme,
-    accent: store.read().accent,
     language: store.read().language,
     model: runtime.modelStatus(),
     lastConversationId: store.read().lastConversationId,

@@ -1,6 +1,7 @@
 import { For, onMount, Show } from 'solid-js'
 import { providerActions, providers } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
+import { NOTICE } from '../controls.ts'
 import { DefaultModel } from './DefaultModel.tsx'
 import { ProviderCard } from './ProviderCard.tsx'
 import { ProviderForm } from './ProviderForm.tsx'
@@ -22,7 +23,8 @@ export function ProvidersSection() {
   return (
     <>
       <Show when={providers.snapshot.protection === 'plaintext'}>
-        <p class="rounded-control border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
+        {/* A notice is a line: the warning bar down its left edge and a surface-1 fill (C5.4). */}
+        <p class={`max-w-measure font-text text-name leading-relaxed text-warning ${NOTICE} border-warning`}>
           {t('settings.noKeychain')}
         </p>
       </Show>
@@ -44,7 +46,7 @@ export function ProvidersSection() {
       >
         {/* The empty state is a sentence in the panel's own voice, not a bare line: it says what
             the list is empty of and points at the form under it, which is the next action. */}
-        <p class="rounded-card border border-dashed border-line px-3 py-3 text-xs leading-relaxed text-parchment-faint">
+        <p class="rounded-md border border-dashed border-line px-3 py-3 font-text text-name leading-relaxed text-faint">
           {t('settings.noProviders')}
         </p>
       </Show>

@@ -3,9 +3,11 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * The palette, checked as numbers. docs/constraints/05-design.md C5.2 says every text/background
- * pair clears 4.5:1 and that `--parchment-faint` is metadata only and still clears 3:1; this reads
- * the tokens out of the stylesheet itself, so a colour changed in CSS cannot quietly go unmeasured.
+ * The Caliper palette, checked as numbers. docs/constraints/05-design.md C5.2 says every text
+ * pair clears 4.5:1 (faint is metadata and clears 3:1), that the four permission levels are four
+ * distinct hues, and that the stacks are Inter + JetBrains Mono with no third face; this reads
+ * the tokens out of the stylesheet itself, so a colour changed in CSS cannot quietly go
+ * unmeasured.
  *
  * It lives here rather than in the renderer because it reads the repository: the renderer has no
  * Node, and a check that needs a filesystem is not a renderer unit test.
@@ -16,8 +18,8 @@ const CSS = readFileSync(join(REPO_ROOT, 'apps/desktop/src/renderer/styles/app.c
 type Palette = Record<string, string>
 
 /**
- * The tokens of one block, by its exact selector. Not a substring match: `:root[data-accent='x']`
- * contains `:root`, and matching that way silently folds every accent into the base palette.
+ * The tokens of one block, by its exact selector. Not a substring match: `:root[data-theme='x']`
+ * contains `:root`, and matching that way silently folds every override into the base palette.
  */
 function paletteOf(selector: string): Palette {
   const palette: Palette = {}
@@ -31,26 +33,12 @@ function paletteOf(selector: string): Palette {
   return palette
 }
 
-/** The default palette, which is the light one; dark and each accent are overrides on top. */
+/** Light is what `@theme` holds — both themes are first-class and the dark one is the override. */
 const light = paletteOf('@theme')
 const dark = { ...light, ...paletteOf(":root[data-theme='dark']") }
-const ACCENTS = [...new Set([...CSS.matchAll(/\[data-accent='([\w-]+)'\]/g)].map((match) => match[1]))]
-
-/** Every palette the app can be in: two modes, and each accent in each of them. */
 const PALETTES: [string, Palette][] = [
   ['light', light],
   ['dark', dark],
-  ...ACCENTS.flatMap((accent): [string, Palette][] => [
-    [`light/${accent}`, { ...light, ...paletteOf(`[data-accent='${accent}']`) }],
-    [
-      `dark/${accent}`,
-      {
-        ...dark,
-        ...paletteOf(`[data-accent='${accent}']`),
-        ...paletteOf(`[data-theme='dark'][data-accent='${accent}']`),
-      },
-    ],
-  ]),
 ]
 
 function channel(value: number): number {
@@ -71,67 +59,68 @@ function contrast(foreground: string, background: string): number {
 
 /** The token name of the surface each text token is read on, which is what the design table means. */
 const PAIRS: { text: string; surface: string; minimum: number }[] = [
-  { text: 'parchment', surface: 'ink-900', minimum: 4.5 },
-  { text: 'parchment', surface: 'ink-800', minimum: 4.5 },
-  { text: 'parchment', surface: 'ink-700', minimum: 4.5 },
-  { text: 'parchment', surface: 'ink-600', minimum: 4.5 },
-  { text: 'parchment-dim', surface: 'ink-800', minimum: 4.5 },
-  { text: 'parchment-dim', surface: 'ink-700', minimum: 4.5 },
-  { text: 'parchment-faint', surface: 'ink-900', minimum: 3 },
-  { text: 'parchment-faint', surface: 'ink-800', minimum: 3 },
-  { text: 'parchment-faint', surface: 'ink-700', minimum: 3 },
-  // The accent is whichever palette the user picked, so this is measured once per accent below.
-  { text: 'accent', surface: 'ink-900', minimum: 4.5 },
-  { text: 'accent', surface: 'ink-800', minimum: 4.5 },
-  { text: 'accent', surface: 'ink-700', minimum: 4.5 },
-  { text: 'accent-ink', surface: 'accent', minimum: 4.5 },
-  // Text on the accent, which is what a primary button is.
-  { text: 'warm', surface: 'ink-800', minimum: 4.5 },
-  { text: 'warm', surface: 'ink-700', minimum: 4.5 },
-  { text: 'jade', surface: 'ink-800', minimum: 4.5 },
-  { text: 'jade', surface: 'ink-700', minimum: 4.5 },
-  { text: 'amber', surface: 'ink-800', minimum: 4.5 },
-  { text: 'amber', surface: 'ink-700', minimum: 4.5 },
-  { text: 'danger', surface: 'ink-800', minimum: 4.5 },
-  { text: 'danger', surface: 'ink-700', minimum: 4.5 },
-  { text: 'info', surface: 'ink-800', minimum: 4.5 },
-  { text: 'info', surface: 'ink-700', minimum: 4.5 },
+  // Primary and secondary text stand on every surface the app has.
+  { text: 'foreground', surface: 'surface-0', minimum: 4.5 },
+  { text: 'foreground', surface: 'surface-1', minimum: 4.5 },
+  { text: 'foreground', surface: 'surface-2', minimum: 4.5 },
+  { text: 'foreground', surface: 'surface-3', minimum: 4.5 },
+  { text: 'muted', surface: 'surface-0', minimum: 4.5 },
+  { text: 'muted', surface: 'surface-1', minimum: 4.5 },
+  { text: 'muted', surface: 'surface-2', minimum: 4.5 },
+  { text: 'muted', surface: 'surface-3', minimum: 4.5 },
+  // Labels stand on the page, the panel and a card — never alone on a floating layer.
+  { text: 'tertiary', surface: 'surface-0', minimum: 4.5 },
+  { text: 'tertiary', surface: 'surface-1', minimum: 4.5 },
+  { text: 'tertiary', surface: 'surface-2', minimum: 4.5 },
+  { text: 'faint', surface: 'surface-0', minimum: 3 },
+  { text: 'faint', surface: 'surface-1', minimum: 3 },
+  { text: 'faint', surface: 'surface-2', minimum: 3 },
+  { text: 'faint', surface: 'surface-3', minimum: 3 },
+  // The accent and the semantics as text on the page (C5.2).
+  { text: 'accent', surface: 'surface-0', minimum: 4.5 },
+  { text: 'danger', surface: 'surface-0', minimum: 4.5 },
+  { text: 'success', surface: 'surface-0', minimum: 4.5 },
+  { text: 'warning', surface: 'surface-0', minimum: 4.5 },
+  { text: 'info', surface: 'surface-0', minimum: 4.5 },
+  // Text on a solid fill: the primary button, a danger button — at rest and under the pointer.
+  { text: 'accent-ink', surface: 'accent-strong', minimum: 4.5 },
+  { text: 'accent-ink', surface: 'accent-deep', minimum: 4.5 },
+  { text: 'danger-ink', surface: 'danger', minimum: 4.5 },
+  // The pointer's answer on accent text: a link, brightened or deepened, still readable (C5.6).
+  { text: 'accent-hover', surface: 'surface-0', minimum: 4.5 },
 ]
-
-describe('the accent attribute', () => {
-  const ACCENT_TOKENS = ['accent', 'accent-bright', 'accent-ink']
-
-  it('means the same as its absence for the default accent', () => {
-    // `iris` is written both as the default and as an attribute, because the settings page shows
-    // an accent by wearing it. The two spellings drifting apart would show there first.
-    const pick = (palette: Palette) => Object.fromEntries(ACCENT_TOKENS.map((token) => [token, palette[token]]))
-    expect(pick(paletteOf("[data-accent='iris']"))).toEqual(pick(light))
-    expect(pick(paletteOf("[data-theme='dark'][data-accent='iris']"))).toEqual(pick(dark))
-  })
-})
 
 describe.each(PALETTES)('the %s palette', (name, palette) => {
   it('defines every token the design table names', () => {
     const tokens = [
-      'ink-900',
-      'ink-800',
-      'ink-700',
-      'ink-600',
-      'line',
-      'line-strong',
-      'parchment',
-      'parchment-dim',
-      'parchment-faint',
+      'surface-0',
+      'surface-1',
+      'surface-2',
+      'surface-3',
+      'foreground',
+      'muted',
+      'tertiary',
+      'faint',
       'accent',
-      'accent-bright',
+      'accent-strong',
       'accent-ink',
-      'warm',
-      'jade',
-      'amber',
+      'accent-hover',
+      'accent-deep',
       'danger',
+      'danger-ink',
+      'success',
+      'warning',
       'info',
     ]
     expect(tokens.filter((token) => palette[token] === undefined)).toEqual([])
+    void name
+  })
+
+  it('declares the three border overlays alongside the hexes', () => {
+    // Borders are transparent overlays, not flat greys (C5.2), so they are read as declarations.
+    for (const token of ['--color-line-subtle:', '--color-line:', '--color-line-strong:']) {
+      expect(CSS, token).toContain(token)
+    }
   })
 
   it('clears every contrast threshold the constraints set', () => {
@@ -148,38 +137,88 @@ describe.each(PALETTES)('the %s palette', (name, palette) => {
     expect(failures).toEqual([])
   })
 
-  it('keeps the levels tellable apart from each other by luminance as well as hue', () => {
-    // Levels use info, amber, jade and warm — the fixed four, not the user's accent: a green
-    // accent would otherwise make full-access and accept-edits the same colour.
-    const levels = ['info', 'amber', 'jade', 'warm'].map((token) => palette[token])
-    expect(new Set(levels).size).toBe(levels.length)
+  it('keeps the four levels tellable apart from each other and from the accent', () => {
+    // Four permission levels, four semantic hues, and the accent is not one of them (C5.2).
+    const hues = ['info', 'warning', 'success', 'danger', 'accent'].map((token) => palette[token])
+    expect(hues.every((hex) => hex !== undefined)).toBe(true)
+    expect(new Set(hues).size).toBe(hues.length)
     void name
   })
 })
 
-/**
- * The font stacks, because the interface has two languages and only one of them is bundled. A
- * stack that stops at `sans-serif` still works on a machine that has a CJK font — by luck, and by
- * a font nobody chose. These names are the ones a Chinese desktop actually has (C5.3).
- */
-describe('[design] the font stacks', () => {
-  const stackOf = (name: string): string => {
-    const match = CSS.match(new RegExp(`--${name}:([^;]+);`))
-    if (match === null) throw new Error(`--${name} is not declared`)
-    return match[1]
-  }
+/** One declaration of the stylesheet, read by name. Throws rather than passing on absence. */
+function declaration(name: string): string {
+  const match = CSS.match(new RegExp(`${name}:\\s*([^;]+);`))
+  if (match === null) throw new Error(`${name} is not declared`)
+  return match[1].trim()
+}
 
-  it('names a chinese face per platform after the bundled ones', () => {
-    const sans = stackOf('font-sans')
-    for (const family of ['PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei']) {
-      expect(sans).toContain(family)
+describe('[design] the font stacks', () => {
+  it('gives the text voice Inter with a chosen CJK sans behind it', () => {
+    const text = declaration('--font-text')
+    expect(text).toContain('Inter')
+    for (const family of ['PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC']) {
+      expect(text).toContain(family)
     }
-    // First, so Latin characters in Chinese prose keep the bundled voice.
-    expect(sans.indexOf('Inter')).toBeLessThan(sans.indexOf('PingFang SC'))
+    // A Latin sans first, so Latin characters in Chinese prose keep the text voice.
+    expect(text.indexOf('Inter')).toBeLessThan(text.indexOf('PingFang SC'))
+    // And no serif anywhere in the stack: the serif voice left with Codex (C5.3).
+    expect(text).not.toMatch(/Iowan|Charter|Georgia|Liberation Serif|Noto Serif|Source Han Serif|Songti|SimSun/)
   })
 
-  it('keeps a CJK-capable family last in the mono stack too', () => {
-    // Chinese inside a mono context — a path, a count — must not fall off the stack.
-    expect(stackOf('font-mono')).toContain('monospace')
+  it('keeps JetBrains Mono and a CJK-capable family in the apparatus stack', () => {
+    const mono = declaration('--font-mono')
+    expect(mono).toContain('JetBrains Mono')
+    expect(mono).toContain('Noto Sans Mono CJK SC')
+    expect(mono).toContain('monospace')
+    expect(mono.indexOf('JetBrains Mono')).toBeLessThan(mono.indexOf('Noto Sans Mono CJK SC'))
+  })
+
+  it('declares no third face', () => {
+    // Two voices, and only two: the text and the apparatus (C5.3).
+    expect(CSS).not.toMatch(/--font-(?:sans|display|serif):/)
+  })
+})
+
+describe('[design] the type scale, shape and motion tokens', () => {
+  it('pins every size of the scale in rem, at the leading the design gives it', () => {
+    const scale: [string, string, string][] = [
+      ['--text-label', '0.75rem', '1.4'],
+      ['--text-code', '0.8125rem', '1.6'],
+      ['--text-name', '0.875rem', '1.45'],
+      ['--text-body', '0.9375rem', '1.55'],
+      ['--text-title', '1.25rem', '1.3'],
+      ['--text-display', '1.75rem', '1.25'],
+    ]
+    for (const [token, size, leading] of scale) {
+      expect(declaration(token), token).toBe(size)
+      expect(declaration(`${token}--line-height`), `${token} leading`).toBe(leading)
+    }
+    expect(declaration('--container-measure')).toBe('70ch')
+  })
+
+  it('uses exactly three weights, and never a fourth in a declaration', () => {
+    const declared = [...CSS.matchAll(/font-weight:\s*(\d+)/g)].map((match) => match[1])
+    expect(declared.filter((weight) => !['400', '500', '600'].includes(weight))).toEqual([])
+  })
+
+  it('pins the four radii of the scale and the four shadow levels', () => {
+    // 0.25, 0.375, 0.5 and 0.75rem — the whole radius scale, and no fifth (C5.4).
+    expect(declaration('--radius-sm')).toBe('0.25rem')
+    expect(declaration('--radius-md')).toBe('0.375rem')
+    expect(declaration('--radius-lg')).toBe('0.5rem')
+    expect(declaration('--radius-xl')).toBe('0.75rem')
+    for (const level of ['--shadow-tiny', '--shadow-low', '--shadow-medium', '--shadow-high']) {
+      expect(CSS, level).toContain(`${level}:`)
+    }
+  })
+
+  it('pins the three durations, the curve, and the accent focus ring', () => {
+    expect(declaration('--duration-fast')).toBe('100ms')
+    expect(declaration('--duration-normal')).toBe('160ms')
+    expect(declaration('--duration-slow')).toBe('250ms')
+    expect(declaration('--ease-out-quad')).toMatch(/cubic-bezier/)
+    expect(CSS).toContain('outline: 0.125rem solid var(--color-accent)')
+    expect(CSS).toContain('outline-offset: 0.125rem')
   })
 })

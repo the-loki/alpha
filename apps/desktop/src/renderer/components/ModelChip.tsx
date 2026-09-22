@@ -3,11 +3,12 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { providerActions, providers, runningModel } from '../stores/providers.ts'
 import { useText } from '../stores/shell.ts'
-import { CHIP as CHIP_SHAPE, ROW_CURRENT, ROW_HOVER } from './controls.ts'
+import { CHIP as CHIP_SHAPE, GROUP_LABEL, MENU_ROW_CURRENT, MENU_ROW_HOVER } from './controls.ts'
 import { CheckIcon } from './icons.tsx'
 import { SCROLLS } from './ledger.ts'
 
-const CHIP = `${CHIP_SHAPE} max-w-56 border-line text-parchment-dim transition-colors hover:border-line-strong hover:text-parchment`
+/** A model's name is a proper noun the machine measures by — mono, set plain (C5.3). */
+const CHIP = `${CHIP_SHAPE} max-w-56 text-xs text-muted transition-colors duration-normal hover:border-line-strong hover:text-foreground`
 
 /**
  * Which model the next message runs on, at the foot of the composer beside the send control.
@@ -71,16 +72,17 @@ export function ModelChip() {
       </button>
 
       <Show when={open()}>
-        {/* Upwards and right-aligned: the chip sits on the floor of the window, at its right edge. */}
+        {/* Upwards and right-aligned: the chip sits on the floor of the window, at its right edge.
+            The menu is a floating layer — surface-3, a frame, a medium shadow (C5.4). */}
         <div
           role="menu"
           aria-label={t('model.menuLabel')}
-          class={`absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 rounded-overlay border border-line bg-surface-overlay py-1 overlay-in shadow-overlay ${SCROLLS}`}
+          class={`slip-in absolute right-0 bottom-full z-50 mb-2 max-h-80 w-64 rounded-xl border border-line bg-surface-3 py-1 shadow-medium ${SCROLLS}`}
         >
           <For each={providers.snapshot.providers}>
             {(provider) => (
               <div>
-                <p class="px-3 pt-2 pb-1 font-mono text-micro text-parchment-faint">{provider.name}</p>
+                <p class={`px-3 pt-2 pb-1 ${GROUP_LABEL}`}>{provider.name}</p>
                 <For each={provider.models}>
                   {(model) => {
                     const current = () =>
@@ -91,8 +93,8 @@ export function ModelChip() {
                         role="menuitemradio"
                         aria-checked={current()}
                         onClick={() => void choose({ providerId: provider.id, modelId: model.id })}
-                        class={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-ui text-parchment transition-colors ${
-                          current() ? ROW_CURRENT : ROW_HOVER
+                        class={`flex w-full items-center gap-2 px-3 py-1.5 text-left font-text text-name text-foreground transition-colors duration-normal ${
+                          current() ? MENU_ROW_CURRENT : MENU_ROW_HOVER
                         }`}
                       >
                         {/* The mark of the chosen one, the same one the settings choices wear. */}

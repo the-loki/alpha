@@ -1,11 +1,13 @@
 import { useLocation } from '@solidjs/router'
 import { createEffect, createSignal, type JSX, onCleanup, onMount, Show } from 'solid-js'
 import { ConversationPalette, useShortcuts } from '../components/ConversationPalette.tsx'
+import { PANEL } from '../components/ledger.ts'
 import { Sidebar } from '../components/Sidebar.tsx'
 import { SpineHead } from '../components/TitleBar.tsx'
 import { UnlockScreen } from '../components/UnlockScreen.tsx'
 import { bridge } from '../lib/bridge.ts'
 import { conversationActions } from '../stores/conversations.ts'
+import { folded } from '../stores/fold.ts'
 import { shell, shellActions } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
 import { SettingsNav } from './settings.tsx'
@@ -13,10 +15,14 @@ import { SettingsNav } from './settings.tsx'
 export function RootLayout(props: { children?: JSX.Element }) {
   const [paletteOpen, setPaletteOpen] = createSignal(false)
   useShortcuts({ onPalette: () => setPaletteOpen(true) })
-  // Settings is a place, not a panel of the workbench: it takes the window, and the way back is
-  // in its own menu rather than in the conversation list behind it.
+  // Settings is a place, not a panel of the workbench: it takes the window, and the way back is in
+  // its own menu rather than in the rail behind it.
   const location = useLocation()
   const inSettings = () => location.pathname.startsWith('/settings')
+  // The rail folds completely — no icon strip, the page takes the whole width — and the state is
+  // remembered (C5.4, `stores/fold.ts`). Settings is the one screen that keeps its column either
+  // way: that column is the settings menu itself, and settings has no rail to fold.
+  const showColumn = () => inSettings() || !folded()
 
   onMount(() => {
     // The contract, whichever transport is behind it: a browser reaches the same events.
@@ -45,24 +51,22 @@ export function RootLayout(props: { children?: JSX.Element }) {
 
   return (
     <Show when={!shell.locked} fallback={<UnlockScreen />}>
-      {/* The window is a spine and a page, both floating in one gutter: the spine is everything
-          that is the workbench rather than the work — identity, places, the index, the door to
-          settings — and the page takes everything beside it, at the full height of the window.
-          There is no strip above them: a second row of chrome across the top spent height the
-          page reads on, and its commands live just as well in the spine (C5.4). The head of the
-          spine is the panel's first child, so its banner role is implicit and its hairline runs
-          the full width of the panel; the rail and the settings menu are the two contents the
-          panel holds, one at a time. */}
-      <div class="flex h-screen gap-2 bg-ink-900 p-2">
-        <div class="flex w-64 shrink-0 flex-col rounded-card bg-ink-800">
-          <SpineHead />
-          <Show when={inSettings()} fallback={<Sidebar onSearch={() => setPaletteOpen(true)} />}>
-            <SettingsNav />
-          </Show>
-        </div>
-        <main class="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-ink-700 shadow-card">
-          {props.children}
-        </main>
+      {/* The window is two columns: the rail holds everything that is the workbench rather than
+          the work — identity, places, the folders and their conversations, the door to settings —
+          and the page takes everything beside it. No gutter and no floating panels: a hairline
+          divides the columns and that is all (C5.4). The rail folds away whole, and the page takes
+          the room it leaves. The masthead is the column's first child, so its banner role is
+          implicit. */}
+      <div class="flex h-screen bg-surface-0">
+        <Show when={showColumn()}>
+          <div class={PANEL}>
+            <SpineHead />
+            <Show when={inSettings()} fallback={<Sidebar onSearch={() => setPaletteOpen(true)} />}>
+              <SettingsNav />
+            </Show>
+          </div>
+        </Show>
+        <main class="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-0">{props.children}</main>
       </div>
       <ConversationPalette open={paletteOpen()} onClose={() => setPaletteOpen(false)} />
     </Show>

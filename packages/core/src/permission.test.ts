@@ -77,7 +77,7 @@ describe('[core] levelDescriptionKey', () => {
 
 describe('[core] levelTone', () => {
   it('maps each level to its design token name', () => {
-    expect(PERMISSION_LEVELS.map(levelTone)).toEqual(['info', 'amber', 'jade', 'warm'])
+    expect(PERMISSION_LEVELS.map(levelTone)).toEqual(['info', 'warning', 'success', 'danger'])
   })
 
   it('gives every level a distinct tone, so colour is a reliable cue', () => {

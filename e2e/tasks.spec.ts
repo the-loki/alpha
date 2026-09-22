@@ -86,8 +86,8 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await window.screenshot({ path: join(SHOT_DIR, 'tasks-history.png') })
 
   // The rail has the task in its folder, folded, saying how the last run went; the run is a
-  // conversation like any other, one fold below it (ticket #85).
-  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  // conversation like any other, one fold below it (ticket #85). The rail is the workbench's own
+  // index, so it speaks from beside the tasks page too — going back is one row in it, not a link.
   const rail = window.getByRole('complementary')
   const taskRow = rail.getByRole('button', { name: 'Expand the tasks in Nightly check' })
   await expect(taskRow).toBeVisible()

@@ -11,7 +11,7 @@ export const PERMISSION_LEVELS = ['plan', 'ask', 'accept-edits', 'full-access'] 
 
 export type PermissionLevel = (typeof PERMISSION_LEVELS)[number]
 
-export type LevelTone = 'info' | 'amber' | 'jade' | 'warm'
+export type LevelTone = 'info' | 'warning' | 'success' | 'danger'
 
 export const DEFAULT_LEVEL: PermissionLevel = 'ask'
 
@@ -24,9 +24,9 @@ const LABELS: Record<PermissionLevel, TextKey> = {
 
 const TONES: Record<PermissionLevel, LevelTone> = {
   plan: 'info',
-  ask: 'amber',
-  'accept-edits': 'jade',
-  'full-access': 'warm',
+  ask: 'warning',
+  'accept-edits': 'success',
+  'full-access': 'danger',
 }
 
 const DESCRIPTIONS: Record<PermissionLevel, TextKey> = {

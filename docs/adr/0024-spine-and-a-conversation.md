@@ -1,5 +1,6 @@
 # The window is a spine, and the transcript is a conversation
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 Two layout decisions, taken together because they answer the same complaint: the window spent its
 chrome in the wrong places, and the transcript carried furniture no one read.
 

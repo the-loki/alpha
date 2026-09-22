@@ -2,7 +2,7 @@ import type { ProviderApi } from '@alpha/core'
 import { createSignal, Show } from 'solid-js'
 import { providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
-import { GROUP_LABEL, PRIMARY_ACTION } from '../controls.ts'
+import { GROUP_LABEL, NOTICE, PRIMARY_ACTION } from '../controls.ts'
 import { ApiField, TextField } from './Fields.tsx'
 
 interface Draft {
@@ -37,8 +37,9 @@ export function ProviderForm() {
   return (
     // A section of the panel, not a box with a legend on its border: the label is a heading, the
     // fields sit under it in the panel's own grid, and the one primary action is in the footer the
-    // section ends with — where every form in the app ends.
-    <section aria-label={t('settings.addProvider')} class="rounded-card border border-line bg-ink-800 p-4">
+    // section ends with — where every form in the app ends. A grouping block is framed at the
+    // card's radius, not raised (C5.4).
+    <section aria-label={t('settings.addProvider')} class="rounded-lg border border-line bg-surface-0 p-4">
       <h3 class={GROUP_LABEL}>{t('settings.addProvider')}</h3>
       <div class="mt-3 grid grid-cols-2 gap-3">
         <TextField
@@ -64,7 +65,11 @@ export function ProviderForm() {
         <ApiField api={draft().api} onChange={(api) => setDraft((current) => ({ ...current, api }))} />
       </div>
       <Show when={error() !== ''}>
-        <p class="mt-3 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error()}</p>
+        {/* A notice is a line: the danger bar of a failure down its left edge and a surface-1
+            fill (C5.4). */}
+        <p class={`mt-3 max-w-measure font-text text-name leading-relaxed text-danger ${NOTICE} border-danger`}>
+          {error()}
+        </p>
       </Show>
       <div class="mt-4 flex items-center justify-end gap-3 border-t border-line pt-3">
         <button type="button" onClick={() => void add()} class={PRIMARY_ACTION}>

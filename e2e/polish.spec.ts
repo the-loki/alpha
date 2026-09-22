@@ -283,45 +283,6 @@ test('a fresh workbench opens light, and the dark palette is one click away', as
   await app.close()
 })
 
-test('the accent is a choice, and it is painted on both palettes', async () => {
-  const { app, window } = await launch({ replies: ['A short answer.'] })
-
-  await openAppearance(window)
-  const accent = () => colourOf(window, 'accent')
-  const swatch = (name: string) =>
-    window.locator(`[data-accent-swatch="${name}"]`).evaluate((element) => getComputedStyle(element).backgroundColor)
-
-  // A fresh workbench is light, in iris, and says so on the document rather than leaving it to
-  // the stylesheet's default: the mode and the accent are both written out.
-  await expect(window.locator('html')).toHaveAttribute('data-accent', 'iris')
-  const emberLight = await accent()
-  expect(await swatch('ember')).not.toBe(await swatch('sage'))
-
-  await window.getByRole('button', { name: 'Sage' }).click()
-  await expect(window.locator('html')).toHaveAttribute('data-accent', 'sage')
-  expect(await accent()).not.toBe(emberLight)
-
-  // The same accent is a different colour on the other palette: each one is measured against both,
-  // so a choice made in one mode is still legible when the mode changes.
-  await window.getByRole('region', { name: 'Theme' }).getByRole('button', { name: 'Dark' }).click()
-  await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
-  expect(await accent()).not.toBe(emberLight)
-
-  await window.getByRole('button', { name: 'Ember' }).click()
-  await expect(window.locator('html')).toHaveAttribute('data-accent', 'ember')
-  expect(await accent()).not.toBe(emberLight)
-
-  await app.close()
-})
-
-/** Whatever `--color-accent` currently resolves to on the document. */
-async function colourOf(window: Page, token: string): Promise<string> {
-  return window.evaluate(
-    (name) => getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim(),
-    token,
-  )
-}
-
 test('opening and closing twenty conversations does not leak', async () => {
   test.setTimeout(120_000)
   const { app, window } = await launch({ replies: ['An answer.'] })

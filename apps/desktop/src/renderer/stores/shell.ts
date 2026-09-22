@@ -1,5 +1,4 @@
 import {
-  type Accent,
   type AppearancePatch,
   composerFolder,
   DEFAULT_LANGUAGE,
@@ -35,8 +34,6 @@ export interface ShellState {
   /** The per-folder defaults behind that, for a folder that is not the selected one. */
   workspaceLevels: Record<string, PermissionLevel>
   theme: Theme
-  /** Which accent palette the workbench is drawn in. */
-  accent: Accent
   /** Which language the interface is written in: a setting, which `system` leaves to the client. */
   language: LanguageSetting
   model: LaunchState['model']
@@ -64,7 +61,6 @@ const [shell, setShell] = createStore<ShellState>({
   workspaceLevel: DEFAULT_LEVEL,
   workspaceLevels: {},
   theme: DEFAULT_THEME,
-  accent: 'iris',
   language: DEFAULT_LANGUAGE,
   model: { kind: 'none' },
   lastConversationId: '',
@@ -83,7 +79,6 @@ export const composerFolderOf = (state: ShellState): Undef<WorkspaceRef> =>
   composerFolder({ selection: state.workspace, recents: state.recents })
 
 const applyLaunchState = (state: LaunchState) => ({
-  accent: state.accent,
   language: state.language,
   ready: true,
   appVersion: state.appVersion,
@@ -101,15 +96,14 @@ const applyLaunchState = (state: LaunchState) => ({
 /**
  * Paints the look onto the document. The mode is resolved here rather than left to the stylesheet:
  * "system" is a choice about which palette to use, not a third palette, and resolving it in one
- * place is what lets the light/dark blocks stay plain selectors (C5.2).
+ * place is what lets the paper/press blocks stay plain selectors (C5.2).
  */
-function applyAppearance(theme: Theme, accent: Accent): void {
+function applyAppearance(theme: Theme): void {
   const root = document.documentElement
   const mode = theme === 'system' ? systemMode() : theme
-  // Both are written out rather than left to the stylesheet's defaults: the document says what it
-  // is drawn in, which is what the settings page and the tests read back.
+  // Written out rather than left to the stylesheet's default: the document says what it is drawn
+  // in, which is what the settings page and the tests read back.
   root.setAttribute('data-theme', mode)
-  root.setAttribute('data-accent', accent)
 }
 
 function systemMode(): 'light' | 'dark' {
@@ -139,7 +133,7 @@ export const shellActions = {
     // screen it needs is the one that asks for the token.
     try {
       const state = await bridge().launchState()
-      applyAppearance(state.theme, state.accent)
+      applyAppearance(state.theme)
       setShell({ ...applyLaunchState(state), host: clientHost(), locked: false })
     } catch (failure) {
       if (!(failure instanceof Unauthorized)) throw failure
@@ -168,7 +162,7 @@ export const shellActions = {
 
   setAppearance: async (patch: AppearancePatch): Promise<void> => {
     const state = await bridge().setAppearance(patch)
-    applyAppearance(state.theme, state.accent)
+    applyAppearance(state.theme)
     setShell(applyLaunchState(state))
   },
 

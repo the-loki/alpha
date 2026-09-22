@@ -2,8 +2,9 @@ import type { ConversationSummary, Undef } from '@alpha/core'
 import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
+import { foldActions } from '../stores/fold.ts'
 import { useText } from '../stores/shell.ts'
-import { ROW_CURRENT } from './controls.ts'
+import { MENU_ROW_CURRENT } from './controls.ts'
 import { SCROLLS } from './ledger.ts'
 
 /** How many matches the palette shows at once: more than this is a list, not a shortcut. */
@@ -18,6 +19,8 @@ const matches = (available: ConversationSummary[], query: string): ConversationS
 /**
  * Switching conversations without leaving the keyboard (T1's story 8): Control/Command-K opens a
  * list of the ones there are, typed into it filters them, arrows move, Enter opens, Escape leaves.
+ * It is a floating layer over the page — the floating surface, a frame, a shadow, arriving on its
+ * own slip of motion (C5.4, C5.6).
  */
 export function ConversationPalette(props: { open: boolean; onClose: () => void }) {
   // Archived conversations are not offered here: this is the list of what you are working on, and
@@ -52,12 +55,12 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
         role="dialog"
         aria-modal="true"
         aria-label={t('palette.dialog')}
-        class="fixed inset-0 z-50 flex items-start justify-center bg-ink-900/60 pt-24 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 pt-24"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) props.onClose()
         }}
       >
-        <div class="w-full max-w-xl overflow-hidden rounded-overlay border border-line bg-surface-overlay overlay-in shadow-overlay">
+        <div class="slip-in w-full max-w-xl rounded-xl border border-line bg-surface-3 shadow-high">
           <input
             ref={(element) => {
               field = element
@@ -81,7 +84,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
                 setChosen((index) => Math.max(index - 1, 0))
               }
             }}
-            class="w-full border-b border-line bg-transparent px-4 py-3 text-body text-parchment placeholder:text-parchment-faint"
+            class="w-full border-b border-line bg-transparent px-4 py-3 font-text text-body text-foreground placeholder:text-faint"
           />
           <div role="listbox" aria-label={t('palette.list')} class={`max-h-80 py-1 ${SCROLLS}`}>
             <For each={shown()}>
@@ -92,15 +95,17 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
                   aria-selected={index() === chosen()}
                   onMouseEnter={() => setChosen(index())}
                   onClick={() => go(conversation)}
-                  class={`flex w-full items-baseline gap-3 px-4 py-2 text-left ${index() === chosen() ? ROW_CURRENT : ''}`}
+                  class={`flex w-full items-baseline gap-3 px-4 py-2 text-left ${
+                    index() === chosen() ? MENU_ROW_CURRENT : ''
+                  }`}
                 >
-                  <span class="min-w-0 flex-1 truncate text-ui text-parchment">{conversation.title}</span>
-                  <span class="shrink-0 font-mono text-micro text-parchment-faint">{conversation.status}</span>
+                  <span class="min-w-0 flex-1 truncate font-text text-name text-foreground">{conversation.title}</span>
+                  <span class="shrink-0 font-mono text-label text-faint">{conversation.status}</span>
                 </button>
               )}
             </For>
             <Show when={shown().length === 0}>
-              <p class="px-4 py-3 text-ui text-parchment-dim">
+              <p class="px-4 py-3 font-text text-name text-muted">
                 {t(available().length === 0 ? 'palette.empty' : 'palette.noMatch')}
               </p>
             </Show>
@@ -111,7 +116,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
   )
 }
 
-/** The shortcuts that are not the composer's: new, switch, and settings. */
+/** The shortcuts that are not the composer's: new, switch, settings, and the rail's fold. */
 export function useShortcuts(options: { onPalette: () => void }): void {
   const navigate = useNavigate()
 
@@ -129,6 +134,11 @@ export function useShortcuts(options: { onPalette: () => void }): void {
       if (event.key === ',') {
         event.preventDefault()
         navigate('/settings')
+      }
+      // The rail folds from the view head's toggle and from here, wherever the window is (C5.4).
+      if (event.key === 'b') {
+        event.preventDefault()
+        foldActions.toggle()
       }
     }
     document.addEventListener('keydown', onKeyDown)

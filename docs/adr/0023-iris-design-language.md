@@ -1,5 +1,6 @@
 # Iris: a cool-porcelain, single-signal design language
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 Alpha's interface uses cool porcelain surfaces (`#ECEEF3` family light, `#0C0E13` family dark),
 graphite text, and exactly one saturated accent — electric indigo, the `iris` slot — with jade,
 amber, danger and info reserved for state. The bundled display face is Inter; the measuring face

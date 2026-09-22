@@ -304,10 +304,14 @@ export const EN = {
   'settings.themeSystem': 'Follow the system',
   'settings.themeDark': 'Dark',
   'settings.themeLight': 'Light',
-  'settings.accent': 'Accent',
-  'settings.accentNote':
-    'The colour of the streaming answer, the focus ring and the primary action. Every one is measured against both palettes, so none of them is legible in only one.',
   'settings.language': 'Language',
   'settings.languageNote':
     'Which language this interface is written in. What the agent is told stays in the language of the conversation itself, so translating the interface does not change how a conversation reads.',
+
+  // The rail's fold, named the way it will move (C5.4): one name for each direction.
+  'sidebar.hideRail': 'Hide the rail',
+  'sidebar.showRail': 'Show the rail',
+  // What the session has spent, said once — as the tooltip on the view head's title (C5.4).
+  'header.spend': 'Tokens for this conversation: {tokens}',
+  'header.spendCost': 'Tokens for this conversation: {tokens} · {cost}',
 } as const

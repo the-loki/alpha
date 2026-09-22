@@ -23,7 +23,7 @@ const SKIP_DIRS = new Set([
   'test-results',
   'playwright-report',
 ])
-const SCANNED_EXTENSIONS = /\.(ts|tsx|mjs|js|json)$/
+const SCANNED_EXTENSIONS = /\.(ts|tsx|mjs|js|json|css|html)$/
 
 const walk = (directory, files) => {
   for (const entry of readdirSync(directory)) {

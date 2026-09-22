@@ -1,144 +1,112 @@
 @import 'tailwindcss';
 
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/inter/400.css';
 @import '@fontsource/inter/500.css';
 @import '@fontsource/inter/600.css';
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/jetbrains-mono/500.css';
 
 /*
- * Iris — docs/constraints/05-design.md is the source of truth for these values.
+ * Caliper — docs/constraints/05-design.md is the source of truth for these values (ADR-0027).
  * Components use the token names, never the hex values.
  *
- * The values in `@theme` are the default palette, which is the light one (C5.2): the window is
- * painted before any state has been read, so the default has to be the theme most people see.
- * The dark palette is the override, and `--color-accent*` is the slot every accent palette
- * redefines — components name the role, never the colour it happens to be.
+ * The values in `@theme` are the light palette: both themes are first-class, the window follows
+ * the system, and the dark one is the override (C5.2). One accent — indigo — carries here / now /
+ * primary / decisive; red is danger alone (C5.1).
  */
 @theme {
   /*
-   * Porcelain, not paper and not grey. Every surface carries a whisper of blue — two percent off
-   * neutral, because a grey that announces itself is cold and a white that does not is sterile.
-   * The page is a clean white sheet, the chrome is porcelain a step down, the window is the cool
-   * air behind both, and the hairlines are the colour of a scored edge rather than of a divider
-   * (C5.1, C5.2).
+   * Four near-neutral steps, two to three percent apart in lightness. Hierarchy comes from a step
+   * and from space, not from a rule at every joint (C5.1): page, sunken, raised, floating.
    */
-  --color-ink-900: #eceef3;
-  --color-ink-800: #f4f5f9;
-  --color-ink-700: #ffffff;
-  --color-ink-600: #e5e8ef;
-  --color-line: #e3e5ec;
-  --color-line-strong: #c9cdd9;
+  --color-surface-0: #ffffff;
+  --color-surface-1: #f8f8f8;
+  --color-surface-2: #f4f4f4;
+  --color-surface-3: #f0f0f0;
 
-  --color-parchment: #181a21;
-  --color-parchment-dim: #4d5262;
-  --color-parchment-faint: #767d8e;
+  --color-foreground: #282a30;
+  --color-muted: #3c4149;
+  --color-tertiary: #6f6e77;
+  --color-faint: #86848d;
 
-  --color-accent: #4f46e5;
-  --color-accent-bright: #3f39c4;
+  /* Borders are transparent overlays rather than flat greys, so a frame reads on any step (C5.2). */
+  --color-line-subtle: rgb(0 0 0 / 6%);
+  --color-line: rgb(0 0 0 / 12%);
+  --color-line-strong: rgb(0 0 0 / 18%);
+
+  /* The one saturated colour: here, now, the primary act, decisive (C5.1). */
+  --color-accent: #5e6ad2;
+  --color-accent-strong: #5e6ad2;
   --color-accent-ink: #ffffff;
+  /* The pointer's two answers, split because they pull apart in the dark palette: as text the
+     accent brightens toward the reader, under white ink a solid deepens (C5.6). */
+  --color-accent-hover: #4c56c0;
+  --color-accent-deep: #4c56c0;
 
-  /* The four level colours, fixed: a level is not the user's accent, or half of them would be
-     the accent's own hue at once. `--color-warm` is what the full-access level is painted in. */
-  --color-warm: #c2410c;
-  --color-jade: #047857;
-  --color-amber: #b45309;
-  --color-danger: #c52222;
-  --color-info: #2563eb;
+  /* Red is demoted to danger alone: failure, destruction, denial (C5.1). */
+  --color-danger: #d92d20;
+  --color-danger-ink: #ffffff;
 
-  /*
-   * An overlay is drawn on the page or on the rail, and it has to be a step off whichever it
-   * covers. Chrome alone is not: in the dark palette ink-800 sits two percent off the scrimmed
-   * page, which is a panel that is not there. A tint of the ink over the chrome lifts in both
-   * palettes — a shade darker than the page in the light one, a shade lighter than the rail in
-   * the dark one — and it follows the palette because the colours it mixes do (C5.2's ladder).
-   */
-  --color-surface-overlay: color-mix(in oklab, var(--color-parchment) 10%, var(--color-ink-800));
+  --color-success: #1a7f37;
+  --color-warning: #a16207;
+  --color-info: #175cd3;
 
   /*
-   * Neither bundled family has CJK glyphs, so Chinese falls through to the machine's own: the
-   * three names cover the three desktop systems, and they are named rather than left to
-   * `sans-serif` so a Chinese window is drawn in a face someone chose (C5.3). Latin characters in
-   * Chinese text keep Inter, which is the point of putting the bundled family first.
+   * Two voices (C5.3). Neither bundled family has CJK glyphs, so Chinese falls through to the
+   * machine's own: the names cover the three desktop systems and are named rather than left to a
+   * generic, so a Chinese window is drawn in a face someone chose. Latin characters in Chinese
+   * text keep the text voice, which is what the bundled family being first is for.
    */
-  --font-sans:
-    'Inter', ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC',
-    'Microsoft YaHei', sans-serif;
+  --font-text: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Noto Sans Mono CJK SC', monospace;
 
   /*
-   * The display voice (C5.3): what a page is about, and what the reader asked — the same
-   * grotesque as the interface, tightened. The distinction between the person's words and the
-   * machine's is carried by size, weight and tracking instead of by a second face (C5.3).
+   * The type scale of C5.3, in rem so the window's scaling is respected. Label and code have no
+   * Tailwind built-in at these sizes, so they are named for the role they play; the rest are
+   * Tailwind's own scale at the leading this language gives them.
    */
-  --font-display:
-    'Inter', ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC',
-    'Microsoft YaHei', sans-serif;
-
-  /*
-   * Crisp corners, and nothing is square (C5.4): a control is rounded enough to read as a shape
-   * rather than as a box, a card is a quarter-sweep more, and a menu is rounder still. The three
-   * steps are the whole scale — nothing invents a fourth radius.
-   */
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
-  --radius-overlay: 1rem;
-
-  /*
-   * Two shadows, both cool and both low: `card` is what a panel floating on the window wears, and
-   * `soft` is for what floats a little less — the composer's bar, a row lifted on hover. Neither
-   * is a border: the page has a hairline where it needs an edge, and a shadow where it needs
-   * height.
-   */
-  --shadow-card: 0 1px 2px rgb(23 26 38 / 0.05), 0 10px 28px rgb(23 26 38 / 0.09);
-  --shadow-soft: 0 1px 2px rgb(23 26 38 / 0.05), 0 4px 14px rgb(23 26 38 / 0.07);
-  /*
-   * What a menu wears, which is more than a card: it is further off the page than anything else
-   * and it has to be read against whatever is under it. Still low-alpha and wide — a menu that
-   * casts a black halo is the thing that makes a soft interface look cheap in one screenshot.
-   */
-  --shadow-overlay: 0 2px 6px rgb(23 26 38 / 0.06), 0 18px 44px rgb(23 26 38 / 0.16);
-
-  /*
-   * The glow is different in kind: the first three are light *falling on* a surface, this is light
-   * *coming from* one — the signal inside the primary button, the cursor at the streaming edge.
-   * It is drawn with the accent's own colour so it follows whatever palette the user picked.
-   */
-  --shadow-glow:
-    0 0 0 1px color-mix(in oklab, var(--color-accent) 22%, transparent),
-    0 4px 18px -4px color-mix(in oklab, var(--color-accent) 50%, transparent);
-
-  /*
-   * The type scale of C5.3. Twelve, fourteen, sixteen and twenty are Tailwind's own (text-xs,
-   * text-sm, text-base, text-xl); these four have no built-in, so they are named for the role
-   * they play rather than for their size. rem, not px, so the window's scaling is respected.
-   */
-  --text-xs--line-height: 1.3;
-  --text-sm--line-height: 1.4;
-  --text-base--line-height: 1.4;
-  --text-lg--line-height: 1.4;
-  --text-xl--line-height: 1.4;
-
-  --text-micro: 0.6875rem;
-  --text-micro--line-height: 1.3;
-  --text-code: 0.78125rem;
-  --text-code--line-height: 1.55;
-  --text-ui: 0.8125rem;
-  --text-ui--line-height: 1.4;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.4;
+  --text-code: 0.8125rem;
+  --text-code--line-height: 1.6;
+  --text-name: 0.875rem;
+  --text-name--line-height: 1.45;
   --text-body: 0.9375rem;
-  --text-body--line-height: 1.65;
+  --text-body--line-height: 1.55;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.3;
+  --text-display: 1.75rem;
+  --text-display--line-height: 1.25;
 
-  /* How wide a line of prose may get, in characters: code, diffs and tables take the rest. Seventy,
-     not a hundred: the sweep back is what a reader's eye does between every line, and a page column's
-     worth of characters is a wall with no shape in it to keep a place in (C5.4). */
+  --text-xs--line-height: 1.4;
+
+  /* The whole radius scale: 0.25, 0.375, 0.5, 0.75rem. No fifth, no full (C5.4). */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Elevation exists only for floating layers; content cards stand on a surface step (C5.4). */
+  --shadow-tiny: 0 0.0625rem 0.125rem rgb(0 0 0 / 8%);
+  --shadow-low: 0 0.125rem 0.5rem rgb(0 0 0 / 10%);
+  --shadow-medium: 0 0.4375rem 1.5rem rgb(0 0 0 / 10%);
+  --shadow-high: 0 1rem 3rem rgb(0 0 0 / 14%);
+
+  /* Three durations, one curve (C5.6). */
+  --duration-fast: 100ms;
+  --duration-normal: 160ms;
+  --duration-slow: 250ms;
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* How wide a sentence of the interface may get: a hint, an empty state, a note. An answer's own
+     prose fills the page — that is the room the reader asked the window for (C5.3). */
   --container-measure: 70ch;
 }
 
 /*
- * The dark palette, and the accent palettes. Both are overrides: the theme is `data-theme` and
- * the accent is `data-accent`, and the default of each is the absence of the attribute (C5.2).
- * An accent carries three values per mode — the colour, its hover, and the text that sits on it —
- * and each pair below is measured by `tools/design/theme.test.ts` in both modes.
+ * The dark palette: the same instrument with the lamp off — near-neutral blue-greys rather than
+ * an inversion of the light ones, and the accent brightened to stay the one lit thing in the room
+ * (C5.1, C5.2). Every pair is measured by `tools/design/theme.test.ts`.
  */
 @layer base {
   :root {
@@ -148,104 +116,36 @@
   :root[data-theme='dark'] {
     color-scheme: dark;
 
-    /*
-     * The dark palette is graphite: the same room with every lamp off but the signal. Deep
-     * blue-blacks rather than an inversion of the light greys, a page one step above the chrome,
-     * and text the colour of chalk rather than of paper gone dim.
-     */
-    --color-ink-900: #0c0e13;
-    --color-ink-800: #12151c;
-    --color-ink-700: #181b23;
-    --color-ink-600: #222633;
-    --color-line: #262b38;
-    --color-line-strong: #3b4254;
+    --color-surface-0: #08090a;
+    --color-surface-1: #0f1011;
+    --color-surface-2: #141516;
+    --color-surface-3: #191a1b;
 
-    --color-parchment: #eceef3;
-    --color-parchment-dim: #a3a8ba;
-    --color-parchment-faint: #6f7889;
+    --color-foreground: #f7f8f8;
+    --color-muted: #d0d6e0;
+    --color-tertiary: #8a8f98;
+    --color-faint: #62666d;
 
-    --color-accent: #8a90ff;
-    --color-accent-bright: #a7acff;
-    --color-accent-ink: #0f1126;
+    --color-line-subtle: rgb(255 255 255 / 6%);
+    --color-line: rgb(255 255 255 / 10%);
+    --color-line-strong: rgb(255 255 255 / 16%);
 
-    --color-warm: #fb923c;
-    --color-jade: #34d399;
-    --color-amber: #fbbf24;
-    --color-danger: #f87171;
-    --color-info: #60a5fa;
-
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 14px 36px rgb(0 0 0 / 0.5);
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.45), 0 6px 18px rgb(0 0 0 / 0.42);
-    --shadow-overlay: 0 2px 5px rgb(0 0 0 / 0.55), 0 20px 48px rgb(0 0 0 / 0.62);
-  }
-
-  /*
-   * Iris is the default accent: its values are the ones above, used when the attribute is absent.
-   * They are repeated here so the attribute means the same thing as its absence — the settings
-   * page shows each accent by wearing it, and it cannot wear "no attribute" — and the design test
-   * asserts the two spellings agree.
-   */
-  [data-accent='iris'] {
-    --color-accent: #4f46e5;
-    --color-accent-bright: #3f39c4;
+    --color-accent: #7170ff;
+    --color-accent-strong: #5850ec;
     --color-accent-ink: #ffffff;
-  }
+    --color-accent-hover: #8b8aff;
+    --color-accent-deep: #4943d8;
 
-  [data-theme='dark'][data-accent='iris'] {
-    --color-accent: #8a90ff;
-    --color-accent-bright: #a7acff;
-    --color-accent-ink: #0f1126;
-  }
+    --color-danger: #ff6161;
+    --color-danger-ink: #17150f;
 
-  /* Ember — burnt orange, clear of `warm`, which belongs to the full-access level. */
-  [data-accent='ember'] {
-    --color-accent: #a8481a;
-    --color-accent-bright: #8f3c13;
-    --color-accent-ink: #fff8f0;
-  }
+    --color-success: #27a644;
+    --color-warning: #f0bf00;
+    --color-info: #5eb0ff;
 
-  [data-theme='dark'][data-accent='ember'] {
-    --color-accent: #e2762f;
-    --color-accent-bright: #f08a45;
-    --color-accent-ink: #1a0f07;
-  }
-
-  /* Sage — olive, so it stays clear of jade, which means "auto-approved". */
-  [data-accent='sage'] {
-    --color-accent: #5c7220;
-    --color-accent-bright: #4d6118;
-    --color-accent-ink: #fbfdf2;
-  }
-
-  [data-theme='dark'][data-accent='sage'] {
-    --color-accent: #a8bf5c;
-    --color-accent-bright: #b9d16d;
-    --color-accent-ink: #14180a;
-  }
-
-  /* Rose — pink enough that it never reads as `danger`. */
-  [data-accent='rose'] {
-    --color-accent: #a83a63;
-    --color-accent-bright: #912f54;
-    --color-accent-ink: #fff5f8;
-  }
-
-  [data-theme='dark'][data-accent='rose'] {
-    --color-accent: #e989ae;
-    --color-accent-bright: #f49dc0;
-    --color-accent-ink: #2a0f19;
-  }
-
-  /* Plum — the red side of violet, where iris is the blue side. */
-  [data-accent='plum'] {
-    --color-accent: #7241a8;
-    --color-accent-bright: #623691;
-    --color-accent-ink: #faf5ff;
-  }
-  [data-theme='dark'][data-accent='plum'] {
-    --color-accent: #b98ae0;
-    --color-accent-bright: #c99de9;
-    --color-accent-ink: #1c0f2a;
+    /* Floating layers sit on a darker room, so the shadow must reach further to read (C5.4). */
+    --shadow-medium: 0 0.4375rem 2rem rgb(0 0 0 / 35%);
+    --shadow-high: 0 1rem 3.5rem rgb(0 0 0 / 45%);
   }
 
   html,
@@ -256,11 +156,11 @@
 
   body {
     margin: 0;
-    background-color: var(--color-ink-900);
-    color: var(--color-parchment);
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    line-height: 1.4;
+    background-color: var(--color-surface-0);
+    color: var(--color-foreground);
+    font-family: var(--font-text);
+    font-size: var(--text-name);
+    line-height: var(--text-name--line-height);
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
@@ -271,6 +171,14 @@
     cursor: pointer;
   }
 
+  /* Controls wear the scale: 0.375rem on anything with a body, set once here (C5.4). */
+  button,
+  input,
+  select,
+  textarea {
+    border-radius: var(--radius-md);
+  }
+
   /* A visible accent focus ring on everything, including the controls we compose ourselves. */
   :focus-visible {
     outline: 0.125rem solid var(--color-accent);
@@ -278,31 +186,12 @@
   }
 
   ::selection {
-    background-color: color-mix(in oklab, var(--color-accent) 28%, transparent);
+    background-color: color-mix(in oklab, var(--color-accent) 24%, transparent);
   }
 
   /*
-   * Signal flare (C5.5): a wash of the accent across the top of the page, dim enough to read as
-   * light rather than as a banner. Decoration, not information — it carries nothing a reader
-   * needs, so it is hidden from readers too and frozen under reduced motion like everything else.
-   */
-  .page-glow::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 14rem;
-    pointer-events: none;
-    background: radial-gradient(
-      60% 100% at 50% 0%,
-      color-mix(in oklab, var(--color-accent) 6%, transparent),
-      transparent
-    );
-  }
-
-  /*
-   * The wheel: half a rem of room, and a grip inside it that a hand can actually take hold of. The
-   * transparent border is what keeps the thumb a pill rather than a bar, and at a tenth of a rem a
-   * side it left two pixels of the eight to aim at (C5.4).
+   * The wheel: half a rem of room, and a grip inside it a hand can take hold of, wearing the
+   * smallest radius of the scale (C5.4).
    */
   ::-webkit-scrollbar {
     width: 0.5rem;
@@ -310,19 +199,20 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: var(--color-ink-600);
-    border-radius: 1rem;
+    background-color: var(--color-line-strong);
     border: 0.125rem solid transparent;
     background-clip: content-box;
+    border-radius: var(--radius-sm);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-line-strong);
+    background-color: var(--color-faint);
   }
 }
 
 @layer components {
-  /* The window is frameless on Linux and Windows, so the header is the drag handle. */
+  /* The window is frameless on Linux and Windows, so the view head and the masthead are the drag
+     handle. */
   .drag-region {
     -webkit-app-region: drag;
   }
@@ -331,13 +221,18 @@
     -webkit-app-region: no-drag;
   }
 
+  /*
+   * The accent's two live marks (C5.5): the caret after streaming text, and the breath of a
+   * working conversation's dot. They are the only animations in a resting window.
+   */
   @keyframes accent-pulse {
     0%,
     100% {
       opacity: 1;
     }
+
     50% {
-      opacity: 0.25;
+      opacity: 0.2;
     }
   }
 
@@ -347,23 +242,18 @@
     height: 1em;
     vertical-align: text-bottom;
     background-color: var(--color-accent);
-    /* The cursor is a live signal, not a block: it carries a little of its own light. */
-    box-shadow: 0 0 0.75rem var(--color-accent);
-    animation: accent-pulse 1.2s ease-in-out infinite;
+    animation: accent-pulse 1.1s ease-in-out infinite;
   }
 
-  /* A conversation that is working says so without moving: the dot breathes, once a slow cycle. */
   .status-live {
     animation: accent-pulse 1.6s ease-in-out infinite;
-    box-shadow: 0 0 0.5rem color-mix(in oklab, var(--color-accent) 60%, transparent);
   }
 
   /*
-   * A menu arrives rather than appearing: a quarter-rem of rise and a fade. It is what says "this
-   * came from that control" when the panel is not attached to the thing it belongs to, and it is
+   * A menu arrives rather than appearing: a quarter-rem of rise and a fade on the normal curve,
    * short enough that a person clicking twice never waits for it (C5.6).
    */
-  @keyframes overlay-in {
+  @keyframes slip-in {
     from {
       opacity: 0;
       transform: translateY(0.25rem);
@@ -375,8 +265,8 @@
     }
   }
 
-  .overlay-in {
-    animation: overlay-in 160ms ease-out;
+  .slip-in {
+    animation: slip-in var(--duration-normal) var(--ease-out-quad);
   }
 
   @media (prefers-reduced-motion: reduce) {

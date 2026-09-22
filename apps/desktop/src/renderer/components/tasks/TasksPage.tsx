@@ -12,10 +12,17 @@ import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { runsOf, taskActions, taskOf, tasks } from '../../stores/tasks.ts'
-import { DESTRUCTIVE_ACTION, GROUP_LABEL, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
+import {
+  DESTRUCTIVE_ACTION,
+  GROUP_LABEL,
+  OUTLINED_ACTION,
+  PRIMARY_ACTION,
+  ROW_HOVER,
+  TEXT_ACTION,
+} from '../controls.ts'
 import { ClockIcon } from '../icons.tsx'
 import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, SCROLLS } from '../ledger.ts'
-import { WindowControls } from '../TitleBar.tsx'
+import { RailToggle, WindowControls } from '../TitleBar.tsx'
 import { TaskForm } from './TaskForm.tsx'
 
 function scheduleText(t: ReturnType<typeof useText>, schedule: TaskSchedule): string {
@@ -44,30 +51,26 @@ function TaskRow(props: { task: ScheduledTask; onOpen: () => void }) {
   const next = () => nextRunAt(props.task.schedule, new Date(props.task.createdAt), props.task.lastRunAt)
 
   return (
-    <li class="relative flex items-center gap-3 rounded-card border border-line bg-ink-800 px-4 py-3">
-      <ClockIcon class="text-parchment-faint" />
-      {/* The card is the control that opens the task: one button over the whole of it, so the hand is
-          answered wherever it lands on the card rather than only over its words. */}
+    <li class="relative flex items-center gap-3 rounded-lg border border-line bg-surface-0 px-4 py-3">
+      <ClockIcon class="text-faint" />
+      {/* The record is the control that opens the task: one button over the whole of it, so the hand
+          is answered wherever it lands on the record rather than only over its words (C5.6). */}
       <button
         type="button"
         onClick={props.onOpen}
-        class="absolute inset-0 rounded-card transition-colors hover:bg-ink-600"
+        class={`absolute inset-0 transition-colors ${ROW_HOVER}`}
         aria-label={props.task.name}
       />
       <div class="min-w-0 flex-1">
-        <span class="block truncate text-ui font-medium text-parchment">{props.task.name}</span>
-        <span class="mt-0.5 block truncate font-mono text-micro text-parchment-faint">
+        <span class="block truncate font-text text-name text-foreground">{props.task.name}</span>
+        <span class="mt-0.5 block truncate font-mono text-label text-faint">
           {scheduleText(t, props.task.schedule)} · {props.task.workspacePath}
         </span>
-        <span class="mt-1 block text-xs text-parchment-faint">
+        <span class="mt-1 block font-mono text-label text-faint">
           {props.task.enabled ? t('tasks.nextRun', { when: formatUntil(next(), Date.now()) }) : t('tasks.stopped')}
         </span>
       </div>
-      <button
-        type="button"
-        onClick={() => void taskActions.runNow(props.task.id)}
-        class={`relative ${OUTLINED_ACTION}`}
-      >
+      <button type="button" onClick={() => void taskActions.runNow(props.task.id)} class={`relative ${TEXT_ACTION}`}>
         {t('tasks.runNow')}
       </button>
     </li>
@@ -80,20 +83,25 @@ function RunList(props: { runs: TaskRun[] }) {
   const navigate = useNavigate()
 
   return (
-    <Show when={props.runs.length > 0} fallback={<p class="mt-2 text-xs text-parchment-faint">{t('tasks.noRuns')}</p>}>
+    <Show
+      when={props.runs.length > 0}
+      fallback={<p class="mt-2 font-text text-name text-faint">{t('tasks.noRuns')}</p>}
+    >
       <ul class="mt-2 space-y-1">
         <For each={props.runs}>
           {(run) => (
-            <li class="flex items-center gap-2 text-xs">
-              <span class="font-mono text-micro text-parchment-faint">{runText(t, run)}</span>
+            <li class="flex items-center gap-2">
+              <span class="font-mono text-label text-faint">{runText(t, run)}</span>
               <Show when={run.catchUp === true}>
-                <span class="font-mono text-micro text-parchment-faint">· {t('tasks.runCatchUp')}</span>
+                <span class="font-mono text-label text-faint">· {t('tasks.runCatchUp')}</span>
               </Show>
               <Show when={run.refusals > 0}>
-                <span class="font-mono text-micro text-amber">· {t('tasks.runRefusals', { count: run.refusals })}</span>
+                <span class="font-mono text-label text-warning">
+                  · {t('tasks.runRefusals', { count: run.refusals })}
+                </span>
               </Show>
               <Show when={run.note !== undefined}>
-                <span class="text-parchment-faint">· {t('tasks.skipMissingFolder')}</span>
+                <span class="font-mono text-label text-faint">· {t('tasks.skipMissingFolder')}</span>
               </Show>
               <Show when={run.conversationId !== ''}>
                 <button
@@ -145,11 +153,15 @@ export function TasksPage() {
 
   return (
     <div class="flex h-full min-h-0 flex-col">
-      {/* The page's band: what this page is, and the one thing you do to the page itself — the same
-          band, height and padding the conversation head and a settings panel wear, so the title
-          stands on the same x and the same y wherever you are (C5.4). */}
+      {/* The view head: what this page is, the one thing you do to the page itself, and the rail's
+          toggle at its left end — the same head, height and padding the conversation and a settings
+          panel wear, so the title stands on the same x and the same y wherever you are (C5.4). The
+          toggle stands in the head's own left padding, outside the row, so it moves nothing. */}
       <header class={`${BAND} ${BESIDE_SCROLLS}`}>
-        <h1 class="min-w-0 flex-1 truncate font-display text-xl font-semibold tracking-tight text-parchment">
+        <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
+          <RailToggle />
+        </span>
+        <h1 class="min-w-0 flex-1 truncate font-text text-title font-semibold tracking-tight text-foreground">
           {t('tasks.title')}
         </h1>
         <button type="button" onClick={() => start()} class={`no-drag ${PRIMARY_ACTION}`}>
@@ -162,15 +174,15 @@ export function TasksPage() {
         </span>
       </header>
 
-      {/* The page's body, on the page's own edges: the form this page is (a task is a name, a
-          prompt, a folder and a schedule) fills the pane the rail leaves, one padding in, on the
-          same x the band's title stands on — growing the window gives the fields room and never
-          moves the page's edge (C5.3). */}
+      {/* The page's body, on the page's own edges: what this page holds fills the pane the rail
+          leaves, one padding in, on the same x the view head's title stands on — growing the
+          window gives the fields room and never moves the page's edge (C5.3). */}
       <div class={`min-h-0 flex-1 py-6 ${PAGE} ${SCROLLS}`}>
         <div class={FORM_COLUMN} data-column="form">
-          {/* What this page is for, on the measure the prose keeps: the band's rule is what separates
-            the page's head from its body, so the first line of the body draws no rule of its own. */}
-          <p class="max-w-measure text-xs leading-relaxed text-parchment-dim">{t('tasks.intro')}</p>
+          {/* What this page is for, on the measure a sentence of the interface keeps: the view
+              head's hairline separates the page's head from its body, so this draws no rule of its
+              own. */}
+          <p class="max-w-measure font-text text-body text-muted">{t('tasks.intro')}</p>
 
           <Show when={form() !== undefined}>
             <TaskForm
@@ -201,9 +213,9 @@ export function TasksPage() {
             }
           >
             <Show when={tasks.listed}>
-              <div class="mt-6 rounded-card border border-line bg-ink-800 p-4">
-                <p class="text-ui text-parchment">{t('tasks.empty')}</p>
-                <p class="mt-1 max-w-measure text-xs leading-relaxed text-parchment-dim">{t('tasks.emptyBody')}</p>
+              <div class="mt-6 rounded-lg border border-line bg-surface-0 p-4">
+                <p class="font-text text-display text-foreground">{t('tasks.empty')}</p>
+                <p class="mt-1 max-w-measure font-text text-body text-muted">{t('tasks.emptyBody')}</p>
               </div>
             </Show>
           </Show>

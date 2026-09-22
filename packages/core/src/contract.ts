@@ -8,7 +8,7 @@ import type { Attachment } from './attachments.ts'
 import type { LanguageSetting } from './i18n.ts'
 import type { Undef } from './maybe.ts'
 import type { PermissionLevel, PermissionRule } from './permission.ts'
-import type { Accent, NetworkBind, Theme } from './persisted-state.ts'
+import type { NetworkBind, Theme } from './persisted-state.ts'
 import type { ProviderInput, ProviderView } from './providers.ts'
 import type { ChatMessage, ConversationModel, ConversationSummary, RuntimeEvent } from './runtime-events.ts'
 import type { ScheduledTask } from './task.ts'
@@ -102,7 +102,6 @@ export interface LaunchState {
   /** Per-folder defaults, so the window can say what a new conversation in a folder starts at. */
   workspaceLevels: Record<string, PermissionLevel>
   theme: Theme
-  accent: Accent
   /** Which language this workbench's interface is written in. */
   language: LanguageSetting
   model: ModelStatus
@@ -160,10 +159,9 @@ export interface NetworkState {
   error: string
 }
 
-/** How the workbench looks and reads, as a patch: the mode, the accent, the language. */
+/** How the workbench looks and reads, as a patch: the mode and the language. */
 export interface AppearancePatch {
   theme?: Theme
-  accent?: Accent
   language?: LanguageSetting
 }
 

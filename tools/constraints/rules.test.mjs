@@ -38,12 +38,27 @@ describe('05-design:no-px-lengths', () => {
     expect(inCss).toHaveLength(1)
   })
 
-  it('allows hairlines, rem, and prose about px', () => {
+  it('flags px with no exceptions — a hairline, a shadow, a comment — and allows only rem', () => {
     const hairline = violationsFor(
       rule,
       file('apps/desktop/src/renderer/a.css', '  border: 1px solid var(--color-line);'),
     )
-    expect(hairline).toEqual([])
+    expect(hairline).toHaveLength(1)
+
+    const shadow = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.css', '  box-shadow: 0 7px 32px rgb(0 0 0 / 0.35);'),
+    )
+    expect(shadow).toHaveLength(2)
+
+    const comment = violationsFor(rule, file('apps/desktop/src/renderer/a.ts', '// the caret is 2px wide'))
+    expect(comment).toHaveLength(1)
+
+    const jsdoc = file(
+      'apps/desktop/src/renderer/a.ts',
+      ['/**', ' * The caret is 2px wide.', ' */', 'const x = 1'].join('\n'),
+    )
+    expect(violationsFor(rule, jsdoc)).toHaveLength(1)
 
     const rem = violationsFor(
       rule,
@@ -51,24 +66,22 @@ describe('05-design:no-px-lengths', () => {
     )
     expect(rem).toEqual([])
 
-    const comment = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '   * rem, not px, so scaling works'))
-    expect(comment).toEqual([])
+    const remShadow = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.css', '  box-shadow: 0 0.4375rem 1.5rem rgb(0 0 0 / 0.35);'),
+    )
+    expect(remShadow).toEqual([])
+
+    const prose = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '   * rem, not px, so scaling works'))
+    expect(prose).toEqual([])
   })
 
-  it('tracks comments rather than guessing from the first character', () => {
-    // A universal selector is not a comment, and a length in one is a length.
+  it('reads a selector as a length wherever the digits are', () => {
     const selector = violationsFor(rule, file('apps/desktop/src/renderer/styles/a.css', '* { gap: 6px }'))
     expect(selector).toHaveLength(1)
 
-    // A JSDoc block is a comment, even where a line starts with a star.
-    const jsdoc = file(
-      'apps/desktop/src/renderer/a.ts',
-      ['/**', ' * The caret is 2px wide.', ' */', 'const x = 1'].join('\n'),
-    )
-    expect(violationsFor(rule, jsdoc)).toEqual([])
-
     const lineComment = violationsFor(rule, file('apps/desktop/src/renderer/a.ts', '// 6px of air'))
-    expect(lineComment).toEqual([])
+    expect(lineComment).toHaveLength(1)
   })
 
   it('reads the html the renderer ships too', () => {
@@ -81,48 +94,31 @@ describe('05-design:no-px-lengths', () => {
   })
 })
 
-describe('05-design:control-voice', () => {
-  const rule = '05-design:control-voice'
+describe('05-design:two-voices', () => {
+  const rule = '05-design:two-voices'
 
-  it('flags a button that sets itself in mono, however the className is wrapped', () => {
-    const oneLine = violationsFor(
-      rule,
-      file('apps/desktop/src/renderer/a.tsx', '<button className="font-mono text-micro">copy</button>'),
-    )
-    expect(oneLine).toHaveLength(1)
+  it('flags a third face in a class list or in the stylesheet', () => {
+    for (const face of ['font-sans', 'font-serif', 'font-display', 'font-[Fraunces]']) {
+      const found = violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', `<p className="${face}">x</p>`))
+      expect(found, face).toHaveLength(1)
+      expect(found[0].message).toContain('third face')
+    }
 
-    const wrapped = violationsFor(
+    const inCss = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '--font-serif: Georgia;'))
+    expect(inCss).toHaveLength(1)
+  })
+
+  it('allows the two voices there are, and the same words in the main process', () => {
+    const twoVoices = violationsFor(
       rule,
       file(
         'apps/desktop/src/renderer/a.tsx',
-        ['<button', '  type="button"', '  className="font-mono text-micro"', '>'].join('\n'),
+        '<h1 className="font-text"><span className="font-mono">Ctrl+N</span></h1>',
       ),
     )
-    expect(wrapped).toHaveLength(1)
-    expect(wrapped[0].line).toBe(1)
-  })
+    expect(twoVoices).toEqual([])
 
-  it('allows a button whose data is mono, and mono that is not a button', () => {
-    const data = violationsFor(
-      rule,
-      file(
-        'apps/desktop/src/renderer/a.tsx',
-        '<button className="text-xs text-parchment"><span className="font-mono">Ctrl+N</span></button>',
-      ),
-    )
-    expect(data).toEqual([])
-
-    const notAButton = violationsFor(
-      rule,
-      file('apps/desktop/src/renderer/a.tsx', '<span className="font-mono text-micro">/dev/alpha</span>'),
-    )
-    expect(notAButton).toEqual([])
-  })
-
-  it('says nothing about the main process', () => {
-    expect(
-      violationsFor(rule, file('apps/desktop/src/main/a.tsx', '<button className="font-mono">x</button>')),
-    ).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.tsx', '<p className="font-sans">x</p>'))).toEqual([])
   })
 })
 
@@ -153,24 +149,60 @@ describe('05-design:no-focus-outline-none', () => {
 describe('05-design:no-other-weights', () => {
   const rule = '05-design:no-other-weights'
 
-  it('flags every weight this interface does not have', () => {
-    for (const weight of ['font-bold', 'font-extrabold', 'font-black', 'font-light', 'font-thin']) {
+  it('flags every weight this interface does not have, class or declaration', () => {
+    for (const weight of ['font-bold', 'font-extrabold', 'font-black', 'font-light', 'font-thin', 'font-extralight']) {
       const found = violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', `<h1 className="${weight}">x</h1>`))
       expect(found, weight).toHaveLength(1)
     }
+
+    const numeric = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '.title { font-weight: 450; }'))
+    expect(numeric).toHaveLength(1)
+    expect(numeric[0].message).toContain('400, 500 and 600')
   })
 
-  it('allows the two weights there are, and the same words in the main process', () => {
+  it('allows the three weights there are, and the same words in the main process', () => {
     const allowed = violationsFor(
       rule,
       file(
         'apps/desktop/src/renderer/a.tsx',
-        '<h1 className="font-semibold"><span className="font-medium">x</span></h1>',
+        '<h1 className="font-semibold"><span className="font-medium text-label">x</span></h1>',
       ),
     )
     expect(allowed).toEqual([])
 
+    const declared = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '.body { font-weight: 400; }'))
+    expect(declared).toEqual([])
+
     expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', "const a = 'font-bold'"))).toEqual([])
+  })
+})
+
+describe('05-design:no-uppercase-labels', () => {
+  const rule = '05-design:no-uppercase-labels'
+
+  it('flags the shout in a class list and in a stylesheet', () => {
+    const inClass = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.tsx', '<p className="font-mono uppercase tracking-widest">x</p>'),
+    )
+    expect(inClass).toHaveLength(1)
+    expect(inClass[0].message).toContain('sentence-case')
+
+    const inCss = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '.label { text-transform: uppercase; }'))
+    expect(inCss).toHaveLength(1)
+  })
+
+  it('allows a sentence-case label, prose about it, and the main process', () => {
+    const label = violationsFor(
+      rule,
+      file('apps/desktop/src/renderer/a.tsx', '<p className="font-mono text-label">x</p>'),
+    )
+    expect(label).toEqual([])
+
+    const comment = violationsFor(rule, file('apps/desktop/src/renderer/a.css', '  /* labels are not uppercase */'))
+    expect(comment).toEqual([])
+
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.tsx', '<p className="uppercase">x</p>'))).toEqual([])
   })
 })
 

@@ -46,7 +46,7 @@ function ModelSubList(props: { provider: ProviderView }) {
     <section aria-label={props.provider.name} class="mt-3 border-t border-line pt-3">
       <div class="flex items-center gap-2">
         <h3 class={GROUP_LABEL}>{t('settings.modelsLabel')}</h3>
-        <span class="font-mono text-micro text-parchment-faint">{props.provider.models.length}</span>
+        <span class="font-mono text-label text-faint">{props.provider.models.length}</span>
         <span class="flex-1" />
         <Show when={dirty()}>
           <button type="button" onClick={() => setDraft(undefined)} class={OUTLINED_ACTION}>
@@ -57,14 +57,14 @@ function ModelSubList(props: { provider: ProviderView }) {
 
       <div class="mt-2.5">
         <Show when={props.provider.models.length === 0 && !dirty()}>
-          <p class="text-micro leading-relaxed text-parchment-faint">{t('settings.noModels')}</p>
+          <p class="font-text text-name leading-relaxed text-faint">{t('settings.noModels')}</p>
         </Show>
         <ModelFields models={models()} onChange={setDraft} />
       </div>
 
       <div class="mt-3 flex items-center justify-end gap-3 border-t border-line pt-3">
         <Show when={error() !== ''}>
-          <span class="min-w-0 flex-1 truncate text-xs text-danger">{error()}</span>
+          <span class="min-w-0 flex-1 truncate font-text text-name text-danger">{error()}</span>
         </Show>
         <button type="button" disabled={!dirty()} onClick={() => void save()} class={PRIMARY_ACTION}>
           {t('settings.saveModels')}
@@ -75,7 +75,7 @@ function ModelSubList(props: { provider: ProviderView }) {
 }
 
 /**
- * One connection, and everything that travels over it. The card is a group with three parts — who
+ * One connection, and everything that travels over it. The record is a group with three parts — who
  * it is, the key it is reached with, and the models it serves as a sub-list — because a model is a
  * child of its provider and is configured there rather than in a list of its own.
  */
@@ -86,18 +86,18 @@ export function ProviderCard(props: { provider: ProviderView }) {
   const firstModel = () => props.provider.models[0]?.id ?? ''
 
   return (
-    <li class="rounded-card border border-line bg-ink-800 p-4">
+    <li class="rounded-lg border border-line bg-surface-0 p-4">
       <div class="flex items-baseline justify-between gap-3">
         <div class="min-w-0">
-          <p class="truncate text-ui font-medium text-parchment">{props.provider.name}</p>
-          <p class="truncate font-mono text-micro text-parchment-faint">{props.provider.baseUrl}</p>
+          <p class="truncate font-text text-name text-foreground">{props.provider.name}</p>
+          <p class="truncate font-mono text-label text-faint">{props.provider.baseUrl}</p>
         </div>
-        <span class={`shrink-0 text-micro ${props.provider.hasCredential ? 'text-jade' : 'text-amber'}`}>
+        <span class={`shrink-0 font-mono text-label ${props.provider.hasCredential ? 'text-success' : 'text-warning'}`}>
           {t(props.provider.hasCredential ? 'settings.keyStored' : 'settings.noKey')}
         </span>
       </div>
 
-      <p class="mt-1.5 flex items-center gap-2 text-micro text-parchment-faint">
+      <p class="mt-1.5 flex items-center gap-2 font-mono text-label text-faint">
         <span>{t(API_NAMES[props.provider.api])}</span>
         <span aria-hidden="true">·</span>
         <span>
@@ -114,7 +114,7 @@ export function ProviderCard(props: { provider: ProviderView }) {
           aria-label={t('settings.apiKeyFor', { provider: props.provider.name })}
           placeholder={t('settings.pasteKey')}
           onInput={(event) => setSecret(event.target.value)}
-          class={`min-w-0 flex-1 px-2 font-mono text-xs text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
+          class={`min-w-0 flex-1 px-2 font-mono text-code ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
         />
         <button
           type="button"
@@ -140,7 +140,7 @@ export function ProviderCard(props: { provider: ProviderView }) {
         </button>
         <Show when={outcome()}>
           {(result) => (
-            <span class={`min-w-0 flex-1 truncate text-xs ${result().ok ? 'text-jade' : 'text-danger'}`}>
+            <span class={`min-w-0 flex-1 truncate font-text text-name ${result().ok ? 'text-success' : 'text-danger'}`}>
               {result().message}
             </span>
           )}

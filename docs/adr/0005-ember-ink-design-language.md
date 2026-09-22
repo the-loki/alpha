@@ -1,5 +1,6 @@
 # Ember Ink: a warm-ink, single-accent design language
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 Alpha's interface uses warm near-black surfaces (`#14110E` family), parchment text, and exactly
 one saturated accent — copper `#E2762F` — with jade, amber, danger and info reserved for state.
 

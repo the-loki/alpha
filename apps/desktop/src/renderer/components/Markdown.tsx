@@ -12,8 +12,9 @@ import {
 
 /**
  * Message text renders as markdown, built from elements rather than injected HTML, so a model that
- * writes a script tag gets a script tag printed rather than a script tag run: the tree is walked
- * here, each node becomes a real element, and raw HTML is one of the things printed.
+ * writes a script tag gets a script tag rendered rather than a script tag run: the tree is walked
+ * here, each node becomes a real element, and raw HTML is one of the things rendered. The text voice
+ * owns everything the model wrote (C5.3); the measuring voice is only the code in it.
  */
 const CARET = () => <span class="caret ml-0.5" aria-hidden="true" />
 
@@ -37,19 +38,21 @@ function Inline(props: { node: MdNode }): JSX.Element {
     case 'emphasis':
       return <em>{children()}</em>
     case 'strong':
-      return <strong>{children()}</strong>
+      // Semibold, the heading weight (C5.3): the page has no bold in it.
+      return <strong class="font-semibold">{children()}</strong>
     case 'delete':
       return <del>{children()}</del>
     case 'inlineCode':
       return (
-        <code class="rounded border border-line bg-ink-800 px-1 py-0.5 font-mono text-code text-parchment">
+        <code class="rounded-sm bg-surface-1 px-1 py-0.5 font-mono text-code text-foreground">
           {props.node.value ?? ''}
         </code>
       )
     case 'link':
       return (
+        // A link is accent: it is the one mark of ink that says "there is somewhere else".
         <a
-          class="text-accent underline underline-offset-2 hover:text-accent-bright"
+          class="text-accent underline underline-offset-2 transition-colors duration-normal hover:text-accent-hover"
           href={safeUrl(props.node.url ?? '')}
           title={props.node.title}
         >
@@ -65,15 +68,15 @@ function Inline(props: { node: MdNode }): JSX.Element {
   }
 }
 
-/** A heading, in the three sizes the window sets prose in. */
+/** A heading, in the three sizes the window sets prose in — all of them the heading weight. */
 const Heading = (props: { children: JSX.Element; depth: number }): JSX.Element => {
   switch (props.depth) {
     case 1:
-      return <h1 class="mb-2 mt-4 text-lg font-semibold">{props.children}</h1>
+      return <h1 class="mb-2 mt-4 font-text text-title font-semibold tracking-tight">{props.children}</h1>
     case 2:
-      return <h2 class="mb-2 mt-4 text-base font-semibold">{props.children}</h2>
+      return <h2 class="mb-2 mt-4 font-text text-lg font-semibold tracking-tight">{props.children}</h2>
     case 3:
-      return <h3 class="mb-1.5 mt-3 text-body font-semibold">{props.children}</h3>
+      return <h3 class="mb-1.5 mt-3 font-text text-body font-semibold">{props.children}</h3>
     case 4:
       return <h4>{props.children}</h4>
     case 5:
@@ -111,7 +114,7 @@ function List(props: { node: MdNode; caret: boolean; end: number }): JSX.Element
  * What an item holds. A tight item is text and marks, so its paragraph is not drawn — the item is
  * the paragraph; a loose one, or one with a list inside it, holds blocks the way any other place
  * does. That distinction is the markdown's own (the list's `spread`), and it is what keeps a nested
- * list from printing as run-on text.
+ * list from running together as run-on text.
  */
 const Contents = (props: { node: MdNode; caret: boolean; end: number; loose: boolean }): JSX.Element => (
   <For each={childrenOf(props.node)}>
@@ -154,7 +157,7 @@ function Table(props: { node: MdNode }): JSX.Element {
 
   return (
     <div class="mb-3 overflow-x-auto">
-      <table class="w-full border-collapse text-ui">
+      <table class="w-full border-collapse font-text text-name">
         <For each={props.node.children ?? []}>
           {(row, index) => (
             <tr>
@@ -168,7 +171,7 @@ function Table(props: { node: MdNode }): JSX.Element {
                       </td>
                     }
                   >
-                    <th class="border border-line px-2 py-1 text-left font-medium" style={styleOf(column())}>
+                    <th class="border border-line px-2 py-1 text-left font-semibold" style={styleOf(column())}>
                       <For each={cell.children ?? []}>{(child) => <Inline node={child} />}</For>
                     </th>
                   </Show>
@@ -182,7 +185,7 @@ function Table(props: { node: MdNode }): JSX.Element {
   )
 }
 
-/** A block: the shapes prose is set in, and the marks that carry the reading measure (C5.3). */
+/** A block: the shapes prose is set in, and the wells the machine's parts sit in (C5.4). */
 function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Element {
   const children = () => <For each={props.node.children ?? []}>{(child) => <Inline node={child} />}</For>
   switch (props.node.type) {
@@ -196,7 +199,7 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
       )
     case 'blockquote':
       return (
-        <blockquote class="mb-3 border-l-2 border-accent/40 pl-3 text-parchment-dim">
+        <blockquote class="mb-3 border-l-2 border-line pl-3 text-muted">
           <Tail node={props.node} caret={props.caret} end={props.end}>
             {children()}
           </Tail>
@@ -204,7 +207,7 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
       )
     case 'code':
       return (
-        <pre class="mb-3 overflow-x-auto rounded-card border border-line bg-ink-900 p-3 font-mono text-code text-parchment-dim">
+        <pre class="mb-3 overflow-x-auto rounded-md border border-line-subtle bg-surface-1 p-3 font-mono text-code text-muted">
           {/* The block's code is set plain: the well around it is the frame, and a pill inside a
               well was the inline mark wearing two coats. */}
           <code>{props.node.value ?? ''}</code>
@@ -219,7 +222,7 @@ function Block(props: { node: MdNode; caret: boolean; end: number }): JSX.Elemen
       return <Table node={props.node} />
     case 'thematicBreak':
       return <hr class="my-4 border-line" />
-    // A block of raw HTML, printed the way an inline one is.
+    // A block of raw HTML, rendered the way an inline one is.
     case 'html':
       return <p class="mb-3 last:mb-0 whitespace-pre-wrap">{props.node.value ?? ''}</p>
     default:
@@ -233,9 +236,10 @@ export function Markdown(props: { text: string; caret?: boolean }) {
   const caret = () => props.caret === true
 
   return (
-    // `break-words` inherits down the tree: prose keeps its measure and its line breaks, and a
-    // token too long for either breaks instead of carrying the column away with it.
-    <div class="wrap-anywhere text-body text-parchment">
+    // `wrap-anywhere` inherits down the tree: prose keeps its line breaks, and a token too long
+    // for either breaks instead of carrying the column away with it. The page fills the window —
+    // the answer's own prose is the room the reader asked for (C5.3).
+    <div class="wrap-anywhere font-text text-body text-foreground">
       <For each={tree().children ?? []}>{(one) => <Block node={one} caret={caret()} end={end()} />}</For>
     </div>
   )

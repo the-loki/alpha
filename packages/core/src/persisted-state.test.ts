@@ -19,7 +19,6 @@ const rule = {
 
 const valid = {
   theme: 'system',
-  accent: 'sage',
   language: 'zh',
   workspaceLevels: {},
   workspace: {
@@ -39,9 +38,8 @@ describe('[core] emptyPersistedState', () => {
     expect(state.workspace.recents).toEqual([])
     expect(state.permissionLevel).toBe('ask')
     expect(state.permissionRules).toEqual([])
-    // A fresh install opens light, in the signal accent (C5.2).
+    // A fresh install opens on paper (C5.2).
     expect(state.theme).toBe('light')
-    expect(state.accent).toBe('iris')
     // And in the language of the machine it is opened on.
     expect(state.language).toBe('system')
     // Browser access is off until it is asked for, and it listens only to this machine (C6.1, C6.2).
@@ -52,6 +50,12 @@ describe('[core] emptyPersistedState', () => {
     // The RPC era wrote `agent: { path }` into this file; Alpha ships its agent now, and an old
     // key must cost nothing — not the workspace, not the level, not the whole file.
     const older = { ...valid, agent: { path: '/opt/pi/bin/pi' } }
+    expect(parsePersistedState(older)).toEqual(parsePersistedState(valid))
+  })
+
+  it('parses a file that still carries the retired accent choice, and ignores the key', () => {
+    // Codex has one second ink (C5.2); an older file's palette name costs nothing.
+    const older = { ...valid, accent: 'sage' }
     expect(parsePersistedState(older)).toEqual(parsePersistedState(valid))
   })
 
@@ -107,7 +111,6 @@ describe('[core] parsePersistedState', () => {
       workspaceLevels: { '/dev/alpha': 'full-access' },
       permissionRules: [],
       theme: 'light',
-      accent: 'ember',
       language: 'system',
       lastConversationId: '',
       network: emptyNetworkAccess(),

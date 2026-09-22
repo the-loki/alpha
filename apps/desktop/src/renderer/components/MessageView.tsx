@@ -15,7 +15,7 @@ import { createSignal, For, Index, type JSX, Match, Show, Switch } from 'solid-j
 import { copyText, markdownOf } from '../lib/clipboard.ts'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { FIELD_FRAME, GROUP_LABEL, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
+import { FIELD_FRAME, GROUP_LABEL, NOTICE, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 
@@ -30,7 +30,7 @@ function AttachmentThumb(props: { block: ChatBlockAttachment }) {
     <img
       src={`data:${props.block.mimeType};base64,${props.block.data}`}
       alt={t('message.attachment')}
-      class="h-20 max-w-40 rounded-card border border-line object-cover"
+      class="h-20 max-w-40 rounded-md border border-line object-cover"
     />
   )
 }
@@ -40,7 +40,7 @@ function Fold(props: { label: () => string; children: JSX.Element }) {
   return (
     <details class="group">
       <summary
-        class={`inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors hover:text-parchment-dim ${GROUP_LABEL}`}
+        class={`inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors duration-normal hover:text-foreground ${GROUP_LABEL}`}
       >
         {props.label()}
         <svg
@@ -49,7 +49,7 @@ function Fold(props: { label: () => string; children: JSX.Element }) {
           fill="none"
           stroke="currentColor"
           stroke-width="1.5"
-          class="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-open:rotate-90"
+          class="h-3.5 w-3.5 shrink-0 transition-transform duration-normal group-open:rotate-90"
         >
           <path d="M6 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
@@ -64,7 +64,7 @@ function ThinkingBlock(props: { block: ChatBlockThinking }) {
   const elapsed = () => formatDuration(props.block.startedAt, props.block.endedAt)
   return (
     <Fold label={() => `${t('message.thinking')}${elapsed() === '' ? '' : ` · ${elapsed()}`}`}>
-      <p class="mt-2 whitespace-pre-wrap wrap-anywhere text-body leading-relaxed text-parchment-dim">
+      <p class="mt-2 font-text text-body leading-relaxed whitespace-pre-wrap wrap-anywhere text-muted">
         {props.block.text}
       </p>
     </Fold>
@@ -82,7 +82,7 @@ function CompactionMarker(props: { block: ChatBlockCompaction }) {
         })
       }
     >
-      <p class="mt-2 whitespace-pre-wrap wrap-anywhere text-body leading-relaxed text-parchment-dim">
+      <p class="mt-2 font-text text-body leading-relaxed whitespace-pre-wrap wrap-anywhere text-muted">
         {props.block.summary}
       </p>
     </Fold>
@@ -107,13 +107,15 @@ function EditBox(props: { message: ChatMessage; index: number; onDone: () => voi
   }
 
   return (
-    <div class="w-3/4 rounded-card border border-amber/40 bg-ink-900/60 p-3">
+    // Editing is happening now, not a warning: the frame tints accent while the words are being
+    // changed, and the field inside keeps its neutral edge (C5.2).
+    <div class="w-3/4 rounded-md border border-accent/60 bg-surface-1 p-3">
       <textarea
         rows={3}
         value={text()}
         aria-label={t('message.editLabel')}
         onInput={(event) => setText(event.target.value)}
-        class={`block w-full resize-none px-2.5 py-2 text-body leading-relaxed text-parchment ${FIELD_FRAME}`}
+        class={`block w-full resize-none px-2.5 py-2 font-text text-body leading-relaxed ${FIELD_FRAME}`}
       />
       <div class="mt-2 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => submit('replace')} class={PRIMARY_ACTION}>
@@ -123,7 +125,7 @@ function EditBox(props: { message: ChatMessage; index: number; onDone: () => voi
           {t('message.fork')}
         </button>
       </div>
-      <p class="mt-1.5 max-w-measure text-micro text-parchment-faint">{t('message.editNote')}</p>
+      <p class="mt-1.5 max-w-measure font-text text-name text-faint">{t('message.editNote')}</p>
     </div>
   )
 }
@@ -133,14 +135,13 @@ function StatusNote(props: { message: ChatMessage }) {
   return (
     <>
       <Show when={props.message.status === 'interrupted'}>
-        <p class="mt-2 flex items-center font-mono text-micro uppercase tracking-wider text-amber">
-          <span aria-hidden="true" class="mr-1.5 h-1.5 w-1.5 rounded-full bg-amber" />
+        <p class={`mt-2 flex items-center ${NOTICE} border-warning font-mono text-label text-warning`}>
+          <span aria-hidden="true" class="mr-1.5 h-1.5 w-1.5 bg-warning" />
           {t('message.stopped')}
         </p>
       </Show>
       <Show when={props.message.status === 'failed'}>
-        <p class="mt-2 flex items-center rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-code text-danger">
-          <span aria-hidden="true" class="mr-2 h-1.5 w-1.5 shrink-0 rounded-full bg-danger" />
+        <p class={`mt-2 ${NOTICE} border-danger font-mono text-code text-danger`}>
           <span class="min-w-0 wrap-anywhere">{props.message.error ?? t('message.failed')}</span>
         </p>
       </Show>
@@ -148,7 +149,10 @@ function StatusNote(props: { message: ChatMessage }) {
   )
 }
 
-/** The reader's own entry: the pictures and words they sent, and the two things one does to them. */
+/**
+ * The reader's own entry: a bordered card on a sunken step, holding the pictures and words they
+ * sent, and the two things one does to them (C5.5).
+ */
 function QuestionView(props: { message: ChatMessage; index: number }) {
   const t = useText()
   const [editing, setEditing] = createSignal(false)
@@ -163,24 +167,22 @@ function QuestionView(props: { message: ChatMessage; index: number }) {
         when={editing()}
         fallback={
           <>
-            {/* The pictures stand above the bubble, set to the same edge: they are what was handed
-                over, and the bubble is what was said about it — the order they arrived in, the
+            {/* The pictures stand above the card, set to the same edge: they were what was handed
+                over, and the card holds what was said about them — the order they arrived in, the
                 order the model read them in. */}
             <Show when={pictures().length > 0}>
               <div class="mb-2 flex max-w-full flex-wrap justify-end gap-2">
                 <For each={pictures()}>{(block) => <AttachmentThumb block={block} />}</For>
               </div>
             </Show>
-            {/* The reader's own message, drawn as every LLM workbench draws it: the page's own
-                surface lifted one step and framed, rounded square but for the corner that faces
-                the answer it produced — the one corner drawn small, so the bubble points at what
-                came of it. Nothing here is lit; the accent is the workbench's, not the reader's. */}
-            <div class="flex max-w-xl min-w-0 flex-col items-start rounded-card rounded-tr-xs border border-line bg-ink-600 px-4 py-3">
-              <p class="text-body leading-relaxed whitespace-pre-wrap wrap-anywhere text-parchment">{words()}</p>
+            <div class="flex max-w-2xl min-w-0 flex-col items-start rounded-md border border-line bg-surface-1 px-4 py-3">
+              <p class="font-text text-body leading-relaxed whitespace-pre-wrap wrap-anywhere text-foreground">
+                {words()}
+              </p>
             </div>
-            {/* One row of actions, revealed under the bubble rather than printed beside it: a
-                message at rest is its bubble alone, and the answer below is what has to be
-                readable. The answer's own row stays visible — that is the thing a reader copies. */}
+            {/* One row of actions, revealed under the card rather than shown beside it: a
+                message at rest is its words alone, and the answer below is what has to be
+                readable. */}
             <div class="mt-1 flex items-center gap-3">
               <CopyButton
                 what="message.copyMessage"
@@ -250,9 +252,8 @@ function AnswerView(props: { message: ChatMessage; last: boolean }) {
   const spoken = () => props.message.blocks.some((block) => block.kind === 'text' && block.text !== '')
 
   return (
-    // The workbench answers with the work itself, full width and unboxed — no badge stands
-    // beside it, because the voice that answered is the voice that owns the column: the reader's
-    // words are the visitors in it, set apart in their bubble on the right.
+    // The answer is the text of the page itself: written on the page, full width and unboxed.
+    // The reader's words are the visitors in it, set apart in their card.
     <article class="group/answer w-full" data-role="assistant">
       <div class="flex flex-col gap-3">
         <Index each={props.message.blocks}>
@@ -261,17 +262,16 @@ function AnswerView(props: { message: ChatMessage; last: boolean }) {
           )}
         </Index>
       </div>
-      {/* An answer that has not said anything yet is still an answer arriving: the caret is the
-          only thing on the page that says so. */}
+      {/* An answer that has not said anything yet is still an answer arriving: the accent's caret
+          is the only thing on the page that says so (C5.5). */}
       <Show when={streaming() && props.message.blocks.length === 0}>
         <span class="caret" aria-hidden="true" />
       </Show>
       <StatusNote message={props.message} />
       <Show when={spoken()}>
         {/* One row of actions under the answer, revealed to the hand that points at it: at rest
-            an answer is its words alone, and a row of labels under every answer is furniture the
-            transcript does not need. */}
-        <div class="mt-1.5 flex items-center gap-3 opacity-0 transition-opacity group-focus-within/answer:opacity-100 group-hover/answer:opacity-100">
+            an answer is its words alone. */}
+        <div class="mt-1.5 flex items-center gap-3 opacity-0 transition-opacity duration-normal group-focus-within/answer:opacity-100 group-hover/answer:opacity-100">
           <CopyButton what="message.copyAnswer" label="message.copy" text={markdownOf(props.message.blocks)} />
           {/* Only the last answer can be regenerated: it re-runs the last question, so offering
               it under every answer would replace a different one than the reader is pointing at. */}
@@ -321,7 +321,7 @@ export function CopyButton(props: {
       onClick={() => {
         void copyText(props.text).then((ok) => setState(ok ? 'done' : 'failed'))
       }}
-      class={`${TEXT_ACTION} ${state() === 'done' ? 'text-jade' : ''} ${state() === 'failed' ? 'text-danger' : ''} ${props.class ?? ''}`}
+      class={`${TEXT_ACTION} ${state() === 'done' ? 'text-success' : ''} ${state() === 'failed' ? 'text-danger' : ''} ${props.class ?? ''}`}
     >
       {t(
         state() === 'done' ? 'message.copied' : state() === 'failed' ? 'message.copyFailed' : props.label,

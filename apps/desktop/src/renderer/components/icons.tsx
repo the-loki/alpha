@@ -1,6 +1,6 @@
 /**
- * The app's icons, drawn rather than imported: a dozen 16px line glyphs do not need a dependency,
- * and hand-drawn ones keep the 1.5px stroke and the square-ish geometry the window controls use.
+ * The app's icons, drawn rather than imported: a dozen one-rem line glyphs do not need a dependency,
+ * and hand-drawn ones keep the fine stroke and the square-ish geometry the window controls use.
  *
  * They are decorative by default (`aria-hidden`): every one of them sits next to a label or inside
  * a button that has one. An icon that carries meaning on its own takes a `title` instead.
@@ -94,6 +94,18 @@ export const TuneIcon = (props: IconProps) => (
 export const FolderIcon = (props: IconProps) => (
   <Glyph {...props}>
     <path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.3l1.3 1.5h4.6c.7 0 1.2.5 1.2 1.2v5.3c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2V4.6Z" />
+  </Glyph>
+)
+
+/**
+ * The rail itself: the window's left column, drawn as a panel with its own left edge. It is what
+ * the view head's toggle folds away and what brings it back — one glyph for both, told apart by
+ * the button's name rather than by a second drawing.
+ */
+export const RailIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <rect x="2.25" y="3.25" width="11.5" height="9.5" />
+    <path d="M6.25 3.25v9.5" />
   </Glyph>
 )
 

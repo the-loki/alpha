@@ -2,12 +2,18 @@ import type { NetworkBind, NetworkPatch, NetworkState, TextKey, Undef } from '@a
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { shell, useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, DESTRUCTIVE_BUTTON, FIELD_FRAME, OUTLINED_ACTION } from '../controls.ts'
+import { CONTROL_HEIGHT, DANGER_ACTION, FIELD_FRAME, GROUP_LABEL, OUTLINED_ACTION } from '../controls.ts'
 
 const BIND_LABELS: Record<NetworkBind, TextKey> = {
   local: 'settings.bindLocal',
   network: 'settings.bindNetwork',
 }
+
+/** A choice carries a mark, not only a colour (C5.7): the chosen one is tinted, and `aria-pressed`
+    says the same to a reader. */
+const CHOICE = `inline-flex ${CONTROL_HEIGHT} items-center gap-2 rounded-md border px-3 font-mono text-label font-medium transition-colors duration-normal`
+const CHOSEN = 'border-accent/50 bg-accent/10 text-accent'
+const RESTING = 'border-line text-muted hover:bg-surface-1'
 
 /**
  * Browser access: the switch, where it listens, and the token a browser has to be given. The
@@ -41,23 +47,24 @@ export function BrowserAccessSection() {
           {/* The panel's own heading says what this is; saying it again here would make the page read
               as two versions of the same sentence. */}
           <Show when={shell.host === 'browser'}>
-            <p class="max-w-measure text-xs text-parchment-faint">{t('settings.browserHost')}</p>
+            <p class="max-w-measure font-text text-name leading-relaxed text-faint">{t('settings.browserHost')}</p>
           </Show>
 
-          <div class="space-y-3 rounded-card border border-line bg-ink-800 p-4">
+          {/* One connection's record: a framed group block on the page, inset one number (C5.4). */}
+          <div class="space-y-3 rounded-lg border border-line bg-surface-0 p-4">
             <label class="flex items-center justify-between gap-4">
-              <span class="text-ui text-parchment">{t('settings.serve')}</span>
+              <span class={GROUP_LABEL}>{t('settings.serve')}</span>
               <input
                 type="checkbox"
                 aria-label={t('settings.serveLabel')}
                 checked={current().enabled}
                 onInput={(event) => change({ enabled: event.target.checked })}
-                class="h-4 w-4 accent-[var(--color-accent)]"
+                class="h-4 w-4 accent-accent"
               />
             </label>
 
             <div class="flex items-center justify-between gap-4">
-              <span class="text-ui text-parchment">{t('settings.whoCanReach')}</span>
+              <span class={GROUP_LABEL}>{t('settings.whoCanReach')}</span>
               <div class="flex gap-1.5">
                 <For each={Object.keys(BIND_LABELS) as NetworkBind[]}>
                   {(bind) => (
@@ -65,11 +72,7 @@ export function BrowserAccessSection() {
                       type="button"
                       aria-pressed={current().bind === bind}
                       onClick={() => change({ bind })}
-                      class={`flex h-7 items-center rounded-control border px-3 text-xs transition-colors ${
-                        current().bind === bind
-                          ? 'border-accent/50 bg-accent/10 text-accent'
-                          : 'border-line text-parchment-dim hover:bg-ink-600'
-                      }`}
+                      class={`${CHOICE} ${current().bind === bind ? CHOSEN : RESTING}`}
                     >
                       {t(BIND_LABELS[bind])}
                     </button>
@@ -79,7 +82,7 @@ export function BrowserAccessSection() {
             </div>
 
             <div class="flex items-center justify-between gap-4">
-              <label class="text-ui text-parchment" for="network-port">
+              <label class={GROUP_LABEL} for="network-port">
                 {t('settings.port')}
               </label>
               <span class="flex items-center gap-2">
@@ -88,25 +91,23 @@ export function BrowserAccessSection() {
                   value={port()}
                   onInput={(event) => setPort(event.target.value.replace(/[^0-9]/g, ''))}
                   onBlur={() => change({ port: Number(port() === '' ? 0 : port()) })}
-                  class={`w-20 px-2 text-right font-mono text-code text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
+                  class={`w-20 px-2 text-right font-mono text-code ${CONTROL_HEIGHT} ${FIELD_FRAME}`}
                 />
-                <span class="text-micro text-parchment-faint">{t('settings.portHint')}</span>
+                <span class="font-mono text-label text-faint">{t('settings.portHint')}</span>
               </span>
             </div>
 
             <TokenRow state={current()} onChange={apply} onCopied={setCopied} copied={copied()} />
 
             <Show when={current().error !== ''}>
-              <p class="text-xs text-danger">{current().error}</p>
+              <p class="max-w-measure font-text text-name text-danger">{current().error}</p>
             </Show>
 
             <Show when={current().urls.length > 0}>
               <div>
-                <span class="block text-ui text-parchment">{t('settings.openAt')}</span>
+                <span class={`block ${GROUP_LABEL}`}>{t('settings.openAt')}</span>
                 <ul class="mt-1 space-y-0.5">
-                  <For each={current().urls}>
-                    {(url) => <li class="font-mono text-code text-parchment-dim">{url}</li>}
-                  </For>
+                  <For each={current().urls}>{(url) => <li class="font-mono text-code text-muted">{url}</li>}</For>
                 </ul>
               </div>
             </Show>
@@ -128,9 +129,11 @@ function TokenRow(props: {
   const disabled = () => props.state.token === ''
   return (
     <div>
-      <span class="block text-ui text-parchment">{t('unlock.token')}</span>
+      <span class={`block ${GROUP_LABEL}`}>{t('unlock.token')}</span>
       <div class="mt-1 flex items-center gap-2">
-        <code class="flex h-7 min-w-0 flex-1 items-center truncate rounded-control border border-line bg-ink-700 px-2 font-mono text-code text-parchment-dim">
+        <code
+          class={`flex min-w-0 flex-1 items-center truncate border border-line bg-surface-1 px-2 font-mono text-code text-muted ${CONTROL_HEIGHT}`}
+        >
           {disabled() ? t('settings.tokenMinted') : props.state.token}
         </code>
         <button
@@ -147,7 +150,7 @@ function TokenRow(props: {
           type="button"
           disabled={disabled()}
           onClick={() => void bridge().regenerateNetworkToken().then(props.onChange)}
-          class={DESTRUCTIVE_BUTTON}
+          class={DANGER_ACTION}
         >
           {t('settings.replaceToken')}
         </button>

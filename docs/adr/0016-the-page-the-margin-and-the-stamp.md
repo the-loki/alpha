@@ -1,5 +1,6 @@
 # The page, the margin, and the stamp
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 The window is one full-bleed sheet with a ruled left margin, every entry numbered in that margin,
 and one control shape on it: a square stamp. Nothing on the sheet is rounded and nothing on it
 floats. Rounding and shadow belong to the two things that genuinely hover over the page — a menu

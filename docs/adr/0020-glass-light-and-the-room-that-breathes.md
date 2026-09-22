@@ -1,5 +1,6 @@
 # Glass, light, and the room that breathes
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 The page gains two materials beyond paper: **glass** — the head and the composer's bar become
 translucent chrome that the transcript slides beneath — and **light** — the accent is allowed to
 cast a glow of its own on what is lit by it, with a hearth at the foot of the page that brightens

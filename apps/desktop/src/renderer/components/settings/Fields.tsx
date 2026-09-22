@@ -1,10 +1,11 @@
 import { PROVIDER_APIS, type ProviderApi, type TextKey } from '@alpha/core'
 import { For } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
-import { CONTROL_HEIGHT, FIELD_FRAME } from '../controls.ts'
+import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL } from '../controls.ts'
 
-/** A field is a body like a button is: one height, one radius, one hairline (C5.4). */
-export const FIELD = `w-full px-2 font-mono text-xs text-parchment ${CONTROL_HEIGHT} ${FIELD_FRAME}`
+/** A field is a body like a button is: one height, one hairline, and the well it stands in (C5.4).
+    A typed value is data, so it is set in the apparatus voice (C5.3). */
+export const FIELD = `w-full px-2 font-mono text-code ${CONTROL_HEIGHT} ${FIELD_FRAME}`
 
 export function TextField(props: {
   label: string
@@ -14,7 +15,7 @@ export function TextField(props: {
 }) {
   return (
     <label class="block">
-      <span class="mb-1 block text-micro text-parchment-faint">{props.label}</span>
+      <span class={`mb-1 block ${GROUP_LABEL}`}>{props.label}</span>
       <input
         aria-label={props.label}
         value={props.value}
@@ -49,7 +50,7 @@ export function ApiField(props: { api: ProviderApi; onChange: (api: ProviderApi)
   return (
     <div>
       <label class="block">
-        <span class="mb-1 block text-micro text-parchment-faint">{t('settings.wireProtocol')}</span>
+        <span class={`mb-1 block ${GROUP_LABEL}`}>{t('settings.wireProtocol')}</span>
         <select
           aria-label={t('settings.wireProtocol')}
           value={props.api}
@@ -59,7 +60,7 @@ export function ApiField(props: { api: ProviderApi; onChange: (api: ProviderApi)
           <For each={PROVIDER_APIS}>{(candidate) => <option value={candidate}>{t(API_LABELS[candidate])}</option>}</For>
         </select>
       </label>
-      <p class="mt-1 max-w-measure text-micro leading-relaxed text-parchment-faint">{t(API_NOTES[props.api])}</p>
+      <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-faint">{t(API_NOTES[props.api])}</p>
     </div>
   )
 }

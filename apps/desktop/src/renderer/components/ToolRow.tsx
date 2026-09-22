@@ -19,8 +19,8 @@ const GLYPH: Record<ChatBlockTool['risk'], string> = { read: '◇', write: '◆'
 
 /**
  * How the call got past the gate, in two words or fewer. An automatic approval shows nothing on the
- * line — the header chip already says which level is in force — but every kind is named in the
- * expanded panel, because "why did this run?" is a question the ledger has to answer later.
+ * line — the level is already named on the chip — but every kind is named in the expanded panel,
+ * because "why did this run?" is a question the ledger has to answer later.
  */
 const MARK: Record<ApprovalRecord['kind'], Undef<TextKey>> = {
   auto: undefined,
@@ -43,11 +43,11 @@ const APPROVAL_NOTE: Record<ApprovalRecord['kind'], TextKey> = {
 
 const MARK_TONE: Record<ApprovalRecord['kind'], string> = {
   auto: '',
-  rule: 'text-jade border-jade/30',
-  once: 'text-jade border-jade/30',
-  always: 'text-jade border-jade/30',
-  denied: 'text-danger border-danger/40',
-  blocked: 'text-danger border-danger/40',
+  rule: 'text-success border-success/40',
+  once: 'text-success border-success/40',
+  always: 'text-success border-success/40',
+  denied: 'text-danger border-danger/50',
+  blocked: 'text-danger border-danger/50',
 }
 
 /** The full sentence, for the panel: the level at the time, then what decided it. */
@@ -55,7 +55,11 @@ function approvalNote(language: Language, approval: ApprovalRecord): string {
   const level = text(language, levelKey(approval.level))
   return text(language, APPROVAL_NOTE[approval.kind], { level })
 }
-const TONE: Record<ChatBlockTool['status'], string> = { running: 'text-amber', ok: 'text-jade', failed: 'text-danger' }
+const TONE: Record<ChatBlockTool['status'], string> = {
+  running: 'text-accent',
+  ok: 'text-success',
+  failed: 'text-danger',
+}
 const STATUS_WORD: Record<ChatBlockTool['status'], TextKey> = {
   running: 'tool.running',
   ok: 'tool.done',
@@ -66,10 +70,9 @@ const STATUS_WORD: Record<ChatBlockTool['status'], TextKey> = {
  * One line per tool call: what ran, on what, for how long. Expanding shows the arguments the
  * model sent and the output the tool produced, because a call you cannot audit is decoration.
  *
- * A call is an inline summary, not a card and not a ruled row of a table: the line reads as a
- * sentence in the answer's own column — glyph, name, what it touched, how it went — and only
- * the pointer's arrow reveals that it turns at all. The answer's prose stays the loudest thing
- * in the transcript; a run of calls stacks as a quiet list of lines (C5.5).
+ * A call is one quiet sentence of measurement in the answer's own column — glyph, mono name, what
+ * it touched, who let it through, how it went, how long — and only the pointer's arrow reveals
+ * that it turns at all (C5.5).
  */
 export function ToolRow(props: { block: ChatBlockTool }) {
   const t = useText()
@@ -80,7 +83,7 @@ export function ToolRow(props: { block: ChatBlockTool }) {
   createEffect(() => {
     if (props.block.status === 'failed') setOpen(true)
   })
-  // An automatic approval shows no chip: the header's own chip already says which level is on.
+  // An automatic approval shows no mark: the level chip already says which level is on.
   const approval = () => props.block.approval
   const mark = (): Undef<TextKey> => {
     const record = approval()
@@ -93,31 +96,31 @@ export function ToolRow(props: { block: ChatBlockTool }) {
 
   return (
     <article class="w-full" data-role="tool" data-tool={props.block.name}>
-      {/* The line dims into the column and answers the pointer with ink: what it names is quiet,
-          what it points at is not. The arrow is the affordance — hidden until the hand arrives,
-          turned when the call is open, so an open call is visible from across the page. */}
+      {/* The line dims into the column and answers the pointer with a fill: what it names is
+          quiet, what it points at is not. The arrow is the affordance — hidden until the hand
+          arrives, turned when the call is open. */}
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open()}
-        class="group/tool inline-flex max-w-full cursor-pointer items-center gap-2 self-start text-left font-mono text-code text-parchment-dim transition-colors hover:text-parchment"
+        class="group/tool inline-flex max-w-full cursor-pointer items-center gap-2 self-start rounded-md text-left font-mono text-code text-muted transition-colors duration-normal hover:bg-surface-1 hover:text-foreground"
       >
-        <span class={`shrink-0 font-mono text-micro ${TONE[props.block.status]}`} title={t(riskKey(props.block.risk))}>
+        <span class={`shrink-0 font-mono text-label ${TONE[props.block.status]}`} title={t(riskKey(props.block.risk))}>
           {GLYPH[props.block.risk]}
         </span>
         <span class="shrink-0">{props.block.name}</span>
-        <span class="min-w-0 truncate text-parchment-faint">{props.block.summary}</span>
+        <span class="min-w-0 truncate text-faint">{props.block.summary}</span>
         <Show when={mark()}>
           {(key) => (
-            <span class={`shrink-0 rounded-full border px-2 font-mono text-micro tracking-wide ${markTone()}`}>
+            <span class={`shrink-0 rounded-sm border px-2 font-mono text-label tracking-wide ${markTone()}`}>
               {t(key())}
             </span>
           )}
         </Show>
-        <span class={`shrink-0 font-mono text-micro ${TONE[props.block.status]}`}>
+        <span class={`shrink-0 font-mono text-label ${TONE[props.block.status]}`}>
           {t(STATUS_WORD[props.block.status])}
         </span>
-        <span class="shrink-0 font-mono text-micro text-parchment-faint">
+        <span class="shrink-0 font-mono text-label text-faint">
           {formatDuration(props.block.startedAt, props.block.endedAt)}
         </span>
         <svg
@@ -126,7 +129,7 @@ export function ToolRow(props: { block: ChatBlockTool }) {
           fill="none"
           stroke="currentColor"
           stroke-width="1.5"
-          class={`h-3.5 w-3.5 shrink-0 transition-all duration-200 ${
+          class={`h-3.5 w-3.5 shrink-0 transition-all duration-normal ${
             open()
               ? 'rotate-90 opacity-100'
               : 'rotate-0 opacity-0 group-focus-visible/tool:opacity-100 group-hover/tool:opacity-100'
@@ -138,8 +141,8 @@ export function ToolRow(props: { block: ChatBlockTool }) {
 
       <Show when={open()}>
         {/* The audit hangs straight under the line it belongs to, unboxed: it is part of the same
-            sentence, indented by nothing, separated by the page's own air. It is laid out as a
-            record — a label column and a value column — so it is scanned rather than read. */}
+            sentence, separated by space rather than a rule. It is laid out as a record — a label
+            column and a value column — so it is scanned rather than read. */}
         <div class="pt-2">
           <Show when={approval()}>
             {(record) => (
@@ -150,7 +153,9 @@ export function ToolRow(props: { block: ChatBlockTool }) {
             )}
           </Show>
           <AuditRow label={t('tool.arguments')}>
-            <pre class="overflow-x-auto font-mono text-code text-parchment-dim">{props.block.raw}</pre>
+            <pre class="overflow-x-auto rounded-sm bg-surface-1 px-2 py-1 font-mono text-code text-muted">
+              {props.block.raw}
+            </pre>
           </AuditRow>
           <Show when={props.block.details?.diff}>
             {(diff) => (
@@ -173,19 +178,17 @@ export function ToolRow(props: { block: ChatBlockTool }) {
                 />
               }
             >
-              <pre class="max-h-80 overflow-auto whitespace-pre-wrap font-mono text-code text-parchment-dim">
+              <pre class="max-h-80 overflow-auto rounded-sm bg-surface-1 px-2 py-1 whitespace-pre-wrap font-mono text-code text-muted">
                 {props.block.output}
               </pre>
               <Show when={props.block.details?.exitCode !== undefined}>
-                <p class="mt-1 font-mono text-micro text-parchment-faint">exit {props.block.details?.exitCode}</p>
+                <p class="mt-1 font-mono text-label text-faint">exit {props.block.details?.exitCode}</p>
               </Show>
             </AuditRow>
           </Show>
           <Show when={props.block.details?.fullOutputPath}>
             {(path) => (
-              <p class="mt-1 break-all font-mono text-micro text-parchment-faint">
-                {t('tool.truncated', { path: path() })}
-              </p>
+              <p class="mt-1 break-all font-mono text-label text-faint">{t('tool.truncated', { path: path() })}</p>
             )}
           </Show>
         </div>
@@ -196,7 +199,7 @@ export function ToolRow(props: { block: ChatBlockTool }) {
 
 /**
  * One line of the audit: what this part of the record is, in the label column, and the thing
- * itself beside it. The label column is fixed, so three rows of a panel are read as a table.
+ * itself beside it. The label column is fixed, so three rows of a record are read as a table.
  */
 function AuditRow(props: { label: string; action?: JSX.Element; children: JSX.Element }) {
   return (
@@ -205,7 +208,7 @@ function AuditRow(props: { label: string; action?: JSX.Element; children: JSX.El
       <span class={`w-20 shrink-0 pt-0.5 ${GROUP_LABEL}`}>{props.label}</span>
       <div class="min-w-0 flex-1">
         <div class="flex items-start gap-3">
-          <div class="min-w-0 flex-1 wrap-anywhere font-mono text-micro leading-relaxed text-parchment-faint">
+          <div class="min-w-0 flex-1 wrap-anywhere font-mono text-label leading-relaxed text-faint">
             {props.children}
           </div>
           <Show when={props.action !== undefined}>

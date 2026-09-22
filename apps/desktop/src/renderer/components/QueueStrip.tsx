@@ -2,7 +2,7 @@ import type { Undef } from '@alpha/core'
 import { createSignal, For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, GROUP_LABEL, TEXT_ACTION } from './controls.ts'
+import { DESTRUCTIVE_ACTION, GROUP_LABEL, NOTICE, TEXT_ACTION } from './controls.ts'
 
 /**
  * What is waiting, in the order it will be sent: the steers the runtime is holding for this turn,
@@ -26,18 +26,18 @@ export function QueueStrip() {
     <Show when={conversations.transcript.queued.length > 0 || conversations.transcript.queuedPaused}>
       {/* What waits scrolls on its own, because a queue may not grow the composer past the page:
           the words, and the controls that send them, live under it. The paused notice stays outside
-          the box — Resume is one of those controls. */}
+          the strip — Resume is one of those controls. */}
       <div class="mb-1.5">
         <ul aria-label={t('composer.queuedList')} class="max-h-[15vh] space-y-1 overflow-y-auto">
           <For each={conversations.transcript.queued}>
             {(item) => (
-              <li class="flex items-center gap-2 rounded-control border border-line bg-ink-800/70 px-2.5 py-1">
+              <li class="flex items-center gap-2 rounded-md border border-line bg-surface-1 px-2.5 py-1">
                 <span class={`shrink-0 ${GROUP_LABEL}`}>
                   {t(item.kind === 'steer' ? 'composer.steered' : 'composer.queued')}
                 </span>
                 <Show
                   when={editing()?.entryId === item.entryId}
-                  fallback={<span class="min-w-0 flex-1 truncate text-xs text-parchment-dim">{item.text}</span>}
+                  fallback={<span class="min-w-0 flex-1 truncate font-text text-name text-muted">{item.text}</span>}
                 >
                   <input
                     // Autofocus is the point: editing is deliberate, and the field is the whole act.
@@ -50,7 +50,7 @@ export function QueueStrip() {
                       if (event.key === 'Escape') setEditing(undefined)
                       if (event.key === 'Enter') void save()
                     }}
-                    class="min-w-0 flex-1 rounded-control border border-line-strong bg-ink-900 px-1.5 py-0.5 text-code text-parchment"
+                    class="min-w-0 flex-1 rounded-md border border-line bg-surface-0 px-1.5 py-0.5 font-text text-name text-foreground focus:border-line-strong"
                   />
                 </Show>
                 <Show when={item.kind === 'queued' && editing()?.entryId !== item.entryId}>
@@ -80,8 +80,8 @@ export function QueueStrip() {
           </For>
         </ul>
         <Show when={conversations.transcript.queuedPaused}>
-          <div class="mt-1 flex items-center gap-2 rounded-control border border-amber/40 bg-amber/5 px-3 py-2">
-            <span class="min-w-0 flex-1 text-xs text-amber" title={t('composer.queueStoppedWhy')}>
+          <div class={`mt-1 flex items-center gap-2 ${NOTICE} border-warning`}>
+            <span class="min-w-0 flex-1 font-text text-name text-warning" title={t('composer.queueStoppedWhy')}>
               {t('composer.queueStopped')}
             </span>
             <button

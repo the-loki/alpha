@@ -293,8 +293,13 @@ export const ZH = {
   'settings.themeSystem': '跟随系统',
   'settings.themeDark': '深色',
   'settings.themeLight': '浅色',
-  'settings.accent': '配色',
-  'settings.accentNote': '流式光标、焦点框和主按钮使用的强调色，浅色与深色下都校验过对比度。',
   'settings.language': '语言',
   'settings.languageNote': '界面显示语言。对 agent 说什么语言由会话自身决定，不受这里影响。',
+
+  // 侧栏的折叠，按它将要做的动作命名（C5.4）：两个方向各一个说法。
+  'sidebar.hideRail': '隐藏侧栏',
+  'sidebar.showRail': '显示侧栏',
+  // 这个会话一共花了多少，只说一次——挂在视图头标题的悬停提示上（C5.4）。
+  'header.spend': '本会话共 {tokens} tokens',
+  'header.spendCost': '本会话共 {tokens} tokens · {cost}',
 } as const satisfies Record<TextKey, string>

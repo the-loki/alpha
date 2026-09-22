@@ -27,7 +27,7 @@ async function launchApp(
 test('a fresh install opens on the empty workbench', async () => {
   const { app, window } = await launchApp()
 
-  await expect(window.locator('header')).toContainText('Alpha')
+  await expect(window.locator('header')).toContainText('ALPHA')
   await expect(window.getByRole('heading', { name: 'Add a folder to begin' })).toBeVisible()
   await expect(window.getByRole('button', { name: 'Choose a folder' })).toBeVisible()
   // The sidebar's own way in, which stays there once the empty state is gone.
@@ -61,7 +61,7 @@ test('the remembered workspace is restored on launch', async () => {
     },
   })
 
-  await expect(window.locator('header')).toContainText('Alpha')
+  await expect(window.locator('header')).toContainText('ALPHA')
   await expect(window.getByRole('button', { name: /Accept edits/ })).toBeVisible()
   // The folder it remembers is in the sidebar; the pane says which folder the next message lands
   // in, because several can be in play at once.
@@ -123,8 +123,8 @@ test('settings is a menu of panels, one at a time, each with its address', async
   await window.getByRole('link', { name: 'Settings' }).click()
 
   // Providers is where Settings lands, because that is what a person comes here to change, and
-  // it is the panel the providers suite drives. The form is the marker: the panel's name is in the
-  // band above, where a heading would only repeat it.
+  // it is the panel the providers suite drives. The form is the marker: the panel's name is in
+  // the view head above, where a heading would only repeat it.
   await expect(window.getByRole('region', { name: 'Add a provider' })).toBeVisible()
   await expect(window.getByRole('heading', { name: 'Default permission level' })).toHaveCount(0)
 

@@ -1,5 +1,6 @@
 # Soft corners, and the page stays
 
+> **Superseded by [ADR-0026](0026-codex-design-language.md)** — kept for the history it records.
 Three radii instead of one, two soft shadows, and the page's margin as a *column* rather than a
 rule. The structure ADR-0016 introduced — one page, numbered entries, a table for the ledger, a
 command line to write in — is unchanged; what changes is the material it is made of.

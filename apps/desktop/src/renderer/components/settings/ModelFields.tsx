@@ -1,6 +1,6 @@
 import { Index } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, OUTLINED_ACTION } from '../controls.ts'
+import { DESTRUCTIVE_ACTION, GROUP_LABEL, OUTLINED_ACTION } from '../controls.ts'
 import { TextField } from './Fields.tsx'
 
 /** One model as the form holds it: every field is a string until the save reads it. */
@@ -77,10 +77,10 @@ export function ModelFields(props: { models: DraftModel[]; onChange: (models: Dr
             >
               {/* The row's number, in the measuring voice: a column of ordinal marks beside the
                   rows they number, so the fields themselves stay unlabelled by position. */}
-              <span class="w-4 shrink-0 pt-2 text-right font-mono text-micro text-parchment-faint">
-                {ordinal(index)}
-              </span>
-              <div class="min-w-0 flex-1 rounded-control border border-line bg-ink-700 p-2">
+              <span class="w-4 shrink-0 pt-2 text-right font-mono text-label text-faint">{ordinal(index)}</span>
+              {/* A block that groups fields is framed at the control's radius and inset half the
+                  number, because it is nested inside the record that holds it (C5.4). */}
+              <div class="min-w-0 flex-1 rounded-md border border-line bg-surface-0 p-2">
                 <div class="grid grid-cols-2 gap-2">
                   <TextField
                     label={t('settings.modelId')}
@@ -108,26 +108,26 @@ export function ModelFields(props: { models: DraftModel[]; onChange: (models: Dr
                   />
                 </div>
                 <div class="mt-2 flex items-center gap-4">
-                  <label class="flex items-center gap-2 text-xs text-parchment-dim">
+                  <label class={`flex items-center gap-2 ${GROUP_LABEL}`}>
                     <input
                       type="checkbox"
                       aria-label={t('settings.reasoning')}
                       checked={model().reasoning}
                       onInput={(event) => replace(index, { reasoning: event.target.checked })}
-                      class="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                      class="h-3.5 w-3.5 accent-accent"
                     />
                     {t('settings.reasoning')}
                   </label>
                   {/* What the model can be handed. It is a setting because nothing here can know it:
                       no catalog ships with the app, and only the person who typed the model id knows
                       what is behind it (ADR-0018). */}
-                  <label class="flex items-center gap-2 text-xs text-parchment-dim">
+                  <label class={`flex items-center gap-2 ${GROUP_LABEL}`}>
                     <input
                       type="checkbox"
                       aria-label={t('settings.takesPictures')}
                       checked={model().images}
                       onInput={(event) => replace(index, { images: event.target.checked })}
-                      class="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                      class="h-3.5 w-3.5 accent-accent"
                     />
                     {t('settings.takesPictures')}
                   </label>

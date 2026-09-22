@@ -132,7 +132,7 @@ test('denying returns the reason to the agent and runs nothing', async () => {
   await app.close()
 })
 
-test('the card takes the keyboard: Enter allows once, Escape denies', async () => {
+test('the card takes the keyboard: Enter allows once, Escape never decides', async () => {
   const entered = await launch()
   await ask(entered.window, 'write the file')
   await expect(card(entered.window)).toBeVisible({ timeout: 20_000 })
@@ -144,8 +144,13 @@ test('the card takes the keyboard: Enter allows once, Escape denies', async () =
   const escaped = await launch()
   await ask(escaped.window, 'write the file')
   await expect(card(escaped.window)).toBeVisible({ timeout: 20_000 })
+  // Escape never decides (#151, C5.7): at most the focus leaves the card — the card stays, the
+  // decision is untouched, and nothing runs.
   await escaped.window.keyboard.press('Escape')
-  await expect(card(escaped.window)).toHaveCount(0)
+  await expect(card(escaped.window)).toHaveCount(1)
+  await expect(escaped.window.getByRole('button', { name: 'Allow once' })).toBeEnabled()
+  const focused = await escaped.window.evaluate(() => document.activeElement?.tagName ?? '')
+  expect(['BODY', 'HTML']).toContain(focused)
   expect(exists(join(escaped.workspace, 'made.txt'))).toBe(false)
   await escaped.app.close()
 })
