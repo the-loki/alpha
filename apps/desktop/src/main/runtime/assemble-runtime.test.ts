@@ -35,7 +35,6 @@ const provider = {
 
 const conversationIn = (workspace: string): ConversationSummary => ({
   id: 'c1',
-  sessionId: '',
   workspacePath: workspace,
   title: 'Wired',
   createdAt: 1,

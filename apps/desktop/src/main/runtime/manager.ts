@@ -30,12 +30,12 @@ import type { ProviderStore } from '../providers/store.ts'
 import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
 import { openRuntime } from './assemble-runtime.ts'
-import { ConversationBookkeeper, DEFAULT_TITLE, NO_MODEL, newConversation } from './bookkeeping.ts'
+import { ConversationBookkeeper, DEFAULT_TITLE, newConversation } from './bookkeeping.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { DecisionLog } from './decisions.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
-import { defaultModel, describeRuntime, modelFor, refusesPictures } from './models.ts'
+import { defaultModel, describeRuntime, startProblem } from './models.ts'
 import { createPermissionPorts, type PermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
 import { QueueRunner } from './queue.ts'
 import { type AgentPorts, readSessionTranscript, writeSessionMarkdown } from './session-files.ts'
@@ -59,9 +59,6 @@ export interface RuntimeManagerOptions {
   /** Told when the rules change, so a settings page that is open can follow along. */
   emitRules: (rules: PermissionRule[]) => void
 }
-
-/** The sentence for a conversation whose model is gone, in the style of the other refusals. */
-const NO_MODEL_REFUSAL = 'No model is configured for this conversation. Choose one under Settings, Models.'
 
 export class RuntimeManager {
   readonly #options: RuntimeManagerOptions
@@ -161,21 +158,15 @@ export class RuntimeManager {
 
   async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
     const conversation = this.#requireConversation(id)
-    // No model to dial is refused here rather than failed mid-run: a conversation that cannot run
-    // says so before the person waits for a turn that never starts.
-    const model = modelFor(this.#options.providers, conversation)
-    if (model === undefined) throw new Error(NO_MODEL_REFUSAL)
-    // A credential Alpha cannot read is reported as such, and the run is refused before the agent
-    // is asked: a turn that fails at its first token is a worse answer than a sentence (#114).
-    const problem = this.#options.agent.keyProblem(model.providerId)
+    // Why the turn may not start is said before anyone waits for one: no model, an unreadable key,
+    // a picture the model cannot read (models.ts owns the sentences).
+    const problem = startProblem({
+      index: this.#options.providers.index(),
+      keyProblem: (providerId) => this.#options.agent.keyProblem(providerId),
+      model: conversation.model,
+      pictures: attachments?.length ?? 0,
+    })
     if (problem !== undefined) throw new Error(problem)
-    // The last word on whether a picture may go: an agent handed a picture its model cannot read
-    // answers about something it never saw, and a turn that refuses is better than that (ADR-0018).
-    if ((attachments?.length ?? 0) > 0 && refusesPictures(this.#options.providers, conversation.model)) {
-      throw new Error(
-        `${conversation.model.modelId} does not take pictures. Turn that on for it under Settings, Models.`,
-      )
-    }
     await (await this.#openFor(id)).prompt(text, attachments)
   }
 
@@ -368,7 +359,7 @@ export class RuntimeManager {
 
   /** Where a new conversation starts, and what it is named while it has no name of its own. */
   #startingModel(): ConversationSummary['model'] {
-    return defaultModel(this.#options.providers) ?? NO_MODEL
+    return defaultModel(this.#options.providers)
   }
 
   /** Opens a conversation's runtime, or returns the one already open. */

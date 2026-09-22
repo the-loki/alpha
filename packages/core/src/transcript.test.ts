@@ -22,7 +22,6 @@ const summary: ConversationSummary = {
   permissionLevel: 'ask',
   model: { providerId: 'faux', modelId: 'scripted' },
   thinkingLevel: 'medium',
-  sessionId: '',
 }
 
 /** Builds an event for the conversation under test, so each case reads as its payload only. */

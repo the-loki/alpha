@@ -7,7 +7,14 @@
  * choice is still one Alpha can serve.
  */
 
-import { type ConversationModel, definitionOf, modelIn, type ModelStatus, type Undef } from '@alpha/core'
+import {
+  type ConversationModel,
+  definitionOf,
+  type ModelIndex,
+  type ModelStatus,
+  modelIn,
+  type Undef,
+} from '@alpha/core'
 import type { ProviderStore } from '../providers/store.ts'
 
 /**
@@ -15,7 +22,7 @@ import type { ProviderStore } from '../providers/store.ts'
  * the configured default otherwise — a provider that was deleted must not leave a conversation
  * unusable.
  */
-export function modelFor(store: ProviderStore, conversation: { model: ConversationModel }): Undef<ConversationModel> {
+export function modelFor(store: ProviderStore, conversation: { model?: ConversationModel }): Undef<ConversationModel> {
   return modelIn(store.index(), conversation.model)
 }
 
@@ -23,19 +30,41 @@ export function modelFor(store: ProviderStore, conversation: { model: Conversati
 export const defaultModel = (store: ProviderStore): Undef<ConversationModel> => store.effectiveModel()
 
 /**
- * Whether Alpha knows this model will not take a picture. Alpha refuses on that, and on nothing
- * else: a model it has no record of is the agent's business now, and a workbench that guessed
- * would refuse pictures for a provider it simply has not been told about (ADR-0018).
- */
-export function refusesPictures(store: ProviderStore, chosen: ConversationModel): boolean {
-  const definition = definitionOf(store.index(), chosen)
-  return definition !== undefined && definition.images !== true
-}
-
-/**
  * Which case the agent is in, without dialling anything. Main stops here: the interface owns the
  * sentence that goes with the case, because the interface is the thing that has a language.
  */
 export function describeRuntime(store: ProviderStore): ModelStatus {
   return defaultModel(store) === undefined ? { kind: 'none' } : { kind: 'configured' }
+}
+
+/** The sentence for a conversation whose model is gone, in the style of the other refusals. */
+const NO_MODEL_REFUSAL = 'No model is configured for this conversation. Choose one under Settings, Models.'
+
+/**
+ * Why a turn may not start, said before anyone waits for one: no model to dial, a key that cannot
+ * be read, or a picture a model that cannot read one would be handed. Absent means the turn may
+ * start. The refusals come before the run rather than failing it at its first token (#114,
+ * ADR-0018).
+ */
+export function startProblem(input: {
+  index: ModelIndex
+  /** Why the key cannot be dialled with, in the person's terms rather than the vault's. */
+  keyProblem: (providerId: string) => Undef<string>
+  model?: ConversationModel
+  /** How many pictures are attached to the message about to be sent. */
+  pictures: number
+}): Undef<string> {
+  const chosen = modelIn(input.index, input.model)
+  if (chosen === undefined) return NO_MODEL_REFUSAL
+  const problem = input.keyProblem(chosen.providerId)
+  if (problem !== undefined) return problem
+  if (input.pictures > 0 && refusesModelIndex(input.index, chosen)) {
+    return `${chosen.modelId} does not take pictures. Turn that on for it under Settings, Models.`
+  }
+  return undefined
+}
+
+function refusesModelIndex(index: ModelIndex, chosen: ConversationModel): boolean {
+  const definition = definitionOf(index, chosen)
+  return definition !== undefined && definition.images !== true
 }

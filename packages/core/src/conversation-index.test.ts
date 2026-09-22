@@ -24,7 +24,6 @@ const conversation = (id: string, workspacePath: string, updatedAt: number): Con
   permissionLevel: 'ask',
   model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
   thinkingLevel: 'medium',
-  sessionId: '',
 })
 
 const folder = (path: string, lastOpenedAt: number, name = path.slice(path.lastIndexOf('/') + 1)): WorkspaceRef => ({
@@ -52,6 +51,22 @@ describe('[core] parseConversationIndex', () => {
   it('treats a conversation with a bad status as an empty index', () => {
     const broken = { version: 1, conversations: [{ ...conversation('a', '/dev/alpha', 1), status: 'running-away' }] }
     expect(parseConversationIndex(broken)).toEqual(emptyConversationIndex())
+  })
+
+  it('reads absence for a model never chosen, however it was written down', () => {
+    const { model: _dropped, ...neverChosen } = conversation('a', '/dev/alpha', 10)
+    const oldSpelling = { ...conversation('b', '/dev/beta', 30), model: { providerId: '', modelId: '' } }
+    const parsed = parseConversationIndex({ version: 1, conversations: [oldSpelling, neverChosen] })
+    expect(parsed.conversations[0]?.model).toBeUndefined()
+    expect(parsed.conversations[1]?.model).toBeUndefined()
+  })
+
+  it('reads an empty session id as absent: the conversation is its own session', () => {
+    const parsed = parseConversationIndex({
+      version: 1,
+      conversations: [{ ...conversation('a', '/dev/alpha', 10), sessionId: '' }],
+    })
+    expect(parsed.conversations[0]?.sessionId).toBeUndefined()
   })
 })
 

@@ -4,6 +4,7 @@
  * last word. Everything the window sees in the sidebar comes from here.
  */
 import {
+  type ConversationModel,
   type ConversationSummary,
   canArchive,
   DEFAULT_THINKING_LEVEL,
@@ -18,15 +19,13 @@ import { ConversationIndexStore } from '../conversations/index-store.ts'
 
 const DEFAULT_TITLE = 'New conversation'
 
-/** What a conversation is called while its model is still unconfigured. */
-export const NO_MODEL: ConversationSummary['model'] = { providerId: '', modelId: '' }
-
 export interface NewConversation {
   id: string
   workspacePath: string
   now: number
   permissionLevel: PermissionLevel
-  model: ConversationSummary['model']
+  /** What the conversation runs on; absent while nothing is configured. */
+  model?: ConversationModel
 }
 
 /** A conversation as it exists before anything has been said in it. */
@@ -39,11 +38,10 @@ export function newConversation(summary: NewConversation): ConversationSummary {
     updatedAt: summary.now,
     status: 'idle',
     permissionLevel: summary.permissionLevel,
-    model: summary.model,
+    ...(summary.model === undefined ? {} : { model: summary.model }),
     thinkingLevel: DEFAULT_THINKING_LEVEL,
     // A conversation starts on a session of its own: the agent is told this id and writes the file
-    // under it, so nothing has to be recorded for the first session.
-    sessionId: '',
+    // under it, so nothing has to be recorded for the first session — absence says exactly that.
   }
 }
 

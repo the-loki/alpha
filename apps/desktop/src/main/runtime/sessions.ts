@@ -274,5 +274,5 @@ export class SessionStore {
 }
 
 /** Which session a conversation is on: its own id until a fork gives it one of the agent's. */
-export const sessionIdOf = (conversation: { id: string; sessionId: string }): string =>
-  conversation.sessionId === '' ? conversation.id : conversation.sessionId
+export const sessionIdOf = (conversation: { id: string; sessionId?: string }): string =>
+  conversation.sessionId ?? conversation.id

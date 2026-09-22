@@ -20,8 +20,8 @@ import {
   type ProvidersSnapshotMessage,
   readModels,
   readProvider,
-  servesModel,
   type StoredProvider,
+  servesModel,
   type Undef,
 } from '@alpha/core'
 import type { Api, AssistantMessage, Context, Model, Models, TextContent } from '@earendil-works/pi-ai'

@@ -50,10 +50,7 @@ export interface RunningModel {
  * model follows a change to it without anything having to subscribe.
  */
 export function runningModel(): RunningModel {
-  const chosen = (): Undef<ConversationModel> => {
-    const summary = conversations.transcript.summary
-    return summary !== undefined && summary.model.providerId !== '' ? summary.model : undefined
-  }
+  const chosen = (): Undef<ConversationModel> => conversations.transcript.summary?.model
   const resolved = () => modelIn(providers.snapshot, chosen())
   const definition = () => definitionOf(providers.snapshot, resolved())
   return {

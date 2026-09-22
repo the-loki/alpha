@@ -21,10 +21,12 @@ const ConversationSummarySchema = Type.Object({
   updatedAt: Type.Number(),
   status: Type.Union([Type.Literal('idle'), Type.Literal('running'), Type.Literal('waiting')]),
   permissionLevel: Type.Union(PERMISSION_LEVELS.map((level) => Type.Literal(level))),
-  model: Type.Object({ providerId: Type.String(), modelId: Type.String() }),
+  // Optional twice over: absent means no model was chosen, and the empty-strings spelling an
+  // older file used means the same thing — both are read as absence.
+  model: Type.Optional(Type.Object({ providerId: Type.String(), modelId: Type.String() })),
   thinkingLevel: Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level))),
-  // Absent on a conversation written before conversations could be forked, and read as "this
-  // conversation's own id is its session" — the same meaning as an empty string.
+  // Absent on a conversation written before conversations could be forked: the conversation's
+  // own id is its session. An empty string from such a file's era reads the same way.
   sessionId: Type.Optional(Type.String()),
   // Absent means not archived, and it is optional on purpose: a required field would fail the
   // whole index on the first launch after an upgrade and empty the sidebar (ADR-0011's sibling
@@ -53,13 +55,14 @@ export function parseConversationIndex(raw: unknown): ConversationIndex {
   const candidate = typeof raw === 'string' ? parseJson(raw) : raw
   if (!Value.Check(ConversationIndexSchema, candidate)) return emptyConversationIndex()
   const index: IndexShape = candidate
-  // A conversation written before conversations could be forked has no session of its own, which
-  // is what an empty id means: the conversation's own id is the session's.
+  // Absence is spelled one way in memory: a model nobody chose and a session that is the
+  // conversation's own are both read as absent, whatever an older file wrote.
   return {
     version: 1,
-    conversations: index.conversations.map((conversation) => ({
+    conversations: index.conversations.map(({ model, sessionId, ...conversation }) => ({
       ...conversation,
-      sessionId: conversation.sessionId ?? '',
+      ...(model === undefined || model.providerId === '' ? {} : { model }),
+      ...(sessionId === undefined || sessionId === '' ? {} : { sessionId }),
     })),
   }
 }

@@ -150,16 +150,16 @@ export interface ConversationSummary {
   status: 'idle' | 'running' | 'waiting'
   /** How much this conversation may do without asking. Chosen per conversation (ADR-0002). */
   permissionLevel: PermissionLevel
-  /** Empty strings mean no model has been chosen yet, which the composer reports. */
-  model: ConversationModel
+  /** Absent means no model has been chosen yet, which the composer reports. */
+  model?: ConversationModel
   thinkingLevel: ThinkingLevel
   /**
-   * The session this conversation is on, which is the agent's own id for it. Empty means the
+   * The session this conversation is on, which is the agent's own id for it. Absent means the
    * conversation's own id is the session's: that is how a conversation starts, and moving the
    * branch tip — regenerate, editing an earlier message — is what makes the two differ (they are
    * a fork of the session, and the agent is the one that names the copy).
    */
-  sessionId: string
+  sessionId?: string
   /**
    * When it was put away, or absent for one that is in the list. An archived conversation is out
    * of the tree and in the archived section, works like any other, and comes back the moment a

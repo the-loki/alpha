@@ -2,7 +2,15 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { findSessionFile, parseSession, SessionStore, sessionDirectoryFor, tipPath, usageOf } from './sessions.ts'
+import {
+  findSessionFile,
+  parseSession,
+  SessionStore,
+  sessionDirectoryFor,
+  sessionIdOf,
+  tipPath,
+  usageOf,
+} from './sessions.ts'
 
 const roots: string[] = []
 
@@ -237,5 +245,15 @@ describe('taking a session off the disk', () => {
     })
     store.remove('one', WORKSPACE)
     expect(readdirSync(sessionDirectoryFor(root, WORKSPACE))).toEqual([])
+  })
+})
+
+describe('[main] sessionIdOf', () => {
+  it('reads an absent session id as the conversation being its own session', () => {
+    expect(sessionIdOf({ id: 'c1', sessionId: undefined })).toBe('c1')
+  })
+
+  it('reads the session the conversation was forked onto when there is one', () => {
+    expect(sessionIdOf({ id: 'c1', sessionId: 'the-fork' })).toBe('the-fork')
   })
 })
