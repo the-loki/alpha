@@ -1,6 +1,6 @@
 import { useParams } from '@solidjs/router'
 import { createEffect } from 'solid-js'
-import { ConversationPane } from '../components/conversation/ConversationPane.tsx'
+import { ConversationPage } from '../components/conversation/ConversationPage.tsx'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 
 export function ConversationRoute() {
@@ -11,5 +11,5 @@ export function ConversationRoute() {
     if (id !== undefined && id !== conversations.activeId) void conversationActions.open(id)
   })
 
-  return <ConversationPane />
+  return <ConversationPage />
 }

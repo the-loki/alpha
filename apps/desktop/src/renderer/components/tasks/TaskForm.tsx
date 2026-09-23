@@ -131,7 +131,7 @@ export function TaskForm(props: {
   const ready = () =>
     (props.form.name ?? '').trim() !== '' && (props.form.prompt ?? '').trim() !== '' && props.form.workspacePath !== ''
 
-  // Three groups, separated by the rules the rest of the app separates with: what the task asks,
+  // Three groups, separated by the rules the rest of the workbench separates with: what the task asks,
   // where and at what level it runs, and when. Five fields of the same size in one block read as
   // a list; the rules are what make it a form with a shape (C5.4).
   return (

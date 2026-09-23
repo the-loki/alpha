@@ -124,7 +124,7 @@ export function ConversationRow(props: {
  * The `⋯` and what is behind it: rename, archive (or unarchive), export, delete. What is done to
  * a conversation lives on the conversation's own row (C5.4). The menu is a floating layer — the
  * floating surface, a frame, no motion but its own arrival (C5.4). It closes on Escape and on a
- * click anywhere else, the way every menu in the app does.
+ * click anywhere else, the way every menu in the workbench does.
  */
 function RowActions(props: {
   conversation: ConversationSummary

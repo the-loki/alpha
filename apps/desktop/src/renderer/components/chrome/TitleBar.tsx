@@ -93,7 +93,7 @@ export function RailToggle(props: { menu?: boolean }) {
 }
 
 /**
- * The masthead of the rail, and the window's one banner: the app's name in the apparatus voice,
+ * The masthead of the rail, and the window's one banner: the workbench's name in the apparatus voice,
  * with the whole of it a drag handle — with a page's view head, this is how a frameless window is
  * moved. The window's own controls do not live here: they are the window's corner, and the corner
  * is the top right (C5.4).

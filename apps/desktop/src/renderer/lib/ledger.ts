@@ -59,11 +59,12 @@ export const PANEL_WHOLE = 'flex w-full shrink-0 flex-col bg-surface-0'
  * rather than drawn as a strip above it: what this page is, the controls that act on the page
  * rather than on one thing in it, and the rail's toggle at its left end. One height and one padding
  * for every page, so moving between them does not move the title, and the window's own three keep
- * the same y on every page of the app. It is also how the window is dragged — the whole top edge —
+ * the same y on every page of the workbench. It is also how the window is dragged — the whole top edge —
  * and its interactive children wear `no-drag`. `relative` so the toggle can stand in the head's own
  * left padding without pushing the title off the page's edge (C5.4).
  */
-export const BAND = 'drag-region relative flex h-12 shrink-0 items-center justify-between gap-4 border-b border-line'
+export const VIEW_HEAD =
+  'drag-region relative flex h-12 shrink-0 items-center justify-between gap-4 border-b border-line'
 
 /**
  * The rhythm a panel's groups are set on: one rule between one group and the next, and 1.25rem of

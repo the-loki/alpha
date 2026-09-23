@@ -38,7 +38,7 @@ export function ProviderForm() {
   return (
     // A section of the panel, not a box with a legend on its border: the label is a heading, the
     // fields sit under it in the panel's own grid, and the one primary action is in the footer the
-    // section ends with — where every form in the app ends. A grouping block is framed at the
+    // section ends with — where every form in the workbench ends. A grouping block is framed at the
     // card's radius, not raised (C5.4).
     <section aria-label={t('settings.addProvider')} class="rounded-lg border border-line bg-surface-0 p-4">
       <h3 class={GROUP_LABEL}>{t('settings.addProvider')}</h3>

@@ -44,7 +44,7 @@ const TEST_PROMPT = 'Reply with the single word: ready'
 
 export class ProviderService {
   private readonly store: ProviderStore
-  /** Builds the runtime a test dials with; tests script one, the app builds the real thing. */
+  /** Builds the runtime a test dials with; tests script one, the workbench builds the real thing. */
   private readonly models: Undef<() => Models>
 
   public constructor(store: ProviderStore, options: { models?: () => Models } = {}) {
@@ -61,7 +61,7 @@ export class ProviderService {
     }
   }
 
-  /** A new provider serves nothing yet: its models are added on the models panel. */
+  /** A new provider serves nothing yet: its models are added inside its own card. */
   public save(input: unknown): ProvidersSnapshot {
     const result = readProvider(input)
     if (result.provider === undefined) throw new Error(result.error ?? 'the provider is not valid')

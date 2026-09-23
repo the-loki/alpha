@@ -1,5 +1,5 @@
 /**
- * The single workbench window. It has no native frame: the app draws its own header, which is
+ * The single workbench window. It has no native frame: the workbench draws its own view head, which is
  * what keeps the Iris surface unbroken from the top edge down. The macOS traffic lights
  * stay, because replacing those on that platform is a worse experience than keeping them.
  */
@@ -45,7 +45,7 @@ export function createMainWindow(options: {
   window.once('ready-to-show', () => window.show())
 
   // Anything that wants a new window — a link in a transcript, a tool printing a URL — opens
-  // in the user's browser instead. The workbench never navigates itself away from the app.
+  // in the user's browser instead: the window never leaves the workbench to follow one.
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
     return { action: 'deny' }

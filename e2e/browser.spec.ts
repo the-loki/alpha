@@ -184,7 +184,7 @@ test('a browser is offered no folder picker, because it has none', async () => {
     const sidebar = page.getByRole('complementary')
     await expect(sidebar.getByRole('heading', { name: 'sandbox' })).toBeVisible()
     await expect(sidebar.getByRole('button', { name: 'Add a folder' })).toHaveCount(0)
-    await expect(sidebar.getByText('A folder can only be added in the desktop app.')).toBeVisible()
+    await expect(sidebar.getByText('A folder can only be added in the desktop window.')).toBeVisible()
   } finally {
     await browser.close()
     await app.close()

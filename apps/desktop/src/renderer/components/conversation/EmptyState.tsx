@@ -32,7 +32,7 @@ function Starters() {
 
 /**
  * What is on the page before anything has been asked. With a folder open that is a welcome: the
- * app's name faint above, the greeting in the largest text voice, the writing box standing in the
+ * workbench's name faint above, the greeting in the largest text voice, the writing box standing in the
  * middle of the room rather than at its foot — the folder it will be written in said on the box —
  * and the ways to start under it (C5.4). With no folder there is no page, so that state is about
  * the window itself and says so in the largest voice it has.

@@ -124,7 +124,7 @@ export interface PersistedState {
   permissionLevel: PermissionLevel
   workspaceLevels: Record<string, PermissionLevel>
   permissionRules: PermissionRule[]
-  /** System by default: the app follows the room it is in unless told otherwise. */
+  /** System by default: the workbench follows the room it is in unless told otherwise. */
   theme: Theme
   /** Which language the interface is written in, for every client of this workbench. */
   language: LanguageSetting

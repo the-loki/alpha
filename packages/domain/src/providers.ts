@@ -1,5 +1,5 @@
 /**
- * Providers as data: an endpoint the workbench may talk to, the protocol it speaks, and the models
+ * Providers as data: a connection the workbench may talk to, the protocol it speaks, and the models
  * it serves. The credential is never part of this — whether a key is stored is a separate fact the
  * settings screen asks for.
  *
@@ -7,7 +7,7 @@
  * user described themselves; what it does ship is the three wire protocols that cover the
  * mainstream — OpenAI's chat completions (which most gateways also speak), OpenAI's responses, and
  * Anthropic's messages (ADR-0015). A model list is not part of the connection either: which models
- * an endpoint serves is a model setting, not a fact about the endpoint.
+ * a provider serves is a model setting, not a fact about the connection.
  */
 
 import { type Static, Type } from 'typebox'
@@ -20,7 +20,7 @@ export const PROVIDER_APIS = ['openai-completions', 'openai-responses', 'anthrop
 export type ProviderApi = (typeof PROVIDER_APIS)[number]
 
 /**
- * How the stored key rides the request — a fact about the endpoint, not about the key. Absent (the
+ * How the stored key rides the request — a fact about the connection, not about the key. Absent (the
  * whole default) is the wire's own api-key header; `bearer` is Authorization: Bearer, for the
  * gateways that take nothing else even on a wire whose native style is the other one.
  */

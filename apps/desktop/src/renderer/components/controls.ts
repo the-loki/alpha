@@ -29,7 +29,7 @@ export const DESTRUCTIVE_ACTION = `${APPARATUS} text-muted transition-colors dur
 export const OUTLINED_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center gap-2 rounded-md border border-line bg-surface-0 px-3 ${APPARATUS} text-foreground transition-colors duration-normal hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40`
 
 /**
- * The outlined body in the accent — what the app offers to do *for* you, and what destroys. One
+ * The outlined body in the accent — what the workbench offers to do *for* you, and what destroys. One
  * shape for both, because they are the same ink at the same height: the word says which it is.
  */
 export const DANGER_ACTION = `inline-flex ${CONTROL_HEIGHT} items-center gap-2 rounded-md border border-danger/60 px-3 ${APPARATUS} text-danger transition-colors duration-normal hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-40`
@@ -178,7 +178,7 @@ export const TONE_HOVER: Record<string, string> = {
 }
 
 /**
- * How every menu in the app closes: Escape, or a pointer down anywhere outside the element that
+ * How every menu in the workbench closes: Escape, or a pointer down anywhere outside the element that
  * opened it (C5.4). The listeners exist only while the menu is open, and "outside" is measured
  * from the container itself — a pointer down on what opened the menu is inside it, and toggles.
  * The container is read at event time, so the ref does not have to exist yet when this is called.

@@ -10,7 +10,7 @@ import {
 } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
-import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, SCROLLS } from '../../lib/ledger.ts'
+import { BESIDE_SCROLLS, FORM_COLUMN, PAGE, SCROLLS, VIEW_HEAD } from '../../lib/ledger.ts'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { runsOf, taskActions, taskOf, tasks } from '../../stores/tasks.ts'
 import { RailToggle, WindowControls } from '../chrome/TitleBar.tsx'
@@ -158,7 +158,7 @@ export function TasksPage() {
           toggle at its left end — the same head, height and padding the conversation and a settings
           panel wear, so the title stands on the same x and the same y wherever you are (C5.4). The
           toggle stands in the head's own left padding, outside the row, so it moves nothing. */}
-      <header class={`${BAND} ${BESIDE_SCROLLS}`}>
+      <header class={`${VIEW_HEAD} ${BESIDE_SCROLLS}`}>
         <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
           <RailToggle />
         </span>

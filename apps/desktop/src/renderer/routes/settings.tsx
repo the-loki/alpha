@@ -9,7 +9,7 @@ import { BrowserAccessSection } from '../components/settings/BrowserAccessSectio
 import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
-import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, PANEL_GROUPS, SCROLLS } from '../lib/ledger.ts'
+import { BESIDE_SCROLLS, FORM_COLUMN, PAGE, PANEL_GROUPS, SCROLLS, VIEW_HEAD } from '../lib/ledger.ts'
 import { foldActions, narrow } from '../stores/fold.ts'
 import { useText } from '../stores/shell.ts'
 
@@ -96,7 +96,7 @@ export function Settings() {
           panel's own menu (C5.4). A phone is where that column is the screen, and then this head is
           what calls the menu back, wearing the same toggle with the menu's own name. One hairline
           under the head and nothing raised. */}
-      <header class={`${BAND} ${BESIDE_SCROLLS}`}>
+      <header class={`${VIEW_HEAD} ${BESIDE_SCROLLS}`}>
         <Show when={narrow()}>
           <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
             <RailToggle menu />

@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { createEffect, onMount } from 'solid-js'
-import { ConversationPane } from '../components/conversation/ConversationPane.tsx'
+import { ConversationPage } from '../components/conversation/ConversationPage.tsx'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { shell, shellActions } from '../stores/shell.ts'
 
@@ -30,5 +30,5 @@ export function NewConversation() {
   onMount(() => conversationActions.startNew())
 
   useResumeLastConversation()
-  return <ConversationPane />
+  return <ConversationPage />
 }

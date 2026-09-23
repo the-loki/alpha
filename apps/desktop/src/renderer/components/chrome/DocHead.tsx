@@ -1,6 +1,6 @@
 import { formatCost, formatTokens, totalUsage } from '@alpha/domain'
 import { Show } from 'solid-js'
-import { BAND, BESIDE_SCROLLS } from '../../lib/ledger.ts'
+import { BESIDE_SCROLLS, VIEW_HEAD } from '../../lib/ledger.ts'
 import { conversations } from '../../stores/conversations.ts'
 import { useText } from '../../stores/shell.ts'
 import { PAGE_TITLE } from '../controls.ts'
@@ -54,13 +54,13 @@ function ConversationTitle() {
  * its name once).
  *
  * A div rather than a `<header>`: the window has one banner — the masthead of the rail, with the
- * app's name — and a second element with that role would make "the header" ambiguous, to a reader
+ * workbench's name — and a second element with that role would make "the header" ambiguous, to a reader
  * and to a test. The heading inside is what carries the meaning.
  */
 export function DocHead() {
   return (
     <Show when={conversations.transcript.summary}>
-      <div class={`${BAND} ${BESIDE_SCROLLS}`}>
+      <div class={`${VIEW_HEAD} ${BESIDE_SCROLLS}`}>
         <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
           <RailToggle />
         </span>

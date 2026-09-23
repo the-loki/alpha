@@ -1,5 +1,5 @@
 /**
- * A provider's endpoint on loopback, speaking whichever of the three wires Alpha stores it is
+ * A provider on loopback, speaking whichever of the three wires Alpha stores it is
  * asked for (ADR-0015), so a test drives a real turn at the protocol rather than asserting a
  * string. What arrived is kept — the request line, the headers, the body — because the request a
  * protocol builds is half of what speaking it means, and the answer it streams back is the other.
@@ -43,7 +43,7 @@ export async function closeScriptedWires(): Promise<void> {
 export async function startScriptedWire(api: ProviderApi, answer = 'ready'): Promise<ScriptedWire> {
   const requests: ArrivedRequest[] = []
   const server = createServer((request, response) => {
-    // A client that hangs up mid-stream is this endpoint's ordinary day, not the test's problem.
+    // A client that hangs up mid-stream is this server's ordinary day, not the test's problem.
     response.on('error', () => {})
     request.on('error', () => {})
     let body = ''

@@ -161,7 +161,7 @@ export interface NetworkState {
   error: string
 }
 
-/** How the workbench looks and reads, as a patch: the mode and the language. */
+/** How the workbench looks and reads, as a patch: the palette and the language. */
 export interface AppearancePatch {
   theme?: Theme
   language?: LanguageSetting

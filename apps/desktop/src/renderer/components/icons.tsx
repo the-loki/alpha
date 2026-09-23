@@ -1,5 +1,5 @@
 /**
- * The app's icons, drawn rather than imported: a dozen one-rem line glyphs do not need a dependency,
+ * The workbench's icons, drawn rather than imported: a dozen one-rem line glyphs do not need a dependency,
  * and hand-drawn ones keep the fine stroke and the square-ish geometry the window controls use.
  *
  * They are decorative by default (`aria-hidden`): every one of them sits next to a label or inside

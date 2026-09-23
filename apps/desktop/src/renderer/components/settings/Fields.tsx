@@ -47,7 +47,7 @@ const API_NOTES: Record<ProviderApi, TextKey> = {
 }
 
 /**
- * The protocol picker. It decides how the base URL is read and which endpoint path is called, so
+ * The protocol picker. It decides how the base URL is read and which path is called, so
  * the choice is named the way its own documentation names it, and the line under it says who
  * speaks it — "openai-completions" alone means nothing to someone who has never read the spec.
  */
@@ -71,7 +71,7 @@ export function ApiField(props: { api: ProviderApi; onChange: (api: ProviderApi)
   )
 }
 
-/** The header the key rides in. Most endpoints take the wire's own; a few only take Bearer. */
+/** The header the key rides in. Most providers take the wire's own; a few only take Bearer. */
 const AUTH_STYLE_LABELS: Record<ProviderAuthStyle, TextKey> = {
   'api-key': 'settings.authStyleApiKey',
   bearer: 'settings.authStyleBearer',

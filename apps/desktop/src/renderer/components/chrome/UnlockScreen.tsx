@@ -38,7 +38,7 @@ export function UnlockScreen() {
           void submit()
         }}
       >
-        {/* The one screen that is not the workbench still names whose window it is: the app's name
+        {/* The one screen that is not the workbench still names whose window it is: the workbench's name
             in the apparatus voice, in the same place every screen keeps it. */}
         <span class="flex items-center gap-2">
           <span class="font-mono text-label tracking-[0.2em] text-muted">ALPHA</span>

@@ -24,8 +24,8 @@ const model = {
 }
 
 const input = {
-  id: 'my-endpoint',
-  name: 'My endpoint',
+  id: 'local-llama',
+  name: 'Local Llama',
   api: 'openai-completions',
   baseUrl: 'https://llm.internal.example/v1',
 }
@@ -34,8 +34,8 @@ const stored = {
   version: 1 as const,
   providers: [
     {
-      id: 'my-endpoint',
-      name: 'My endpoint',
+      id: 'local-llama',
+      name: 'Local Llama',
       api: 'openai-completions' as const,
       baseUrl: input.baseUrl,
       models: [model],
@@ -58,7 +58,7 @@ describe('[domain] readProvider', () => {
   })
 
   it('names the connection after itself when it was given no name', () => {
-    expect(readProvider({ ...input, name: '' }).provider?.name).toBe('my-endpoint')
+    expect(readProvider({ ...input, name: '' }).provider?.name).toBe('local-llama')
   })
 
   it('refuses an id that is empty or has spaces', () => {
@@ -127,7 +127,7 @@ describe('[domain] credentialRequirement', () => {
 
 describe('[domain] parseProviders', () => {
   it('round-trips a stored provider and the default model', () => {
-    const index = { ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
+    const index = { ...stored, defaultModel: { providerId: 'local-llama', modelId: 'local-7b' } }
     expect(parseProviders(JSON.parse(JSON.stringify(index)))).toEqual(index)
   })
 
@@ -137,8 +137,8 @@ describe('[domain] parseProviders', () => {
       version: 1,
       providers: [
         {
-          id: 'my-endpoint',
-          name: 'My endpoint',
+          id: 'local-llama',
+          name: 'Local Llama',
           api: 'openai-completions',
           baseUrl: 'https://llm.internal.example/v1',
           models: [{ id: 'local-7b', name: 'Local 7B', contextWindow: 32_000, maxTokens: 4_096, reasoning: false }],
@@ -158,7 +158,7 @@ describe('[domain] parseProviders', () => {
   it('treats a file it cannot trust as empty', () => {
     expect(parseProviders('{oops')).toEqual(emptyProviderIndex())
     expect(parseProviders({ version: 1, providers: [{ id: 'x' }] })).toEqual(emptyProviderIndex())
-    expect(parseProviders({ ...stored, defaultModel: { providerId: 'my-endpoint' } })).toEqual(emptyProviderIndex())
+    expect(parseProviders({ ...stored, defaultModel: { providerId: 'local-llama' } })).toEqual(emptyProviderIndex())
   })
 })
 
@@ -172,19 +172,19 @@ describe('[domain] which model a new conversation starts on', () => {
   }
 
   it('is the first model of the first provider that has one', () => {
-    expect(firstModelOf(twoProviders)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+    expect(firstModelOf(twoProviders)).toEqual({ providerId: 'local-llama', modelId: 'local-7b' })
     expect(firstModelOf({ providers: [] })).toBeUndefined()
   })
 
   it('is the chosen one when there is a choice', () => {
-    const chosen = { ...twoProviders, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
-    expect(effectiveModelOf(chosen)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+    const chosen = { ...twoProviders, defaultModel: { providerId: 'local-llama', modelId: 'local-7b' } }
+    expect(effectiveModelOf(chosen)).toEqual({ providerId: 'local-llama', modelId: 'local-7b' })
   })
 
   it('falls back to the first model there is when nothing was chosen, or the choice is gone', () => {
-    expect(effectiveModelOf(twoProviders)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
-    const stale = { ...twoProviders, defaultModel: { providerId: 'my-endpoint', modelId: 'deleted' } }
-    expect(effectiveModelOf(stale)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+    expect(effectiveModelOf(twoProviders)).toEqual({ providerId: 'local-llama', modelId: 'local-7b' })
+    const stale = { ...twoProviders, defaultModel: { providerId: 'local-llama', modelId: 'deleted' } }
+    expect(effectiveModelOf(stale)).toEqual({ providerId: 'local-llama', modelId: 'local-7b' })
   })
 
   it('is nothing at all when no provider serves anything', () => {
@@ -205,19 +205,19 @@ describe('[domain] modelIn', () => {
   }
 
   it('keeps a conversation on its own model while a provider still serves it', () => {
-    expect(modelIn(served, { providerId: 'my-endpoint', modelId: 'local-70b' })).toEqual({
-      providerId: 'my-endpoint',
+    expect(modelIn(served, { providerId: 'local-llama', modelId: 'local-70b' })).toEqual({
+      providerId: 'local-llama',
       modelId: 'local-70b',
     })
   })
 
   it('falls back to the effective default when the choice is gone', () => {
-    expect(modelIn(served, { providerId: 'my-endpoint', modelId: 'deleted' })).toEqual({
-      providerId: 'my-endpoint',
+    expect(modelIn(served, { providerId: 'local-llama', modelId: 'deleted' })).toEqual({
+      providerId: 'local-llama',
       modelId: 'local-7b',
     })
     expect(modelIn(served, { providerId: 'gone', modelId: 'local-7b' })).toEqual({
-      providerId: 'my-endpoint',
+      providerId: 'local-llama',
       modelId: 'local-7b',
     })
   })
@@ -229,14 +229,14 @@ describe('[domain] modelIn', () => {
 
 describe('[domain] defaultModelOf', () => {
   it('answers with the stored default when a provider still serves it', () => {
-    const index = { ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'local-7b' } }
-    expect(defaultModelOf(index)).toEqual({ providerId: 'my-endpoint', modelId: 'local-7b' })
+    const index = { ...stored, defaultModel: { providerId: 'local-llama', modelId: 'local-7b' } }
+    expect(defaultModelOf(index)).toEqual({ providerId: 'local-llama', modelId: 'local-7b' })
   })
 
   it('answers with nothing when it was never chosen, or the model is gone', () => {
     expect(defaultModelOf(stored)).toBeUndefined()
     expect(
-      defaultModelOf({ ...stored, defaultModel: { providerId: 'my-endpoint', modelId: 'deleted' } }),
+      defaultModelOf({ ...stored, defaultModel: { providerId: 'local-llama', modelId: 'deleted' } }),
     ).toBeUndefined()
     expect(defaultModelOf({ ...stored, defaultModel: { providerId: 'gone', modelId: 'local-7b' } })).toBeUndefined()
   })
@@ -245,8 +245,8 @@ describe('[domain] defaultModelOf', () => {
 describe('[domain] servesModel', () => {
   it('says yes only when a provider on the index serves the exact model', () => {
     const index = { ...stored, defaultModel: undefined }
-    expect(servesModel(index, { providerId: 'my-endpoint', modelId: 'local-7b' })).toBe(true)
-    expect(servesModel(index, { providerId: 'my-endpoint', modelId: 'local-70b' })).toBe(false)
+    expect(servesModel(index, { providerId: 'local-llama', modelId: 'local-7b' })).toBe(true)
+    expect(servesModel(index, { providerId: 'local-llama', modelId: 'local-70b' })).toBe(false)
     expect(servesModel(index, { providerId: 'gone', modelId: 'local-7b' })).toBe(false)
   })
 })

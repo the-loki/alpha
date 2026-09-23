@@ -54,7 +54,7 @@ export const modelInput = (models: DraftModel[]) =>
     images: model.images,
   }))
 
-/** The models an endpoint serves, as rows being edited. Rows are positional until they are saved. */
+/** The models a provider serves, as rows being edited. Rows are positional until they are saved. */
 export function ModelFields(props: { models: DraftModel[]; onChange: (models: DraftModel[]) => void }) {
   const t = useText()
   const replace = (index: number, changes: Partial<DraftModel>) =>
@@ -119,7 +119,7 @@ export function ModelFields(props: { models: DraftModel[]; onChange: (models: Dr
                     {t('settings.reasoning')}
                   </label>
                   {/* What the model can be handed. It is a setting because nothing here can know it:
-                      no catalog ships with the app, and only the person who typed the model id knows
+                      no catalog ships with the workbench, and only the person who typed the model id knows
                       what is behind it (ADR-0018). */}
                   <label class={`flex items-center gap-2 ${GROUP_LABEL}`}>
                     <input

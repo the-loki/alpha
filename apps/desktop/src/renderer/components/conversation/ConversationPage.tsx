@@ -13,7 +13,7 @@ import { MessageList } from './MessageList.tsx'
  * foot. This is the window's text — the transcript if there is one, the title page if there is not
  * (C5.4) — and everything drawn in it stands on one pair of edges.
  */
-export function ConversationPane() {
+export function ConversationPage() {
   const streaming = () => conversations.transcript.status === 'running'
   const composerFolder = () => composerFolderOf(shell)
   const hasSummary = () => conversations.transcript.summary !== undefined

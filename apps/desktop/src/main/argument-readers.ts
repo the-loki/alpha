@@ -21,7 +21,7 @@ import {
 } from '@alpha/domain'
 import { isLanguageSetting } from '@alpha/i18n'
 
-/** How it looks and reads: the mode and the language. Any field may be left out. */
+/** How it looks and reads: the theme and the language. Any field may be left out. */
 export function readAppearancePatch(input: unknown): AppearancePatch {
   if (typeof input !== 'object' || input === null) throw new Error('an appearance patch is required')
   const record = input as Record<string, unknown>

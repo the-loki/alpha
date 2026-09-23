@@ -59,7 +59,7 @@ export function createModelRuntime(options: {
             resolve: async () => {
               const key = options.credential(provider.id)
               if (key === undefined) return undefined
-              // The key travels the way the endpoint expects it: the wire's own api-key header by
+              // The key travels the way the protocol expects it: the wire's own api-key header by
               // default, Authorization: Bearer where that is the only door (ADR-0015).
               const auth =
                 provider.authStyle === 'bearer' ? { headers: { authorization: `Bearer ${key}` } } : { apiKey: key }

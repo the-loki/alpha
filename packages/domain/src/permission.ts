@@ -78,7 +78,7 @@ export interface PermissionRule {
   conversationId: string
   /**
    * The folder the rule was granted in. "Always allow" is a decision about the code in front of
-   * you, so it must never reach a different project — a rule granted in a trusted repo would
+   * you, so it must never reach a different workspace — a rule granted in a trusted folder would
    * otherwise silently cover a private one.
    */
   workspacePath: string

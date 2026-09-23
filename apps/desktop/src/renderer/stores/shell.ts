@@ -95,19 +95,19 @@ const applyLaunchState = (state: LaunchState) => ({
 })
 
 /**
- * Paints the look onto the document. The mode is resolved here rather than left to the stylesheet:
+ * Paints the look onto the document. The palette is resolved here rather than left to the stylesheet:
  * "system" is a choice about which palette to use, not a third palette, and resolving it in one
  * place is what lets the paper/press blocks stay plain selectors (C5.2).
  */
 function applyAppearance(theme: Theme): void {
   const root = document.documentElement
-  const mode = theme === 'system' ? systemMode() : theme
+  const palette = theme === 'system' ? systemPalette() : theme
   // Written out rather than left to the stylesheet's default: the document says what it is drawn
   // in, which is what the settings page and the tests read back.
-  root.setAttribute('data-theme', mode)
+  root.setAttribute('data-theme', palette)
 }
 
-function systemMode(): 'light' | 'dark' {
+function systemPalette(): 'light' | 'dark' {
   return globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches === true ? 'dark' : 'light'
 }
 

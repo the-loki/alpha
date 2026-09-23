@@ -187,8 +187,8 @@ function sendFile(bundleDirectory: string, pathname: string, response: ServerRes
   // read below has to be compared against where that actually is rather than where it is named.
   const root = realPath(resolve(bundleDirectory))
   const wanted = resolve(join(root, decodeURIComponent(pathname)))
-  // A path that resolves outside the bundle is refused, not answered with the app shell: the
-  // fallback below is for a route the app renders, not for a request that walked out of the tree.
+  // A path that resolves outside the bundle is refused, not answered with the bundle's index: the
+  // fallback below is for a route the window renders, not for a request that walked out of the tree.
   if (!inside(root, wanted)) {
     sendJson(response, 404, { error: 'not found' })
     return

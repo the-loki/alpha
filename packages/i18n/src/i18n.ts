@@ -3,7 +3,7 @@
  *
  * Chrome only. Two other kinds of string are deliberately not here: what the agent is told (a
  * permission refusal, the reason a tool was blocked) is part of the conversation and is read by
- * the model, so it stays in the language the conversation is in; and anything a vendor or the
+ * the model, so it stays in the language the conversation is in; and anything a provider or the
  * operating system said is quoted rather than translated.
  *
  * The dictionary is data, not code: a translator can read it, and the compiler checks that every

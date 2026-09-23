@@ -77,7 +77,7 @@ export function LevelChip() {
                 <span class="flex items-center gap-2 font-text text-name text-foreground">
                   <span class={`h-1.5 w-1.5 ${DOT_CLASS[levelTone(candidate)]}`} aria-hidden="true" />
                   {t(levelKey(candidate))}
-                  {/* The mark of the one in force, in the place every menu in the app puts it: the
+                  {/* The mark of the one in force, in the place every menu in the workbench puts it: the
                       dot says which level it is, the check says that it is the one being used. */}
                   <CheckIcon class={`ml-auto ${candidate === nextLevel() ? 'text-accent' : 'invisible'}`} />
                 </span>
