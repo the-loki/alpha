@@ -31,9 +31,11 @@ export function isLanguageSetting(value: unknown): value is LanguageSetting {
 export type TextParams = Record<string, string | number>
 
 import { EN } from './en.ts'
+// One definition of the key type, in the leaf the dictionaries can name without closing a loop.
+import type { TextKey } from './keys.ts'
 import { ZH } from './zh.ts'
 
-export type TextKey = keyof typeof EN
+export type { TextKey }
 
 export { EN, ZH }
 
