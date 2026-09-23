@@ -7,9 +7,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@alpha/agent": "workspace:*",
     "@alpha/domain": "workspace:*",
     "@alpha/gate": "workspace:*",
-    "@alpha/history": "workspace:*",
     "@alpha/plugin": "workspace:*",
     "@alpha/sessions": "workspace:*",
     "@earendil-works/pi-agent-core": "0.86.1",

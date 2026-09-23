@@ -23,13 +23,13 @@ permission level, approval, provider, credential, model).
 ### Layout
 
 `apps/desktop` is the workbench: `src/main` is the Electron main process and the agent runtime, `src/preload`
-is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its thirteen libraries — the dictionary
+is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its twelve libraries — the dictionary
 (`@alpha/i18n`), the rules (`@alpha/domain`), the contract between the processes (`@alpha/contract`), the plugin
-base's pure faces (`@alpha/plugin`), the agent base, where those faces meet pi (`@alpha/agent`), the permission
-machinery the workbench owns (`@alpha/gate`), Alpha's own plugins (`@alpha/internal-plugins` — one file each, and
-a package that names the agent library), the fold from a session's entries to the messages an agent starts from
-(`@alpha/history`), and the files the workbench keeps for itself: `@alpha/state`, `@alpha/sessions`,
-`@alpha/conversations`, `@alpha/tasks`, `@alpha/providers`. No library
+base's pure faces (`@alpha/plugin`), the agent base where those faces meet pi — the history a run starts from, the
+assembly, the driver (`@alpha/agent`), the permission machinery the workbench owns (`@alpha/gate`), Alpha's own
+plugins (`@alpha/internal-plugins` — one file each, and a package that names the agent library), and the files the
+workbench keeps for itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`, `@alpha/tasks`,
+`@alpha/providers`. No library
 may import Electron, and only the packages C2.0 lists may name the agent library; the app depends on them and
 never backwards.
 

@@ -8,10 +8,9 @@
 
 import { readFileSync } from 'node:fs'
 import type { AlphaPlugin } from '@alpha/agent'
-import { assembleAgent } from '@alpha/agent'
+import { assembleAgent, contextOf } from '@alpha/agent'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
-import { contextOf } from '@alpha/history'
 import {
   createCompactionPlugin,
   createGatePlugin,

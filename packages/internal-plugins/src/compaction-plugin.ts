@@ -13,8 +13,9 @@
  * The threshold and the tail are `policy.ts`, which needs no agent; what is here is the half that
  * does — the summary through the model, the rewrite, the entry.
  */
+
+import { alignedHistoryOf } from '@alpha/agent'
 import type { Undef } from '@alpha/domain'
-import { alignedHistoryOf } from '@alpha/history'
 import type { AfterRunHook } from '@alpha/plugin'
 import { type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentMessage, CompactionSettings } from '@earendil-works/pi-agent-core'

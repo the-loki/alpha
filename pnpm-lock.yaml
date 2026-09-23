@@ -41,9 +41,6 @@ importers:
       '@alpha/gate':
         specifier: workspace:*
         version: link:../../packages/gate
-      '@alpha/history':
-        specifier: workspace:*
-        version: link:../../packages/history
       '@alpha/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -123,6 +120,9 @@ importers:
       '@alpha/plugin':
         specifier: workspace:*
         version: link:../plugin
+      '@alpha/sessions':
+        specifier: workspace:*
+        version: link:../sessions
       '@earendil-works/pi-agent-core':
         specifier: 0.86.1
         version: 0.86.1(ws@8.21.3)
@@ -169,31 +169,19 @@ importers:
         specifier: workspace:*
         version: link:../state
 
-  packages/history:
-    dependencies:
-      '@alpha/domain':
-        specifier: workspace:*
-        version: link:../domain
-      '@alpha/sessions':
-        specifier: workspace:*
-        version: link:../sessions
-      '@earendil-works/pi-agent-core':
-        specifier: 0.86.1
-        version: 0.86.1(ws@8.21.3)
-
   packages/i18n: {}
 
   packages/internal-plugins:
     dependencies:
+      '@alpha/agent':
+        specifier: workspace:*
+        version: link:../agent
       '@alpha/domain':
         specifier: workspace:*
         version: link:../domain
       '@alpha/gate':
         specifier: workspace:*
         version: link:../gate
-      '@alpha/history':
-        specifier: workspace:*
-        version: link:../history
       '@alpha/plugin':
         specifier: workspace:*
         version: link:../plugin

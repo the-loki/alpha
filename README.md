@@ -131,7 +131,6 @@ packages/contract       pure: the channel names and the types the bridge exposes
 packages/plugin         pure: the plugin base — a face's vocabulary, and how faces become one decision
 packages/state          the one file the workbench persists for itself
 packages/sessions       the conversation on disk: the transcript, its entries, its decisions
-packages/history        the messages an agent starts from: the entries folded into pi's transcript
 packages/conversations  the list the sidebar shows, and the messages waiting to be sent
 packages/tasks          the scheduled tasks: the file, the clock, the service
 packages/providers      the connections, the key vault, and the model a conversation runs on

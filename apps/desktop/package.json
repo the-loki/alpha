@@ -19,7 +19,6 @@
     "@alpha/conversations": "workspace:*",
     "@alpha/domain": "workspace:*",
     "@alpha/gate": "workspace:*",
-    "@alpha/history": "workspace:*",
     "@alpha/i18n": "workspace:*",
     "@alpha/internal-plugins": "workspace:*",
     "@alpha/plugin": "workspace:*",

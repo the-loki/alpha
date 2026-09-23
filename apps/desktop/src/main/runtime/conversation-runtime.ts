@@ -14,7 +14,7 @@
  */
 
 import type { AlphaPlugin } from '@alpha/agent'
-import { runAfterRunHooks } from '@alpha/agent'
+import { contextOf, runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
   type Attachment,
@@ -28,7 +28,6 @@ import {
   type UsageTotals,
   userBlocksOf,
 } from '@alpha/domain'
-import { contextOf } from '@alpha/history'
 import type { RetryDecider } from '@alpha/plugin'
 import { type AgentEntry, type DecisionLookup, type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'

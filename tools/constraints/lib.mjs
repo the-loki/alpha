@@ -33,15 +33,14 @@ export const PURE_PACKAGES = [
 
 /**
  * The packages the agent library links into, and therefore name pi: `@alpha/agent`, which turns
- * plugins into a running agent and drives a run to its end; `@alpha/internal-plugins`, which holds
- * Alpha's own plugins — the faces are where pi's own shapes are the capability (a tool is an
- * `AgentTool`, a hook is asked about pi's run), so each carries its own adapter and the app holds
- * nothing but the registration (C2.8) — and the fold that turns a session's entries into the
- * messages an agent starts from. Closed on purpose: a package that is not on this list may not
- * import the agent library, and no package may import Electron. A package joins it by being written
- * down here, next to its row in the table below.
+ * plugins into a running agent — the history a run starts from, the assembly, the driver — and
+ * `@alpha/internal-plugins`, which holds Alpha's own plugins: the faces are where pi's own shapes
+ * are the capability (a tool is an `AgentTool`, a hook is asked about pi's run), so each carries its
+ * own adapter and the app holds nothing but the registration (C2.8). Closed on purpose: a package
+ * that is not on this list may not import the agent library, and no package may import Electron. A
+ * package joins it by being written down here, next to its row in the table below.
  */
-export const AGENT_LINKING_PACKAGES = ['packages/agent/src/', 'packages/internal-plugins/src/', 'packages/history/src/']
+export const AGENT_LINKING_PACKAGES = ['packages/agent/src/', 'packages/internal-plugins/src/']
 
 /**
  * Which library may import which. The dictionary sits under everything, the rules know the
@@ -62,12 +61,11 @@ export const LIBRARY_DEPENDENCIES = {
   'packages/tasks/src/': ['@alpha/domain'],
   'packages/providers/src/': ['@alpha/contract', '@alpha/domain'],
   'packages/gate/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/state'],
-  'packages/agent/src/': ['@alpha/domain', '@alpha/plugin'],
-  'packages/history/src/': ['@alpha/domain', '@alpha/sessions'],
+  'packages/agent/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/sessions'],
   'packages/internal-plugins/src/': [
+    '@alpha/agent',
     '@alpha/domain',
     '@alpha/gate',
-    '@alpha/history',
     '@alpha/plugin',
     '@alpha/sessions',
   ],
