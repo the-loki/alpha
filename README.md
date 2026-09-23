@@ -5,7 +5,7 @@ with your own key — choose how much the agent may do without asking, and read 
 made in a ledger you can audit afterwards.
 
 Alpha is an Electron app, and the agent runs inside it: an embedded agent core, assembled from a
-plugin base of Alpha's own — the coding tools, the permission gate, compaction, auto-retry. The
+plugin base of Alpha's own — the workspace tools, the permission gate, compaction, auto-retry. The
 window receives a projection of the conversation over a typed IPC contract, and the credential, the
 permission ladder and the decisions stay in the main process.
 

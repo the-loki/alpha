@@ -12,7 +12,7 @@ import { openRuntime } from './assemble-runtime.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 
 /**
- * What a real opening assembles (ADR-0025): the coding tools always, and the gate exactly when the
+ * What a real opening assembles (ADR-0025): the workspace tools always, and the gate exactly when the
  * caller hands over the permissions to run it with — absent ports leave calls ungated, which is
  * the behavior the tests have always had, and the option stays honest about it.
  */

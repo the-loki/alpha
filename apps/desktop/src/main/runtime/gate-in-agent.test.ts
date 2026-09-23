@@ -7,13 +7,13 @@ import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/
 import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent, Undef } from '@alpha/domain'
 import type { ApprovalAnswer, PermissionPorts } from '@alpha/gate'
 import { contextOf } from '@alpha/history'
-import { createCodingToolsPlugin, createGatePlugin } from '@alpha/internal-plugins'
+import { createGatePlugin, createWorkspaceToolsPlugin } from '@alpha/internal-plugins'
 import { SessionStore, tipPath } from '@alpha/sessions'
 import { describe, expect, it } from 'vitest'
 import { ConversationRuntime } from './conversation-runtime.ts'
 
 /**
- * The gate plugin (ADR-0025): the ladder wrapped as a `beforeToolCall` hook, over the real coding
+ * The gate plugin (ADR-0025): the ladder wrapped as a `beforeToolCall` hook, over the real workspace
  * tools, on a real assembled agent whose provider streams from a script. What the model reads when
  * a call is refused, what the session keeps, and what the window is told are the three things the
  * old RPC gate had to braid together — here they are one plugin deep.
@@ -52,7 +52,7 @@ const gated = (options: GateOptions) => {
   // so the gate's announcements are bound late and travel through it.
   let runtime: Undef<ConversationRuntime>
   const plugins: AlphaPlugin[] = [
-    createCodingToolsPlugin({ workspacePath: workspace }),
+    createWorkspaceToolsPlugin({ workspacePath: workspace }),
     createGatePlugin({
       conversationId: 'c1',
       workspacePath: workspace,

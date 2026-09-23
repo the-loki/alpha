@@ -13,10 +13,10 @@ import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@
 import type { PermissionPorts } from '@alpha/gate'
 import { contextOf } from '@alpha/history'
 import {
-  createCodingToolsPlugin,
   createCompactionPlugin,
   createGatePlugin,
   createRetryPlugin,
+  createWorkspaceToolsPlugin,
 } from '@alpha/internal-plugins'
 import type { RetryDecider } from '@alpha/plugin'
 import { modelFor, type ProviderStore } from '@alpha/providers'
@@ -93,7 +93,7 @@ export interface AssembledPlugins {
 }
 
 /**
- * The plugins every real conversation is assembled from, in order: the coding tools always, the
+ * The plugins every real conversation is assembled from, in order: the workspace tools always, the
  * gate when the caller hands over the permissions to run it with, then compaction and auto-retry.
  * This is the one place a capability is registered (C2.8): a feature that needs to be wired
  * somewhere else to reach the agent has not found its face yet.
@@ -107,7 +107,7 @@ function pluginsFor(
   agent: () => Undef<Agent>,
   announce: (callId: string, record: ApprovalRecord) => void,
 ): AssembledPlugins {
-  const plugins: AlphaPlugin[] = [createCodingToolsPlugin({ workspacePath: session.workspacePath })]
+  const plugins: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
   const permissions = options.permissions?.()
   if (permissions !== undefined) {
     plugins.push(

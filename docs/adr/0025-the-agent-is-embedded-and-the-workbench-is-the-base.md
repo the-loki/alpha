@@ -30,7 +30,7 @@ person's `pi` stayed the person's. The costs of that distance grew with the work
 
 pi-agent-core already holds the parts of that relationship that were never the CLI's: the `Agent`
 loop (prompt, steer, abort, streaming events, a `beforeToolCall` that can block — the gate's
-actual hook), the four coding tools over an `ExecutionEnv` abstraction, the compaction math, and
+actual hook), the four tools over an `ExecutionEnv` abstraction, the compaction math, and
 pi-ai's provider layer with per-request auth resolution. coding-agent itself is a thin shell over
 the same core — its `AgentSession` is the reference for the glue, and it does not use core's
 heavier harness layer.
@@ -50,7 +50,7 @@ contract is Alpha's own, not a re-implementation of coding-agent's extension loa
 external files, no `pi.registerCommand` surface. Built-ins ship as the first plugins, so the base
 is exercised by everything Alpha itself needs:
 
-- **coding tools** — core's `read`/`bash`/`edit`/`write` over a `NodeExecutionEnv` rooted at the
+- **workspace tools** — core's `read`/`bash`/`edit`/`write` over a `NodeExecutionEnv` rooted at the
   conversation's workspace;
 - **the gate** — the same ladder and approval broker as before, now as a `beforeToolCall` plugin
   whose block becomes the tool result the model reads, in Alpha's words, with no extension file

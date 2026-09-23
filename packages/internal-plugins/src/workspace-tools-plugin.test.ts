@@ -3,17 +3,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
-import { createCodingToolsPlugin } from './coding-tools-plugin.ts'
+import { createWorkspaceToolsPlugin } from './workspace-tools-plugin.ts'
 
 /**
- * The coding tools plugin (ADR-0025): pi-agent-core's four coding tools over a real NodeExecutionEnv
+ * The workspace tools plugin (ADR-0025): pi-agent-core's four tools over a real NodeExecutionEnv
  * rooted at the conversation's workspace — a relative path lands there, and a command runs there.
  */
 
 const aWorkspace = (): string => mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
 
 const toolsOf = (workspace: string): AgentTool[] =>
-  createCodingToolsPlugin({ workspacePath: workspace }).tools?.() ?? []
+  createWorkspaceToolsPlugin({ workspacePath: workspace }).tools?.() ?? []
 
 const toolOf = (tools: AgentTool[], name: string): AgentTool => {
   const tool = tools.find((candidate) => candidate.name === name)
@@ -21,11 +21,11 @@ const toolOf = (tools: AgentTool[], name: string): AgentTool => {
   return tool
 }
 
-describe('[runtime] the coding tools plugin', () => {
-  it('offers the four coding tools in the order the old agent offered them', () => {
-    const plugin = createCodingToolsPlugin({ workspacePath: aWorkspace() })
+describe('[runtime] the workspace tools plugin', () => {
+  it('offers the four tools in the order the old agent offered them', () => {
+    const plugin = createWorkspaceToolsPlugin({ workspacePath: aWorkspace() })
 
-    expect(plugin.name).toBe('coding-tools')
+    expect(plugin.name).toBe('workspace-tools')
     expect(plugin.tools?.().map((tool) => tool.name)).toEqual(['read', 'bash', 'edit', 'write'])
   })
 

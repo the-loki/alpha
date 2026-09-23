@@ -1,7 +1,7 @@
 # Context: Alpha
 
 Alpha is a local-first desktop workbench that embeds its agent: a conversation runs in the
-workbench's own process, on an agent assembled from a plugin base of Alpha's own — the coding
+workbench's own process, on an agent assembled from a plugin base of Alpha's own — the workspace
 tools, the permission gate, compaction, auto-retry — against a folder on your machine. This file
 is the glossary: the words the project uses, and the words it refuses to use as synonyms. It
 holds no implementation details.
