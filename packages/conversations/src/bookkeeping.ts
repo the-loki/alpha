@@ -59,6 +59,21 @@ export class ConversationBookkeeper {
   public constructor(options: BookkeeperOptions) {
     this.store = new ConversationIndexStore(options.dataDirectory)
     this.emit = options.emit
+    this.endRunsNobodyIsDriving()
+  }
+
+  /**
+   * The status the file was left in is not this process's to believe. A run in flight is state the
+   * runtime holds (ADR-0008), so a conversation the index calls `running` or `waiting` at startup
+   * was left that way by a process that is gone: the window would draw a working mark for a run
+   * nobody is driving, and archiving would be refused until something finished a turn there. The
+   * run that would have finished it no longer exists, so this is the only place the two can meet.
+   */
+  private endRunsNobodyIsDriving(): void {
+    for (const conversation of this.store.all()) {
+      if (conversation.status === 'idle') continue
+      this.store.upsert({ ...conversation, status: 'idle' })
+    }
   }
 
   public list(): ConversationSummary[] {

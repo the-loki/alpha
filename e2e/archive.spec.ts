@@ -12,14 +12,17 @@ import { closeScriptedProviders } from './scripted-provider'
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
 
+/** A call the Ask level stops on, so the conversation is waiting on a person rather than idle. */
+const WRITE = { tool: { name: 'write', args: { path: 'made.txt', content: 'written by the agent' } } }
+
 test.afterEach(() => closeScriptedProviders())
 
-async function launch(options: { status?: 'idle' | 'waiting' } = {}) {
+async function launch(options: { replies?: unknown[] } = {}) {
   const workspace = mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
   const { app, window, dataDirectory } = await launchWorkbench({
     workspace,
     level: 'ask',
-    replies: ['The answer.'],
+    replies: options.replies ?? ['The answer.'],
     conversations: [
       {
         id: 'seed-1',
@@ -27,7 +30,9 @@ async function launch(options: { status?: 'idle' | 'waiting' } = {}) {
         title: 'rename the parser module',
         createdAt: Date.now() - 120_000,
         updatedAt: Date.now() - 60_000,
-        status: options.status ?? 'idle',
+        // A workbench always opens on idle conversations: a status a dead process left is not
+        // believed (ADR-0008), so seeding one would not survive the launch anyway.
+        status: 'idle',
         permissionLevel: 'ask',
         model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
         thinkingLevel: 'medium',
@@ -86,7 +91,17 @@ test('a conversation is archived from the row and comes back when a message is s
 })
 
 test('a conversation that is waiting on an answer is not offered for archiving', async () => {
-  const { app, window } = await launch({ status: 'waiting' })
+  // A run that stops on the card it asked for: the conversation is working in the sense that
+  // matters — somebody is being waited on — and folding it away would hide the one thing that
+  // needs a person (#79).
+  const { app, window } = await launch({ replies: [WRITE] })
+
+  await row(window).click()
+  await expect(window.getByRole('heading', { name: 'rename the parser module' })).toBeVisible()
+  const composer = window.getByRole('textbox', { name: 'Message the agent' })
+  await composer.fill('write the file')
+  await composer.press('Enter')
+  await expect(window.getByRole('button', { name: 'Allow once' })).toBeVisible({ timeout: 20_000 })
 
   await openRowMenu(window)
   await expect(window.getByRole('menuitem', { name: /Archive/ })).toBeDisabled()
