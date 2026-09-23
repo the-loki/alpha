@@ -1,8 +1,8 @@
 import type { ApprovalRecord, PermissionLevel, PermissionRule } from '@alpha/domain'
+import type { ApprovalAnswer } from '@alpha/gate'
 import { describe, expect, it } from 'vitest'
-import type { ApprovalAnswer } from './gate.ts'
-import type { GatePluginPorts } from './plugin.ts'
-import { createGatePlugin } from './plugin.ts'
+import type { GatePluginPorts } from './gate-plugin.ts'
+import { createGatePlugin } from './gate-plugin.ts'
 
 /**
  * The gate's face on the base, without an agent: what the base is answered for a call that runs, a

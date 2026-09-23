@@ -8,9 +8,8 @@
  * like the decision it wraps (C2.8).
  */
 import type { ApprovalRecord } from '@alpha/domain'
+import { createToolGate, type PermissionPorts } from '@alpha/gate'
 import type { BeforeToolCallHook } from '@alpha/plugin'
-import { createToolGate } from './gate.ts'
-import type { PermissionPorts } from './permissions.ts'
 
 /** What the gate plugin needs: where the call happens, and how the ladder reaches the workbench. */
 export interface GatePluginPorts {

@@ -21,7 +21,7 @@ import type { Agent, AgentMessage, CompactionSettings } from '@earendil-works/pi
 import { DEFAULT_COMPACTION_SETTINGS, generateSummaryWithUsage } from '@earendil-works/pi-agent-core'
 import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
-import { compactionDue, keptCountOf } from './policy.ts'
+import { compactionDue, keptCountOf } from './compaction-policy.ts'
 
 /** What the plugin needs. The getters are read per compaction, never captured. */
 export interface CompactionPluginPorts {

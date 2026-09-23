@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
-import { createCodingToolsPlugin } from './coding-tools.ts'
+import { createCodingToolsPlugin } from './coding-tools-plugin.ts'
 
 /**
  * The coding tools plugin (ADR-0025): pi-agent-core's four coding tools over a real NodeExecutionEnv

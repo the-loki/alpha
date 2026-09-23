@@ -7,15 +7,17 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { createCodingToolsPlugin } from '@alpha/coding-tools'
-import { createCompactionPlugin } from '@alpha/compaction'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
-import { createGatePlugin } from '@alpha/gate'
 import { contextOf } from '@alpha/history'
+import {
+  createCodingToolsPlugin,
+  createCompactionPlugin,
+  createGatePlugin,
+  createRetryPlugin,
+} from '@alpha/internal-plugins'
 import type { RetryDecider } from '@alpha/plugin'
 import { modelFor, type ProviderStore } from '@alpha/providers'
-import { createRetryPlugin } from '@alpha/retry'
 import {
   type DecisionLedger,
   importLegacySessionIn,

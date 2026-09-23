@@ -562,7 +562,7 @@ describe('02-architecture:no-agent-dependency', () => {
   it('passes it in a package that attaches to the agent, and only there', () => {
     // A capability's package carries its own adapter (C2.8): the tool face is pi's shape, so the
     // package that offers tools names pi. The set is closed — a library that is not on it may not.
-    expect(violationsFor(rule, file('packages/coding-tools/src/a.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/internal-plugins/src/a.ts', text))).toEqual([])
     expect(violationsFor(rule, file('packages/state/src/a.ts', text))).toHaveLength(1)
   })
 

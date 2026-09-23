@@ -1,7 +1,7 @@
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
 import { DEFAULT_COMPACTION_SETTINGS, estimateTokens } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
-import { compactionDue, keptCountOf, tokensOf } from './policy.ts'
+import { compactionDue, keptCountOf, tokensOf } from './compaction-policy.ts'
 
 /**
  * The compaction decision without an agent: what a transcript says it occupies, how much of its

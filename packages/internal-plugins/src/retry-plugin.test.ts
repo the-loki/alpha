@@ -1,6 +1,6 @@
 import type { AfterRunOutcome } from '@alpha/plugin'
 import { describe, expect, it } from 'vitest'
-import { createRetryPlugin } from './retry.ts'
+import { createRetryPlugin } from './retry-plugin.ts'
 
 /**
  * coding-agent's auto-retry (ADR-0025) as a policy that stands on its own: a transient provider
