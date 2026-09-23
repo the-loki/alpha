@@ -4,7 +4,7 @@
  * plugins into a running `Agent`, and the `afterRun` driver that waits a run out and decides
  * whether it is over. The faces themselves are `@alpha/plugin` — pure, so a capability's
  * policy is written against them without pi — and this package is the pi side of the same idea,
- * which is why it is one of the three allowed to name the agent library (C2.0).
+ * which is why it is one of the two allowed to name the agent library (C2.0).
  *
  * It is the base rather than a capability: Alpha's own plugins live in `@alpha/internal-plugins`,
  * and `main` holds the registration. `@alpha/agent/testing` carries the scripted provider the

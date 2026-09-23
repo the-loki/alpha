@@ -106,11 +106,34 @@ describe('02-architecture:no-import-cycles', () => {
   it('flags a file that imports itself, and a cycle that runs through two packages', () => {
     expect(cycles([file('packages/domain/src/a.ts', "import { a } from './a.ts'")])).toHaveLength(1)
 
+    // The dictionary's entry is not `index.ts` — a package's manifest decides that — and the edge
+    // has to be followed wherever it goes.
     expect(
       cycles([
-        file('packages/i18n/src/index.ts', "import { TextKey } from '@alpha/domain'"),
+        file('packages/i18n/package.json', '{"exports": {".": "./src/i18n.ts"}}'),
+        file('packages/i18n/src/i18n.ts', "import { TextKey } from '@alpha/domain'"),
         file('packages/domain/src/index.ts', "export * from './a.ts'"),
         file('packages/domain/src/a.ts', "import { text } from '@alpha/i18n'"),
+      ]),
+    ).toHaveLength(1)
+  })
+
+  it('sees an import that wraps over several lines, and an entry that is not index.ts', () => {
+    expect(
+      cycles([
+        file('packages/i18n/package.json', '{"exports": {".": "./src/i18n.ts"}}'),
+        file('packages/domain/src/a.ts', "import {\n  text,\n  type TextKey,\n} from '@alpha/i18n'"),
+        file('packages/i18n/src/i18n.ts', "import { a } from '@alpha/domain'"),
+        file('packages/domain/src/index.ts', "export * from './a.ts'"),
+      ]),
+    ).toHaveLength(1)
+
+    // Without a manifest the entry is the conventional one, and the same loop is still a loop.
+    expect(
+      cycles([
+        file('packages/domain/src/a.ts', "import {\n  text,\n} from '@alpha/i18n'"),
+        file('packages/i18n/src/index.ts', "import { a } from '@alpha/domain'"),
+        file('packages/domain/src/index.ts', "export * from './a.ts'"),
       ]),
     ).toHaveLength(1)
   })

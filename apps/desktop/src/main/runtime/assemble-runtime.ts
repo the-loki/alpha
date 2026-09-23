@@ -8,7 +8,7 @@
 
 import { readFileSync } from 'node:fs'
 import type { AlphaPlugin } from '@alpha/agent'
-import { assembleAgent, contextOf } from '@alpha/agent'
+import { assembleAgent, historyOf } from '@alpha/agent'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import {
@@ -149,7 +149,7 @@ async function assembleFor(
     model,
     plugins,
     systemPrompt: await systemPromptFor(session.workspacePath, readTextFile),
-    messages: contextOf(tipPath(history.entries, history.leafId)),
+    messages: historyOf(tipPath(history.entries, history.leafId)),
     thinkingLevel: options.conversation.thinkingLevel,
     sessionId: session.id,
   })

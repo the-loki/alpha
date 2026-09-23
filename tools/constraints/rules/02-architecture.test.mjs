@@ -301,6 +301,9 @@ describe('02-architecture:renderer-has-no-credentials', () => {
     expect(violationsFor(rule, file(renderer, "const key = snapshot['apiKey']"))).toHaveLength(1)
     expect(violationsFor(rule, file(renderer, 'const one = payload.secret'))).toHaveLength(1)
     expect(violationsFor(rule, file(renderer, 'const set = stored.credentials'))).toHaveLength(1)
+    expect(violationsFor(rule, file(renderer, 'const kept = provider.vault'))).toHaveLength(1)
+    expect(violationsFor(rule, file(renderer, 'const ring = store.keychain'))).toHaveLength(1)
+    expect(violationsFor(rule, file(renderer, 'const { apiKey } = provider'))).toHaveLength(1)
   })
 
   it('passes what C2.4 allows the window: that one exists, and the one being sent', () => {
@@ -308,6 +311,8 @@ describe('02-architecture:renderer-has-no-credentials', () => {
     expect(violationsFor(rule, file(renderer, 'const [secret, setSecret] = createSignal("")'))).toEqual([])
     expect(violationsFor(rule, file(renderer, "fetch('/x', { credentials: 'same-origin' })"))).toEqual([])
     expect(violationsFor(rule, file(renderer, 'bridge.setCredential(id, secret)'))).toEqual([])
+    expect(violationsFor(rule, file(renderer, `const note = 'no apiKey here'`))).toEqual([])
+    expect(violationsFor(rule, file(renderer, 'const label = t("settings.apiKeyFor")'))).toEqual([])
   })
 
   it('says nothing about the main process, where the key really is read', () => {

@@ -21,20 +21,30 @@ import {
 } from '../lib.mjs'
 
 /**
- * The specifiers a line depends on: a re-export is a dependency as surely as an import is, and
- * `importSpecifiers` (the shared reader) stops at imports.
+ * The specifier a statement depends on, if it has one: an `import`, a `require`, or an `export …
+ * from` — a re-export is a dependency as surely as an import is, and the shared reader stops at
+ * imports. A statement may wrap over several lines, so the lines are joined until the quote closes;
+ * `start` is the line the statement began on, which is where a violation points.
  */
-const dependenciesOf = (line) => {
-  const reexport = line.trim().match(/^export\s[\s\S]*?from\s*['"]([^'"]+)['"]/)
-  return reexport === null ? importSpecifiers(line) : [reexport[1]]
+const statementSpecifier = (line) => {
+  const trimmed = line.trim()
+  const reexport = trimmed.match(/^export\s[\s\S]*?from\s*['"]([^'"]+)['"]/)
+  if (reexport !== null) return reexport[1]
+  const specifiers = importSpecifiers(line)
+  return specifiers.length === 0 ? undefined : specifiers[0]
 }
+
+/** Whether a line opens a statement whose specifier has not arrived yet. */
+const opensStatement = (line) => /^\s*(import|export)\b/.test(line) && !/from\s*['"]/.test(line)
 
 /**
  * Where an import points, as a path in the scanned set: a relative specifier resolves against the
- * file that wrote it (the repo spells the extension), and `@alpha/x` is the package's entry. Anything
- * else — pi, node, a third party — leaves the graph, so the rule stays about this repo.
+ * file that wrote it (the repo spells the extension), and `@alpha/x` is whatever that package's own
+ * manifest says its entry is — `src/index.ts` for most, `src/i18n.ts` for the dictionary, and the
+ * manifest is the only thing that knows. Anything else — pi, node, a third party — leaves the
+ * graph, so the rule stays about this repo.
  */
-const importTarget = (from, specifier) => {
+const importTarget = (from, specifier, entries) => {
   if (specifier.startsWith('.')) {
     const parts = from.split('/').slice(0, -1)
     for (const step of specifier.split('/')) {
@@ -44,23 +54,58 @@ const importTarget = (from, specifier) => {
     }
     return parts.join('/')
   }
-  if (specifier.startsWith('@alpha/')) return `packages/${specifier.slice('@alpha/'.length)}/src/index.ts`
+  if (specifier.startsWith('@alpha/')) {
+    const name = specifier.slice('@alpha/'.length)
+    return entries.get(name) ?? `packages/${name}/src/index.ts`
+  }
   return ''
+}
+
+/** Each package's entry, read from its manifest's `exports["."]`: the one place that decides it. */
+const packageEntries = (files) => {
+  const entries = new Map()
+  for (const file of files) {
+    const manifest = file.path.match(/^packages\/([^/]+)\/package\.json$/)
+    if (manifest === null) continue
+    try {
+      const entry = JSON.parse(file.text).exports?.['.']
+      if (typeof entry === 'string') entries.set(manifest[1], `packages/${manifest[1]}/${entry.replace(/^\.\//, '')}`)
+    } catch {
+      // A manifest that will not parse is somebody else's rule's business.
+    }
+  }
+  return entries
 }
 
 /** The graph of this repo's own imports, as `file -> the files it imports`. */
 const importGraph = (files) => {
   const sources = files.filter((file) => isSource(file.path) && isTs(file.path))
   const known = new Set(sources.map((file) => file.path))
+  const entries = packageEntries(files)
   const edges = new Map()
   for (const file of sources) {
     const targets = []
+    let pending = ''
+    let pendingLine = 0
     file.text.split('\n').forEach((line, index) => {
       if (isComment(line)) return
-      for (const specifier of dependenciesOf(line)) {
-        const target = importTarget(file.path, specifier)
-        if (target !== '' && known.has(target)) targets.push({ target, line: index + 1, text: line.trim() })
+      const statement = pending === '' ? line : `${pending} ${line.trim()}`
+      if (pending === '' && opensStatement(line)) {
+        pending = line.trim()
+        pendingLine = index + 1
+        return
       }
+      if (pending !== '') {
+        pending = statement
+        if (!/from\s*['"]/.test(statement)) return
+      }
+      const specifier = statementSpecifier(statement)
+      const start = pendingLine === 0 ? index + 1 : pendingLine
+      pending = ''
+      pendingLine = 0
+      if (specifier === undefined) return
+      const target = importTarget(file.path, specifier, entries)
+      if (target !== '' && known.has(target)) targets.push({ target, line: start, text: statement.trim() })
     })
     edges.set(file.path, targets)
   }

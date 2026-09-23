@@ -14,7 +14,7 @@
  */
 
 import type { AlphaPlugin } from '@alpha/agent'
-import { contextOf, runAfterRunHooks } from '@alpha/agent'
+import { historyOf, runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
   type Attachment,
@@ -291,7 +291,7 @@ export class ConversationRuntime {
   #reload(agent: Agent): void {
     const read = this.#store.entries(this.#sessionId, this.#workspacePath)
     const system = agent.state.messages.find((message) => message.role === 'system')
-    const history = contextOf(tipPath(read.entries, read.leafId))
+    const history = historyOf(tipPath(read.entries, read.leafId))
     agent.state.messages = system === undefined ? history : [system, ...history]
   }
 

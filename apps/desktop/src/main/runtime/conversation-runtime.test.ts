@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AlphaPlugin } from '@alpha/agent'
-import { assembleAgent, contextOf } from '@alpha/agent'
+import { assembleAgent, historyOf } from '@alpha/agent'
 import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
 import type { RuntimeEvent, Undef } from '@alpha/domain'
 import { createRetryPlugin, type RetryPlugin } from '@alpha/internal-plugins'
@@ -50,7 +50,7 @@ const openRuntime = (options: OpenOptions = {}) => {
         plugins,
         systemPrompt: 'you are scripted',
         sessionId: id,
-        messages: contextOf(tipPath(history.entries, history.leafId)),
+        messages: historyOf(tipPath(history.entries, history.leafId)),
       })
   const events: RuntimeEvent[] = []
   const runtime = new ConversationRuntime({

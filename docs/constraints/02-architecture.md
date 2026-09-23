@@ -77,7 +77,7 @@ Dependencies never point backwards: the libraries know nothing about the workben
 imports `main`'s runtime. Which library may import which is the `May import` column, and it is a
 rule rather than a sentence — nothing points sideways either.
 
-**Enforcement:** five of the checker's rules and one linter keep this shape.
+**Enforcement:** six of the checker's rules and one linter keep this shape.
 `02-architecture:processes-stay-apart` fails on a relative import from one of the app's three
 processes into another — the window cannot reach the runtime's files, the runtime cannot reach the
 window's — which is what separate packages used to enforce by existing.
@@ -88,6 +88,10 @@ hold a window, because a library that owns a window cannot be tested on its own.
 `02-architecture:libraries-point-one-way` is the `May import` column, read as a rule: it fails on an
 `@alpha/*` import that is not below the importing library (a package the table does not name may
 import none of them), and on a relative import that climbs out of its own package.
+`02-architecture:no-import-cycles` is the same claim at file granularity: it builds the graph of
+this repo's own imports — relative ones, re-exports, and `@alpha/*` resolved through each package's
+own entry — and fails on a cycle, including a file that imports itself. The dependency table can
+only see package edges; this is what sees the loop inside one.
 And `02-architecture:renderer-is-solid` keeps the window on the framework it was rebuilt on.
 Biome's `style/noRestrictedGlobals` keeps the renderer off `process`, `require`, and `Buffer`.
 
@@ -132,11 +136,13 @@ no second process to hand it to, and a secret that sits in a file or an env line
 that needed it.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:renderer-has-no-credentials`
-fails on a renderer file that reads a property named `apiKey`, `api_key`, `secret`, `credential` or
-`credentials` — `provider.apiKey`, `snapshot['apiKey']` — which is the read C2.4 forbids. What the
-window is allowed to have passes: the boolean that says one exists (`hasCredential`), the field the
-person is typing into on its way *to* the vault, the call that stores it, and a dictionary key that
-merely names the thing. Review covers the rest.
+fails on every shape a credential is read in — a property named `apiKey`, `api_key`, `secret`,
+`credential`, `credentials`, `vault` or `keychain` (`provider.apiKey`), the same name in brackets
+(`snapshot['apiKey']`), and the same name destructured out of a payload (`const { apiKey } =
+provider`). What the window is allowed to have passes: the boolean that says one exists
+(`hasCredential`), the field the person is typing into on its way *to* the vault, the call that
+stores it, a dictionary key that merely names the thing, and a string that happens to contain the
+word. Review covers the rest.
 
 ## C2.5 — Size budgets
 

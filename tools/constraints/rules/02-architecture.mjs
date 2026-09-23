@@ -1,9 +1,13 @@
 /**
- * The two shapes a credential field is read in, for the rule that keeps the window off them: a
- * property whose name *is* the word, and the same name in brackets.
+ * The three shapes a credential field is read in, for the rule that keeps the window off them: a
+ * property whose name *is* the word, the same name in brackets (only where something is being
+ * indexed — a string that merely contains brackets is not a read), and the same name destructured
+ * out of a payload, which is a read without a dot anywhere.
  */
-const CREDENTIAL_FIELD = /\.(api_?key|secret|credential|credentials)\b/i
-const CREDENTIAL_INDEX = /\[\s*['"](api_?key|secret|credential|credentials)['"]\s*\]/i
+const CREDENTIAL_WORDS = 'api_?key|secret|credential|credentials|vault|keychain'
+const CREDENTIAL_FIELD = new RegExp(`\\.(${CREDENTIAL_WORDS})\\b`, 'i')
+const CREDENTIAL_INDEX = new RegExp(`[A-Za-z0-9_)\\]]\\s*\\[\\s*['"](${CREDENTIAL_WORDS})['"]\\s*\\]`, 'i')
+const CREDENTIAL_DESTRUCTURED = new RegExp(`\\{[^}]*\\b(${CREDENTIAL_WORDS})\\b[^}]*\\}\\s*=`, 'i')
 
 /**
  * The architecture rules that read one file: the process split, what a library may reach, what a package may name, where capabilities are registered, the size budgets.
@@ -224,7 +228,10 @@ export const ARCHITECTURE_RULES = [
       const found = []
       text.split('\n').forEach((line, index) => {
         if (isComment(line)) return
-        const read = CREDENTIAL_FIELD.test(stripStrings(line)) || CREDENTIAL_INDEX.test(line)
+        const read =
+          CREDENTIAL_FIELD.test(stripStrings(line)) ||
+          CREDENTIAL_INDEX.test(line) ||
+          CREDENTIAL_DESTRUCTURED.test(stripStrings(line))
         if (!read) return
         if (ignoredFor(line, { id: '02-architecture:renderer-has-no-credentials', constraint: '02-architecture.md' })) {
           return

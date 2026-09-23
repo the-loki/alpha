@@ -1,6 +1,6 @@
 import type { AgentEntry } from '@alpha/sessions'
 import { describe, expect, it } from 'vitest'
-import { alignedHistoryOf, contextOf } from './history.ts'
+import { alignedHistoryOf, historyOf } from './history.ts'
 
 /** An entry as the store writes it: identified, chained, carrying its message. */
 const message = (id: string, role: string, text: string): AgentEntry => ({
@@ -11,9 +11,9 @@ const message = (id: string, role: string, text: string): AgentEntry => ({
   message: { role, content: [{ type: 'text', text }] },
 })
 
-describe('the context an agent starts with', () => {
+describe('the history an agent starts with', () => {
   it('carries the session’s messages verbatim, in transcript order', () => {
-    const messages = contextOf([
+    const messages = historyOf([
       message('e1', 'user', 'hello'),
       message('e2', 'assistant', 'hi there'),
       {
@@ -36,7 +36,7 @@ describe('the context an agent starts with', () => {
   })
 
   it('a compaction collapses everything before it into one user message carrying the summary', () => {
-    const messages = contextOf([
+    const messages = historyOf([
       message('e1', 'user', 'earlier question'),
       message('e2', 'assistant', 'earlier answer'),
       { type: 'compaction', id: 'e3', parentId: null, timestamp: 1, summary: 'They discussed naming.' },
@@ -51,8 +51,8 @@ describe('the context an agent starts with', () => {
   })
 
   it('skips entries that are not messages, and answers an empty session with an empty context', () => {
-    expect(contextOf([{ type: 'summary', id: 'e1', parentId: null, timestamp: 1, summary: 'x' }])).toEqual([])
-    expect(contextOf([])).toEqual([])
+    expect(historyOf([{ type: 'summary', id: 'e1', parentId: null, timestamp: 1, summary: 'x' }])).toEqual([])
+    expect(historyOf([])).toEqual([])
   })
 })
 

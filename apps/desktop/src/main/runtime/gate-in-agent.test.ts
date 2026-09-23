@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AlphaPlugin } from '@alpha/agent'
-import { assembleAgent, contextOf } from '@alpha/agent'
+import { assembleAgent, historyOf } from '@alpha/agent'
 import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
 import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent, Undef } from '@alpha/domain'
 import type { ApprovalAnswer, PermissionPorts } from '@alpha/gate'
@@ -68,7 +68,7 @@ const gated = (options: GateOptions) => {
     plugins,
     systemPrompt: 'gated',
     sessionId: 'c1',
-    messages: contextOf(tipPath(history.entries, history.leafId)),
+    messages: historyOf(tipPath(history.entries, history.leafId)),
   })
   runtime = new ConversationRuntime({
     conversationId: 'c1',

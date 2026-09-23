@@ -49,6 +49,6 @@ export function alignedHistoryOf(entries: AgentEntry[]): AlignedHistory {
   return { messages, entryIds }
 }
 
-export function contextOf(entries: AgentEntry[]): AgentMessage[] {
+export function historyOf(entries: AgentEntry[]): AgentMessage[] {
   return alignedHistoryOf(entries).messages
 }
