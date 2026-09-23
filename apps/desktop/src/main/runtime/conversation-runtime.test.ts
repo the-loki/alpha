@@ -1,6 +1,9 @@
 import { mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { AlphaPlugin } from '@alpha/agent'
+import { assembleAgent } from '@alpha/agent'
+import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
 import type { RuntimeEvent, Undef } from '@alpha/domain'
 import { contextOf } from '@alpha/history'
 import { createRetryPlugin, type RetryPlugin } from '@alpha/internal-plugins'
@@ -9,10 +12,7 @@ import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
-import { assembleAgent } from './assemble-agent.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
-import type { AlphaPlugin } from './plugin-contract.ts'
-import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from './scripted-provider.ts'
 
 /**
  * The seam now that the agent is embedded (ADR-0025): a real assembled agent driven by a real

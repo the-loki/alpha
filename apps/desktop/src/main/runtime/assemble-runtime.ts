@@ -7,6 +7,8 @@
  */
 
 import { readFileSync } from 'node:fs'
+import type { AlphaPlugin } from '@alpha/agent'
+import { assembleAgent } from '@alpha/agent'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import { contextOf } from '@alpha/history'
@@ -28,10 +30,8 @@ import {
 } from '@alpha/sessions'
 import type { Agent, CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
-import { assembleAgent } from './assemble-agent.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import { createModelRuntime } from './model-runtime.ts'
-import type { AlphaPlugin } from './plugin-contract.ts'
 import { type ReadTextFile, systemPromptFor } from './system-prompt.ts'
 
 /** A workspace file's text, or nothing when it is not there: what the system prompt reads. */

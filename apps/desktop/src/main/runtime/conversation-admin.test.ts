@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
 import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/domain'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
@@ -8,7 +9,6 @@ import type { AssistantMessage, Model } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
 import { RuntimeManager } from './manager.ts'
-import { aModel, scriptedModels, textStream, toolUseStream } from './scripted-provider.ts'
 
 /** A cipher that does nothing, so the vault is real but the test never touches a keychain. */
 const testCipher: SecretCipher = {

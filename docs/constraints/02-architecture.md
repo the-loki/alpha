@@ -9,14 +9,16 @@ What Alpha builds on top of the library is its own: the plugin base the agent is
 the gate, the session store, the conversation list, and the credentials. The window never imports a
 pi package — it reaches the agent through the contract.
 
-Two kinds of package may name it, and nothing else may: `main`, which drives the run, and the
+Two kinds of package may name it, and nothing else may: `main`, which owns the app, and the
 packages listed by name in the checker (`AGENT_LINKING_PACKAGES`, and the `May import` column in
-C2.1) — `@alpha/internal-plugins`, Alpha's own plugins, whose faces are where pi's own shapes are
-the capability (a tool is an `AgentTool`), which is
-[C2.8](#c28--a-capability-is-a-plugin-not-a-branch-in-the-runtime)'s exception carrying its own
-adapter, and `@alpha/history`, the fold that turns a session's entries into the messages an agent
-starts from. The list is written down rather than inferred, so the exception stays countable: two
-packages, and a package that wants in asks by adding itself to the list and to the table.
+C2.1). They are the three that build *on* the agent: `@alpha/agent`, the base — the plugin contract
+bound to pi, the assembly, the `afterRun` driver; `@alpha/internal-plugins`, Alpha's own plugins,
+whose faces are where pi's own shapes are the capability (a tool is an `AgentTool`, a hook is asked
+about pi's run), which is [C2.8](#c28--a-capability-is-a-plugin-not-a-branch-in-the-runtime)'s
+exception carrying its own adapter; and `@alpha/history`, the fold that turns a session's entries
+into the messages an agent starts from. The list is written down rather than inferred, so the
+exception stays countable: three packages, and a package that wants in asks by adding itself to the
+list and to the table.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:no-agent-dependency` fails on an
 import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
@@ -39,13 +41,14 @@ apps/desktop/src/          the app: one package, three processes
                           ├──> @alpha/tasks
                           ├──> @alpha/providers ──> @alpha/contract
                           ├──> @alpha/gate ──> @alpha/plugin, @alpha/state
+                          ├──> @alpha/agent ──> @alpha/plugin
                           └──> @alpha/internal-plugins ──> @alpha/gate, @alpha/history, the agent library
 ```
 
 An arrow points the way an import goes: the app may import any library; the capabilities add what
-they need — the workbench's own gate sits on the plugin base and the state file, the built-in
-plugins sit on the gate, the history fold and the agent library itself, which is what C2.0's
-exception is for; everything else sits directly on the rules.
+they need — the workbench's own gate sits on the plugin base and the state file, the base sits on
+the pure faces, and the built-in plugins sit on the gate, the history fold and the agent library
+itself, which is what C2.0's exception is for; everything else sits directly on the rules.
 
 | Library | Holds | May import |
 | --- | --- | --- |
@@ -59,6 +62,7 @@ exception is for; everything else sits directly on the rules.
 | `@alpha/conversations` | The list the sidebar shows, the bookkeeping that keeps it true, and the messages waiting to be sent | `@alpha/domain` |
 | `@alpha/tasks` | The scheduled tasks: the file, the clock that decides when one comes due, the service | `@alpha/domain` |
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
+| `@alpha/agent` | The base: the plugin contract bound to pi, the assembly that makes one `Agent` of the plugins, and the `afterRun` driver | `@alpha/domain`, `@alpha/plugin`, the agent library |
 | `@alpha/gate` | The permission machinery the workbench owns: the ladder, the approvals broker, the refusal a run with nobody watching gets, and the ports into the workbench's own file | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
 | `@alpha/internal-plugins` | Alpha's own plugins, one file each: the gate on `beforeToolCall`, auto-retry on `afterRun`, the four tools, and compaction | `@alpha/domain`, `@alpha/gate`, `@alpha/history`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
@@ -199,8 +203,11 @@ policy behind a face is the workbench's to use as well, it lives in the library 
 face hung on it. Nothing is copied either way: the plugin holds the ladder's ports, and the runtime
 asks the retry plugin's own decision whether a turn is over.
 
-What stays in `main` is the run itself: assembly, the `afterRun` driver, the events translated for
-the window. That is the base rather than a capability, and a capability never grows a branch there.
+What stays in `main` is the app around the run: driving a conversation, routing the events to the
+window, the seams Electron owns. The base those run on — the assembly, the `afterRun` driver, the
+plugin contract bound to pi — is `@alpha/agent`, a package rather than a folder in `main/runtime`:
+it is what capabilities and their tests stand on, and a capability that has to ask `main` for a way
+to run an agent has not been assembled, it has been wired.
 
 `pluginsFor` in the assembly is the one place a capability is registered: the runtime holds the
 faces and handles the plugins gave it, and a feature that needs registration somewhere else to reach

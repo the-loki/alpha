@@ -29,15 +29,16 @@ const isGenerated = (path) => path.startsWith('packages/i18n/src/')
 const PURE_PACKAGES = ['packages/i18n/src/', 'packages/domain/src/', 'packages/plugin/src/', 'packages/contract/src/']
 
 /**
- * The packages the agent library links into, and therefore name pi: `@alpha/internal-plugins`,
- * which holds Alpha's own plugins — the faces are where pi's own shapes are the capability (a tool
- * is an `AgentTool`, a hook is asked about pi's run), so each carries its own adapter and the app
- * holds nothing but the registration (C2.8) — and the fold that turns a session's entries into the
+ * The packages the agent library links into, and therefore name pi: `@alpha/agent`, which turns
+ * plugins into a running agent and drives a run to its end; `@alpha/internal-plugins`, which holds
+ * Alpha's own plugins — the faces are where pi's own shapes are the capability (a tool is an
+ * `AgentTool`, a hook is asked about pi's run), so each carries its own adapter and the app holds
+ * nothing but the registration (C2.8) — and the fold that turns a session's entries into the
  * messages an agent starts from. Closed on purpose: a package that is not on this list may not
  * import the agent library, and no package may import Electron. A package joins it by being written
  * down here, next to its row in the table below.
  */
-const AGENT_LINKING_PACKAGES = ['packages/internal-plugins/src/', 'packages/history/src/']
+const AGENT_LINKING_PACKAGES = ['packages/agent/src/', 'packages/internal-plugins/src/', 'packages/history/src/']
 
 /**
  * Which library may import which. The dictionary sits under everything, the rules know the
@@ -58,6 +59,7 @@ const LIBRARY_DEPENDENCIES = {
   'packages/tasks/src/': ['@alpha/domain'],
   'packages/providers/src/': ['@alpha/contract', '@alpha/domain'],
   'packages/gate/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/state'],
+  'packages/agent/src/': ['@alpha/domain', '@alpha/plugin'],
   'packages/history/src/': ['@alpha/domain', '@alpha/sessions'],
   'packages/internal-plugins/src/': [
     '@alpha/domain',

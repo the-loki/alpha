@@ -13,6 +13,8 @@
  * cannot run is a conversation that says why rather than one that crashes.
  */
 
+import type { AlphaPlugin } from '@alpha/agent'
+import { runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
   type Attachment,
@@ -31,9 +33,7 @@ import type { RetryDecider } from '@alpha/plugin'
 import { type AgentEntry, type DecisionLookup, type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
-import { runAfterRunHooks } from './after-run.ts'
 import { AgentEventTranslator } from './agent-events.ts'
-import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** What one conversation is built from: the assembled agent, its session, and the store behind it. */
 export interface ConversationRuntimeOptions {

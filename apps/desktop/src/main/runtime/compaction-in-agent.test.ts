@@ -1,6 +1,8 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { assembleAgent } from '@alpha/agent'
+import { aModel, errorStream, scriptedModels, textStream } from '@alpha/agent/testing'
 import type { RuntimeEvent } from '@alpha/domain'
 import { alignedHistoryOf } from '@alpha/history'
 import { createCompactionPlugin } from '@alpha/internal-plugins'
@@ -8,9 +10,7 @@ import { SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent } from '@earendil-works/pi-agent-core'
 import type { AssistantMessageEventStream } from '@earendil-works/pi-ai'
 import { describe, expect, it } from 'vitest'
-import { assembleAgent } from './assemble-agent.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
-import { aModel, errorStream, scriptedModels, textStream } from './scripted-provider.ts'
 
 /** coding-agent's compaction policy (ADR-0025) on Alpha's base: after a run, when the context
  * nears the model's window, the messages are summarized through the model, the live agent is

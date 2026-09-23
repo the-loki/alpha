@@ -135,6 +135,7 @@ packages/history        the messages an agent starts from: the entries folded in
 packages/conversations  the list the sidebar shows, and the messages waiting to be sent
 packages/tasks          the scheduled tasks: the file, the clock, the service
 packages/providers      the connections, the key vault, and the model a conversation runs on
+packages/agent          the base: the plugin contract bound to pi, the assembly, the afterRun driver
 packages/gate           the permission machinery: the ladder, the approvals broker, the refusal
 packages/internal-plugins  Alpha's own plugins, one file each: gate, auto-retry, tools, compaction
 e2e                     Playwright specs that launch the built apptools/constraints       the checker that keeps the constraints honest

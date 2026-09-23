@@ -32,13 +32,13 @@ scripted provider — so a passing suite means the wiring works, not that a mock
 ## C4.3 — The scripted provider, not a mocked runtime
 
 Tests replace the *model*, never the wiring. Unit and integration tests drive the assembled
-agent — the same plugin base the workbench runs — through the scripted provider fixture in
-`apps/desktop/src/main/runtime/scripted-provider.ts`: a real pi-ai `Models` whose one provider
-streams a scripted answer, so a run goes through the real dispatch, the real gate, and the real
-session store, with only the model's answers decided in advance. The e2e specs run the real
-window against a scripted OpenAI-completions provider on loopback (`e2e/scripted-provider.ts`),
-speaking the SSE frames pi-ai's client speaks. Neither mocks the agent, the gate, the session
-store, or the IPC transport: any of those being wrong is exactly the bug the test should catch.
+agent — the same plugin base the workbench runs — through the scripted provider fixture the base
+ships beside itself, `@alpha/agent/testing`: a real pi-ai `Models` whose one provider streams a
+scripted answer, so a run goes through the real dispatch, the real gate, and the real session
+store, with only the model's answers decided in advance. The e2e specs run the real window against
+a scripted OpenAI-completions provider on loopback (`e2e/scripted-provider.ts`), speaking the SSE
+frames pi-ai's client speaks. Neither mocks the agent, the gate, the session store, or the IPC
+transport: any of those being wrong is exactly the bug the test should catch.
 
 The things a script cannot show are checked against a real provider when the environment names
 one (C4.4): that the credential reaches the model runtime, and that a tool the model decided to

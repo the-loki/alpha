@@ -1,6 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { scriptedModels, textStream } from '@alpha/agent/testing'
 import { IPC } from '@alpha/contract'
 import type { PermissionRule } from '@alpha/domain'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
@@ -12,7 +13,6 @@ import { describe, expect, it } from 'vitest'
 import { CHANNELS, type ChannelPorts, type NetworkPort, PUSHED_CHANNELS, type WindowPort } from './channels.ts'
 import { ProviderService } from './providers/service.ts'
 import { RuntimeManager } from './runtime/manager.ts'
-import { scriptedModels, textStream } from './runtime/scripted-provider.ts'
 
 /**
  * The table every transport dispatches through, driven without Electron: a real runtime over a
