@@ -1,14 +1,16 @@
 /**
- * The gate plugin (ADR-0025): the ladder, wrapped as a `beforeToolCall` hook. The gate itself is
- * untouched — the plugin is only how it hangs on the agent now, where an extension file and a
- * stringly protocol used to be. A block becomes the tool result the model reads, in Alpha's words;
- * the verdict's record travels out through the `onDecided` port, because the plugin owns nothing
- * of the window — announcing `tool_decided` is the runtime's half.
+ * The gate as a face on the plugin base (ADR-0025): the ladder hung on `beforeToolCall`, where an
+ * extension file and a stringly protocol used to be. A block becomes the tool result the model
+ * reads, in Alpha's words; the verdict's record travels out through `onDecided`, because the plugin
+ * owns nothing of the window — announcing `tool_decided` is the runtime's half.
+ *
+ * Nothing here names pi: the face is `@alpha/plugin`'s, so the gate's wrapping is a library's job
+ * like the decision it wraps (C2.8).
  */
-
-import { type ApprovalRecord, recordOf } from '@alpha/domain'
-import { createToolGate, type PermissionPorts } from '@alpha/gate'
-import type { AlphaPlugin } from './plugin-contract.ts'
+import type { ApprovalRecord } from '@alpha/domain'
+import type { BeforeToolCallHook } from '@alpha/plugin'
+import { createToolGate } from './gate.ts'
+import type { PermissionPorts } from './permissions.ts'
 
 /** What the gate plugin needs: where the call happens, and how the ladder reaches the workbench. */
 export interface GatePluginPorts {
@@ -22,8 +24,14 @@ export interface GatePluginPorts {
   onDecided: (callId: string, record: ApprovalRecord) => void
 }
 
-/** The ladder as a plugin hook: ask it about the call, let a block be the reason the model reads. */
-export function createGatePlugin(ports: GatePluginPorts): AlphaPlugin {
+/** A plugin that carries one face: what the base needs to hang it on the agent. */
+export interface GatePlugin {
+  name: string
+  beforeToolCall: BeforeToolCallHook
+}
+
+/** The ladder as a plugin face: ask it about the call, let a block be the reason the model reads. */
+export function createGatePlugin(ports: GatePluginPorts): GatePlugin {
   const gate = createToolGate({
     level: ports.permissions.level,
     rules: ports.permissions.rules,
@@ -36,11 +44,7 @@ export function createGatePlugin(ports: GatePluginPorts): AlphaPlugin {
   return {
     name: 'gate',
     beforeToolCall: async (call) => {
-      const verdict = await gate({
-        toolCallId: call.toolCallId,
-        toolName: call.toolName,
-        args: recordOf(call.args),
-      })
+      const verdict = await gate(call)
       ports.onDecided(call.toolCallId, verdict.record)
       return verdict.block === undefined ? undefined : { block: verdict.block }
     },

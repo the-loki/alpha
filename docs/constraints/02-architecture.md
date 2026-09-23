@@ -22,15 +22,16 @@ apps/desktop/src/          the app: one package, three processes
   preload/   ──┼──> @alpha/domain ──┬──> @alpha/i18n       the pure ones: the rules, the
   renderer/  ──┘                    ├──> @alpha/contract     dictionary, the wire between
                                     └──> @alpha/plugin       processes, and the plugin base
-                          ├──> @alpha/state ──> @alpha/gate
+                          ├──> @alpha/state
                           ├──> @alpha/sessions
                           ├──> @alpha/conversations
                           ├──> @alpha/tasks
-                          └──> @alpha/providers ──> @alpha/contract
+                          ├──> @alpha/providers ──> @alpha/contract
+                          └──> @alpha/gate ──> @alpha/plugin, @alpha/state
 ```
 
-An arrow points the way an import goes: the app may import any library, `@alpha/gate` imports
-`@alpha/state`, and everything else sits directly on the rules.
+An arrow points the way an import goes: the app may import any library, the gate adds the two it
+needs (the plugin base and the state file), and everything else sits directly on the rules.
 
 | Library | Holds | May import |
 | --- | --- | --- |
@@ -43,7 +44,7 @@ An arrow points the way an import goes: the app may import any library, `@alpha/
 | `@alpha/conversations` | The list the sidebar shows, the bookkeeping that keeps it true, and the messages waiting to be sent | `@alpha/domain` |
 | `@alpha/tasks` | The scheduled tasks: the file, the clock that decides when one comes due, the service | `@alpha/domain` |
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
-| `@alpha/gate` | The permission ladder, the approvals broker, the refusal a run with nobody watching gets, and the ports into the workbench's own file | `@alpha/domain`, `@alpha/state` |
+| `@alpha/gate` | The permission ladder, the approvals broker, the refusal a run with nobody watching gets, the ports into the workbench's own file, and the face it hangs on the agent | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
 
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
@@ -170,9 +171,10 @@ copied out of the plugin.
 
 Where that decision lives follows the rule the packages were split by ([C2.1](#c21--one-workbench-a-handful-of-libraries-one-direction)):
 the part that holds without pi names nothing of pi's and lives in a library, where it is read and
-tested alone, and the adapter that hands it to the agent stays in `main`. The gate is the worked
-example — `@alpha/gate` decides what a call may do, and `gate-plugin.ts` gives that decision its
-`beforeToolCall` face.
+tested alone. The gate is the worked example and goes all the way — `@alpha/gate` decides what a
+call may do *and* carries its own `beforeToolCall` face, so the app holds nothing but the
+registration. An adapter in `main` is only needed where pi's shapes are the capability (a tool) or
+where the run itself has to be driven.
 
 `pluginsFor` in the assembly is the one place a capability is registered: the runtime holds the
 faces and handles the plugins gave it, and a feature that needs registration somewhere else to reach

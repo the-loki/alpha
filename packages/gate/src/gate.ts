@@ -17,9 +17,11 @@ import {
   type PermissionRule,
   patternOf,
   type RuleScope,
+  recordOf,
   summarizeToolCall,
   toolRiskOf,
 } from '@alpha/domain'
+import type { PluginToolCall, ToolVerdict } from '@alpha/plugin'
 
 /** What the user answered when the card was put in front of them. */
 export interface ApprovalAnswer {
@@ -41,20 +43,12 @@ export interface GatePorts {
   note: (callId: string, record: ApprovalRecord) => void
 }
 
-export interface ToolCallEvent {
-  toolCallId: string
-  toolName: string
-  args: Record<string, unknown>
-}
-
 /**
  * What the agent is told: a block replaces the call with an error result carrying the reason, in
- * Alpha's words. The record is what the ledger row shows.
+ * Alpha's words. The record is what the ledger row shows — the block itself is the base's verdict,
+ * because a gate is a face on the plugin base like any other (C2.8).
  */
-export interface GateVerdict {
-  block?: { reason: string }
-  record: ApprovalRecord
-}
+export type GateVerdict = ToolVerdict & { record: ApprovalRecord }
 
 const DENIED_FALLBACK = 'The user denied this call.'
 
@@ -67,14 +61,20 @@ function toolDetail(toolName: string, args: Record<string, unknown>): string {
   return summarizeToolCall(toolName, args)
 }
 
-export function createToolGate(ports: GatePorts): (event: ToolCallEvent) => Promise<GateVerdict> {
-  return async (event) => {
-    const risk = toolRiskOf(event.toolName)
+/**
+ * The gate as the base hands it a call: the arguments are read as a record, because that is what
+ * every judgement below needs — a tool call whose arguments are not a record is a call no tool
+ * could run either.
+ */
+export function createToolGate(ports: GatePorts): (call: PluginToolCall) => Promise<GateVerdict> {
+  return async (call) => {
+    const args = recordOf(call.args)
+    const risk = toolRiskOf(call.toolName)
     const decision = evaluateCall({
       level: ports.level(ports.conversationId),
       risk,
-      toolName: event.toolName,
-      args: event.args,
+      toolName: call.toolName,
+      args,
       conversationId: ports.conversationId,
       workspacePath: ports.workspacePath,
       rules: ports.rules(),
@@ -84,7 +84,7 @@ export function createToolGate(ports: GatePorts): (event: ToolCallEvent) => Prom
       const level = ports.level(ports.conversationId)
       const record: ApprovalRecord =
         decision.by === 'rule' ? { kind: 'rule', level, ruleId: decision.ruleId } : { kind: 'auto', level }
-      ports.note(event.toolCallId, record)
+      ports.note(call.toolCallId, record)
       return { record }
     }
 
@@ -94,28 +94,29 @@ export function createToolGate(ports: GatePorts): (event: ToolCallEvent) => Prom
         level: ports.level(ports.conversationId),
         reason: decision.reason,
       }
-      ports.note(event.toolCallId, record)
+      ports.note(call.toolCallId, record)
       return { block: { reason: decision.reason }, record }
     }
 
-    return askForApproval(ports, event, risk)
+    return askForApproval(ports, call, args, risk)
   }
 }
 
 async function askForApproval(
   ports: GatePorts,
-  event: ToolCallEvent,
+  call: PluginToolCall,
+  args: Record<string, unknown>,
   risk: ReturnType<typeof toolRiskOf>,
 ): Promise<GateVerdict> {
   const level = ports.level(ports.conversationId)
   const answer = await ports.ask(ports.conversationId, {
-    callId: event.toolCallId,
-    toolName: event.toolName,
+    callId: call.toolCallId,
+    toolName: call.toolName,
     risk,
-    summary: summarizeToolCall(event.toolName, event.args),
-    detail: toolDetail(event.toolName, event.args),
-    raw: JSON.stringify(event.args ?? {}),
-    diff: changePreview(event.toolName, event.args),
+    summary: summarizeToolCall(call.toolName, args),
+    detail: toolDetail(call.toolName, args),
+    raw: JSON.stringify(args),
+    diff: changePreview(call.toolName, args),
     cwd: ports.workspacePath,
     level,
   })
@@ -123,7 +124,7 @@ async function askForApproval(
   if (answer.decision === 'deny') {
     const reason = answer.reason === undefined || answer.reason === '' ? DENIED_FALLBACK : answer.reason
     const record: ApprovalRecord = { kind: 'denied', level, reason }
-    ports.note(event.toolCallId, record)
+    ports.note(call.toolCallId, record)
     return { block: { reason }, record }
   }
 
@@ -134,17 +135,17 @@ async function askForApproval(
       scope,
       conversationId: scope === 'conversation' ? ports.conversationId : '',
       workspacePath: ports.workspacePath,
-      toolName: event.toolName,
-      pattern: patternOf(event.toolName, event.args) ?? '',
+      toolName: call.toolName,
+      pattern: patternOf(call.toolName, args) ?? '',
       createdAt: Date.now(),
     }
     ports.remember(rule)
     const record: ApprovalRecord = { kind: 'always', level, ruleId: rule.id }
-    ports.note(event.toolCallId, record)
+    ports.note(call.toolCallId, record)
     return { record }
   }
 
   const once: ApprovalRecord = { kind: 'once', level }
-  ports.note(event.toolCallId, once)
+  ports.note(call.toolCallId, once)
   return { record: once }
 }

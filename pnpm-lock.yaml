@@ -135,6 +135,9 @@ importers:
       '@alpha/domain':
         specifier: workspace:*
         version: link:../domain
+      '@alpha/plugin':
+        specifier: workspace:*
+        version: link:../plugin
       '@alpha/state':
         specifier: workspace:*
         version: link:../state

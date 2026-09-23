@@ -3,8 +3,8 @@
  * two moments the store has to be written — a new rule, and a rule taken back. What the gate
  * decides with them is `@alpha/domain`'s business; this is only how it reaches them.
  *
- * The gate is a plugin now (ADR-0025): `gate-plugin.ts` in the runtime assembles it, and these are
- * the ports it reaches the workbench with.
+ * The gate is a plugin now (ADR-0025): `plugin.ts` beside this file carries its face, and these
+ * are the ports it reaches the workbench with.
  */
 import type { ApprovalAsk, PermissionLevel, PermissionRule } from '@alpha/domain'
 import type { StateStore } from '@alpha/state'
