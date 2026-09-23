@@ -9,23 +9,19 @@
  * runtime, and so a browser client is refused the folder picker by construction rather than by a
  * check someone has to remember.
  */
+import type { IPC, LaunchState, NetworkPatch, NetworkState, PickWorkspaceResult } from '@alpha/contract'
 import {
   defaultLevelFor,
-  type IPC,
   isPermissionLevel,
   isThinkingLevel,
-  type LaunchState,
-  type NetworkPatch,
-  type NetworkState,
   type PermissionLevel,
-  type PickWorkspaceResult,
   rememberWorkspace,
   type ScheduledTask,
   type TasksSnapshot,
   type Undef,
   type WorkspaceSelection,
   workspaceFromPath,
-} from '@alpha/core'
+} from '@alpha/domain'
 import {
   readAppearancePatch,
   readApprovalAnswer,

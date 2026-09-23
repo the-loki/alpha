@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/core'
+import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/domain'
 import type { AssistantMessage, Model } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'

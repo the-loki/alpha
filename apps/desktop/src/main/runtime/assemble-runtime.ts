@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs'
-import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/core'
+import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { Agent, CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
 import type { ProviderStore } from '../providers/store.ts'

@@ -14,7 +14,7 @@ import {
   titleFromMessage,
   titleFromPath,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { ConversationIndexStore } from '../conversations/index-store.ts'
 
 const DEFAULT_TITLE = 'New conversation'

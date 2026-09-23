@@ -1,4 +1,4 @@
-import { IPC, type WindowState } from '@alpha/core'
+import { IPC, type WindowState } from '@alpha/contract'
 import { describe, expect, it } from 'vitest'
 import { Broadcast } from './broadcast.ts'
 import { windowSubscriber } from './ipc.ts'

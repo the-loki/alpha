@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { RuntimeEvent, Undef } from '@alpha/core'
+import type { RuntimeEvent, Undef } from '@alpha/domain'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'

@@ -9,7 +9,7 @@
  * exists, `getAuth` answers nothing, and the stream says why when it is asked to run.
  */
 
-import type { ProviderApi, StoredProvider, Undef } from '@alpha/core'
+import type { ProviderApi, StoredProvider, Undef } from '@alpha/domain'
 import { createModels, createProvider, type Model, type Models, type ProviderStreams } from '@earendil-works/pi-ai'
 import * as anthropicMessages from '@earendil-works/pi-ai/api/anthropic-messages'
 import * as openaiCompletions from '@earendil-works/pi-ai/api/openai-completions'

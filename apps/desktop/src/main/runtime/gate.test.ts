@@ -1,4 +1,4 @@
-import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuleScope } from '@alpha/core'
+import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuleScope } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { createToolGate, type GatePorts } from './gate.ts'
 

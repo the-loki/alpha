@@ -4,7 +4,7 @@
  * for hours while the card sits in a transcript no one is looking at, and the refusal is counted
  * so the run can report afterwards what it could not do.
  */
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import type { ApprovalAnswer } from './gate.ts'
 
 /** What the agent is told when a call needed approval and nobody was there to give it. */

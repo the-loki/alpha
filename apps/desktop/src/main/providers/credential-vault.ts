@@ -7,7 +7,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import { Type } from 'typebox'
 import { Value } from 'typebox/value'
 

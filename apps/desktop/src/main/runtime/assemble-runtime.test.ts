@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ConversationSummary, PermissionLevel, RuntimeEvent } from '@alpha/core'
+import type { ConversationSummary, PermissionLevel, RuntimeEvent } from '@alpha/domain'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'

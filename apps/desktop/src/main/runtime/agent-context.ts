@@ -11,7 +11,7 @@
  * exactly the way the live one was rewritten.
  */
 
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
 import type { AgentEntry } from './transcript-entries.ts'
 

@@ -17,7 +17,7 @@ import {
   parseProviders,
   type StoredProvider,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { CredentialProtection, CredentialVault } from './credential-vault.ts'
 
 export class ProviderStore {
@@ -44,7 +44,7 @@ export class ProviderStore {
     return this.#index.providers.find((provider) => provider.id === id)
   }
 
-  /** The two facts every model rule reads, in the shape core's rules take them. */
+  /** The two facts every model rule reads, in the shape `@alpha/domain`'s rules take them. */
   index(): ModelIndex {
     return this.#index
   }

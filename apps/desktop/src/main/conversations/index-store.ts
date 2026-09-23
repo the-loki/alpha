@@ -17,7 +17,7 @@ import {
   type Undef,
   unarchiveConversation,
   upsertConversation,
-} from '@alpha/core'
+} from '@alpha/domain'
 
 export class ConversationIndexStore {
   readonly #path: string

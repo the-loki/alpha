@@ -16,7 +16,7 @@ import {
   toolOutcomeOf,
   toolRowOf,
   userBlocksOf,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { DecisionLookup } from './decisions.ts'
 
 /** One entry of a session, as the agent reports it over the protocol. */
@@ -69,7 +69,7 @@ function toolBlockOf(part: unknown, timestamp: number, decisions: DecisionLookup
 }
 
 /** The result of a call lands on the row the call created, wherever that row is — the shared
- * placement rule in core, applied to the list being read back. */
+ * placement rule in `@alpha/domain`, applied to the list being read back. */
 function finishTool(messages: ChatMessage[], result: ToolResultContent): void {
   for (const message of messages) {
     const blocks = patchToolRow(message.blocks, result.toolCallId, (block) => ({
@@ -122,7 +122,7 @@ export function entriesToMessages(entries: AgentEntry[], decisions: DecisionLook
       const failed = message.stopReason === 'error'
       const blocks = blocksOf(listOf(message.content), at(entry.timestamp), decisions)
       // An empty answer is a row only when it is evidence: the one rule the live reducer applies
-      // too, and it lives in core so the two cannot drift.
+      // too, and it lives in `@alpha/domain` so the two cannot drift.
       if (blocks.length === 0 && !emptyAnswerIsEvidence(failed, interrupted)) continue
       messages.push({
         id: entry.id,

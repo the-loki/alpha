@@ -11,7 +11,7 @@
  * effect on the next turn, and a fork moves the session the store writes into.
  */
 
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import type { Agent, AgentMessage } from '@earendil-works/pi-agent-core'
 import {
   type CompactionSettings,

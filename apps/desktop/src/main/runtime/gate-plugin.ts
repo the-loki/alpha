@@ -6,7 +6,7 @@
  * of the window — announcing `tool_decided` is the runtime's half.
  */
 
-import { type ApprovalRecord, recordOf } from '@alpha/core'
+import { type ApprovalRecord, recordOf } from '@alpha/domain'
 import { createToolGate } from './gate.ts'
 import type { PermissionPorts } from './permissions.ts'
 import type { AlphaPlugin } from './plugin-contract.ts'

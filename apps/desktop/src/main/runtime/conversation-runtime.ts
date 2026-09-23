@@ -25,7 +25,7 @@ import {
   type Undef,
   type UsageTotals,
   userBlocksOf,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import { runAfterRunHooks } from './after-run.ts'

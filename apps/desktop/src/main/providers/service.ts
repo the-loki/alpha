@@ -14,16 +14,16 @@
  * snapshot, so the window keeps one state instead of making a call after each edit.
  */
 
+import type { ProvidersSnapshotMessage } from '@alpha/contract'
 import {
   type ConversationModel,
   credentialRequirement,
-  type ProvidersSnapshotMessage,
   readModels,
   readProvider,
   type StoredProvider,
   servesModel,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { Api, AssistantMessage, Context, Model, Models, TextContent } from '@earendil-works/pi-ai'
 import { createModelRuntime } from '../runtime/model-runtime.ts'
 import type { ProviderStore } from './store.ts'

@@ -1,5 +1,5 @@
 /**
- * The coding tools plugin (ADR-0025): core's four coding tools — read, bash, edit, write — over a
+ * The coding tools plugin (ADR-0025): pi-agent-core's four coding tools — read, bash, edit, write — over a
  * `NodeExecutionEnv` rooted at the conversation's workspace, so a relative path lands there and a
  * command runs there. The tools are harness-shaped; the adapter hands the assembled Agent the
  * shape it takes, which is the same tool with one difference in the `execute` arguments: the

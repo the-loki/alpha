@@ -7,7 +7,7 @@
 
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type ChatMessage, type ConversationSummary, exportFileName, exportMarkdown, type Undef } from '@alpha/core'
+import { type ChatMessage, type ConversationSummary, exportFileName, exportMarkdown, type Undef } from '@alpha/domain'
 import type { DecisionLookup } from './decisions.ts'
 import { SessionStore, sessionIdOf } from './sessions.ts'
 

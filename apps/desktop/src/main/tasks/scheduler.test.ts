@@ -1,4 +1,4 @@
-import type { ScheduledTask, TaskRun } from '@alpha/core'
+import type { ScheduledTask, TaskRun } from '@alpha/domain'
 import { describe, expect, it, vi } from 'vitest'
 import { Scheduler, type SchedulerPorts } from './scheduler.ts'
 import type { TaskStore } from './store.ts'

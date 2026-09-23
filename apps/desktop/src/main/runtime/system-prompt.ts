@@ -5,7 +5,7 @@
  */
 
 import { join } from 'node:path'
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 
 /** Reads one file's text, answering nothing when it does not exist. */
 export type ReadTextFile = (path: string) => Promise<Undef<string>>

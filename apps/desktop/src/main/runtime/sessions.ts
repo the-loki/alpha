@@ -20,7 +20,7 @@ import {
   type Undef,
   type UsageTotals,
   usageTotals,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { DecisionLookup } from './decisions.ts'
 import { type AgentEntry, entriesToMessages } from './transcript-entries.ts'
 

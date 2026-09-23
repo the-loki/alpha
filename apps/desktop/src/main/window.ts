@@ -4,7 +4,7 @@
  * stay, because replacing those on that platform is a worse experience than keeping them.
  */
 
-import type { WindowState } from '@alpha/core'
+import type { WindowState } from '@alpha/contract'
 import { BrowserWindow, shell } from 'electron'
 import type { Broadcast } from './broadcast.ts'
 

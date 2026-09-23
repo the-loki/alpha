@@ -2,19 +2,13 @@
  * Which model a conversation runs on, in Alpha's terms rather than the agent's.
  *
  * Alpha owns the provider list and the credentials; the agent is told what to use. So everything
- * here reads Alpha's own store — and the rule that reads it lives in core, over a ModelIndex this
+ * here reads Alpha's own store — and the rule that reads it lives in `@alpha/domain`, over a ModelIndex this
  * store hands out: what the person configured, which of it a conversation chose, and whether that
  * choice is still one Alpha can serve.
  */
 
-import {
-  type ConversationModel,
-  definitionOf,
-  type ModelIndex,
-  type ModelStatus,
-  modelIn,
-  type Undef,
-} from '@alpha/core'
+import type { ModelStatus } from '@alpha/contract'
+import { type ConversationModel, definitionOf, type ModelIndex, modelIn, type Undef } from '@alpha/domain'
 import type { ProviderStore } from '../providers/store.ts'
 
 /**

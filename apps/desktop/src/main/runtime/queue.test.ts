@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from '@alpha/core'
+import type { RuntimeEvent } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { PendingQueue, type QueuePorts, QueueRunner } from './queue.ts'
 

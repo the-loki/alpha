@@ -31,7 +31,7 @@ import {
   type UsageTotals,
   usageTotals,
   userBlocksOf,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { RetryDecider } from './plugin-contract.ts'
 
 /** A record off the agent's pipe, as it arrives: shaped by the agent, not by this file. */

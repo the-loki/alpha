@@ -19,7 +19,7 @@ import {
   type RuleScope,
   summarizeToolCall,
   toolRiskOf,
-} from '@alpha/core'
+} from '@alpha/domain'
 
 /** What the user answered when the card was put in front of them. */
 export interface ApprovalAnswer {

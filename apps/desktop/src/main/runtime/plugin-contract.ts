@@ -6,7 +6,7 @@
  * external files, no loader, no re-implementation of coding-agent's extension format.
  */
 
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import type { Agent, AgentTool } from '@earendil-works/pi-agent-core'
 import type { Api, Model } from '@earendil-works/pi-ai'
 

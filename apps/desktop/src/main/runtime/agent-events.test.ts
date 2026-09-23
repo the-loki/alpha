@@ -1,4 +1,4 @@
-import type { RuntimeEvent, UsageTotals } from '@alpha/core'
+import type { RuntimeEvent, UsageTotals } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { AgentEventTranslator, type RpcLikeEvent } from './agent-events.ts'
 

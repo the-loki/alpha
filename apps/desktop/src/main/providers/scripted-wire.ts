@@ -7,7 +7,7 @@
  * Fixtures only: no key is checked, and every turn says the same word.
  */
 import { createServer, type Server, type ServerResponse } from 'node:http'
-import type { ProviderApi, Undef } from '@alpha/core'
+import type { ProviderApi, Undef } from '@alpha/domain'
 
 /** One request as it arrived, before anything interpreted it. */
 export interface ArrivedRequest {

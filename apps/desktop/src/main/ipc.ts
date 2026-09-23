@@ -7,7 +7,8 @@
  * The renderer is our own code, but it is also the process that could be compromised, so every
  * handler treats its arguments as arriving from outside.
  */
-import { IPC, type Undef } from '@alpha/core'
+import { IPC } from '@alpha/contract'
+import type { Undef } from '@alpha/domain'
 import { type BrowserWindow, ipcMain } from 'electron'
 import type { Subscriber } from './broadcast.ts'
 import { CHANNELS, type ChannelPorts, type NetworkPort } from './channels.ts'

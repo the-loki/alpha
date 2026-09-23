@@ -4,7 +4,7 @@
  * rest of the chain never asked; the stream is Alpha's own model runtime, dialed per request.
  */
 
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import {
   Agent,
   type AgentMessage,
@@ -27,7 +27,7 @@ export interface AssembleOptions {
 }
 
 /**
- * Chains the plugins' `beforeToolCall` hooks in assembly order onto the one core hook. The first
+ * Chains the plugins' `beforeToolCall` hooks in assembly order onto the agent's one hook. The first
  * block short-circuits the chain; its reason becomes the blocked tool result the model reads.
  */
 function chainBeforeToolCall(

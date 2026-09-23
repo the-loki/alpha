@@ -1,4 +1,4 @@
-import type { ApprovalAsk, RuntimeEvent } from '@alpha/core'
+import type { ApprovalAsk, RuntimeEvent } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { ApprovalBroker } from './approvals.ts'
 

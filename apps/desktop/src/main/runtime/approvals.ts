@@ -2,7 +2,7 @@
  * Calls waiting on a person. The gate asks; this holds the promise until the window answers, and
  * makes sure nothing is left waiting when the conversation it belongs to goes away.
  */
-import type { ApprovalAsk, ApprovalRequest, RuntimeEvent } from '@alpha/core'
+import type { ApprovalAsk, ApprovalRequest, RuntimeEvent } from '@alpha/domain'
 import type { ApprovalAnswer } from './gate.ts'
 
 interface Waiting {

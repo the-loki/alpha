@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { RuntimeEvent } from '@alpha/core'
+import type { RuntimeEvent } from '@alpha/domain'
 import type { Agent } from '@earendil-works/pi-agent-core'
 import type { AssistantMessageEventStream } from '@earendil-works/pi-ai'
 import { describe, expect, it } from 'vitest'

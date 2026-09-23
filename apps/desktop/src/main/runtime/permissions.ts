@@ -1,12 +1,12 @@
 /**
  * The gate's reach into the workbench: the level in force, the rules it has remembered, and the
  * two moments the store has to be written — a new rule, and a rule taken back. What the gate
- * decides with them is core's business; this is only how it reaches them.
+ * decides with them is `@alpha/domain`'s business; this is only how it reaches them.
  *
  * The gate itself is between homes while the agent is embedded (ADR-0025): the runtime no longer
  * wires it, and it comes back as a plugin. Its ports keep their shape here until then.
  */
-import type { ApprovalAsk, PermissionLevel, PermissionRule } from '@alpha/core'
+import type { ApprovalAsk, PermissionLevel, PermissionRule } from '@alpha/domain'
 import type { StateStore } from '../state-store.ts'
 import type { ApprovalAnswer } from './gate.ts'
 

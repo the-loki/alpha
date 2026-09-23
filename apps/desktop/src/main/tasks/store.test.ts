@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ScheduledTask, TaskRun } from '@alpha/core'
+import type { ScheduledTask, TaskRun } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { TaskStore } from './store.ts'
 

@@ -14,7 +14,7 @@
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Null, Undef } from '@alpha/core'
+import type { Null, Undef } from '@alpha/domain'
 
 /** An entry of an old file, as far as importing one cares. */
 interface LegacyEntry {

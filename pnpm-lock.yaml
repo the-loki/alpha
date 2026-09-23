@@ -26,9 +26,18 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@alpha/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
       '@alpha/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@alpha/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@earendil-works/pi-agent-core':
         specifier: 0.86.1
         version: 0.86.1(ws@8.21.3)

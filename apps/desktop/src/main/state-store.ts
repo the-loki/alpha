@@ -5,7 +5,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { emptyPersistedState, type PersistedState, parsePersistedState } from '@alpha/core'
+import { emptyPersistedState, type PersistedState, parsePersistedState } from '@alpha/domain'
 
 export class StateStore {
   readonly #path: string

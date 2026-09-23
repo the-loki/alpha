@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ProviderApi, ProviderAuthStyle, ProviderModelDefinition } from '@alpha/core'
+import type { ProviderApi, ProviderAuthStyle, ProviderModelDefinition } from '@alpha/domain'
 import type { Models } from '@earendil-works/pi-ai'
 import { afterEach, describe, expect, it } from 'vitest'
 import { aModel, scriptedModels, textStream } from '../runtime/scripted-provider.ts'

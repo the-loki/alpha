@@ -3,7 +3,8 @@
  * commands; this is what answers when the client is an Electron window, and the only file that
  * knows a `BrowserWindow` stands behind them.
  */
-import { type PickWorkspaceResult, workspaceFromPath } from '@alpha/core'
+import type { PickWorkspaceResult } from '@alpha/contract'
+import { workspaceFromPath } from '@alpha/domain'
 import { type BrowserWindow, dialog } from 'electron'
 import type { WindowPort } from './channels.ts'
 

@@ -7,7 +7,7 @@
  * waiting for.
  */
 
-import type { QueuedMessage, RuntimeEvent, Undef } from '@alpha/core'
+import type { QueuedMessage, RuntimeEvent, Undef } from '@alpha/domain'
 
 export interface PendingSend {
   id: string

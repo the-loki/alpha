@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { createCodingToolsPlugin } from './coding-tools.ts'
 
 /**
- * The coding tools plugin (ADR-0025): core's four coding tools over a real NodeExecutionEnv
+ * The coding tools plugin (ADR-0025): pi-agent-core's four coding tools over a real NodeExecutionEnv
  * rooted at the conversation's workspace — a relative path lands there, and a command runs there.
  */
 

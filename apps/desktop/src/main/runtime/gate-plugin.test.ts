@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent, Undef } from '@alpha/core'
+import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent, Undef } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { contextOf } from './agent-context.ts'
 import { assembleAgent } from './assemble-agent.ts'

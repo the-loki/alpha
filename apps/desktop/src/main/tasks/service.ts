@@ -12,7 +12,7 @@ import {
   type TaskRun,
   type TaskSchedule,
   type TasksSnapshot,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { type RunOutcome, type RunStarted, Scheduler } from './scheduler.ts'
 import type { TaskStore } from './store.ts'
 

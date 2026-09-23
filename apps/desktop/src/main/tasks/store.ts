@@ -14,7 +14,7 @@ import {
   type TaskFile,
   type TaskRun,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 
 export class TaskStore {
   readonly #path: string

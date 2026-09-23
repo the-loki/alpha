@@ -4,24 +4,22 @@
  * every argument is checked here rather than trusted where it is used.
  */
 
+import type { AppearancePatch, ApprovalAnswerInput, NetworkPatch } from '@alpha/contract'
 import {
-  type AppearancePatch,
-  type ApprovalAnswerInput,
   type Attachment,
   byteLengthOf,
   type ConversationModel,
   isImageMime,
-  isLanguageSetting,
   isNetworkBind,
   isPermissionLevel,
   isPortNumber,
   isRuleScope,
   isTheme,
   MAX_ATTACHMENT_BYTES,
-  type NetworkPatch,
   type PermissionLevel,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
+import { isLanguageSetting } from '@alpha/i18n'
 
 /** How it looks and reads: the mode and the language. Any field may be left out. */
 export function readAppearancePatch(input: unknown): AppearancePatch {

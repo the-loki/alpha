@@ -13,7 +13,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type ApprovalRecord, isPermissionLevel, type Undef } from '@alpha/core'
+import { type ApprovalRecord, isPermissionLevel, type Undef } from '@alpha/domain'
 import { Type } from 'typebox'
 import { Value } from 'typebox/value'
 

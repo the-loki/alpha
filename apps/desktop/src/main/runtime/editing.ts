@@ -11,13 +11,8 @@
  * Editing into a fork is the third case, and it does not move this conversation's tip: the copy
  * is a conversation of its own, and the one on screen was not touched.
  */
-import {
-  type ChatMessage,
-  type ConversationSummary,
-  type EditEffect,
-  type OpenedConversation,
-  textOfContent,
-} from '@alpha/core'
+import type { EditEffect, OpenedConversation } from '@alpha/contract'
+import { type ChatMessage, type ConversationSummary, textOfContent } from '@alpha/domain'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type AgentPorts, forkSession } from './session-files.ts'
 

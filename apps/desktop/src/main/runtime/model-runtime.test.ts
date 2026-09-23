@@ -1,4 +1,4 @@
-import type { StoredProvider } from '@alpha/core'
+import type { StoredProvider } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { createModelRuntime } from './model-runtime.ts'
 

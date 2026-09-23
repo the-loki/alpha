@@ -8,7 +8,7 @@
  * recorded, because two runs touch the same folder and the second was written for the state the
  * first is in the middle of changing.
  */
-import { runDue, type ScheduledTask, type TaskRun, type Undef } from '@alpha/core'
+import { runDue, type ScheduledTask, type TaskRun, type Undef } from '@alpha/domain'
 import type { TaskStore } from './store.ts'
 
 export interface RunOutcome {

@@ -8,22 +8,20 @@
  * default until the user picks another.
  */
 
+import type { EditEffect, ModelStatus, OpenedConversation } from '@alpha/contract'
 import {
   type ApprovalAsk,
   type Attachment,
   type ChatMessage,
   type ConversationSummary,
   defaultLevelFor,
-  type EditEffect,
   EMPTY_USAGE,
-  type ModelStatus,
-  type OpenedConversation,
   type PermissionLevel,
   type PermissionRule,
   type RuntimeEvent,
   servesModel,
   type ThinkingLevel,
-} from '@alpha/core'
+} from '@alpha/domain'
 import type { CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import type { ProviderStore } from '../providers/store.ts'
