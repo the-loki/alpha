@@ -9,6 +9,11 @@ test-results/
 playwright-report/
 coverage/
 
+# the architecture diagram's artifact and browser evidence, generated from the spec beside them
+docs/diagrams/*.html
+docs/diagrams/*.png
+docs/diagrams/*.visual-check.*
+
 # local app data used by dev runs
 .alpha-data/
 

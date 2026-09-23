@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Alpha：工作台与它嵌入的智能体",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "alpha-architecture.html",
+    "views": [
+      {
+        "id": "turn-path",
+        "label": "一次对话的路径",
+        "focus": ["window", "channels", "manager", "agent", "models", "upstream"],
+        "note": "从窗口到上游模型的一条线：契约、对话管理、嵌入的智能体、模型运行时。"
+      },
+      {
+        "id": "approval-loop",
+        "label": "审批回路",
+        "focus": ["agent", "gate", "manager", "channels", "window", "workspace"],
+        "note": "每次工具调用先过闸门；要问人时卡片回到客户端，放行后工具才读写你的工作区。"
+      },
+      {
+        "id": "durable",
+        "label": "盘上留下的东西",
+        "focus": ["store", "workspace", "vault", "tasks"],
+        "note": "转录、决策日志、密钥与你的工作区：进程退出后还在的只有这些。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "window",
+      "type": "frontend",
+      "label": "桌面窗口",
+      "sublabel": "Solid 界面 · 唯一窗口",
+      "pos": [30, 200],
+      "size": [140, 74]
+    },
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "浏览器客户端",
+      "sublabel": "同一份界面 · 远程控制",
+      "pos": [30, 360],
+      "size": [140, 74]
+    },
+    {
+      "id": "channels",
+      "type": "backend",
+      "label": "通道表与桥接",
+      "sublabel": "IPC 契约 · ipcMain + HTTP",
+      "pos": [220, 240],
+      "size": [172, 88]
+    },
+    {
+      "id": "manager",
+      "type": "backend",
+      "label": "对话管理",
+      "sublabel": "每对话一个运行时",
+      "pos": [444, 240],
+      "size": [172, 88]
+    },
+    {
+      "id": "tasks",
+      "type": "backend",
+      "label": "任务时钟",
+      "sublabel": "时钟 · 无人值守",
+      "pos": [444, 90],
+      "size": [172, 80]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "嵌入的智能体",
+      "sublabel": "pi-agent-core + 插件基座",
+      "tag": "工具 · 压缩 · 自动重试",
+      "pos": [700, 232],
+      "size": [172, 104]
+    },
+    {
+      "id": "gate",
+      "type": "security",
+      "label": "权限闸门",
+      "sublabel": "四级 · 记住的规则",
+      "pos": [700, 410],
+      "size": [172, 80]
+    },
+    {
+      "id": "models",
+      "type": "backend",
+      "label": "模型运行时",
+      "sublabel": "三种线协议",
+      "pos": [950, 244],
+      "size": [165, 80]
+    },
+    {
+      "id": "vault",
+      "type": "security",
+      "label": "凭据库",
+      "sublabel": "safeStorage 加密",
+      "tag": "只进不出",
+      "pos": [950, 410],
+      "size": [165, 80]
+    },
+    {
+      "id": "upstream",
+      "type": "external",
+      "label": "上游模型 API",
+      "sublabel": "用户自己的 Base URL",
+      "pos": [1190, 410],
+      "size": [140, 80]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "Alpha 的数据目录",
+      "sublabel": "sessions/*.jsonl · decisions/ · state",
+      "pos": [390, 570],
+      "size": [280, 88]
+    },
+    {
+      "id": "workspace",
+      "type": "database",
+      "label": "工作区文件夹",
+      "sublabel": "工具读写执行的地方",
+      "pos": [700, 570],
+      "size": [172, 88]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Electron 主进程：工作台与它嵌入的智能体",
+      "wraps": ["channels", "manager", "tasks", "agent", "gate", "models", "vault"]
+    },
+    {
+      "kind": "region",
+      "label": "这台机器上的盘",
+      "wraps": ["store", "workspace"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "window-bridge",
+      "from": "window",
+      "to": "channels",
+      "label": "window.alpha",
+      "variant": "emphasis",
+      "labelAt": [150, 288]
+    },
+    {
+      "id": "browser-bridge",
+      "from": "browser",
+      "to": "channels",
+      "label": "HTTP + SSE",
+      "labelAt": [150, 350]
+    },
+    {
+      "id": "channels-manager",
+      "from": "channels",
+      "to": "manager",
+      "label": "对话与提示",
+      "labelAt": [418, 344]
+    },
+    {
+      "id": "channels-tasks",
+      "from": "channels",
+      "to": "tasks",
+      "label": "任务与运行",
+      "fromSide": "top",
+      "toSide": "left",
+      "labelAt": [350, 190]
+    },
+    {
+      "id": "tasks-manager",
+      "from": "tasks",
+      "to": "manager",
+      "label": "按时刻开一轮对话",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [530, 205]
+    },
+    {
+      "id": "manager-agent",
+      "from": "manager",
+      "to": "agent",
+      "label": "每对话一个运行时",
+      "labelAt": [640, 218]
+    },
+    {
+      "id": "agent-gate",
+      "from": "agent",
+      "to": "gate",
+      "label": "每次工具调用先问",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [786, 373]
+    },
+    {
+      "id": "gate-workspace",
+      "from": "gate",
+      "to": "workspace",
+      "label": "放行后由工具读写",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [786, 530]
+    },
+    {
+      "id": "gate-manager",
+      "from": "gate",
+      "to": "manager",
+      "label": "请人裁决 · 审批卡片",
+      "fromSide": "left",
+      "toSide": "right",
+      "labelAt": [655, 380]
+    },
+    {
+      "id": "agent-models",
+      "from": "agent",
+      "to": "models",
+      "label": "模型调用"
+    },
+    {
+      "id": "models-vault",
+      "from": "models",
+      "to": "vault",
+      "label": "按 provider 取密钥",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [1032, 367]
+    },
+    {
+      "id": "models-upstream",
+      "from": "models",
+      "to": "upstream",
+      "label": "HTTPS 请求",
+      "fromSide": "right",
+      "toSide": "top",
+      "labelAt": [1170, 278]
+    },
+    {
+      "id": "manager-store",
+      "from": "manager",
+      "to": "store",
+      "label": "转录 · 索引 · 决策日志",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 212
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "两条传输，一份处理函数",
+      "items": [
+        "桌面窗口走 ipcMain，浏览器走 HTTP + SSE，两边由同一张通道表回答",
+        "推送从 Broadcast 出去，窗口与一个浏览器是同一种订阅者",
+        "浏览器是远程控制端：能审批、能改等级、能读全部对话"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "闸门在主进程里，窗口只负责展示",
+      "items": [
+        "四级权限：plan / ask / accept-edits / full-access",
+        "记住的规则写在盘上，规则优先于等级，连 plan 也拦不住它",
+        "每个决定落到 decisions/<id>.json，重开的台账仍然说得清"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "盘上是唯一的记录",
+      "items": [
+        "会话是追加写的 JSONL，pi 时代的转录就地读、不转换",
+        "密钥加密后只进不出：窗口设得了，读不回",
+        "删对话就删会话目录与决策日志"
+      ]
+    }
+  ]
+}
