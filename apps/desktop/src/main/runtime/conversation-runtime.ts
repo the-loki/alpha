@@ -26,8 +26,7 @@ import {
   type UsageTotals,
   userBlocksOf,
 } from '@alpha/domain'
-import type { AgentEntry, DecisionLookup, NewEntry, SessionStore } from '@alpha/sessions'
-import { tipPath } from '@alpha/sessions'
+import { type AgentEntry, type DecisionLookup, type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import { runAfterRunHooks } from './after-run.ts'

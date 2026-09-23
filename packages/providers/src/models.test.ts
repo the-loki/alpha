@@ -25,7 +25,7 @@ const index = {
 
 const noKeyProblem = (): undefined => undefined
 
-describe('[main] startProblem', () => {
+describe('[providers] startProblem', () => {
   it('refuses a conversation with nothing to run on before anyone waits for a turn', () => {
     expect(startProblem({ index: { providers: [] }, keyProblem: noKeyProblem, pictures: 0 })).toContain(
       'No model is configured',

@@ -4,7 +4,7 @@ Every model carries a **takes pictures** setting, off until it is turned on. A p
 a conversation whose model does not take them is refused — at the composer when the window knows
 the model, and in the main process when it does not — rather than sent as a message the model never
 saw a picture in. The setting travels to the agent as the model's `input` list in `models.json`; the
-refusal is Alpha's, read from the same record (runtime/models.ts).
+refusal is Alpha's, read from the same record (packages/providers/src/models.ts).
 
 ## Context
 

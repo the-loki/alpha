@@ -24,9 +24,9 @@ import {
   servesModel,
   type Undef,
 } from '@alpha/domain'
+import type { ProviderStore } from '@alpha/providers'
 import type { Api, AssistantMessage, Context, Model, Models, TextContent } from '@earendil-works/pi-ai'
 import { createModelRuntime } from '../runtime/model-runtime.ts'
-import type { ProviderStore } from './store.ts'
 
 /** What the service answers with: the contract's own snapshot, so the window reads one shape. */
 export type ProvidersSnapshot = ProvidersSnapshotMessage

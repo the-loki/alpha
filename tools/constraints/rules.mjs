@@ -28,10 +28,11 @@ const isGenerated = (path) => path.startsWith('packages/i18n/src/')
 const PURE_PACKAGES = ['packages/i18n/src/', 'packages/domain/src/', 'packages/contract/src/']
 
 /**
- * Which library may import which, by the direction C2.1 draws: the dictionary sits under
- * everything, the rules know the dictionary, the contract knows those two, and the stores know the
- * rules. A package this table has never heard of may import no library at all — a new one asks for
- * its dependencies by being written down here.
+ * Which library may import which. The dictionary sits under everything, the rules know the
+ * dictionary, the contract knows those two, and each library around the workbench's own files —
+ * the sessions, the conversation list, the schedule, the connections, the gate — knows the rules,
+ * plus the contract where a shape crosses the wire. A package this table has never heard of may
+ * import no library at all: a new one asks for its dependencies by being written down here.
  */
 const LIBRARY_DEPENDENCIES = {
   'packages/i18n/src/': [],
@@ -40,6 +41,9 @@ const LIBRARY_DEPENDENCIES = {
   'packages/state/src/': ['@alpha/domain'],
   'packages/sessions/src/': ['@alpha/domain'],
   'packages/conversations/src/': ['@alpha/domain'],
+  'packages/tasks/src/': ['@alpha/domain'],
+  'packages/providers/src/': ['@alpha/contract', '@alpha/domain'],
+  'packages/gate/src/': ['@alpha/domain', '@alpha/state'],
 }
 
 const stripStrings = (line) =>

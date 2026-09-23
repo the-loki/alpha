@@ -21,7 +21,7 @@ const broker = () => {
 
 const requested = (events: RuntimeEvent[]) => events.filter((event) => event.type === 'approval_requested')
 
-describe('[runtime] the approval broker', () => {
+describe('[gate] the approval broker', () => {
   it('emits a request with an identity the window can answer with', () => {
     const { instance, events } = broker()
 

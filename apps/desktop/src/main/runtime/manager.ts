@@ -24,6 +24,16 @@ import {
   type ThinkingLevel,
 } from '@alpha/domain'
 import {
+  type ApprovalAnswer,
+  ApprovalBroker,
+  createPermissionPorts,
+  type PermissionPorts,
+  rememberWorkspaceLevel,
+  revokeRule,
+  UnattendedRuns,
+} from '@alpha/gate'
+import { defaultModel, describeRuntime, type ProviderStore, startProblem } from '@alpha/providers'
+import {
   type AgentPorts,
   DecisionLog,
   readSessionTranscript,
@@ -34,15 +44,9 @@ import {
 import type { StateStore } from '@alpha/state'
 import type { CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
-import type { ProviderStore } from '../providers/store.ts'
-import { ApprovalBroker } from './approvals.ts'
 import { openRuntime } from './assemble-runtime.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
-import type { ApprovalAnswer } from './gate.ts'
-import { defaultModel, describeRuntime, startProblem } from './models.ts'
-import { createPermissionPorts, type PermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
-import { UnattendedRuns } from './unattended.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string

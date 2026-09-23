@@ -1,0 +1,14 @@
+{
+  "name": "@alpha/providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@alpha/contract": "workspace:*",
+    "@alpha/domain": "workspace:*",
+    "typebox": "1.3.7"
+  }
+}

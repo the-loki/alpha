@@ -122,12 +122,18 @@ Layout:
 
 ```
 apps/desktop            the workbench: one package, three processes
-  src/main              the runtime: the embedded agent, the gate, providers, sessions, the IPC handlers
+  src/main              the embedded agent's runtime, the IPC handlers, the seams Electron owns
   src/preload           the bridge: the only functions the window gets
   src/renderer          Solid, @solidjs/router, Tailwind, remark — the window and nothing else
 packages/i18n           pure: the dictionary, both languages, and text()
 packages/domain         pure: the rules — transcripts, permissions, providers, tasks, schedules
 packages/contract       pure: the channel names and the types the bridge exposes
+packages/state          the one file the workbench persists for itself
+packages/sessions       the conversation on disk: the transcript, its entries, its decisions
+packages/conversations  the list the sidebar shows, and the messages waiting to be sent
+packages/tasks          the scheduled tasks: the file, the clock, the service
+packages/providers      the connections, the key vault, and the model a conversation runs on
+packages/gate           the permission ladder and the approvals broker
 e2e                     Playwright specs that launch the built app
 tools/constraints       the checker that keeps the constraints honest
 ```

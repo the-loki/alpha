@@ -14,30 +14,46 @@ everything else.
 import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
 `apps/desktop/src` except `main`, and anywhere under `packages/*/src`.
 
-## C2.1 — One workbench, a few libraries, one direction
+## C2.1 — One workbench, a handful of libraries, one direction
 
 ```
 apps/desktop/src/          the app: one package, three processes
   main/      ──┐
-  preload/   ──┼──> @alpha/domain    (pure TypeScript: the rules the workbench decides with)
-  renderer/  ──┘    @alpha/contract   (the IPC contract the three processes meet at)
-                    @alpha/i18n       (the dictionary the interface is written in)
+  preload/   ──┼──> @alpha/domain ──> @alpha/i18n        the pure three: the rules, the wire
+  renderer/  ──┘          │         ──> @alpha/contract    between processes, the dictionary
+                          ├──> @alpha/state ──> @alpha/gate
+                          ├──> @alpha/sessions
+                          ├──> @alpha/conversations
+                          ├──> @alpha/tasks
+                          └──> @alpha/providers ──> @alpha/contract
 ```
 
-| Package | Holds | May import |
+An arrow points the way an import goes: the app may import any library, `@alpha/gate` imports
+`@alpha/state`, and everything else sits directly on the rules.
+
+| Library | Holds | May import |
 | --- | --- | --- |
 | `@alpha/i18n` | The dictionary: the interface's words in both languages, and `text()` | nothing from this repo |
 | `@alpha/domain` | The rules: permissions, providers, transcripts, tasks, schedules, tool rows, validation schemas | `@alpha/i18n` |
 | `@alpha/contract` | The IPC contract: the channel names and the types the bridge exposes | `@alpha/domain`, `@alpha/i18n` |
-| `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | the three, node, electron (not in the renderer) |
+| `@alpha/state` | The one file the workbench persists for itself | `@alpha/domain` |
+| `@alpha/sessions` | The conversation on disk: the JSONL transcript, its entries, the decisions made about its tool calls | `@alpha/domain` |
+| `@alpha/conversations` | The list the sidebar shows, the bookkeeping that keeps it true, and the messages waiting to be sent | `@alpha/domain` |
+| `@alpha/tasks` | The scheduled tasks: the file, the clock that decides when one comes due, the service | `@alpha/domain` |
+| `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
+| `@alpha/gate` | The permission ladder, the approvals broker, the refusal a run with nobody watching gets, and the ports into the workbench's own file | `@alpha/domain`, `@alpha/state` |
+| `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
 
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
 `apps/desktop`, one package whose three processes are directories, which keeps the split the rest of
 this document is about (the window has no Node, the bridge is the only door, the runtime is in
-`main`) without pretending the workbench and the libraries it depends on are peers.
+`main`) without pretending the workbench and the libraries it depends on are peers. The agent
+runtime is the one thing that cannot leave: it imports the agent library, and no library may
+([C2.0](#c20--the-agent-is-a-library-alpha-links-and-it-links-into-main-alone)).
 
 Dependencies never point backwards: the libraries know nothing about the workbench, and no process
-imports `main`'s runtime.
+imports `main`'s runtime. Which library may import which is the `May import` column, and it is a
+rule rather than a sentence — nothing points sideways either.
 
 **Enforcement:** five of the checker's rules and one linter keep this shape.
 `02-architecture:processes-stay-apart` fails on a relative import from one of the app's three
@@ -47,9 +63,9 @@ window's — which is what separate packages used to enforce by existing.
 dictionary, the rules and the contract; `02-architecture:no-electron-in-libraries` fails on an
 `electron` import under any package at all — a library may read the disk, it may never hold a
 window, because a library that owns a window cannot be tested on its own.
-`02-architecture:libraries-point-one-way` is the `May import` column above, read as a rule: it fails
-on an `@alpha/*` import that is not below the importing library (a package the table does not name
-may import none of them), and on a relative import that climbs out of its own package.
+`02-architecture:libraries-point-one-way` is the `May import` column, read as a rule: it fails on an
+`@alpha/*` import that is not below the importing library (a package the table does not name may
+import none of them), and on a relative import that climbs out of its own package.
 And `02-architecture:renderer-is-solid` keeps the window on the framework it was rebuilt on.
 Biome's `style/noRestrictedGlobals` keeps the renderer off `process`, `require`, and `Buffer`.
 

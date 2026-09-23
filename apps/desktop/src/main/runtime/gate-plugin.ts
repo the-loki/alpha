@@ -7,8 +7,7 @@
  */
 
 import { type ApprovalRecord, recordOf } from '@alpha/domain'
-import { createToolGate } from './gate.ts'
-import type { PermissionPorts } from './permissions.ts'
+import { createToolGate, type PermissionPorts } from '@alpha/gate'
 import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** What the gate plugin needs: where the call happens, and how the ladder reaches the workbench. */

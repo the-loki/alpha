@@ -1,0 +1,13 @@
+{
+  "name": "@alpha/gate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@alpha/domain": "workspace:*",
+    "@alpha/state": "workspace:*"
+  }
+}

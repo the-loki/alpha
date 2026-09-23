@@ -9,7 +9,7 @@
 
 import type { ModelStatus } from '@alpha/contract'
 import { type ConversationModel, definitionOf, type ModelIndex, modelIn, type Undef } from '@alpha/domain'
-import type { ProviderStore } from '../providers/store.ts'
+import type { ProviderStore } from './store.ts'
 
 /**
  * Which model a conversation runs on: the one it chose, when that provider still serves it, and

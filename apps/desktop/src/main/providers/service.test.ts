@@ -2,13 +2,12 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ProviderApi, ProviderAuthStyle, ProviderModelDefinition } from '@alpha/domain'
+import { CredentialVault, ProviderStore } from '@alpha/providers'
 import type { Models } from '@earendil-works/pi-ai'
 import { afterEach, describe, expect, it } from 'vitest'
 import { aModel, scriptedModels, textStream } from '../runtime/scripted-provider.ts'
-import { CredentialVault } from './credential-vault.ts'
 import { closeScriptedWires, startScriptedWire } from './scripted-wire.ts'
 import { ProviderService } from './service.ts'
-import { ProviderStore } from './store.ts'
 
 /** A stand-in for the OS keychain, so what is stored is readable in a test. */
 const cipher = {

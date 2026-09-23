@@ -60,7 +60,7 @@ const harnessState = (options: { level?: PermissionLevel; rules?: PermissionRule
 
 const call = (toolName: string, args: Record<string, unknown>) => ({ toolCallId: `${toolName}-1`, toolName, args })
 
-describe('[runtime] the gate', () => {
+describe('[gate] the gate', () => {
   it('runs a read without asking and records that the level allowed it', async () => {
     const h = harness({ level: 'ask' })
 

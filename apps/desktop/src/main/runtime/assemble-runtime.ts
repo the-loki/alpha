@@ -8,11 +8,18 @@
 
 import { readFileSync } from 'node:fs'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
-import type { DecisionLedger, SessionStore } from '@alpha/sessions'
-import { importLegacySessionIn, sessionDirectoryFor, sessionIdOf, tipPath } from '@alpha/sessions'
+import type { PermissionPorts } from '@alpha/gate'
+import { modelFor, type ProviderStore } from '@alpha/providers'
+import {
+  type DecisionLedger,
+  importLegacySessionIn,
+  type SessionStore,
+  sessionDirectoryFor,
+  sessionIdOf,
+  tipPath,
+} from '@alpha/sessions'
 import type { Agent, CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
-import type { ProviderStore } from '../providers/store.ts'
 import { contextOf } from './agent-context.ts'
 import { assembleAgent } from './assemble-agent.ts'
 import { createCodingToolsPlugin } from './coding-tools.ts'
@@ -21,8 +28,6 @@ import type { RetryDecider } from './conversation-runtime.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import { createGatePlugin } from './gate-plugin.ts'
 import { createModelRuntime } from './model-runtime.ts'
-import { modelFor } from './models.ts'
-import type { PermissionPorts } from './permissions.ts'
 import type { AlphaPlugin } from './plugin-contract.ts'
 import { createRetryPlugin } from './retry-plugin.ts'
 import { type ReadTextFile, systemPromptFor } from './system-prompt.ts'
