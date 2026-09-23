@@ -253,10 +253,11 @@ export const EN = {
   'settings.apiAnthropic': 'Anthropic Messages',
   'settings.apiResponses': 'OpenAI Responses',
   'settings.apiOpenaiNote':
-    'OpenAI itself, and the many endpoints that copy it: most gateways, and anything running locally. This is the one to try first.',
-  'settings.apiAnthropicNote': 'The Claude API, and the proxies that speak it.',
+    'OpenAI itself, and the many services that copy it: most gateways, and anything running locally. This is the one to try first. The request goes to /chat/completions under the base url, so the base url is where the version segment goes — /v1 for most of them.',
+  'settings.apiAnthropicNote':
+    'The Claude API, and the proxies that speak it. The request goes to /v1/messages under the base url, and the client adds that /v1 itself: give the base url one of its own and the call reaches /v1/v1/messages.',
   'settings.apiResponsesNote':
-    'The newer OpenAI shape: the request goes to /responses under the base url. Whoever copied that shape works here too.',
+    'The newer OpenAI shape: the request goes to /responses under the base url, which carries the version segment (/v1 for most of them). Whoever copied that shape works here too.',
   'settings.noKeychain': 'This system offers no keychain, so keys are stored in plain text in the app data folder.',
   'settings.noProviders': 'No providers yet.',
   'settings.keyStored': 'key stored',
@@ -294,8 +295,10 @@ export const EN = {
   'settings.modelMaxTokens': 'Max output',
   'settings.wireProtocol': 'Wire protocol',
   'settings.authStyle': 'API key sent as',
-  'settings.authStyleApiKey': 'API key (x-api-key)',
+  'settings.authStyleApiKey': 'The header the wire uses',
   'settings.authStyleBearer': 'Bearer token (Authorization)',
+  'settings.authStyleNote':
+    'Where the key rides. The default is the header the wire uses — x-api-key on the Anthropic wire, Authorization: Bearer on the OpenAI-shaped ones. Pick Bearer only for a provider that refuses that default.',
   'settings.defaultLevel': 'Default permission level',
   'settings.defaultLevelNote':
     'New conversations in this workspace start here. An open conversation keeps its own level — change that at the foot of its composer.',

@@ -33,6 +33,11 @@ export function TextField(props: {
   )
 }
 
+/** The line under a field that says what the choice means (C5.4). */
+function FieldNote(props: { text: string }) {
+  return <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-faint">{props.text}</p>
+}
+
 /** Each protocol by the name people know it by, plus the line that says who speaks it. */
 const API_LABELS: Record<ProviderApi, TextKey> = {
   'openai-completions': 'settings.apiOpenai',
@@ -66,7 +71,7 @@ export function ApiField(props: { api: ProviderApi; onChange: (api: ProviderApi)
           <For each={PROVIDER_APIS}>{(candidate) => <option value={candidate}>{t(API_LABELS[candidate])}</option>}</For>
         </select>
       </label>
-      <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-faint">{t(API_NOTES[props.api])}</p>
+      <FieldNote text={t(API_NOTES[props.api])} />
     </div>
   )
 }
@@ -83,18 +88,21 @@ export function AuthStyleField(props: {
 }) {
   const t = useText()
   return (
-    <label class="block">
-      <span class={`mb-1 block ${GROUP_LABEL}`}>{t('settings.authStyle')}</span>
-      <select
-        aria-label={t('settings.authStyle')}
-        value={props.authStyle}
-        onInput={(event) => props.onChange(event.target.value as ProviderAuthStyle)}
-        class={FIELD}
-      >
-        <For each={PROVIDER_AUTH_STYLES}>
-          {(candidate) => <option value={candidate}>{t(AUTH_STYLE_LABELS[candidate])}</option>}
-        </For>
-      </select>
-    </label>
+    <div>
+      <label class="block">
+        <span class={`mb-1 block ${GROUP_LABEL}`}>{t('settings.authStyle')}</span>
+        <select
+          aria-label={t('settings.authStyle')}
+          value={props.authStyle}
+          onInput={(event) => props.onChange(event.target.value as ProviderAuthStyle)}
+          class={FIELD}
+        >
+          <For each={PROVIDER_AUTH_STYLES}>
+            {(candidate) => <option value={candidate}>{t(AUTH_STYLE_LABELS[candidate])}</option>}
+          </For>
+        </select>
+      </label>
+      <FieldNote text={t('settings.authStyleNote')} />
+    </div>
   )
 }

@@ -247,9 +247,12 @@ export const ZH = {
   'settings.apiOpenai': 'OpenAI Chat Completions',
   'settings.apiAnthropic': 'Anthropic Messages',
   'settings.apiResponses': 'OpenAI Responses',
-  'settings.apiOpenaiNote': 'OpenAI 官方接口，以及绝大多数兼容服务（各类网关、本地推理服务）。不确定就选这个。',
-  'settings.apiAnthropicNote': 'Claude 官方 API，以及兼容它的代理服务。',
-  'settings.apiResponsesNote': 'OpenAI 较新的接口，请求发到 base url 下的 /responses，兼容该格式的服务同样可用。',
+  'settings.apiOpenaiNote':
+    'OpenAI 官方接口，以及绝大多数兼容服务（各类网关、本地推理服务）。不确定就选这个。请求发到 base url 下的 /chat/completions，所以版本段要写进 base url——多数是 /v1。',
+  'settings.apiAnthropicNote':
+    'Claude 官方 API，以及兼容它的代理服务。请求发到 base url 下的 /v1/messages，那个 /v1 由客户端自己补：base url 里再写一遍，请求就会打到 /v1/v1/messages。',
+  'settings.apiResponsesNote':
+    'OpenAI 较新的接口，请求发到 base url 下的 /responses，版本段（多数是 /v1）同样写在 base url 里。兼容该格式的服务同样可用。',
   'settings.noKeychain': '这个系统没有钥匙串，密钥以明文存在应用数据目录里。',
   'settings.noProviders': '还没有供应商。',
   'settings.keyStored': '已存密钥',
@@ -286,8 +289,10 @@ export const ZH = {
   'settings.modelMaxTokens': '最大输出',
   'settings.wireProtocol': '协议',
   'settings.authStyle': '密钥发送方式',
-  'settings.authStyleApiKey': 'API Key（x-api-key）',
+  'settings.authStyleApiKey': '协议自己用的头',
   'settings.authStyleBearer': 'Bearer 令牌（Authorization）',
+  'settings.authStyleNote':
+    '密钥放在哪个头里。默认用协议自己用的头——Anthropic 协议是 x-api-key，OpenAI 形状的两个是 Authorization: Bearer。只有供应商不认这个默认时才选 Bearer。',
   'settings.defaultLevel': '默认权限级别',
   'settings.defaultLevelNote': '新会话从这里开始；已打开的会话保留自己的级别，可在输入框下方修改。',
   'settings.remembered': '记住的批准',

@@ -127,6 +127,21 @@ test('the protocol is chosen from the three Alpha speaks, and it is what gets st
   await window.getByLabel('Wire protocol').selectOption('openai-responses')
   await expect(window.getByText(/goes to \/responses/)).toBeVisible()
 
+  // The line says where the wire's request lands, because that is what decides the base url: this
+  // one's client adds /v1/messages itself, so a base url carrying a /v1 of its own is read by
+  // nobody. (Both languages are pinned in the dictionary's own test; this is the window's half.)
+  await window.getByLabel('Wire protocol').selectOption('anthropic-messages')
+  await expect(window.getByText(/reaches \/v1\/v1\/messages/)).toBeVisible()
+
+  // What the key rides in, and when to change it: the default is the wire's own header, and Bearer
+  // is for the endpoints that take only Authorization.
+  await expect(window.getByLabel('API key sent as').locator('option')).toHaveText([
+    'The header the wire uses',
+    'Bearer token (Authorization)',
+  ])
+  await expect(window.getByText(/x-api-key on the Anthropic wire/)).toBeVisible()
+
+  await window.getByLabel('Wire protocol').selectOption('openai-responses')
   await describeProvider(window, { id: 'gpt-endpoint', baseUrl: 'https://api.internal.example/v1' })
   const stored = JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8'))
   expect(stored.providers).toEqual([
