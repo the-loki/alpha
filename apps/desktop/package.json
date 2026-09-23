@@ -21,6 +21,7 @@
     "@alpha/gate": "workspace:*",
     "@alpha/i18n": "workspace:*",
     "@alpha/internal-plugins": "workspace:*",
+    "@alpha/mcp": "workspace:*",
     "@alpha/plugin": "workspace:*",
     "@alpha/providers": "workspace:*",
     "@alpha/sessions": "workspace:*",

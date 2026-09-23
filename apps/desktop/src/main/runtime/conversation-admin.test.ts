@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
 import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/domain'
+import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
 import type { AssistantMessage, Model } from '@earendil-works/pi-ai'
@@ -44,6 +45,8 @@ interface FixtureOptions {
   toolCall?: { name: string; args: Record<string, string> }
   /** The compaction thresholds the assembled policy runs with, shrunk for the test. */
   compactionSettings?: { reserveTokens: number; keepRecentTokens: number }
+  /** The MCP servers this run holds, when the test gives it any. */
+  mcp?: McpServers
 }
 
 /** Waits until one event of `kind` has been seen, which is what a mid-run act needs. */
@@ -61,6 +64,8 @@ const freshManager = (options: FixtureOptions = {}) => {
   const providers = new ProviderStore(dataDirectory, vault)
   if (options.noProviders !== true) providers.save(providerDefinition(options.images === true))
   const events: RuntimeEvent[] = []
+  // Read out of the options here: a closure cannot narrow a property that may be absent.
+  const held = options.mcp
   const manager = new RuntimeManager({
     dataDirectory,
     sessionsRoot: join(dataDirectory, 'sessions'),
@@ -72,6 +77,7 @@ const freshManager = (options: FixtureOptions = {}) => {
       keyProblem: () => options.keyProblem,
     },
     models: () => scriptedModels(scriptOf(options)),
+    mcp: held === undefined ? undefined : () => Promise.resolve(held),
     compactionSettings:
       options.compactionSettings === undefined ? undefined : { enabled: true, ...options.compactionSettings },
     emit: (event) => events.push(event),
@@ -674,3 +680,61 @@ describe('[runtime] compacting a conversation by hand', () => {
     expect(blocks[0]?.kind).toBe('compaction')
   })
 })
+
+/**
+ * The MCP servers a workbench run holds (ADR-0028): a hub handed to the manager, its tools offered
+ * to the model, and a call to one of them a row like any other. The transport under it is
+ * `@alpha/mcp`'s, tested there against a real server; what the manager adds is the wiring — one
+ * connection for the run, handed to the assembly — and the class the call is read as, which is the
+ * strictest one because an MCP tool name is a name no rule knows.
+ */
+describe('[runtime] the MCP servers a workbench holds', () => {
+  it('offers a server’s tools, and a call reaches the server that owns it', async () => {
+    const asked: Array<{ server: string; tool: string; args: Record<string, unknown> }> = []
+    const { manager, workspace, events } = freshManager({
+      mcp: hubOf(asked),
+      toolCall: { name: 'mcp__scripted__echo', args: { text: 'hello' } },
+    })
+    const created = await manager.create(workspace)
+
+    const turn = manager.prompt(created.conversation.id, 'use the server')
+    await waitedFor(events, 'approval_requested')
+    const request = events.find((event) => event.type === 'approval_requested')
+    if (request?.type !== 'approval_requested') throw new Error('no approval was requested')
+    manager.answerApproval(created.conversation.id, request.request.requestId, { decision: 'once' })
+    await turn
+    await waitedFor(events, 'turn_finished')
+    await manager.closeAll()
+
+    expect(asked).toEqual([{ server: 'scripted', tool: 'echo', args: { text: 'hello' } }])
+    const row = (await manager.transcriptFor(created.conversation.id))
+      .flatMap((message) => message.blocks)
+      .find((block) => block.kind === 'tool')
+    expect(row).toMatchObject({
+      name: 'mcp__scripted__echo',
+      risk: 'execute',
+      status: 'ok',
+      output: 'echo: hello',
+      approval: { kind: 'once' },
+    })
+  })
+})
+
+/** One scripted server as the manager is handed it, and the calls it was asked to make. */
+function hubOf(asked: Array<{ server: string; tool: string; args: Record<string, unknown> }>): McpServers {
+  const tool: McpTool = {
+    server: 'scripted',
+    name: 'echo',
+    description: 'Answers with what it was given.',
+    inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
+  }
+  return {
+    tools: () => [tool],
+    call: async (server, name, args): Promise<McpCallResult> => {
+      asked.push({ server, tool: name, args })
+      const content: McpContent[] = [{ type: 'text', text: `echo: ${String(args.text ?? '')}` }]
+      return { content, isError: false }
+    },
+    close: async () => {},
+  }
+}

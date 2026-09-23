@@ -47,6 +47,9 @@ importers:
       '@alpha/internal-plugins':
         specifier: workspace:*
         version: link:../../packages/internal-plugins
+      '@alpha/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@alpha/plugin':
         specifier: workspace:*
         version: link:../../packages/plugin
@@ -182,6 +185,9 @@ importers:
       '@alpha/gate':
         specifier: workspace:*
         version: link:../gate
+      '@alpha/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@alpha/plugin':
         specifier: workspace:*
         version: link:../plugin
@@ -197,6 +203,12 @@ importers:
       typebox:
         specifier: ^1.3.7
         version: 1.3.7
+
+  packages/mcp:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/plugin:
     dependencies:

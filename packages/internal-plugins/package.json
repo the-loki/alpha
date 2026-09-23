@@ -10,6 +10,7 @@
     "@alpha/agent": "workspace:*",
     "@alpha/domain": "workspace:*",
     "@alpha/gate": "workspace:*",
+    "@alpha/mcp": "workspace:*",
     "@alpha/plugin": "workspace:*",
     "@alpha/sessions": "workspace:*",
     "@earendil-works/pi-agent-core": "0.86.1",

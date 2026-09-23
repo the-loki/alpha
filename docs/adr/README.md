@@ -33,6 +33,7 @@ does today.
 | [0021](0021-the-window-is-solid.md) | The window is Solid |
 | [0022](0022-a-live-run-may-reach-a-provider.md) | A live run may reach a provider |
 | [0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) | The agent is embedded, and the workbench is the base |
+| [0028](0028-an-mcp-server-is-reached-not-loaded.md) | An MCP server is reached, not loaded in |
 | [0027](0027-caliper-design-language.md) | Caliper: an instrument in near-neutral and indigo |
 
 ## Superseded

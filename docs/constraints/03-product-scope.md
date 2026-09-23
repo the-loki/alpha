@@ -83,14 +83,19 @@ hosts, and no settings copy names a provider as a thing to add.
 
 ## C3.7 — Explicit non-goals
 
-Each of these is a deliberate cut, not an oversight. Three of them were written for the first
-release and have since been decided the other way; what changed is said with them rather than
-quietly dropped.
+Each of these is a deliberate cut, not an oversight. Four of them were written for the first
+release and have since been decided the other way — or narrowed, which is said the same way; what
+changed is written with them rather than quietly dropped.
 
 - No multi-agent orchestration, no sub-agent spawning from the UI.
 - No extension API for other people's code, and no user-authored tools. The plugin base (C2.8) is
   Alpha's own assembly — the shape a capability inside this repository is written in — not a surface
-  a person installs something onto.
+  a person installs something onto. *Changed:* a workbench may be configured with **MCP servers**
+  ([ADR-0028](../adr/0028-an-mcp-server-is-reached-not-loaded.md)), which are code somebody else
+  wrote, offering tools Alpha did not ship. They are reached over a protocol — in their own process,
+  or at the endpoint they name — and never loaded into Alpha, so what the cut was protecting holds:
+  nothing a person installs runs inside the workbench, and the tools it offers are decided about by
+  the same ladder as Alpha's own.
 - No image generation, no voice, no attachments beyond images pasted into the composer.
 - No mobile app. *Changed:* the workbench is served to a browser (C6), which was once a cut, and
   that page is expected to stay usable at phone widths (C5.4) — but nothing ships for a phone, and

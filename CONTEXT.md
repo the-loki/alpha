@@ -141,7 +141,11 @@ is the mechanism, where those faces meet pi — the assembly and the `afterRun` 
 ### Tool
 
 A capability the agent can invoke: reading a file, writing a file, running a command. A tool
-never executes without passing the permission gate.
+never executes without passing the permission gate. A workbench may also be configured with **MCP
+servers** — programs and endpoints that offer tools of their own, named in `mcp.json` — whose tools
+are tools: the same gate, the same rows, and a name that says which server they came from. A server
+is not a plugin: a plugin is Alpha's own assembly (above), and a server is reached over a protocol
+(ADR-0028). Avoid: *connector*, *integration*, and calling a server a plugin.
 
 ### Permission Level
 

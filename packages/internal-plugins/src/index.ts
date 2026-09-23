@@ -13,5 +13,6 @@
 export * from './compaction-plugin.ts'
 export * from './compaction-policy.ts'
 export * from './gate-plugin.ts'
+export * from './mcp-plugin.ts'
 export * from './retry-plugin.ts'
 export * from './workspace-tools-plugin.ts'

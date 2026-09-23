@@ -41,13 +41,16 @@ apps/desktop/src/          the app: one package, three processes
                           ├──> @alpha/providers ──> @alpha/contract
                           ├──> @alpha/gate ──> @alpha/plugin, @alpha/state
                           ├──> @alpha/agent ──> @alpha/plugin, @alpha/sessions
-                          └──> @alpha/internal-plugins ──> @alpha/agent, @alpha/gate, the agent library
+                          ├──> @alpha/mcp
+                          └──> @alpha/internal-plugins ──> @alpha/agent, @alpha/gate, @alpha/mcp,
+                                                         the agent library
 ```
 
 An arrow points the way an import goes: the app may import any library; the capabilities add what
 they need — the workbench's own gate sits on the plugin base and the state file, the agent base
-sits on the pure faces, and the built-in plugins sit on the gate, the agent base and the agent library
-itself, which is what C2.0's exception is for; everything else sits directly on the rules.
+sits on the pure faces, and the built-in plugins sit on the gate, the agent base, the MCP client and
+the agent library itself, which is what C2.0's exception is for; everything else sits directly on
+the rules.
 
 | Library | Holds | May import |
 | --- | --- | --- |
@@ -62,7 +65,8 @@ itself, which is what C2.0's exception is for; everything else sits directly on 
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
 | `@alpha/agent` | The agent base: the history a run starts from, the plugin contract bound to pi, the assembly that makes one `Agent` of the plugins, and the `afterRun` driver | `@alpha/domain`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
 | `@alpha/gate` | The permission machinery the workbench owns: the ladder, the approvals broker, the refusal a run with nobody watching gets, and the ports into the workbench's own file | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
-| `@alpha/internal-plugins` | Alpha's own plugins, one file each: the gate on `beforeToolCall`, auto-retry on `afterRun`, the four tools, and compaction | `@alpha/agent`, `@alpha/domain`, `@alpha/gate`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
+| `@alpha/mcp` | The MCP client: the request bookkeeping, the handshake and the tool list, the stdio and HTTP transports, and the servers file | `@alpha/domain` |
+| `@alpha/internal-plugins` | Alpha's own plugins, one file each: the gate on `beforeToolCall`, auto-retry on `afterRun`, the four tools, compaction, and the MCP servers' tools | `@alpha/agent`, `@alpha/domain`, `@alpha/gate`, `@alpha/mcp`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
 
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
@@ -207,12 +211,13 @@ runtime knowing: they come back from the same registration point as the faces, a
 copied out of the plugin.
 
 Alpha's own plugins live together, in `@alpha/internal-plugins`, one file each: the gate on
-`beforeToolCall`, auto-retry on `afterRun`, the four tools, compaction. The plugin is the unit —
+`beforeToolCall`, auto-retry on `afterRun`, the four tools, compaction, and the MCP servers' tools. The plugin is the unit —
 a package may hold several, and this one holds all the built-ins; splitting them into a package
 each would make the package the unit and leave the app importing four names for one idea. Where the
 policy behind a face is the workbench's to use as well, it lives in the library the plugin wraps:
 `@alpha/gate` decides what a call may do and owns the approvals broker, and the gate plugin is the
-face hung on it. Nothing is copied either way: the plugin holds the ladder's ports, and the runtime
+face hung on it; `@alpha/mcp` speaks the protocol — the transports, the handshake, the list — and
+the MCP plugin is the face that turns what it offers into tools. Nothing is copied either way: the plugin holds the ladder's ports, and the runtime
 asks the retry plugin's own decision whether a turn is over.
 
 What stays in `main` is the app around the run: driving a conversation, routing the events to the

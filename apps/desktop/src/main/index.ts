@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { connectMcpServers, readMcpServers } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
 import { TaskService, TaskStore } from '@alpha/tasks'
@@ -49,8 +50,12 @@ app.whenReady().then(async () => {
     sessionsRoot,
     keyProblem: (providerId: string) => providers.keyProblem(providerId),
   }
+  // The MCP servers this workbench run holds: the connection starts now and is awaited when a
+  // conversation is opened, so nothing waits on it at boot and every conversation reaches it (C2.8).
+  const mcpServers = connectMcpServers(readMcpServers(dataDirectory))
   const runtime = new RuntimeManager({
     dataDirectory,
+    mcp: () => mcpServers,
     sessionsRoot,
     providers,
     store,
@@ -100,6 +105,7 @@ app.whenReady().then(async () => {
   app.on('before-quit', () => {
     tasks.stop()
     void runtime.closeAll()
+    void mcpServers.then((servers) => servers.close())
   })
 
   return window

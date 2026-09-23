@@ -11,7 +11,6 @@
 import type { EditEffect, ModelStatus, OpenedConversation } from '@alpha/contract'
 import { ConversationBookkeeper, DEFAULT_TITLE, newConversation, QueueRunner } from '@alpha/conversations'
 import {
-  type ApprovalAsk,
   type Attachment,
   type ChatMessage,
   type ConversationSummary,
@@ -32,6 +31,7 @@ import {
   revokeRule,
   UnattendedRuns,
 } from '@alpha/gate'
+import type { McpServers } from '@alpha/mcp'
 import { defaultModel, describeRuntime, type ProviderStore, startProblem } from '@alpha/providers'
 import {
   type AgentPorts,
@@ -47,6 +47,7 @@ import type { Models } from '@earendil-works/pi-ai'
 import { openRuntime } from './assemble-runtime.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
+import { askOrRefuse } from './unattended.ts'
 
 export interface RuntimeManagerOptions {
   dataDirectory: string
@@ -58,6 +59,8 @@ export interface RuntimeManagerOptions {
   store: StateStore
   /** Builds the model runtime an open conversation dials with; tests script one. */
   models?: () => Models
+  /** The MCP servers of this run, connected by `main`; a conversation waits for them here. */
+  mcp?: () => Promise<McpServers>
   /** The compaction thresholds and retry backoff, when the caller shrinks them; tests do. */
   compactionSettings?: CompactionSettings
   retryDelays?: number[]
@@ -372,6 +375,7 @@ export class RuntimeManager {
   private async launch(conversation: ConversationSummary): Promise<ConversationRuntime> {
     const runtime = await openRuntime({
       conversation,
+      mcp: await this.options.mcp?.(),
       sessions: this.sessions,
       sessionsRoot: this.options.sessionsRoot,
       providers: this.options.providers,
@@ -386,18 +390,12 @@ export class RuntimeManager {
     return runtime
   }
 
-  /** A question nobody is there to answer becomes a refusal, or a card when somebody is. */
-  private askOrRefuse(id: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
-    const refusal = this.unattended.refuse(id)
-    return refusal === undefined ? this.approvals.ask(id, ask) : Promise.resolve(refusal)
-  }
-
   /** The gate's ports over the workbench: the level in force, the rules, and the person to ask. */
   private permissionPorts(): PermissionPorts {
     return createPermissionPorts({
       store: this.options.store,
       levelOf: (id) => this.books.find(id)?.permissionLevel ?? this.options.store.read().permissionLevel,
-      ask: (id, ask) => this.askOrRefuse(id, ask),
+      ask: (id, ask) => askOrRefuse(this.unattended, this.approvals, id, ask),
       changed: this.options.emitRules,
     })
   }

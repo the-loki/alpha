@@ -19,7 +19,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 │   ├── 0025-the-agent-is-embedded-and-the-workbench-is-the-base.md
 │   └── README.md
 ├── apps/desktop/src/           the workbench: main, preload, renderer
-└── packages/                   its twelve libraries
+└── packages/                   its thirteen libraries
 ```
 
 ## Use the glossary's vocabulary
