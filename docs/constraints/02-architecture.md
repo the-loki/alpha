@@ -101,8 +101,9 @@ All cross-process traffic is declared once, as types plus channel names, in `@al
 The renderer never touches `ipcRenderer`; it calls the typed client the preload exposes
 on `window`. The main process registers one handler per contract channel and no others.
 
-Adding a capability means adding it to the contract first. A handler with no contract entry is
-dead code the checker will find.
+Adding a capability means adding it to the contract first. A handler with no contract entry is dead
+code, and the typechecker is what finds it: the handler table is typed by the contract's own channel
+names, so a key the contract does not declare is a type error rather than a handler nobody calls.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:contract-channels`. It reads the
 three sides at once and fails when a channel string is written out by hand instead of taken from
@@ -148,14 +149,15 @@ word. Review covers the rest.
 
 | Thing | Limit |
 | --- | --- |
-| Function or method body | 60 lines |
-| Component body | 120 lines |
-| File | 300 lines |
-| `createEffect` in one component | 2 |
+| Function body: a `function` declaration, or an arrow assigned to a `const` | 60 lines |
+| Function body in a renderer `.tsx` — a component, in practice | 120 lines |
+| File, counted as lines of code | 300 lines |
 
 When a file wants to exceed these, the usual correct answer is that it is two modules wearing one
 hat; the constraint exists to make that visible at the moment it happens rather than at review
-time.
+time. The budget is on the *body*: the signature line and the closing brace are not counted, a
+`const` holding an arrow is what a named function is written as here, and a class method is not read
+at all — a class that grows a long method is review's to catch.
 
 **Enforcement:** `pnpm check:constraints` rules `02-architecture:max-file-lines` and
 `02-architecture:max-function-lines`, both covered by tests over source strings that must pass
@@ -179,8 +181,10 @@ Assistant text arrives as deltas. The store appends deltas into the streaming me
 does not rebuild the message list per delta, and it does not write a delta to disk per delta. The
 transcript is written when a message ends.
 
-**Enforcement:** review, plus an E2E assertion that a 200-delta response produces a bounded
-number of store writes.
+**Enforcement:** review, plus the tests at the two ends of the claim: a run of deltas accumulates
+into the one streaming message (`packages/domain/src/transcript.test.ts`), and the session gains an
+entry when a message ends and at no other time (`ConversationRuntime.persist`, asserted in
+`conversation-runtime.test.ts`).
 
 ## C2.8 — A capability is a plugin, not a branch in the runtime
 

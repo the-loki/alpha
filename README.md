@@ -4,8 +4,8 @@ A local-first desktop workbench with the agent built in. It works against a fold
 with your own key — choose how much the agent may do without asking, and read every tool call it
 made in a ledger you can audit afterwards.
 
-Alpha is an Electron app, and the agent runs inside it: an embedded agent core, assembled from a
-plugin base of Alpha's own — the workspace tools, the permission gate, compaction, auto-retry. The
+Alpha is an Electron workbench, and the agent runs inside it: an embedded agent core, assembled from
+a plugin base of Alpha's own — the workspace tools, the permission gate, compaction, auto-retry. The
 window receives a projection of the conversation over a typed IPC contract, and the credential, the
 permission ladder and the decisions stay in the main process.
 
@@ -44,11 +44,11 @@ there either, because there is no window of ours to move.
 1. **Open a workspace.** The folder the agent works in. Everything it reads, writes and runs is
    inside it; Alpha does not sandbox, it gates (see below). The choice is remembered, and the
    folder's name is what groups your conversations in the sidebar.
-2. **Add a provider.** Settings → *Add a known provider* for Anthropic, OpenAI, Google, DeepSeek,
-   OpenRouter and friends, or *Custom endpoint* for anything speaking the OpenAI or Anthropic wire
-   protocol. Paste a base URL and a key. Nothing is bundled and no key ships with the app.
-3. **Pick a model.** The header's model menu, or Settings. Each conversation keeps its own choice,
-   and so does its thinking effort.
+2. **Add a provider.** Settings → *Add a provider*: pick one of the three wire protocols it speaks,
+   paste its base URL, then add the models it serves underneath it. Nothing is bundled and no key
+   ships with the workbench.
+3. **Pick a model.** The chip at the foot of a conversation's composer, or Settings. Each
+   conversation keeps its own choice, and so does its thinking effort.
 4. **Ask for something.** `Enter` sends. The reply streams in, and every tool call it makes appears
    as a row in the ledger.
 
@@ -60,8 +60,8 @@ window can set one, and can never read one back.
 
 ## The permission ladder
 
-Four levels, in the header's chip. The level decides before anything runs, and the decision is what
-the transcript records afterwards:
+Four levels, on the chip in the composer's foot row. The level decides before anything runs, and the
+decision is what the transcript records afterwards:
 
 | Level | Reads | File changes | Commands |
 | --- | --- | --- | --- |
@@ -70,11 +70,12 @@ the transcript records afterwards:
 | **Accept edits** | allowed | allowed | ask |
 | **Full access** | allowed | allowed | allowed |
 
-When the level asks, an amber-railed card appears inline in the transcript with the exact command
-or the file and its diff, the folder it will run in, and three answers: **Allow once**, **Always
-allow** (this conversation or this workspace), or **Deny** with a reason. `Enter` allows once,
-`Escape` denies. A denial is returned to the model as the reason the call failed, so it adapts
-instead of retrying.
+When the level asks, a card appears inline in the transcript — a surface step, a hairline, and an
+amber mark while it waits — with the exact command or the file and its diff, the folder it will run
+in, and three answers: **Allow once**, **Always allow** (this conversation or this workspace), or
+**Deny** with a reason. `Enter` allows once; `Escape` only moves focus away, because a denial is an
+act rather than a dismissal. A denial is returned to the model as the reason the call failed, so it
+adapts instead of retrying.
 
 "Always allow" writes a remembered rule — a tool name plus a command prefix or a path prefix.
 Settings lists them, and revoking one brings the question back on the next matching call.
@@ -92,13 +93,13 @@ per-user data directory.
 
 | File | What it is |
 | --- | --- |
-| `workbench-state.json` | Workspace, recent folders, permission level, theme, remembered rules |
+| `workbench-state.json` | The workbench's own settings: the workspace and the recent folders, the default permission level (and any the folders override), the theme, the language, the last conversation opened, the remembered rules, and the browser access settings |
 | `conversations.json` | The sidebar's index: titles, ordering, status |
-| `sessions/<id>/*.jsonl` | The transcripts themselves, append-only (ADR-0004) |
+| `sessions/<workspace>/<timestamp>_<id>.jsonl` | The transcripts themselves, append-only (ADR-0004), grouped one folder per workspace |
 | `credentials.json` | Provider credentials, encrypted by the OS keychain where there is one |
 | `decisions/<id>.json` | How each tool call got past the gate, so a restored ledger still says why (ADR-0007) |
 
-Deleting a conversation deletes its session directory and its decision log. Export writes a
+Deleting a conversation deletes its session file and its decision log. Export writes a
 self-contained markdown file next to the workspace.
 
 ## What it does not do
@@ -110,13 +111,13 @@ self-contained markdown file next to the workspace.
 
 ```bash
 pnpm check           # constraints, types, lint, unit and integration tests
-pnpm test:e2e        # Playwright drives the real app (run `pnpm build` first)
+pnpm test:e2e        # builds, then Playwright drives the real app
 pnpm dev             # electron-vite dev server with HMR in the renderer
 ```
 
 `docs/constraints/` is the contract the code is held to, and `pnpm check:constraints` enforces the
 machine-checkable parts of it. `docs/adr/` records the decisions that are expensive to reverse.
-`CONTEXT.md` is the vocabulary — the app uses those words and no others.
+`CONTEXT.md` is the vocabulary — the code, the issues and the copy use those words and no others.
 
 Layout:
 
@@ -134,9 +135,11 @@ packages/sessions       the conversation on disk: the transcript, its entries, i
 packages/conversations  the list the sidebar shows, and the messages waiting to be sent
 packages/tasks          the scheduled tasks: the file, the clock, the service
 packages/providers      the connections, the key vault, and the model a conversation runs on
-packages/agent          the base: the plugin contract bound to pi, the assembly, the afterRun driver
+packages/agent          the agent base: the plugin contract bound to pi, the assembly, the afterRun driver
 packages/gate           the permission machinery: the ladder, the approvals broker, the refusal
 packages/internal-plugins  Alpha's own plugins, one file each: gate, auto-retry, tools, compaction
 e2e                     Playwright specs that launch the built app
-tools/constraints       the checker that keeps the constraints honest, one module per document
+tools/constraints       the checker that keeps the constraints honest, one module per document that has machine-checkable rules
+tools/design            the tests that read the palette and the type scale out of the stylesheet
+tools/docs              the test that holds the ADR index to the decisions it maps
 ```

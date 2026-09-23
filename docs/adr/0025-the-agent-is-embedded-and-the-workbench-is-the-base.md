@@ -39,16 +39,18 @@ heavier harness layer.
 
 **The agent runs in `main`, on the core.** One embedded agent per open conversation. A prompt is a
 method call and an event subscription; there is no framing, no correlation ids, no child to
-reap. The wall of constraints moves accordingly: C2.0 now forbids pi imports everywhere
-*except* `main` (the renderer and the libraries keep the ban — the contract is still their only door),
-and C2.4's key path ends at the model runtime's auth resolver instead of a child's environment.
+reap. The wall of constraints moves accordingly: C2.0 forbids pi imports everywhere except `main`
+and the capability packages the checker lists by name — `@alpha/agent`, the mechanism half of the
+base, and `@alpha/internal-plugins`, whose faces are where pi's own shape is the capability — while
+the renderer and every other library keep the ban, the contract still their only door. C2.4's key
+path ends at the model runtime's auth resolver instead of a child's environment.
 
 **The workbench is the plugin base.** Alpha defines the contract its agent is assembled from: a
-plugin contributes tools, and hook methods — `beforeToolCall` chains across plugins, any of which
-may block; `afterTool` observation; event taps — that the base composes into the one `Agent`. The
-contract is Alpha's own, not a re-implementation of coding-agent's extension loader: no jiti, no
-external files, no `pi.registerCommand` surface. Built-ins ship as the first plugins, so the base
-is exercised by everything Alpha itself needs:
+plugin contributes tools and two hooks — `beforeToolCall`, which chains across plugins and any of
+which may block, and `afterRun`, which sees how the run ended — and the base composes them into the
+one `Agent`. The contract is Alpha's own, not a re-implementation of coding-agent's extension
+loader: no jiti, no external files, no `pi.registerCommand` surface. Built-ins ship as the first
+plugins, so the base is exercised by everything Alpha itself needs:
 
 - **workspace tools** — core's `read`/`bash`/`edit`/`write` over a `NodeExecutionEnv` rooted at the
   conversation's workspace;
@@ -59,7 +61,8 @@ is exercised by everything Alpha itself needs:
   shape (reserve and keep-recent tokens), applied to the live transcript, written as a compaction
   entry;
 - **auto-retry** — coding-agent's design: a transient provider failure after `agent_end` retries
-  with backoff, surfaced as `willRetry` so the window keeps the turn open.
+  with backoff, and the decision is published as `shouldRetry` so the translator keeps the turn
+  open while an attempt is planned.
 
 **Alpha owns the session store again.** The transcript of record is an append-only JSONL of
 entries — the same entry shapes (message / compaction / branch summary, `id`/`parentId` tree) the

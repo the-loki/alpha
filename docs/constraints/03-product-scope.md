@@ -12,10 +12,13 @@ The key is stored encrypted on the machine, is sent only to the provider it belo
 deleted when the user deletes the provider. Nothing about the user's usage is reported anywhere.
 
 **Enforcement:** no network call may be made to a host that is not a configured provider, the
-app's own update check, or a documented documentation link. `pnpm check:constraints` scans for
-hard-coded hosts anywhere in `apps/desktop/src` and `packages/`, with one exemption for the module that listens on this
-machine's own address. There is no provider catalog to make an exception for: the user types the
-base URL, and the only address Alpha knows is the one it binds ([ADR-0015](../adr/0015-three-protocols-and-no-catalog.md)).
+app's own update check, or a documented documentation link. `pnpm check:constraints` scans every
+file in the repository for a hard-coded host, exempting the constraint documents themselves, the
+specs, the tests, the checker's own sources, and the one module that listens on this machine's own
+address (`apps/desktop/src/main/server/http.ts` — it listens, so it has to say where, and a
+provider host is a violation there too). There is no provider catalog to make an exception for: the
+user types the base URL, and the only address Alpha knows is the one it binds
+([ADR-0015](../adr/0015-three-protocols-and-no-catalog.md)).
 
 ## C3.2 — No worktree support
 
@@ -78,13 +81,21 @@ OpenAI" all take the same request.
 **Enforcement:** `PROVIDER_APIS` is a closed union in `@alpha/domain`, `pnpm check:constraints` scans for
 hosts, and no settings copy names a provider as a thing to add.
 
-## C3.7 — Explicit non-goals for the first release
+## C3.7 — Explicit non-goals
 
-Each of these is a deliberate cut, not an oversight:
+Each of these is a deliberate cut, not an oversight. Three of them were written for the first
+release and have since been decided the other way; what changed is said with them rather than
+quietly dropped.
 
 - No multi-agent orchestration, no sub-agent spawning from the UI.
-- No plugins, no extension API, no user-authored tools.
+- No extension API for other people's code, and no user-authored tools. The plugin base (C2.8) is
+  Alpha's own assembly — the shape a capability inside this repository is written in — not a surface
+  a person installs something onto.
 - No image generation, no voice, no attachments beyond images pasted into the composer.
-- No mobile or web build: Electron only.
-- No i18n scaffolding. The UI ships in English; the project's documentation and the team's chat
-  may be Chinese, and copy is written so a single locale is not baked into component logic.
+- No mobile app. *Changed:* the workbench is served to a browser (C6), which was once a cut, and
+  that page is expected to stay usable at phone widths (C5.4) — but nothing ships for a phone, and
+  there is no phone build.
+- No translation pipeline. *Changed:* the interface ships in two languages, English and Chinese,
+  both written by hand in one dictionary (ADR-0010). There is no locale-file generator, no
+  translation service, and no RTL work; copy is still written so a single locale is not baked into
+  component logic.

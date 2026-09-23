@@ -8,12 +8,18 @@ own, every superseded decision pointing at what replaced it.
 
 ## In force
 
+Two entries below are superseded *in part*: [0001](0001-agent-runtime-in-main-process.md) and
+[0004](0004-transcripts-as-jsonl-entries.md) each carry a `Superseded in part` section naming what
+[ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) retired and what still
+binds. They sit here rather than under Superseded because the half that remains is what the code
+does today.
+
 | # | Decision |
 | --- | --- |
-| [0001](0001-agent-runtime-in-main-process.md) | The agent runs in the main process, as the person's own `pi` |
+| [0001](0001-agent-runtime-in-main-process.md) | The agent runs in the main process |
 | [0002](0002-four-level-permission-ladder.md) | Four permission levels, with interactive approvals and remembered rules |
 | [0003](0003-byok-credentials-in-os-keychain.md) | BYOK credentials are encrypted with the OS keychain and never cross IPC in plaintext |
-| [0004](0004-transcripts-as-jsonl-entries.md) | The transcript is the agent's session, and Alpha reads it back |
+| [0004](0004-transcripts-as-jsonl-entries.md) | The transcript is a JSONL session on disk |
 | [0007](0007-gate-decisions-beside-the-session.md) | The gate's decisions live in Alpha's own file, beside the session |
 | [0008](0008-a-run-nobody-is-driving-is-over.md) | A run nobody is driving is over |
 | [0009](0009-the-workbench-can-be-served-to-a-browser.md) | The workbench can be served to a browser, and the browser is a full operator |

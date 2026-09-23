@@ -5,8 +5,8 @@ rather than assumed away, and the rules below exist to keep that one way of expr
 
 ## C1.1 — Strict mode on, everywhere
 
-`strict: true` and `strictNullChecks: true` in `tsconfig.json`; one project covers all four
-packages, so there is no per-package escape.
+`strict: true` and `strictNullChecks: true` in `tsconfig.json`; one project covers the app and
+every package, so there is no per-package escape.
 
 **Enforcement:** `pnpm typecheck`; `tsconfig.json` is the single source of these settings.
 

@@ -7,6 +7,20 @@ docs current on that date. Where a fact could not be verified from a primary sou
 Terminology in this file follows the products' own docs; Alpha's own vocabulary
 (`plan`/`ask`/`accept-edits`/`full-access`, per `CONTEXT.md`) is only used in the Synthesis.
 
+## What became of this
+
+Written 2026-09-18 as input to the permission design, which
+[ADR-0002](../adr/0002-four-level-permission-ladder.md) settled as a fixed four-level ladder plus
+remembered rules. §4.3's two notes landed differently, and both differences were deliberate:
+
+- **The classifier rung was left out.** There is no `auto` level: C3.4 says the four levels *are*
+  the safety model, and the survey's own evidence is why — the products that ship a classifier warn
+  it is not a security boundary.
+- **The rule store was refused.** Alpha has no file-backed rules with per-project precedence and no
+  admin ceiling: a rule lives in the workbench's state file, scoped to one conversation or to a
+  workspace, and it is only ever written by the user approving the same thing twice. Nothing
+  outranks the level except such a rule.
+
 ## 1. Claude Code / Claude Desktop
 
 ### 1.1 Permission modes (CLI + IDE + Desktop "Code" tab)

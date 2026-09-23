@@ -4,6 +4,15 @@
 
 > 环境说明：`app.linear.app` 在公开 DNS 不存在（NXDOMAIN，已用 Cloudflare/Google DoH 双查确认）；Linear 应用真实入口是 `https://linear.app/login`，其 HTML 挂载 `app-stylesheet`（应用全局样式表）。Raycast 桌面应用 v2 的前端是本地 WKWebView/WebView2 内运行的 React+TS 工程（见其技术博文），CSS 不公网托管，故应用内像素级数值只能引官方文档/博客/日志的表述，标 Medium/Low。搜索引擎与 WebFetch 在本环境被拦截，全部来源用 curl 直取（berkeleygraphics.com 对 curl 返回 403，经 reader 代理取回正文，引用仍指原 URL）。
 
+> **这是证据，不是规范。** 本文是 wayfinder #141 / 票 #142 的研究产物，Caliper 语言由它决定，而现行规范在
+> [ADR-0027](../adr/0027-caliper-design-language.md) 与 [constraints/05-design.md](../constraints/05-design.md)。
+> 第 5 节里被采纳的是：OFL 等宽（Raycast 的 Geist Mono）做 apparatus voice；侧栏 256px（窗口里是 rail
+> 16rem）；密列表用行、设置与表单才用卡片；CJK 不内嵌、但把回退家族显式命名（`PingFang SC` /
+> `Microsoft YaHei` / `Noto Sans CJK SC`）。
+> 被否决的是：Inter 做正文（正文 voice 是 Geist Sans，ADR-0027 写明 replaced Inter + JetBrains Mono）；
+> 「字重不用整百」（只允许 400/500/600）；顶部窗口级条（没有条，view head 嵌在页面里，C5.4）；
+> 20/24/28/36/48 的标题音阶（窗口封顶在 `text-display` 1.75rem）。
+
 ---
 
 ## 1. 字体：用什么字、怎么分发、中日韩回退

@@ -4,22 +4,25 @@ Alpha names exactly three wire protocols — OpenAI chat completions, OpenAI res
 messages — and ships **no catalog of providers and no model ids**. A provider is a connection the
 user describes; the models it serves are a separate setting.
 
-The protocols are still Alpha's to *name* (the record's `api`), but they are no longer Alpha's to
-*speak*: the agent makes the requests, and Alpha writes what it needs into a `models.json` in its
-own agent directory ([ADR-0001](0001-agent-runtime-in-main-process.md)).
+The protocols are Alpha's to *name* (the record's `api`) and Alpha's to *speak*: the name selects
+the pi-ai implementation that carries the request, built from the provider Alpha already stores
+(`runtime/model-runtime.ts`, [ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)).
 
 ## Superseded in part
 
-Two things have moved since this was written. The protocols are described rather than implemented:
-the table that used to pick a pi-ai implementation per `api` now picks a string in the agent's
-configuration, and Alpha contains no provider client at all (the dependency is gone, #115).
+One thing has moved here, and it moved back. The protocols were described rather than implemented
+for the length of the RPC era — the table picked a string in another program's configuration and
+Alpha contained no provider client at all (#115) — and embedding the agent
+([ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)) put the client back in
+Alpha's own process. So the table picks an implementation per `api` again, and it is the same three
+names.
 
-The decision that a model list is edited on a panel of its own was reversed: the models panel made
-a user find their provider a second time in order to edit what already belonged to it. A model is
-edited as a **sub-list of its provider's card**, and the one choice that is not a provider's own —
-what a new conversation starts on — sits at the top of the providers panel. The data model here is
-untouched: models are still stored per provider, the add-provider form still starts empty, and
-nothing about the catalog decision changes.
+The other move is unrelated to protocols: the decision that a model list is edited on a panel of
+its own was reversed. The models panel made a user find their provider a second time in order to
+edit what already belonged to it. A model is edited as a **sub-list of its provider's card**, and
+the one choice that is not a provider's own — what a new conversation starts on — sits at the top of
+the providers panel. The data model here is untouched: models are still stored per provider, the
+add-provider form still starts empty, and nothing about the catalog decision changes.
 
 ## Context
 
@@ -40,8 +43,9 @@ wanted.
 
 **Three protocols, as a closed union in `@alpha/domain`.** `openai-completions`, `openai-responses`,
 `anthropic-messages`: the de-facto standard that gateways and local servers copy, OpenAI's newer
-shape, and Anthropic's own. The union is a closed list of names, and each name is written into the
-agent's `models.json` beside the base URL and the models that go with it.
+shape, and Anthropic's own. The union is a closed list of names, one name is stored per provider
+beside its base URL and its models, and that name is what selects the implementation the request
+goes through.
 
 **No catalog, and therefore no host in Alpha's source.** The user types a base URL or nothing
 works. That is a stronger version of C3.1 than the catalog was: the previous rule had to exempt

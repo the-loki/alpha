@@ -16,7 +16,7 @@ permission level, approval, provider, credential, model).
 | Command | Does |
 | --- | --- |
 | `pnpm dev` | Electron with the renderer on Vite HMR |
-| `pnpm check` | Constraints, typecheck, Biome, unit tests — run before every commit |
+| `pnpm check` | Constraints, typecheck, Biome, unit and integration tests — run before every commit |
 | `pnpm test:e2e` | Builds, then drives the real window with Playwright |
 | `pnpm check:constraints` | Only the rules in `docs/constraints/` |
 
@@ -30,8 +30,8 @@ assembly, the driver (`@alpha/agent`), the permission machinery the workbench ow
 plugins (`@alpha/internal-plugins` — one file each, and a package that names the agent library), and the files the
 workbench keeps for itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`, `@alpha/tasks`,
 `@alpha/providers`. No library
-may import Electron, and only the packages C2.0 lists may name the agent library; the app depends on them and
-never backwards.
+may import Electron, and only the packages C2.0 lists may name the agent library; the workbench
+depends on them and never backwards.
 
 ### Before writing code here
 

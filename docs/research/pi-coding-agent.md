@@ -8,8 +8,10 @@ Researched 2026-09-20 from `@earendil-works/pi-coding-agent` **0.86.0**, install
 reading its own documentation and README. Every claim below cites the file inside that package
 (`docs/…`, `README.md`); nothing here comes from the model's memory of similar tools.
 
-This is the reference for Alpha's integration with pi: Alpha installs nothing, ships nothing of
-pi, and talks to the `pi` the user installed.
+This was the reference for Alpha's integration with pi while that integration existed: Alpha
+installed nothing, shipped nothing of pi, and talked to the `pi` the user had installed. Every
+mechanism it lands on — the agent directory, the catalog file, the credential in the child's
+environment — is described here as it was, and none of it is how Alpha works now.
 
 ## What pi is, and how a host talks to it
 

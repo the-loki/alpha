@@ -29,6 +29,7 @@ transcript, and the UI.
 
 Auto-approval is decided by a pure function over (level, tool risk class), so the whole policy is
 unit-testable without a runtime. Denials are returned to the model as an error tool result with
-the reason, so the agent can adapt rather than silently stall. `full-access` remains visible in
-the header, because the alternative — a hidden bypass — is how users lose data without knowing
+the reason, so the agent can adapt rather than silently stall. The level is a chip in the
+composer's own foot row, beside the attach control, and it is there in every state — `full-access`
+included, because the alternative, a bypass nobody can see, is how users lose data without knowing
 which setting did it.

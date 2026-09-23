@@ -10,8 +10,9 @@ holds no implementation details.
 
 ### Workbench
 
-The desktop application as a whole: one window, several conversations, one agent runtime.
-Avoid: *app*, *client*, *studio*.
+The desktop application as a whole: one window, several conversations, and the agent runtime they
+run on — one embedded agent per conversation that is open. A browser client is the same workbench,
+served to a browser. Avoid: *app*, *client*, *studio*.
 
 ### Workspace
 
@@ -51,18 +52,18 @@ tool returned. Messages are the only thing the transcript stores.
 
 ### Entry
 
-One thing the user asked for, drawn as a bubble at the column's right edge: a message the user
-typed, seen as one turn's opening, with the work that answers it standing under it on the column.
-Avoid: *row*, *item*. `Entry` is the display word for the user's own messages and nothing else —
-the model's answers are `messages` and the calls it makes are `tools`.
+One line of a session's transcript, written as the run produces it: a message, a compaction, or a
+branch summary, each carrying an id and the id of the entry it follows. The entries are the tree
+a transcript's tip names its way back through, and the transcript is what they add up to. Distinct
+from what the window shows: the reader sees *messages*, and a call the agent made is a *tool row*.
 
 ### Page
 
-The surface a conversation is read on: a rounded panel floating in the window, one column wide, where
-the reader's bubble is set to the right and everything that answers it stands full width and unboxed
-(ADR-0016, ADR-0017, ADR-0024). A page wears a band that says what it is — and the band stands on the
-page's own padding rather than on its column, so that no part of a page's chrome moves when the window
-changes width. Avoid: *card*, *panel*, *pane*, *sheet*.
+The surface a conversation is read on: the content area the rail leaves, one column wide, where the
+reader's message is set to the right and everything that answers it stands full width and unboxed.
+A page wears an **embedded view head** that says what it is — its title in the page's own top row,
+standing on the page's padding, with no band above it and no part of that head moving when the
+window changes width (C5.4, C5.5). Avoid: *card*, *panel*, *pane*, *sheet*.
 
 ### Column
 
@@ -71,8 +72,9 @@ the answers, the tool lines, the turn footers and the composer all stand on it, 
 message is set against its right end. Nothing is centred and nothing is capped — a centred column
 moves its reading edge every time the window changes width, and a capped one leaves the window's
 room unused — except a *sentence of the interface* (a panel's note, an empty state), which keeps the
-reading measure because it is a label and not content (C5.3, C5.4). Avoid: *margin*, *gutter*,
-*content area*, *container*.
+reading measure because it is a label and not content (C5.3, C5.4). Avoid: *gutter*, *container*
+(the only margin in the product is the margin bar C5.5 names, and it marks the row you are in rather
+than anything about the page).
 
 ### Attachment
 
@@ -215,3 +217,10 @@ The messages an agent starts a run with, folded from the transcript's entries: e
 crosses as it was written, and a compaction stands in for everything before it. The transcript is
 what is stored; the history is what the agent reads. Avoid: *context*, which is pi's word for the
 same array and says nothing about where it came from.
+
+### Ledger
+
+A conversation as it is read on the page: the messages, the tool rows, and what each call was
+decided by, in order — the rendered form of the transcript, and the word the interface uses for the
+thing a person audits afterwards. The transcript is what is stored; the ledger is what is read, and
+a row in it says what ran *and why nothing stopped it* (ADR-0007).

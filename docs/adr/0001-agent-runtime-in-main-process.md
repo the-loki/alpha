@@ -1,20 +1,22 @@
-# The agent runs in the main process, as the person's own `pi`
+# The agent runs in the main process
 
-Alpha runs the agent in the Electron main process. It is the `pi` the person installed, started as
-a child process and spoken to over its RPC protocol; the renderer stays a pure view fed by IPC
-events.
+Alpha runs the agent in the Electron main process, and the renderer stays a pure view fed by IPC
+events. What this decision protects is where the agent runs, and why: credentials and filesystem
+access stay out of the web context, and the renderer reaches the agent only through the IPC
+contract.
 
 ## Superseded in part
 
-This decision was first written the other way up: the agent *was* a library Alpha embedded
-(`@earendil-works/pi-agent-core`'s `AgentHarness`), and Alpha owned the loop, the tools, the
-session store and the model client that went with it. That build is gone. What stands is where the
-agent runs — the main process — and why: credentials and filesystem access stay out of the web
-context, and the renderer reaches the agent only through the IPC contract.
+The title read "…as the person's own `pi`" for as long as the second half stood: a `pi` the person
+installed, started as a child process and spoken to over its RPC protocol. That build is gone.
+[ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) retired it and the agent
+is a library Alpha embeds again, in this same main process: neither the `pi` on the person's
+machine nor the RPC client that spoke to it is party to anything Alpha does now.
 
-[ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) retired the child-process
-half described below: the agent is a library Alpha embeds again, in the same main process. The half
-that stands is the process; the `pi` on the person's machine is no longer party to it.
+An earlier version of the decision was written the other way up as well: the agent *was* a library
+Alpha embedded (`@earendil-works/pi-agent-core`'s `AgentHarness`), and Alpha owned the loop, the
+tools, the session store and the model client that went with it. The half that stands through both
+reversals is the process.
 
 ## Context
 
@@ -36,16 +38,20 @@ when it is missing, and can install it if asked ([#109]).
 ## Consequences
 
 - Alpha owns: the window, the IPC contract, the conversation list and titles, the permission
-  ladder and its decisions, the credential store, and the transcript it *reads back*.
-- The agent owns: the run loop, the tools, the session file, the model client, compaction, and
-  the branch tree.
-- Anything Alpha wants the agent to do differently is an extension or a flag, not a patch: the
-  gate is an extension Alpha writes into its own agent directory
-  ([ADR-0002](0002-four-level-permission-ladder.md)).
-- A machine with no `pi` has a workbench that cannot run a conversation, which is a state the
-  window says out loud rather than a crash ([#109]).
-- The RPC protocol is the seam every test stands on: the suites drive a scripted agent that
-  speaks it (`tools/scripted-agent/`), and the things that cannot be faked — the gate's round
-  trip, a provider's reachability — are checked against a real `pi` when one is installed.
+  ladder and its decisions, the credential store, and the session store the transcript is read
+  from ([ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)).
+- The agent library owns the run loop, the model client and the compaction math; Alpha builds the
+  tools, the gate, the retry policy and the store on top of it as plugins.
+- Anything Alpha wants the agent to do differently is a plugin on Alpha's own base and never a
+  patch to the library — the gate is one
+  ([ADR-0002](0002-four-level-permission-ladder.md), ADR-0025).
+- There is nothing to find, install or keep alive. A machine with no `pi` runs conversations, and
+  the state the child-process build had to announce — a workbench that cannot run without it — is
+  gone with the child.
+- The provider's wire is the seam every test stands on: the suites point the app at a scripted
+  endpoint on loopback (`e2e/scripted-provider.ts`), and what a stand-in cannot answer — a real
+  provider's reachability, and a real model deciding to call a tool — is checked by the live spec
+  when the environment names a provider
+  ([ADR-0022](0022-a-live-run-may-reach-a-provider.md)).
 
 [#109]: https://github.com/the-loki/alpha/issues/109

@@ -18,10 +18,10 @@ until someone notices. There is no timeout to save it, and there should not be o
 runs: a user who walks away from a question and comes back an hour later has lost nothing.
 
 The workbench already has a rule for runs nobody is driving:
-[ADR-0008](0008-a-run-nobody-is-driving-is-over.md) settles a crashed run as interrupted rather
-than waiting to resume it. This is the same situation caught earlier — the run is alive but its
-question is not going to be answered — and it needs an answer that is decided before the run starts
-rather than discovered at 3am.
+[ADR-0008](0008-a-run-nobody-is-driving-is-over.md) ends a crashed run rather than waiting for a
+process that is gone to resume it. This is the same situation caught earlier — the run is alive but
+its question is not going to be answered — and it needs an answer that is decided before the run
+starts rather than discovered at 3am.
 
 ## Decision
 

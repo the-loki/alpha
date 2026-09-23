@@ -5,6 +5,24 @@ cited to the product's own docs/changelog. Claims from direct observation of an 
 are marked **[direct observation]**; anything I could not verify is marked **not documented** and
 kept out of the recommendations.
 
+## What became of this
+
+The design pass it was written for happened, and it settled on a reference pair this survey does not
+name — Linear and Raycast, recorded in [ADR-0027](../adr/0027-caliper-design-language.md) and
+binding in [05-design.md](../constraints/05-design.md). §2's reading of which products Alpha
+resembles is therefore superseded; the observations below are still what they were, evidence about
+those products.
+
+Taken: a level indicator visible at all times, an approval card carrying the exact command with a
+scoped "always allow", remembered rules that are listed and revocable, a queue rather than a forced
+interrupt, a denial that carries its reason back to the model, and thinking collapsed above the
+answer with its own duration.
+
+Not taken: the side panel for work-in-progress state and the diff panel beside the conversation —
+nothing floats over the page (C5.4), and a diff is drawn inside the tool row that produced it — and
+the one-key approve/decline pair, since `Enter` allows once while `Escape` only moves focus away
+(C5.7).
+
 ## 1. ChatGPT desktop app
 
 ### 1.1 Sidebar and conversation list

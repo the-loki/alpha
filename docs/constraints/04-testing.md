@@ -61,6 +61,7 @@ checked against, none of which a script can show
 | `ALPHA_LIVE_MODEL` | The model id to run there |
 | `ALPHA_LIVE_KEY` | A key for it: read from the environment, held in that run's own vault file, and committed nowhere |
 | `ALPHA_LIVE_API` | The wire protocol, `openai-completions` by default; `anthropic-messages` and `openai-responses` are the others Alpha speaks |
+| `ALPHA_LIVE_AUTH_STYLE` | How the key rides: `api-key` by default (the wire's own header), or `bearer` for `Authorization: Bearer` |
 | `ALPHA_LIVE_CONTEXT` / `ALPHA_LIVE_OUTPUT` | The model's context window and output room, 128000/8192 by default — this test's numbers, not the model's |
 | `ALPHA_LIVE_IMAGES` | `1` enables the attached-picture turn, for a model that takes images |
 
@@ -92,4 +93,6 @@ value read from the transcript after a real run.
 covered by tests over source strings that must pass and must fail, so a broken regex cannot
 silently pass the whole repo.
 
-**Enforcement:** `packages/domain`'s unit tests plus the checker's own fixtures.
+**Enforcement:** the checker's own tests — `tools/constraints/rules.test.mjs`, plus the fixture
+beside each rule module (`rules/01-typescript.test.mjs` and its siblings) — run with the rest of
+`pnpm test`.

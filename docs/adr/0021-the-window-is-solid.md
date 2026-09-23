@@ -31,7 +31,7 @@ exactly the reads they make. A delta updates the text node it belongs to and not
 virtual DOM leaves the dependency list with React.
 
 **The stores are Solid stores, and the actions beside them are the only writers.** `shell`,
-`conversations`, `providers`, `tasks` and `agent` are `createStore` values in `apps/desktop/src/renderer/stores/`, read
+`conversations`, `providers` and `tasks` are `createStore` values in `apps/desktop/src/renderer/stores/`, read
 directly where they are used; derived values (the composer's folder, the running model, a task's
 runs) are getters, so asking for one reads the stores at the moment of asking. A component that
 reads `conversations.transcript.status` is subscribed to that field and to nothing else.
@@ -45,10 +45,11 @@ href="#/…">`: the browser does the navigation, the router hears the hash chang
 component decorates the anchor with attributes or classes of its own.
 
 **Message markdown is a tree walked by hand.** `remark` parses the answer (GFM included) and
-`apps/desktop/src/renderer/components/Markdown.tsx` maps each node to an element: a script tag in a model's answer is
-printed, never run, and the streaming caret goes inside whichever block the last character landed
-in because every mdast node carries its own offsets. The alternative — a markdown-to-HTML library
-and `innerHTML` — would trade the file's one safety property for a smaller file.
+`apps/desktop/src/renderer/components/conversation/Markdown.tsx` maps each node to an element: a
+script tag in a model's answer is printed, never run, and the streaming caret goes inside whichever
+block the last character landed in because every mdast node carries its own offsets. The
+alternative — a markdown-to-HTML library and `innerHTML` — would trade the file's one safety
+property for a smaller file.
 
 ## Consequences
 

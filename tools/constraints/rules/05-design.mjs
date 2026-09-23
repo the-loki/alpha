@@ -34,10 +34,10 @@ export const DESIGN_RULES = [
   {
     id: '05-design:two-voices',
     constraint: '05-design.md',
-    description: 'the text is sans (font-text, Inter) and the apparatus is mono; there is no third face',
+    description: 'the text is sans (font-text, Geist Sans) and the apparatus is mono; there is no third face',
     // C5.3: two voices, and only two. The text voice keeps its own name — font-text, backed by
-    // Inter — so a raw `font-sans` (the framework's system stack), a serif, a display face or an
-    // arbitrary `font-[…]` are each drift away from that pair, banned outright in classes and in
+    // Geist Sans — so a raw `font-sans` (the framework's system stack), a serif, a display face or
+    // an arbitrary `font-[…]` are each drift away from that pair, banned outright in classes and in
     // the stylesheet alike.
     check({ path, text }) {
       if (!path.startsWith('apps/desktop/src/renderer/')) return []
@@ -50,7 +50,7 @@ export const DESIGN_RULES = [
         if (third === null) return
         found.push({
           line: index + 1,
-          message: `${third[0]} is a third face; the text is font-text (Inter) and the apparatus is font-mono (C5.3)`,
+          message: `${third[0]} is a third face; the text is font-text (Geist Sans) and the apparatus is font-mono (C5.3)`,
           text: trimmed,
         })
       })

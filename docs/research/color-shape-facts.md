@@ -3,6 +3,15 @@
 研究方法：抓取两家官网的线上 CSS 原文（与官方设计系统同源的 token 文件）、Raycast 官方开发者文档与 npm 类型、两家官方博客；逐条给出来源与置信度。
 置信度标记：**高** = 官方线上 CSS/文档原文直出；**中** = 官方站点上「描绘 App」的组件或对官方文档配图的像素采样（无法在 Linux 上直接打开桌面 App 本体核对）；**低/缺口** = 无公开来源。
 
+> **这是证据，不是规范。** 本文是 issue #143 的研究产物，Caliper 语言由它决定，而现行规范在
+> [ADR-0027](../adr/0027-caliper-design-language.md) 与 [constraints/05-design.md](../constraints/05-design.md)。
+> 被采纳：单色强调 indigo（暗 `#7170FF` / 亮 `#5E6AD2`）、暗色四级背景
+> `#08090A / #0F1011 / #141516 / #191A1B`、Linear 的三条语义色（`#27A644` / `#F0BF00` / `#5EB0FF`）
+> 与 Raycast 的红 `#FF6161`、五档投影名（none/tiny/low/medium/high）、三档时长 100/160/250ms 与同一条
+> ease-out-quad、四档圆角 4/6/8/12px。
+> 被否决：大圆角与胶囊（Caliper 里没有 `rounded-full`）、玻璃与亚克力、Raycast 的品牌红与 26px
+> 窗口圆角、Linear 的四档按钮高度（窗口里只有 2rem 与 1.5rem 两个高度）。
+
 ---
 
 ## 一、Linear

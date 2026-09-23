@@ -3,8 +3,9 @@
 Every model carries a **takes pictures** setting, off until it is turned on. A picture attached to
 a conversation whose model does not take them is refused — at the composer when the window knows
 the model, and in the main process when it does not — rather than sent as a message the model never
-saw a picture in. The setting travels to the agent as the model's `input` list in `models.json`; the
-refusal is Alpha's, read from the same record (packages/providers/src/models.ts).
+saw a picture in. The setting becomes the model's `input` list in the runtime Alpha builds, and the
+refusal is Alpha's, read from the same stored definition
+(`apps/desktop/src/main/runtime/model-runtime.ts`, `packages/providers/src/models.ts`).
 
 ## Context
 
@@ -34,9 +35,10 @@ model row in the models panel, stored in `providers.json` with the rest of the m
 through the same validator. It is **off** for a model that does not say otherwise, including every
 model stored before this setting existed.
 
-**The agent is told, and its protocol decides.** The setting is written into the model's `input`
-in `models.json`: a model that takes pictures is declared `['text', 'image']`, and one that does not
-is declared `['text']` (`runtime/agent-models.ts`). That is the fix for the silent drop — the flag
+**The runtime is told, and its protocol decides.** The setting becomes the model's `input` where
+the runtime builds the model: a model that takes pictures is declared `['text', 'image']`, and one
+that does not is declared `['text']`
+(`apps/desktop/src/main/runtime/model-runtime.ts`). That is the fix for the silent drop — the flag
 the protocol already respects is finally set.
 
 **Where a picture is refused.** Two places, one sentence each:
@@ -45,9 +47,10 @@ the protocol already respects is finally set.
   pictures is dropped and the composer says so, naming the model and where to change it. It also
   drops a picture already attached if the model changes under it — switching conversations, or
   switching model — rather than letting the state go stale.
-- The **main process**, always, before the turn starts: `prompt` refuses an attachment for a model
-  whose `input` does not include `image`. This is the boundary. It is also what covers the case the
-  window cannot see: the scripted test runtime, or a window whose provider list has not arrived.
+- The **main process**, always, before the turn starts: the check that a turn may begin refuses an
+  attachment for a model whose stored definition does not take pictures (`startProblem` in
+  `@alpha/providers`). This is the boundary. It is also what covers the case the window cannot see:
+  the scripted test runtime, or a window whose provider list has not arrived.
 
 **Unknown is not the same as no.** When the window cannot resolve the model at all it allows the
 picture and leaves the decision to the main process, because refusing on ignorance would turn a
@@ -62,7 +65,7 @@ actually point at.
   previous behaviour was to send them into a void.
 - The model list in a conversation's picker is unchanged: capability is not a filter there, because
   a text-only model is still the right model for a question.
-- `definitionOf` and `useRunningModel` exist because of this: the window has to resolve a model
+- `definitionOf` and `runningModel` exist because of this: the window has to resolve a model
   reference to its definition to know what it can be handed, and the composer's chip, its paperclip
   and its refusal all have to agree about which model that is.
 - Nothing else consults the flag. Audio, video and documents are not attachments this workbench

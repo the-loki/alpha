@@ -45,8 +45,12 @@ choice between the same two palettes; `system` is a choice, not a third theme.
 | `--line` | black 12% | white 10% | Input and card frames — and the hairline where kinds meet: the rail from the page, a view head from its body, one group from the next |
 | `--line-strong` | black 18% | white 16% | Focused input border |
 | `--accent` | `#5E6AD2` | `#7170FF` | Here / now / primary / decisive (see C5.1) |
-| `--accent-strong` | `#5E6AD2` | `#5850EC` | The fill under white text on a solid button |
+| `--accent-strong` | `#5E6AD2` | `#5850EC` | The fill under `--accent-ink` on a solid button |
+| `--accent-ink` | `#FFFFFF` | `#FFFFFF` | The ink on a filled accent |
+| `--accent-hover` | `#4C56C0` | `#8B8AFF` | The accent as text under the pointer (C5.6) |
+| `--accent-deep` | `#4C56C0` | `#4943D8` | The accent under the pointer where ink stands on it (C5.6) |
 | `--danger` | `#D92D20` | `#FF6161` | Failure, destruction, denial — and nothing else |
+| `--danger-ink` | `#FFFFFF` | `#17150F` | The ink on a filled danger control; the dark palette answers near-black, because white on `#FF6161` does not clear 4.5:1 |
 | `--success` | `#1A7F37` | `#27A644` | Done, remembered |
 | `--warning` | `#A16207` | `#F0BF00` | Waiting on you, caution |
 | `--info` | `#175CD3` | `#5EB0FF` | Neutral information |
@@ -72,9 +76,10 @@ where a frame already says what it holds. A joint is `--line`; `--line-subtle` i
 | `full-access` | `--danger` |
 
 Every text/background pair above must clear **4.5:1** — every text step against every surface it
-stands on, `--accent` and the semantics as text against `--surface-0`, white on `--accent-strong`,
-white on `--danger`. `--faint` is metadata only and still clears 3:1. The level set must be
-four distinct hues. All of it is asserted in `theme.test.ts`.
+stands on, `--accent` and the semantics as text against `--surface-0`, and each ink against the fill
+it stands on (`--accent-ink` on `--accent-strong`, `--danger-ink` on `--danger`). `--faint` is
+metadata only and still clears 3:1. The level set must be four distinct hues. All of it is asserted
+in `theme.test.ts`.
 
 ## C5.3 — Type
 
@@ -90,15 +95,15 @@ in rem, so the window's own scale applies:
 | A name: a rail row, a task, a heading in content | sans `text-name` | 0.875rem / 1.45 | 400–500 |
 | A page's title: what a view head names, and the rail's own heading in Settings | sans `text-page-title` | 1.125rem / 1.3, `tracking-tight` | 500 |
 | A heading inside an answer | sans `text-title` | 1.25rem / 1.3, `tracking-tight` | 600 |
-| An empty state's display line | sans `text-display` | 1.75rem / 1.25, tighter tracking | 600 |
+| An empty state's display line | sans `text-display` | 1.75rem / 1.25 | 400, or 600 for the greeting a new conversation opens on |
 | The apparatus: labels, buttons, chips, section names | mono `text-label` | 0.75rem / 1.4, sentence case | 500 |
 | Metadata: paths, counts, shortcuts, timestamps | mono `text-label` | 0.75rem / 1.4 | 400 |
 | Code, tool output, diffs, inline code | mono `text-code` | 0.8125rem / 1.6 | 400 |
 
 **A head is chrome, and the page's own words lead it.** The title a view head wears is one step
 under the title scale a heading inside an answer wears, and at the emphasis weight — so the 600 in
-a window belongs to the page saying something itself: the greeting a new conversation opens on, an
-empty state's one line, a heading the model wrote. A head that shouts competes with the words it
+a window belongs to the page saying something itself: the greeting a new conversation opens on, and
+a heading the model wrote. A head that shouts competes with the words it
 names, and a mark that only decorates is not what makes a title a title.
 
 **Weights are 400, 500 and 600 — three, not two.** Hierarchy still comes from size, colour and
@@ -109,7 +114,9 @@ or thin, and no `font-weight` may name another number: `05-design:no-other-weigh
 **Labels are sentence case, and the apparatus does not shout.** Codex's
 `UPPERCASE WIDE-TRACKING` micro labels retire with the print furniture; mono at 0.75rem in
 sentence case *is* the label. `05-design:no-uppercase-labels` fails `pnpm check` on `uppercase`
-and `tracking-widest` in the renderer.
+and `tracking-widest` in the renderer. The one thing drawn in capitals is the workbench's own name
+in the masthead — a mark rather than a label, written as letters with its own tracking, and not a
+shape the interface repeats anywhere else.
 
 There is no third face: `05-design:two-voices` fails `pnpm check` on `font-sans`, `font-serif`,
 `font-display` or an arbitrary `font-[…]` anywhere under the renderer — the text voice's name is
@@ -120,8 +127,8 @@ a Chinese window is drawn in a face someone chose.
 
 **Width.** **The page fills the pane the rail leaves it, one padding in, and everything the page
 holds stands on that one pair of edges** — an invariant the window keeps at every width: title,
-messages, composer and code all share one left x, and widening the window from 1440 to 2400
-moves nothing (asserted by `e2e/design.spec.ts`). The only width that is capped is **a sentence
+messages, composer and code all share one left x, and widening the window from the 1200 it opens at
+to 2400 moves nothing (asserted by `e2e/design.spec.ts`). The only width that is capped is **a sentence
 of the interface** — a hint under a field, an empty state's line: `max-w-measure` (70ch) on lines
 that are labels rather than content. An answer's own prose fills the page, because that is the
 room the reader asked the window for.
@@ -141,9 +148,10 @@ are rem like every other length: **no `px` appears anywhere in the renderer, com
 — a length is rem or a Tailwind utility's own size, and `05-design:no-px-lengths` fails
 `pnpm check` on the first one it finds, wherever it hides.
 
-**Controls have three heights** — standard **2rem** (buttons, inputs, selects, a row of
-decisions), small **1.5rem** (chips, row actions), large **2.5rem** (the composer's primary
-field foot). Everything with a body is one of these three, centred, so a control's
+**Controls have two heights** — standard **2rem** (buttons, inputs, selects, chips, a row of
+decisions, and the window's own three at the corner) and small **1.5rem** (the marks that live
+inside a row: the rail's toggle, a conversation row's menu button, a row's own actions). Everything
+with a body is one of these two, centred, so a control's
 height never moves when its words do; a row of decisions is one row of one height and the
 primary is shouted with colour, never with size.
 
@@ -199,7 +207,7 @@ its top edge lights `--accent`: the margin is lit where the turn is being writte
 attachments and approval keep their existing behaviour — this is skin, not plumbing.
 
 **A new conversation is a welcome.** Before its first question the page holds a composition in
-the middle of the room: the app's name faint above (decoration, hidden from a reader), a greeting
+the middle of the room: the workbench's name faint above (decoration, hidden from a reader), a greeting
 in the largest text voice — the hour decides which — the writing box standing there rather than
 at the foot, the folder the message will be written in said on the box's own top edge with its
 address on the tooltip, and starter chips under it that lay their words in the box. With no
@@ -247,12 +255,17 @@ removed:
 
 Three durations, one curve: **100 / 160 / 250ms** on `cubic-bezier(.25, .46, .45, .94)`
 (ease-out-quad). 160ms is the default for colour transitions, entries and state changes; 100ms
-for the quick feedback; 250ms for a panel or dialog arriving. A pressed control dips
-`scale(.97)` **while pressed only**. On hover, only colour, border and ink change — nothing
+for the quick feedback; 250ms is held for a panel or dialog arriving, and the one arrival the
+window has today — a menu's quarter-rem rise — takes the normal 160ms instead, because a person
+clicking twice should never wait for it. Pressing adds nothing of its own —
+the same colour change the pointer already got is the whole answer, and no control scales or moves.
+On hover, only colour, border and ink change — nothing
 moves, nothing scales, no box changes: the pointer's answer is one gesture everywhere (a row
 fills `--surface-2`, a row inside a floating layer tints with the line, an outlined button
-tints, a solid one deepens, a chip strengthens its frame), and it is the only gesture. At rest the only animations are the caret's pulse and the
-working mark's breath, both in `--accent`. `prefers-reduced-motion: reduce` collapses every
+tints, a solid one deepens, a chip strengthens its frame), and it is the only gesture. At rest the
+animations are the pulse and the same pulse in a semantic colour: the streaming caret and a working
+conversation's mark in `--accent`, and an approval waiting on a person in `--warning`.
+`prefers-reduced-motion: reduce` collapses every
 transition to 0ms and freezes the caret and the mark.
 
 ## C5.7 — Accessibility floor

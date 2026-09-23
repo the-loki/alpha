@@ -31,6 +31,7 @@ naming the constraint file and the reason, in this shape:
 // constraints-ignore 01-typescript: vendor signature returns T | undefined
 ```
 
-`pnpm check:constraints` fails on violations that lack a `constraints-ignore` marker, and fails
-on a marker whose file does not exist. That keeps every exception visible and reasoned about,
-rather than accumulating as silent drift.
+`pnpm check:constraints` fails on violations that lack a `constraints-ignore` marker. The marker
+must name either the rule (`02-architecture:max-file-lines`) or the constraint file without its
+suffix (`01-typescript`): a marker that names neither silences nothing. That keeps every exception
+visible and reasoned about, rather than accumulating as silent drift.
