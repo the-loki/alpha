@@ -29,6 +29,15 @@ const isGenerated = (path) => path.startsWith('packages/i18n/src/')
 const PURE_PACKAGES = ['packages/i18n/src/', 'packages/domain/src/', 'packages/plugin/src/', 'packages/contract/src/']
 
 /**
+ * The packages that attach a capability to the agent, and therefore name pi: the face is where the
+ * agent's own shapes are the capability (a tool is an `AgentTool`), so the adapter goes in the
+ * capability's package and the app holds nothing but the registration (C2.8). Closed on purpose:
+ * a library that is not on this list may not import the agent library, and no package may import
+ * Electron. A package joins it by being written down here, next to its row in the table below.
+ */
+const AGENT_LINKING_PACKAGES = ['packages/coding-tools/src/']
+
+/**
  * Which library may import which. The dictionary sits under everything, the rules know the
  * dictionary, the contract and the plugin base know those two, and each library around the
  * workbench's own files — the sessions, the conversation list, the schedule, the connections, the
@@ -48,6 +57,7 @@ const LIBRARY_DEPENDENCIES = {
   'packages/providers/src/': ['@alpha/contract', '@alpha/domain'],
   'packages/gate/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/state'],
   'packages/retry/src/': ['@alpha/plugin'],
+  'packages/coding-tools/src/': [],
 }
 
 const stripStrings = (line) =>
@@ -502,11 +512,13 @@ export const RULES = [
   {
     id: '02-architecture:no-agent-dependency',
     constraint: '02-architecture.md',
-    description: 'the agent library links into main alone; the window and the libraries stay clear of it',
+    description: 'the agent library links into main and the packages that attach to it, nowhere else',
     check({ path, text }) {
       if (!isSource(path) || !path.includes('/src/')) return []
-      // The runtime is where the agent lives now (ADR-0025); everywhere else the contract is the door.
+      // The runtime is where the agent lives (ADR-0025); everywhere else the contract is the door,
+      // except in the package that carries a capability whose face is pi's own shape (C2.8).
       if (path.startsWith('apps/desktop/src/main/')) return []
+      if (AGENT_LINKING_PACKAGES.some((mine) => path.startsWith(mine))) return []
       const found = []
       text.split('\n').forEach((line, index) => {
         if (isComment(line) || line.includes('npm install')) return
@@ -514,7 +526,7 @@ export const RULES = [
           if (specifier.startsWith('@earendil-works/') || /^pi-(agent-core|ai)$/.test(specifier)) {
             found.push({
               line: index + 1,
-              message: 'the agent library is main-process only: reach it through the runtime or the contract',
+              message: 'the agent library links into main and its capability packages: C2.0 names them',
               text: line.trim(),
             })
           }

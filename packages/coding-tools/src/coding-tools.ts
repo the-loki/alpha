@@ -5,6 +5,10 @@
  * shape it takes, which is the same tool with one difference in the `execute` arguments: the
  * agent's abort signal sits where the harness tool takes its context, so the adapter drops the
  * signal (the loop carries cancellation through the chord context) and fills the rest itself.
+ *
+ * The plugin is a face and nothing else: `tools()` hands the base the four, and `main` registers
+ * it. This package naming pi is the point rather than an accident — a tool *is* an `AgentTool`, so
+ * the capability's package is where its adapter belongs (C2.0, C2.8).
  */
 
 import {
@@ -20,7 +24,6 @@ import {
 import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
 import type { TSchema } from 'typebox'
-import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** What the plugin needs: the workspace the conversation works in. */
 export interface CodingToolsPorts {
@@ -66,8 +69,14 @@ function asAgentTool<TParameters extends TSchema, TDetails>(
   }
 }
 
+/** A plugin that carries one face: what the base needs to hang it on the agent. */
+export interface CodingToolsPlugin {
+  name: string
+  tools: () => AgentTool[]
+}
+
 /** The plugin: the four tools in the order the old agent offered them. */
-export function createCodingToolsPlugin(ports: CodingToolsPorts): AlphaPlugin {
+export function createCodingToolsPlugin(ports: CodingToolsPorts): CodingToolsPlugin {
   const context = toolContext(ports.workspacePath)
   return {
     name: 'coding-tools',

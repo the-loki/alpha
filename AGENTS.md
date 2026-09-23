@@ -23,19 +23,21 @@ permission level, approval, provider, credential, model).
 ### Layout
 
 `apps/desktop` is the workbench: `src/main` is the Electron main process and the agent runtime, `src/preload`
-is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its eleven libraries — the dictionary
+is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its twelve libraries — the dictionary
 (`@alpha/i18n`), the rules (`@alpha/domain`), the contract between the processes (`@alpha/contract`), the plugin
-base (`@alpha/plugin`), the two capabilities hung on that base (`@alpha/gate`, `@alpha/retry`), and the files the
-workbench keeps for itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`, `@alpha/tasks`,
-`@alpha/providers`. None of them may import Electron or the agent library; the app depends on them and never
-backwards.
+base (`@alpha/plugin`), the capabilities hung on that base (`@alpha/gate`, `@alpha/retry`, `@alpha/coding-tools`
+— the last names the agent library, which is what C2.0's exception is for), and the files the workbench keeps for
+itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`, `@alpha/tasks`, `@alpha/providers`. No library
+may import Electron, and only a capability package carrying its own adapter may name the agent library; the app
+depends on them and never backwards.
 
 ### Before writing code here
 
 `docs/constraints/` is binding, not advisory — it carries the size budgets, the `null` ban, the
 process split, and the scope cuts, each with how it is enforced. Decisions that were expensive to
 reverse are in `docs/adr/`. A new capability of the agent is a plugin on the base (C2.8), not a
-branch in the runtime: a pure decision in a library, a hook face in `main`.
+branch in the runtime — one package holding the decision, the face, and the adapter where the face
+is pi's own shape; `main` keeps the registration.
 
 ## Agent skills
 

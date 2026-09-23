@@ -7,6 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs'
+import { createCodingToolsPlugin } from '@alpha/coding-tools'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import { createGatePlugin } from '@alpha/gate'
@@ -25,7 +26,6 @@ import type { Agent, CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
 import { contextOf } from './agent-context.ts'
 import { assembleAgent } from './assemble-agent.ts'
-import { createCodingToolsPlugin } from './coding-tools.ts'
 import { createCompactionPlugin } from './compaction-plugin.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import { createModelRuntime } from './model-runtime.ts'

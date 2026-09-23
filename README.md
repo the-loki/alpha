@@ -136,6 +136,7 @@ packages/tasks          the scheduled tasks: the file, the clock, the service
 packages/providers      the connections, the key vault, and the model a conversation runs on
 packages/gate           the permission ladder and the approvals broker, as a face on the base
 packages/retry          auto-retry: the decision and the hook that spends an attempt on it
+packages/coding-tools   the four coding tools, as a face on the base (names the agent library)
 e2e                     Playwright specs that launch the built app
 tools/constraints       the checker that keeps the constraints honest
 ```
