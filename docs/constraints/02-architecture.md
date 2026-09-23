@@ -159,9 +159,13 @@ The agent is assembled from plugins of Alpha's own
 ([ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)). A plugin is a name
 plus the faces it contributes, and the base attaches each face where it belongs: the tools it adds
 become the agent's tools, its `beforeToolCall` joins the chain the base hands the agent (the chain
-itself is `chainToolVerdicts`, in `@alpha/plugin`), and its `afterRun` is called when a run ends.
-So a capability is added as a face on that contract, with a decision behind it that stands without
-the agent. The base is what other functions are built on, not one more thing wired into the runtime.
+itself is `chainToolVerdicts`, in `@alpha/plugin`), and its `afterRun` is asked when a run ends —
+handed the outcome and not the agent, through `chainAfterRunVerdicts`, where any hook asking for a
+retry is enough and an aborted run is never one. So a capability is added as a face on that
+contract, with a decision behind it that stands without the agent. A hook that needs more than the
+outcome holds its own ports — the compaction plugin reads the live agent and the store that way —
+so what travels through a face is never pi's own shapes. The base is what other functions are built
+on, not one more thing wired into the runtime.
 
 A plugin may also hand the runtime a handle, and two built-ins do: the compaction plugin's
 on-demand path, which "compact now" calls, and the retry plugin's decision, which the runtime asks

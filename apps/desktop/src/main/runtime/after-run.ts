@@ -1,12 +1,14 @@
 /**
- * The `afterRun` face, driven by the base: wait the run out, ask every hook in order how it
- * turned out, and when a hook asks for a retry on a run that was not aborted, let the agent
- * continue. The retry loop lives here so no caller re-implements it; a hook that always retries
- * loops forever, so capping attempts is the auto-retry plugin's own business.
+ * The `afterRun` face, driven by the base: wait the run out, hand the outcome to the hooks' chain,
+ * and when the chain answers a retry, let the agent continue. What the chain is — every hook asked
+ * in assembly order, any retry asking enough, an abort never one — is `@alpha/plugin`'s rule; what
+ * stays here is the part that needs pi: reading the outcome off the transcript, dropping the failed
+ * turn, and driving the agent again. The retry loop lives here so no caller re-implements it; a hook
+ * that always retries loops forever, so capping attempts is the auto-retry plugin's own business.
  */
 
 import type { Undef } from '@alpha/domain'
-import type { AfterRunOutcome } from '@alpha/plugin'
+import { type AfterRunHook, type AfterRunOutcome, chainAfterRunVerdicts } from '@alpha/plugin'
 import type { Agent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import type { AlphaPlugin } from './plugin-contract.ts'
@@ -37,19 +39,17 @@ function dropFailedTurn(agent: Agent): void {
   agent.state.messages = messages
 }
 
-/** Waits the current run out, then asks every plugin's `afterRun` hook, retrying on request. */
+/** The hooks the assembled plugins contribute, read per run the way the tool chain reads its own. */
+function hooksOf(plugins: AlphaPlugin[]): AfterRunHook[] {
+  return plugins.flatMap((plugin) => (plugin.afterRun === undefined ? [] : [plugin.afterRun]))
+}
+
+/** Waits the current run out, then asks the plugins' `afterRun` chain, retrying on its answer. */
 export async function runAfterRunHooks(agent: Agent, plugins: AlphaPlugin[]): Promise<void> {
   await agent.waitForIdle()
   for (;;) {
-    const outcome = outcomeOf(agent)
-    let retry = false
-    for (const plugin of plugins) {
-      const hook = plugin.afterRun
-      if (hook === undefined) continue
-      const verdict = await hook({ agent, model: agent.state.model, outcome })
-      if (verdict?.retry === true) retry = true
-    }
-    if (!retry || outcome.aborted) return
+    const verdict = await chainAfterRunVerdicts(hooksOf(plugins))(outcomeOf(agent))
+    if (verdict?.retry !== true) return
     dropFailedTurn(agent)
     await agent.continue()
   }

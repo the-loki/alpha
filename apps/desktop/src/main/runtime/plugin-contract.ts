@@ -1,28 +1,19 @@
 /**
  * The plugin contract Alpha assembles its agent from (ADR-0025), as pi needs it: the vocabulary of
  * a face is `@alpha/plugin`, and what lives here is the binding — where pi's `AgentTool` goes, and
- * what a hook is handed. Tools concatenate in assembly order; `beforeToolCall` chains in that order
- * with the first block winning (the chain itself is `chainToolVerdicts`, in the library); `afterRun`
- * observes a finished run and may ask the base to retry it. The contract is Alpha's own: no external
- * files, no loader, no re-implementation of coding-agent's extension format.
+ * which of the library's hooks the app carries. Tools concatenate in assembly order; `beforeToolCall`
+ * and `afterRun` chain in that order, each with its own rule (`chainToolVerdicts`,
+ * `chainAfterRunVerdicts`, in the library). The contract is Alpha's own: no external files, no
+ * loader, no re-implementation of coding-agent's extension format.
  */
 
-import type { Undef } from '@alpha/domain'
-import type { AfterRunOutcome, AfterRunVerdict, BeforeToolCallHook } from '@alpha/plugin'
-import type { Agent, AgentTool } from '@earendil-works/pi-agent-core'
-import type { Api, Model } from '@earendil-works/pi-ai'
+import type { AfterRunHook, BeforeToolCallHook } from '@alpha/plugin'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 
-/** What an `afterRun` hook sees: the agent, the model it ran on, and how the run turned out. */
-export interface AfterRunContext {
-  agent: Agent
-  model: Model<Api>
-  outcome: AfterRunOutcome
-}
-
-/** One Alpha plugin: a name and the hook faces it contributes. */
+/** One Alpha plugin: a name and the faces it contributes. */
 export interface AlphaPlugin {
   name: string
   tools?: () => AgentTool[]
   beforeToolCall?: BeforeToolCallHook
-  afterRun?: (context: AfterRunContext) => Promise<Undef<AfterRunVerdict>>
+  afterRun?: AfterRunHook
 }

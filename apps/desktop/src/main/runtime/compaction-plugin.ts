@@ -78,8 +78,8 @@ export function createCompactionPlugin(ports: CompactionPluginPorts): Compaction
   const settings = ports.settings ?? DEFAULT_COMPACTION_SETTINGS
   return {
     name: 'compaction',
-    afterRun: async (context) => {
-      if (context.outcome.aborted) return undefined
+    afterRun: async (outcome) => {
+      if (outcome.aborted) return undefined
       await compactNow(ports, settings, false)
       return undefined
     },

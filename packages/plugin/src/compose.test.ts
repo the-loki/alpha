@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { chainToolVerdicts } from './compose.ts'
-import type { BeforeToolCallHook } from './faces.ts'
+import { chainAfterRunVerdicts, chainToolVerdicts } from './compose.ts'
+import type { AfterRunHook, AfterRunOutcome, BeforeToolCallHook } from './faces.ts'
 
 const call = { toolCallId: 'call-1', toolName: 'bash', args: { command: 'ls' } }
+
+const FAILURE: AfterRunOutcome = { failed: 'the provider hung up', aborted: false }
+const ABORT: AfterRunOutcome = { failed: undefined, aborted: true }
 
 describe('[plugin] the beforeToolCall chain', () => {
   it('passes a call no hook blocks', async () => {
@@ -68,5 +71,56 @@ describe('[plugin] the beforeToolCall chain', () => {
 
   it('is a pass when there is no hook at all', async () => {
     expect(await chainToolVerdicts([])(call)).toBeUndefined()
+  })
+})
+
+describe('[plugin] the afterRun chain', () => {
+  it('asks every hook in assembly order, and a retry behind another is still heard', async () => {
+    const asked: string[] = []
+    const naming =
+      (name: string, retry: boolean): AfterRunHook =>
+      async () => {
+        asked.push(name)
+        return retry ? { retry: true } : undefined
+      }
+
+    const verdict = await chainAfterRunVerdicts([naming('first', true), naming('second', false)])(FAILURE)
+
+    expect(verdict?.retry).toBe(true)
+    expect(asked).toEqual(['first', 'second'])
+  })
+
+  it('no hook asking for a retry is no verdict', async () => {
+    const silent: AfterRunHook = async () => undefined
+
+    expect(await chainAfterRunVerdicts([silent, silent])(FAILURE)).toBeUndefined()
+  })
+
+  it('an aborted run is shown to every hook and is never retried', async () => {
+    const asked: string[] = []
+    const eager: AfterRunHook = async (outcome) => {
+      asked.push(outcome.aborted ? 'aborted' : 'failed')
+      return { retry: true }
+    }
+
+    expect(await chainAfterRunVerdicts([eager])(ABORT)).toBeUndefined()
+    expect(asked).toEqual(['aborted'])
+    expect(await chainAfterRunVerdicts([eager])(FAILURE)).toEqual({ retry: true })
+  })
+
+  it('carries the outcome through to every hook unchanged', async () => {
+    const seen: AfterRunOutcome[] = []
+    const look: AfterRunHook = async (outcome) => {
+      seen.push(outcome)
+      return undefined
+    }
+
+    await chainAfterRunVerdicts([look, look])(FAILURE)
+
+    expect(seen).toEqual([FAILURE, FAILURE])
+  })
+
+  it('is a pass when there is no hook at all', async () => {
+    expect(await chainAfterRunVerdicts([])(FAILURE)).toBeUndefined()
   })
 })

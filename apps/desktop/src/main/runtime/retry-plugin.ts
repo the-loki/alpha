@@ -31,8 +31,8 @@ export function createRetryPlugin(ports: RetryPluginPorts = {}): RetryPlugin {
   const plugin: RetryPlugin = {
     name: 'auto-retry',
     shouldRetry: (outcome) => outcome.aborted === false && outcome.failed !== undefined && attempts < delays.length,
-    afterRun: async (context) => {
-      if (!plugin.shouldRetry(context.outcome)) {
+    afterRun: async (outcome) => {
+      if (!plugin.shouldRetry(outcome)) {
         // The run is over and took no retry: whatever failures came before it are paid for.
         attempts = 0
         return undefined

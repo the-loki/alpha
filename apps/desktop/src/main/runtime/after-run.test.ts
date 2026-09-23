@@ -19,8 +19,8 @@ const lastAssistantOf = (messages: AgentMessage[]): AssistantMessage | undefined
 /** The plugin that records every outcome it is shown, in the order it is asked. */
 const observing = (name: string, seen: string[]): AlphaPlugin => ({
   name,
-  afterRun: async (context) => {
-    seen.push(`${name}:${context.outcome.failed ?? 'clean'}${context.outcome.aborted ? ':aborted' : ''}`)
+  afterRun: async (outcome) => {
+    seen.push(`${name}:${outcome.failed ?? 'clean'}${outcome.aborted ? ':aborted' : ''}`)
     return undefined
   },
 })
@@ -41,9 +41,9 @@ describe('driving the afterRun hooks', () => {
     const outcomes: AfterRunOutcome[] = []
     const retryOnce: AlphaPlugin = {
       name: 'retry-once',
-      afterRun: async (context) => {
-        outcomes.push(context.outcome)
-        return context.outcome.failed === undefined ? undefined : { retry: true }
+      afterRun: async (outcome) => {
+        outcomes.push(outcome)
+        return outcome.failed === undefined ? undefined : { retry: true }
       },
     }
     const seen: string[] = []
@@ -74,8 +74,8 @@ describe('driving the afterRun hooks', () => {
     const outcomes: AfterRunOutcome[] = []
     const alwaysRetry: AlphaPlugin = {
       name: 'eager',
-      afterRun: async (context) => {
-        outcomes.push(context.outcome)
+      afterRun: async (outcome) => {
+        outcomes.push(outcome)
         return { retry: true }
       },
     }

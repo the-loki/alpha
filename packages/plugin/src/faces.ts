@@ -38,6 +38,14 @@ export interface AfterRunVerdict {
 }
 
 /**
+ * What an `afterRun` hook is: how the run turned out, and whether the base should continue it. The
+ * hook is handed the outcome and not the agent — one that needs the transcript holds its own ports
+ * — which is what lets the policy live in a library while the driver stays in `main`. A run the
+ * person stopped is shown to every hook, but no hook's answer to it becomes a retry.
+ */
+export type AfterRunHook = (outcome: AfterRunOutcome) => Promise<Undef<AfterRunVerdict>>
+
+/**
  * The retry policy's pure decision — a failure, no abort, attempts to spend — consulted wherever a
  * run's end is being judged: by the hook that takes an attempt, and by the translator that decides
  * whether an ended run is over at all.
