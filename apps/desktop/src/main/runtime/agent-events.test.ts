@@ -1,6 +1,6 @@
 import type { RuntimeEvent, UsageTotals } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
-import { AgentEventTranslator, type RpcLikeEvent } from './agent-events.ts'
+import { AgentEventTranslator, failedMessageOf, type RpcLikeEvent } from './agent-events.ts'
 
 const usage = (input: number, output: number): Record<string, unknown> => ({
   input,
@@ -176,6 +176,15 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
 
     expect(kinds(events)).toEqual(['turn_started', 'run_failed'])
     expect(events[1]).toMatchObject({ type: 'run_failed', message: 'the provider hung up' })
+  })
+
+  it('reads the failure off an agent_end alone, and only when its last message erred', () => {
+    // The one decoder: the translator says `run_failed` with it, and the retry policy is asked
+    // about exactly what it read.
+    const failed = { role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' }
+    expect(failedMessageOf({ type: 'agent_end', messages: [failed] })).toBe('the provider hung up')
+    expect(failedMessageOf({ type: 'agent_end', messages: [] })).toBeUndefined()
+    expect(failedMessageOf({ type: 'message_end', message: failed })).toBeUndefined()
   })
 
   it('keeps the run open while the retry policy is going to try again', () => {

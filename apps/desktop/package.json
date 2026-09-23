@@ -21,6 +21,7 @@
     "@alpha/i18n": "workspace:*",
     "@alpha/plugin": "workspace:*",
     "@alpha/providers": "workspace:*",
+    "@alpha/retry": "workspace:*",
     "@alpha/sessions": "workspace:*",
     "@alpha/state": "workspace:*",
     "@alpha/tasks": "workspace:*",

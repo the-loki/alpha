@@ -27,11 +27,13 @@ apps/desktop/src/          the app: one package, three processes
                           ├──> @alpha/conversations
                           ├──> @alpha/tasks
                           ├──> @alpha/providers ──> @alpha/contract
-                          └──> @alpha/gate ──> @alpha/plugin, @alpha/state
+                          ├──> @alpha/gate ──> @alpha/plugin, @alpha/state
+                          └──> @alpha/retry ──> @alpha/plugin
 ```
 
-An arrow points the way an import goes: the app may import any library, the gate adds the two it
-needs (the plugin base and the state file), and everything else sits directly on the rules.
+An arrow points the way an import goes: the app may import any library, the two capabilities on the
+plugin base each add the base to the rules (the gate also reads the state file), and everything else
+sits directly on the rules.
 
 | Library | Holds | May import |
 | --- | --- | --- |
@@ -45,6 +47,7 @@ needs (the plugin base and the state file), and everything else sits directly on
 | `@alpha/tasks` | The scheduled tasks: the file, the clock that decides when one comes due, the service | `@alpha/domain` |
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
 | `@alpha/gate` | The permission ladder, the approvals broker, the refusal a run with nobody watching gets, the ports into the workbench's own file, and the face it hangs on the agent | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
+| `@alpha/retry` | Auto-retry: the decision a failed run's end is judged with, and the hook that spends an attempt on it | `@alpha/plugin` |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
 
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
@@ -175,9 +178,10 @@ copied out of the plugin.
 
 Where that decision lives follows the rule the packages were split by ([C2.1](#c21--one-workbench-a-handful-of-libraries-one-direction)):
 the part that holds without pi names nothing of pi's and lives in a library, where it is read and
-tested alone. The gate is the worked example and goes all the way — `@alpha/gate` decides what a
-call may do *and* carries its own `beforeToolCall` face, so the app holds nothing but the
-registration. An adapter in `main` is only needed where pi's shapes are the capability (a tool) or
+tested alone. Both capabilities that decide on their own now go all the way — `@alpha/gate` decides
+what a call may do *and* carries its own `beforeToolCall` face; `@alpha/retry` decides whether a
+failed run is driven again *and* carries its own `afterRun`; so the app holds nothing but the
+registrations. An adapter in `main` is only needed where pi's shapes are the capability (a tool) or
 where the run itself has to be driven.
 
 `pluginsFor` in the assembly is the one place a capability is registered: the runtime holds the

@@ -23,11 +23,12 @@ permission level, approval, provider, credential, model).
 ### Layout
 
 `apps/desktop` is the workbench: `src/main` is the Electron main process and the agent runtime, `src/preload`
-is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its ten libraries — the dictionary
+is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its eleven libraries — the dictionary
 (`@alpha/i18n`), the rules (`@alpha/domain`), the contract between the processes (`@alpha/contract`), the plugin
-base (`@alpha/plugin`), and the ones that keep the workbench's own files: `@alpha/state`, `@alpha/sessions`,
-`@alpha/conversations`, `@alpha/tasks`, `@alpha/providers`, `@alpha/gate`. None of them may import Electron or
-the agent library; the app depends on them and never backwards.
+base (`@alpha/plugin`), the two capabilities hung on that base (`@alpha/gate`, `@alpha/retry`), and the files the
+workbench keeps for itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`, `@alpha/tasks`,
+`@alpha/providers`. None of them may import Electron or the agent library; the app depends on them and never
+backwards.
 
 ### Before writing code here
 

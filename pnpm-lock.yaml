@@ -47,6 +47,9 @@ importers:
       '@alpha/providers':
         specifier: workspace:*
         version: link:../../packages/providers
+      '@alpha/retry':
+        specifier: workspace:*
+        version: link:../../packages/retry
       '@alpha/sessions':
         specifier: workspace:*
         version: link:../../packages/sessions
@@ -161,6 +164,12 @@ importers:
       typebox:
         specifier: 1.3.7
         version: 1.3.7
+
+  packages/retry:
+    dependencies:
+      '@alpha/plugin':
+        specifier: workspace:*
+        version: link:../plugin
 
   packages/sessions:
     dependencies:

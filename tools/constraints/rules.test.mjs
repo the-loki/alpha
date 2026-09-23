@@ -768,11 +768,11 @@ describe('02-architecture:capabilities-are-plugins', () => {
   })
 
   it('passes the factory where it is written, and a factory in its own test', () => {
-    const declaration = 'export function createGatePlugin(ports: GatePluginPorts): AlphaPlugin {'
-    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/gate-plugin.ts', declaration))).toEqual([])
+    const declaration = 'export function createCodingToolsPlugin(ports: CodingToolsPorts): AlphaPlugin {'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/coding-tools.ts', declaration))).toEqual([])
 
     const inTest = 'const plugin = createRetryPlugin({ delays: [0] })'
-    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/retry-plugin.test.ts', inTest))).toEqual([])
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/conversation-runtime.test.ts', inTest))).toEqual([])
   })
 
   it('flags a capability wired where it is used', () => {

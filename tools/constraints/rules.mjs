@@ -47,6 +47,7 @@ const LIBRARY_DEPENDENCIES = {
   'packages/tasks/src/': ['@alpha/domain'],
   'packages/providers/src/': ['@alpha/contract', '@alpha/domain'],
   'packages/gate/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/state'],
+  'packages/retry/src/': ['@alpha/plugin'],
 }
 
 const stripStrings = (line) =>

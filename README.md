@@ -134,7 +134,8 @@ packages/sessions       the conversation on disk: the transcript, its entries, i
 packages/conversations  the list the sidebar shows, and the messages waiting to be sent
 packages/tasks          the scheduled tasks: the file, the clock, the service
 packages/providers      the connections, the key vault, and the model a conversation runs on
-packages/gate           the permission ladder and the approvals broker
+packages/gate           the permission ladder and the approvals broker, as a face on the base
+packages/retry          auto-retry: the decision and the hook that spends an attempt on it
 e2e                     Playwright specs that launch the built app
 tools/constraints       the checker that keeps the constraints honest
 ```

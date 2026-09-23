@@ -1,17 +1,18 @@
 /**
- * The auto-retry plugin (ADR-0025): coding-agent's design for a transient provider failure,
- * adapted to Alpha's base. The decision is pure and inspectable — a failure, no abort, attempts
- * to spend — and `afterRun` is the only place an attempt is taken: it sleeps this attempt's
- * backoff and asks the base to continue, which drops the failed trailing turn and drives again.
- * A run that ends without a retry hands the next one a whole budget.
+ * The auto-retry plugin (ADR-0025): coding-agent's design for a transient provider failure, as a
+ * face on the plugin base. The decision is pure and inspectable — a failure, no abort, attempts to
+ * spend — and `afterRun` is the only place an attempt is taken: it sleeps this attempt's backoff
+ * and asks the base to continue, which drops the failed trailing turn and drives again. A run that
+ * ends without a retry hands the next one a whole budget.
  *
  * The same decision keeps the window honest: the translator consults `shouldRetry` when an
  * `agent_end` arrives carrying a failure, and leaves the turn open while an attempt is planned.
  * The decision decides and the hook acts — and nothing is written between the two.
+ *
+ * Nothing here names pi: the face is `@alpha/plugin`'s, so auto-retry is a library's business like
+ * the policy it wraps (C2.8), and `main` keeps only the registration.
  */
-
-import type { RetryDecider } from '@alpha/plugin'
-import type { AlphaPlugin } from './plugin-contract.ts'
+import type { AfterRunHook, RetryDecider } from '@alpha/plugin'
 
 /** How the plugin waits: one delay per retry, in order. coding-agent's two retries. */
 export interface RetryPluginPorts {
@@ -19,7 +20,10 @@ export interface RetryPluginPorts {
 }
 
 /** The plugin, which is the pure decision the run's end is judged with. */
-export interface RetryPlugin extends AlphaPlugin, RetryDecider {}
+export interface RetryPlugin extends RetryDecider {
+  name: string
+  afterRun: AfterRunHook
+}
 
 const DEFAULT_DELAYS = [2000, 8000]
 

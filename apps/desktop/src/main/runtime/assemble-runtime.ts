@@ -12,6 +12,7 @@ import type { PermissionPorts } from '@alpha/gate'
 import { createGatePlugin } from '@alpha/gate'
 import type { RetryDecider } from '@alpha/plugin'
 import { modelFor, type ProviderStore } from '@alpha/providers'
+import { createRetryPlugin } from '@alpha/retry'
 import {
   type DecisionLedger,
   importLegacySessionIn,
@@ -29,7 +30,6 @@ import { createCompactionPlugin } from './compaction-plugin.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import { createModelRuntime } from './model-runtime.ts'
 import type { AlphaPlugin } from './plugin-contract.ts'
-import { createRetryPlugin } from './retry-plugin.ts'
 import { type ReadTextFile, systemPromptFor } from './system-prompt.ts'
 
 /** A workspace file's text, or nothing when it is not there: what the system prompt reads. */
