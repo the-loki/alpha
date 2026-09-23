@@ -1,4 +1,4 @@
-import type { Null } from '@alpha/core'
+import type { Null } from '@alpha/domain'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 

@@ -1,4 +1,4 @@
-import { THINKING_LEVELS, type ThinkingLevel, thinkingKey } from '@alpha/core'
+import { THINKING_LEVELS, type ThinkingLevel, thinkingKey } from '@alpha/domain'
 import { For, Show } from 'solid-js'
 import { nextThinking, setNextThinking } from '../stores/next-message.ts'
 import { useText } from '../stores/shell.ts'

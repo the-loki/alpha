@@ -1,3 +1,4 @@
+import type { EditEffect } from '@alpha/contract'
 import {
   type ChatBlock,
   type ChatBlockAttachment,
@@ -6,9 +7,8 @@ import {
   type ChatBlockThinking,
   type ChatBlockTool,
   type ChatMessage,
-  type EditEffect,
   formatDuration,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { createSignal, For, Index, type JSX, Match, Show, Switch } from 'solid-js'
 import { markdownOf } from '../lib/clipboard.ts'
 import { conversationActions, conversations } from '../stores/conversations.ts'

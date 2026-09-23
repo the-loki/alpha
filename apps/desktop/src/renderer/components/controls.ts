@@ -5,7 +5,7 @@
  * apparatus, so every button here is set in mono, and a row's name — which is a thing, not a
  * command — is set in the text voice where the row is drawn.
  */
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import { type Accessor, createEffect, onCleanup } from 'solid-js'
 
 /**

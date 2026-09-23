@@ -1,4 +1,4 @@
-import type { TextKey, TextParams } from '@alpha/core'
+import type { TextKey, TextParams } from '@alpha/i18n'
 import { createSignal } from 'solid-js'
 import { copyText } from '../lib/clipboard.ts'
 import { useText } from '../stores/shell.ts'

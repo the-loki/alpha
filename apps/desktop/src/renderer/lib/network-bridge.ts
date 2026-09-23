@@ -10,8 +10,6 @@ import {
   type AlphaBridge,
   type AppearancePatch,
   type ApprovalAnswerInput,
-  type Attachment,
-  type ConversationSummary,
   type DefaultModelInput,
   type EditEffect,
   IPC,
@@ -19,19 +17,23 @@ import {
   type NetworkPatch,
   type NetworkState,
   type OpenedConversation,
-  type PermissionLevel,
-  type PermissionRule,
   type PickWorkspaceResult,
-  type ProviderInput,
   type ProviderModelInput,
   type ProvidersSnapshotMessage,
-  type RuntimeEvent,
-  type ScheduledTask,
-  type TasksSnapshot,
-  type ThinkingLevel,
-  type Undef,
   type WindowState,
-} from '@alpha/core'
+} from '@alpha/contract'
+import type {
+  Attachment,
+  ConversationSummary,
+  PermissionLevel,
+  PermissionRule,
+  ProviderInput,
+  RuntimeEvent,
+  ScheduledTask,
+  TasksSnapshot,
+  ThinkingLevel,
+  Undef,
+} from '@alpha/domain'
 
 const TOKEN_KEY = 'alpha.token'
 

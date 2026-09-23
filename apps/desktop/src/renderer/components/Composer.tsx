@@ -1,4 +1,4 @@
-import type { Attachment, Undef } from '@alpha/core'
+import type { Attachment, Undef } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { batch, createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'

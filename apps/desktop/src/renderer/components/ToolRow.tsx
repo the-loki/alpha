@@ -1,14 +1,5 @@
-import {
-  type ApprovalRecord,
-  type ChatBlockTool,
-  formatDuration,
-  type Language,
-  levelKey,
-  riskKey,
-  type TextKey,
-  text,
-  type Undef,
-} from '@alpha/core'
+import { type ApprovalRecord, type ChatBlockTool, formatDuration, levelKey, riskKey, type Undef } from '@alpha/domain'
+import { type Language, type TextKey, text } from '@alpha/i18n'
 import { createEffect, createSignal, type JSX, Show } from 'solid-js'
 import { languageOf, shell, useText } from '../stores/shell.ts'
 import { CopyButton } from './CopyButton.tsx'

@@ -1,4 +1,4 @@
-import { formatCost, formatTokens, totalUsage } from '@alpha/core'
+import { formatCost, formatTokens, totalUsage } from '@alpha/domain'
 import { Show } from 'solid-js'
 import { conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'

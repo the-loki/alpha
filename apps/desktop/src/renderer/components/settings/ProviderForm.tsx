@@ -1,4 +1,4 @@
-import type { ProviderApi, ProviderAuthStyle } from '@alpha/core'
+import type { ProviderApi, ProviderAuthStyle } from '@alpha/domain'
 import { createSignal, Show } from 'solid-js'
 import { providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'

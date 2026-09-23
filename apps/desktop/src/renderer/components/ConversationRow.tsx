@@ -1,4 +1,4 @@
-import { type ConversationSummary, canArchive, formatAge } from '@alpha/core'
+import { type ConversationSummary, canArchive, formatAge } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'

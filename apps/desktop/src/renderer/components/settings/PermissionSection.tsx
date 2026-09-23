@@ -1,4 +1,4 @@
-import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/core'
+import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/domain'
 import { For, Show } from 'solid-js'
 import { shell, shellActions, useText } from '../../stores/shell.ts'
 import { GROUP_LABEL, TONE_CLASS } from '../controls.ts'

@@ -1,4 +1,4 @@
-import type { ConversationModel } from '@alpha/core'
+import type { ConversationModel } from '@alpha/domain'
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { inConversation, runningModel, setRunningModel } from '../stores/next-message.ts'
 import { providerActions, providers } from '../stores/providers.ts'

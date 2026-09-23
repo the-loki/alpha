@@ -1,4 +1,4 @@
-import { formatAge, newTaskRun, type RunVerdict, type TaskNode } from '@alpha/core'
+import { formatAge, newTaskRun, type RunVerdict, type TaskNode } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { useText } from '../stores/shell.ts'

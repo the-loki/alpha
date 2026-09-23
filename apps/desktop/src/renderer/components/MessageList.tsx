@@ -1,4 +1,4 @@
-import { type TranscriptState, visibleMessages } from '@alpha/core'
+import { type TranscriptState, visibleMessages } from '@alpha/domain'
 import { createMemo, Index } from 'solid-js'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { MessageView } from './MessageView.tsx'

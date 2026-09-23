@@ -1,10 +1,10 @@
 /**
  * Reading picked files. The bytes a picker hands over arrive as a data URL and nowhere else, so
- * this is the browser end of attachments: `@alpha/core` decides what an attachment *is*, and this
+ * this is the browser end of attachments: `@alpha/domain` decides what an attachment *is*, and this
  * is only how the browser spells one.
  */
 
-import { type Attachment, attachmentFromDataUrl, byteLengthOf, MAX_ATTACHMENT_BYTES } from '@alpha/core'
+import { type Attachment, attachmentFromDataUrl, byteLengthOf, MAX_ATTACHMENT_BYTES } from '@alpha/domain'
 
 /** A file as a data URL. A file that cannot be read resolves to nothing rather than throwing. */
 function dataUrlOf(file: File): Promise<string> {

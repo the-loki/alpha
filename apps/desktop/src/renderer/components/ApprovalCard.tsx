@@ -1,4 +1,4 @@
-import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/core'
+import { type ApprovalRequest, levelKey, type RuleScope, riskKey } from '@alpha/domain'
 import { createSignal, onMount, Show } from 'solid-js'
 import { conversationActions } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'

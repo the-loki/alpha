@@ -1,4 +1,4 @@
-import type { AlphaBridge } from '@alpha/core'
+import type { AlphaBridge } from '@alpha/contract'
 import { isBrowserClient, networkBridge } from './network-bridge.ts'
 
 declare global {

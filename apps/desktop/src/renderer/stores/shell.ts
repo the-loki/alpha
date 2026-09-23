@@ -1,23 +1,24 @@
+import type { AppearancePatch, LaunchState } from '@alpha/contract'
 import {
-  type AppearancePatch,
   composerFolder,
-  DEFAULT_LANGUAGE,
   DEFAULT_LEVEL,
   DEFAULT_THEME,
   emptyWorkspaceState,
-  type Language,
-  type LanguageSetting,
-  type LaunchState,
   type PermissionLevel,
-  resolveLanguage,
-  type TextKey,
-  type TextParams,
   type Theme,
-  text,
   type Undef,
   type WorkspaceRef,
   type WorkspaceSelection,
-} from '@alpha/core'
+} from '@alpha/domain'
+import {
+  DEFAULT_LANGUAGE,
+  type Language,
+  type LanguageSetting,
+  resolveLanguage,
+  type TextKey,
+  type TextParams,
+  text,
+} from '@alpha/i18n'
 import { createStore } from 'solid-js/store'
 import { bridge, type ClientHost, clientHost } from '../lib/bridge.ts'
 import { Unauthorized, unlock as unlockTransport, watchRefusals } from '../lib/network-bridge.ts'

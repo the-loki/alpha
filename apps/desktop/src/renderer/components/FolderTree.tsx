@@ -1,4 +1,5 @@
-import { type ConversationSummary, conversationCount, type FolderNode, folderName, type TaskNode } from '@alpha/core'
+import { type ConversationSummary, type FolderNode, folderName, type TaskNode } from '@alpha/domain'
+import { conversationCount } from '@alpha/i18n'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { languageOf, shell, shellActions, useText } from '../stores/shell.ts'

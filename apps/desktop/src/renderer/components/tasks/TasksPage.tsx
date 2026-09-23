@@ -7,7 +7,7 @@ import {
   type TaskRun,
   type TaskSchedule,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'

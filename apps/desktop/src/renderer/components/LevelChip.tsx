@@ -1,4 +1,4 @@
-import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/core'
+import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/domain'
 import { createSignal, For, Show } from 'solid-js'
 import { inConversation, nextLevel, setNextLevel } from '../stores/next-message.ts'
 import { useText } from '../stores/shell.ts'

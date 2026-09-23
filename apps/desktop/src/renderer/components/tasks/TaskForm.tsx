@@ -8,7 +8,7 @@ import {
   type ScheduledTask,
   type TaskSchedule,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { For, Show } from 'solid-js'
 import { shell, useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'

@@ -1,4 +1,4 @@
-import { type Undef, visibleMessages } from '@alpha/core'
+import { type Undef, visibleMessages } from '@alpha/domain'
 import { createEffect, createMemo, Show } from 'solid-js'
 import { conversations } from '../stores/conversations.ts'
 import { composerFolderOf, shell } from '../stores/shell.ts'

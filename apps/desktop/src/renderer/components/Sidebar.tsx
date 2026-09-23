@@ -1,4 +1,4 @@
-import { archivedConversations, folderTasks, folderTree, withoutRuns } from '@alpha/core'
+import { archivedConversations, folderTasks, folderTree, withoutRuns } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
 import { conversations } from '../stores/conversations.ts'

@@ -1,4 +1,5 @@
-import type { ProviderApi, ProviderView, TextKey, Undef } from '@alpha/core'
+import type { ProviderApi, ProviderView, Undef } from '@alpha/domain'
+import type { TextKey } from '@alpha/i18n'
 import { createSignal, Show } from 'solid-js'
 import { type ProviderTestOutcome, providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'

@@ -1,10 +1,5 @@
-import {
-  PROVIDER_APIS,
-  PROVIDER_AUTH_STYLES,
-  type ProviderApi,
-  type ProviderAuthStyle,
-  type TextKey,
-} from '@alpha/core'
+import { PROVIDER_APIS, PROVIDER_AUTH_STYLES, type ProviderApi, type ProviderAuthStyle } from '@alpha/domain'
+import type { TextKey } from '@alpha/i18n'
 import { For } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL } from '../controls.ts'

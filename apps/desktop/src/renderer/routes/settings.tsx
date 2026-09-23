@@ -1,4 +1,4 @@
-import type { TextKey } from '@alpha/core'
+import type { TextKey } from '@alpha/i18n'
 import { useSearchParams } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
 import { GROUP_LABEL, LIVE_SPINE, RAIL_ROW, ROW_LIVE } from '../components/controls.ts'

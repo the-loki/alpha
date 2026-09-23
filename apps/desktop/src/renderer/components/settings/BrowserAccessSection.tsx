@@ -1,4 +1,6 @@
-import type { NetworkBind, NetworkPatch, NetworkState, TextKey, Undef } from '@alpha/core'
+import type { NetworkPatch, NetworkState } from '@alpha/contract'
+import type { NetworkBind, Undef } from '@alpha/domain'
+import type { TextKey } from '@alpha/i18n'
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { shell, useText } from '../../stores/shell.ts'

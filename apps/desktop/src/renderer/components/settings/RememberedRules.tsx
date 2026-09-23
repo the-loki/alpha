@@ -1,4 +1,4 @@
-import { type PermissionRule, ruleScopeKey, toolRiskOf } from '@alpha/core'
+import { type PermissionRule, ruleScopeKey, toolRiskOf } from '@alpha/domain'
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
 import { useText } from '../../stores/shell.ts'

@@ -1,9 +1,8 @@
+import type { ApprovalAnswerInput, EditEffect } from '@alpha/contract'
 import {
-  type ApprovalAnswerInput,
   type Attachment,
   type ChatMessage,
   type ConversationSummary,
-  type EditEffect,
   emptyTranscript,
   openingTranscript,
   type PermissionLevel,
@@ -11,7 +10,7 @@ import {
   reduceTranscript,
   type ThinkingLevel,
   type TranscriptState,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { createStore } from 'solid-js/store'
 import { bridge } from '../lib/bridge.ts'
 

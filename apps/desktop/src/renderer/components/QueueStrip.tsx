@@ -1,4 +1,4 @@
-import type { Undef } from '@alpha/core'
+import type { Undef } from '@alpha/domain'
 import { createSignal, For, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { useText } from '../stores/shell.ts'

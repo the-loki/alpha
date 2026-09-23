@@ -14,7 +14,7 @@ import {
   type ProviderModelDefinition,
   type ThinkingLevel,
   type Undef,
-} from '@alpha/core'
+} from '@alpha/domain'
 import { conversationActions, conversations } from './conversations.ts'
 import { providerActions, providers } from './providers.ts'
 import { shell, shellActions } from './shell.ts'

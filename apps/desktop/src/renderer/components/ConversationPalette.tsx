@@ -1,4 +1,4 @@
-import type { ConversationSummary, Undef } from '@alpha/core'
+import type { ConversationSummary, Undef } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { conversationActions, conversations } from '../stores/conversations.ts'

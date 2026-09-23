@@ -1,4 +1,5 @@
-import type { DefaultModelInput, ProviderInput, ProviderModelInput, ProvidersSnapshotMessage } from '@alpha/core'
+import type { DefaultModelInput, ProviderModelInput, ProvidersSnapshotMessage } from '@alpha/contract'
+import type { ProviderInput } from '@alpha/domain'
 import { createStore } from 'solid-js/store'
 import { bridge } from '../lib/bridge.ts'
 

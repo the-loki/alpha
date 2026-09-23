@@ -1,4 +1,5 @@
-import { LANGUAGE_SETTINGS, type LanguageSetting, type TextKey, THEMES, type Theme } from '@alpha/core'
+import { THEMES, type Theme } from '@alpha/domain'
+import { LANGUAGE_SETTINGS, type LanguageSetting, type TextKey } from '@alpha/i18n'
 import { For, Show } from 'solid-js'
 import { shell, shellActions, useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, GROUP_LABEL } from '../controls.ts'

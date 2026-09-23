@@ -1,4 +1,4 @@
-import type { ScheduledTask, TaskRun, TasksSnapshot, Undef } from '@alpha/core'
+import type { ScheduledTask, TaskRun, TasksSnapshot, Undef } from '@alpha/domain'
 import { createStore } from 'solid-js/store'
 import { bridge } from '../lib/bridge.ts'
 

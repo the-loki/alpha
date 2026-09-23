@@ -1,4 +1,4 @@
-import type { TextKey } from '@alpha/core'
+import type { TextKey } from '@alpha/i18n'
 import { For, Show } from 'solid-js'
 import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
 import { Composer, seedComposer } from './Composer.tsx'

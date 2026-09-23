@@ -1,4 +1,4 @@
-import type { Attachment, Undef } from '@alpha/core'
+import type { Attachment, Undef } from '@alpha/domain'
 import { For, Show } from 'solid-js'
 import { readPicked } from '../lib/attachments.ts'
 import { useText } from '../stores/shell.ts'
