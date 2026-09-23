@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { emptyNetworkAccess, type PermissionRule } from '@alpha/domain'
+import { StateStore } from '@alpha/state'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Broadcast } from '../broadcast.ts'
 import { type ChannelPorts, headlessWindowPort, type NetworkPort } from '../channels.ts'
@@ -9,7 +10,6 @@ import { CredentialVault, type SecretCipher } from '../providers/credential-vaul
 import { ProviderService } from '../providers/service.ts'
 import { ProviderStore } from '../providers/store.ts'
 import { RuntimeManager } from '../runtime/manager.ts'
-import { StateStore } from '../state-store.ts'
 import { NetworkService, networkUrls } from './service.ts'
 
 const testCipher: SecretCipher = {

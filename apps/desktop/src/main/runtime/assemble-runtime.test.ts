@@ -2,16 +2,15 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ConversationSummary, PermissionLevel, RuntimeEvent } from '@alpha/domain'
+import { DecisionLog, SessionStore } from '@alpha/sessions'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
 import { CredentialVault, type SecretCipher } from '../providers/credential-vault.ts'
 import { ProviderStore } from '../providers/store.ts'
 import { openRuntime } from './assemble-runtime.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
-import { DecisionLog } from './decisions.ts'
 import type { PermissionPorts } from './permissions.ts'
 import { aModel, scriptedModels, toolUseStream } from './scripted-provider.ts'
-import { SessionStore } from './sessions.ts'
 
 /**
  * What a real opening assembles (ADR-0025): the coding tools always, and the gate exactly when the

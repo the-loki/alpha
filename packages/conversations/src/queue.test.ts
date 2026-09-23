@@ -2,7 +2,7 @@ import type { RuntimeEvent } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { PendingQueue, type QueuePorts, QueueRunner } from './queue.ts'
 
-describe('[runtime] the queue of messages waiting to be sent', () => {
+describe('[conversations] the queue of messages waiting to be sent', () => {
   it('keeps them in the order they were typed, and hands out one at a time', () => {
     const queue = new PendingQueue()
     queue.add('c1', 'first')
@@ -68,7 +68,7 @@ describe('[runtime] the queue of messages waiting to be sent', () => {
   })
 })
 
-describe('[runtime] the runner that moves the queue', () => {
+describe('[conversations] the runner that moves the queue', () => {
   const harness = (send: (conversationId: string, text: string) => Promise<void>) => {
     const events: RuntimeEvent[] = []
     const ports: QueuePorts = {

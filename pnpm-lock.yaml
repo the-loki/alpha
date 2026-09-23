@@ -29,12 +29,21 @@ importers:
       '@alpha/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@alpha/conversations':
+        specifier: workspace:*
+        version: link:../../packages/conversations
       '@alpha/domain':
         specifier: workspace:*
         version: link:../../packages/domain
       '@alpha/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@alpha/sessions':
+        specifier: workspace:*
+        version: link:../../packages/sessions
+      '@alpha/state':
+        specifier: workspace:*
+        version: link:../../packages/state
       '@earendil-works/pi-agent-core':
         specifier: 0.86.1
         version: 0.86.1(ws@8.21.3)
@@ -94,6 +103,12 @@ importers:
         specifier: workspace:*
         version: link:../i18n
 
+  packages/conversations:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
+
   packages/domain:
     dependencies:
       '@alpha/i18n':
@@ -104,6 +119,21 @@ importers:
         version: 1.3.7
 
   packages/i18n: {}
+
+  packages/sessions:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
+      typebox:
+        specifier: 1.3.7
+        version: 1.3.7
+
+  packages/state:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
 
 packages:
 

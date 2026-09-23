@@ -47,7 +47,7 @@ const legacyFile = (id: string): string =>
     }),
   ].join('\n')}\n`
 
-describe('[runtime] a conversation the previous Alpha wrote', () => {
+describe('[sessions] a conversation the previous Alpha wrote', () => {
   it('is recognised by its header, and the agent’s own files are not', () => {
     expect(isLegacySession(legacyFile('c1'))).toBe(true)
     expect(isLegacySession(`${JSON.stringify({ type: 'session', version: 3, id: 'c1' })}\n`)).toBe(false)

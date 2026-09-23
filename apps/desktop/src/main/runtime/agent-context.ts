@@ -12,8 +12,8 @@
  */
 
 import type { Undef } from '@alpha/domain'
+import type { AgentEntry } from '@alpha/sessions'
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
-import type { AgentEntry } from './transcript-entries.ts'
 
 /** Whether an entry is a summary standing in for the messages before it. */
 const isSummary = (entry: AgentEntry): boolean => entry.type === 'compaction' || entry.type === 'branch_summary'

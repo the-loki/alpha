@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent, Undef } from '@alpha/domain'
+import { SessionStore, tipPath } from '@alpha/sessions'
 import { describe, expect, it } from 'vitest'
 import { contextOf } from './agent-context.ts'
 import { assembleAgent } from './assemble-agent.ts'
@@ -12,7 +13,6 @@ import { createGatePlugin } from './gate-plugin.ts'
 import type { PermissionPorts } from './permissions.ts'
 import type { AlphaPlugin } from './plugin-contract.ts'
 import { aModel, scriptedModels, textStream, toolUseStream } from './scripted-provider.ts'
-import { SessionStore, tipPath } from './sessions.ts'
 
 /**
  * The gate plugin (ADR-0025): the ladder wrapped as a `beforeToolCall` hook, over the real coding

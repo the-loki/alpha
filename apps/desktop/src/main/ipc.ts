@@ -9,12 +9,12 @@
  */
 import { IPC } from '@alpha/contract'
 import type { Undef } from '@alpha/domain'
+import type { StateStore } from '@alpha/state'
 import { type BrowserWindow, ipcMain } from 'electron'
 import type { Subscriber } from './broadcast.ts'
 import { CHANNELS, type ChannelPorts, type NetworkPort } from './channels.ts'
 import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
-import type { StateStore } from './state-store.ts'
 
 export interface IpcContext {
   store: StateStore

@@ -12,6 +12,7 @@
  */
 
 import type { Undef } from '@alpha/domain'
+import { type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentMessage } from '@earendil-works/pi-agent-core'
 import {
   type CompactionSettings,
@@ -25,7 +26,6 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/contex
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
 import { alignedHistoryOf } from './agent-context.ts'
 import type { AlphaPlugin } from './plugin-contract.ts'
-import { type SessionStore, tipPath } from './sessions.ts'
 
 /** What the plugin needs. The getters are read per compaction, never captured. */
 export interface CompactionPluginPorts {

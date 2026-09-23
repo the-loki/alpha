@@ -26,16 +26,14 @@ import {
   type UsageTotals,
   userBlocksOf,
 } from '@alpha/domain'
+import type { AgentEntry, DecisionLookup, NewEntry, SessionStore } from '@alpha/sessions'
+import { tipPath } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import { runAfterRunHooks } from './after-run.ts'
 import { contextOf } from './agent-context.ts'
 import { AgentEventTranslator } from './agent-events.ts'
-import type { DecisionLookup } from './decisions.ts'
 import type { AlphaPlugin, RetryDecider } from './plugin-contract.ts'
-import type { NewEntry, SessionStore } from './sessions.ts'
-import { tipPath } from './sessions.ts'
-import type { AgentEntry } from './transcript-entries.ts'
 
 /** The retry policy's pure decision, kept with the other plugin faces in plugin-contract. */
 export type { RetryDecider } from './plugin-contract.ts'

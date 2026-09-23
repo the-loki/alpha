@@ -13,8 +13,8 @@
  */
 import type { EditEffect, OpenedConversation } from '@alpha/contract'
 import { type ChatMessage, type ConversationSummary, textOfContent } from '@alpha/domain'
+import { type AgentPorts, forkSession } from '@alpha/sessions'
 import type { ConversationRuntime } from './conversation-runtime.ts'
-import { type AgentPorts, forkSession } from './session-files.ts'
 
 export interface EditingPorts {
   /** Throws when there is no such conversation. */

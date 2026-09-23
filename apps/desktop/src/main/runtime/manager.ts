@@ -9,6 +9,7 @@
  */
 
 import type { EditEffect, ModelStatus, OpenedConversation } from '@alpha/contract'
+import { ConversationBookkeeper, DEFAULT_TITLE, newConversation, QueueRunner } from '@alpha/conversations'
 import {
   type ApprovalAsk,
   type Attachment,
@@ -22,22 +23,25 @@ import {
   servesModel,
   type ThinkingLevel,
 } from '@alpha/domain'
+import {
+  type AgentPorts,
+  DecisionLog,
+  readSessionTranscript,
+  SessionStore,
+  sessionIdOf,
+  writeSessionMarkdown,
+} from '@alpha/sessions'
+import type { StateStore } from '@alpha/state'
 import type { CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import type { ProviderStore } from '../providers/store.ts'
-import type { StateStore } from '../state-store.ts'
 import { ApprovalBroker } from './approvals.ts'
 import { openRuntime } from './assemble-runtime.ts'
-import { ConversationBookkeeper, DEFAULT_TITLE, newConversation } from './bookkeeping.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
-import { DecisionLog } from './decisions.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import type { ApprovalAnswer } from './gate.ts'
 import { defaultModel, describeRuntime, startProblem } from './models.ts'
 import { createPermissionPorts, type PermissionPorts, rememberWorkspaceLevel, revokeRule } from './permissions.ts'
-import { QueueRunner } from './queue.ts'
-import { type AgentPorts, readSessionTranscript, writeSessionMarkdown } from './session-files.ts'
-import { SessionStore, sessionIdOf } from './sessions.ts'
 import { UnattendedRuns } from './unattended.ts'
 
 export interface RuntimeManagerOptions {

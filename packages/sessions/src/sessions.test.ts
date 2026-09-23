@@ -248,7 +248,7 @@ describe('taking a session off the disk', () => {
   })
 })
 
-describe('[main] sessionIdOf', () => {
+describe('[sessions] sessionIdOf', () => {
   it('reads an absent session id as the conversation being its own session', () => {
     expect(sessionIdOf({ id: 'c1', sessionId: undefined })).toBe('c1')
   })

@@ -7,7 +7,7 @@
  * wires it, and it comes back as a plugin. Its ports keep their shape here until then.
  */
 import type { ApprovalAsk, PermissionLevel, PermissionRule } from '@alpha/domain'
-import type { StateStore } from '../state-store.ts'
+import type { StateStore } from '@alpha/state'
 import type { ApprovalAnswer } from './gate.ts'
 
 /** How the gate reaches the policy and the person: all four are read at the moment of a call. */

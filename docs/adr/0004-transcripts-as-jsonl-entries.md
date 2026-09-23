@@ -29,7 +29,7 @@ not: the choice is whether Alpha parses it, or asks the agent to read it.
   path is the only place that knows the difference (#60).
 - A session written by an older Alpha is in a format the agent refuses, so it is **copied** into
   one the agent opens, under the conversation's own id, and the old file is left untouched
-  (`runtime/legacy-sessions.ts`). Nothing is migrated by rewriting.
+  (`packages/sessions/src/legacy-sessions.ts`). Nothing is migrated by rewriting.
 - Moving a branch tip is a fork: the agent copies the session up to an entry and carries on there,
   and the conversation records the copy's id. Regenerate and edit are both that
   (`runtime/editing.ts`).

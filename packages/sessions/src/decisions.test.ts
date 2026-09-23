@@ -6,7 +6,7 @@ import { DecisionLog } from './decisions.ts'
 
 const fresh = () => new DecisionLog(mkdtempSync(join(tmpdir(), 'alpha-decisions-')))
 
-describe('[runtime] DecisionLog', () => {
+describe('[sessions] DecisionLog', () => {
   it('opens holding what was decided before, and nothing for a conversation it never saw', () => {
     const log = fresh()
     expect(log.opened('c1').get('call-1')).toBeUndefined()

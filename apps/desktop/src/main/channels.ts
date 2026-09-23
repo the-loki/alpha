@@ -22,6 +22,7 @@ import {
   type WorkspaceSelection,
   workspaceFromPath,
 } from '@alpha/domain'
+import type { StateStore } from '@alpha/state'
 import {
   readAppearancePatch,
   readApprovalAnswer,
@@ -33,7 +34,6 @@ import {
 } from './argument-readers.ts'
 import type { ProviderService } from './providers/service.ts'
 import type { RuntimeManager } from './runtime/manager.ts'
-import type { StateStore } from './state-store.ts'
 
 /** The OS dialog and the window chrome, as much of it as a channel handler may ask for. */
 export interface WindowPort {
