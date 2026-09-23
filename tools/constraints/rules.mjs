@@ -18,7 +18,28 @@ const isDeclaration = (path) => /\.d\.ts$/.test(path)
 const isTest = (path) => /\.(test|spec)\.[cm]?tsx?$/.test(path)
 const isCheckerSource = (path) => path.startsWith('tools/constraints/')
 /** Hand-written, and exempt on purpose: the dictionary grows as one table per language, and splitting it would cost more than the budget it borrows. */
-const isGenerated = (path) => /^packages\/core\/src\/i18n(\/|\/i18n\.ts)/.test(path)
+const isGenerated = (path) => path.startsWith('packages/i18n/src/')
+
+/**
+ * The libraries that do no I/O at all: the dictionary the interface is written in, the rules the
+ * workbench decides with, and the contract between its processes. Every other library may read the
+ * disk and the clock — it just may not hold a window, which `no-electron-in-libraries` is about.
+ */
+const PURE_PACKAGES = ['packages/i18n/src/', 'packages/domain/src/', 'packages/contract/src/']
+
+/**
+ * Which library may import which, by the direction C2.1 draws: the dictionary sits under
+ * everything, the rules know the dictionary, the contract knows those two, and the stores know the
+ * rules. A package this table has never heard of may import no library at all — a new one asks for
+ * its dependencies by being written down here.
+ */
+const LIBRARY_DEPENDENCIES = {
+  'packages/i18n/src/': [],
+  'packages/domain/src/': ['@alpha/i18n'],
+  'packages/contract/src/': ['@alpha/domain', '@alpha/i18n'],
+  // On its way out: the call sites still name it while they move over, and it goes with them.
+  'packages/core/src/': ['@alpha/domain', '@alpha/contract', '@alpha/i18n'],
+}
 
 const stripStrings = (line) =>
   line
@@ -209,6 +230,14 @@ const relativeTarget = (from, specifier) => {
 const isMainSource = (path) => path.startsWith('apps/desktop/src/main/')
 const isPreloadSource = (path) => path.startsWith('apps/desktop/src/preload/')
 
+/** The library a file belongs to, as a path prefix, or '' for anything that is not a library file. */
+const libraryOf = (path) => {
+  const match = /^(packages\/[^/]+\/src\/)/.exec(path)
+  return match === null ? '' : match[1]
+}
+
+const isLibrarySource = (path) => libraryOf(path) !== ''
+
 /** The one file on each side that is allowed to know the transport exists. */
 const isSeamFile = (path) => path === 'apps/desktop/src/main/ipc.ts' || path === 'apps/desktop/src/preload/index.ts'
 
@@ -280,18 +309,75 @@ export const RULES = [
   },
 
   {
-    id: '02-architecture:core-stays-pure',
+    id: '02-architecture:pure-packages-have-no-io',
     constraint: '02-architecture.md',
-    description: 'core imports neither Electron nor Node',
+    description: 'the dictionary, the rules and the contract import neither Electron nor Node',
     check({ path, text }) {
-      if (!path.startsWith('packages/core/src/')) return []
+      if (!PURE_PACKAGES.some((prefix) => path.startsWith(prefix))) return []
       const found = []
       text.split('\n').forEach((line, index) => {
         for (const specifier of importSpecifiers(line)) {
           if (specifier === 'electron' || isNodeBuiltin(specifier)) {
             found.push({
               line: index + 1,
-              message: `core must not import ${specifier}; move the I/O to an adapter in main`,
+              message: `a pure package must not import ${specifier}; move the I/O to an adapter in main`,
+              text: line.trim(),
+            })
+          }
+        }
+      })
+      return found
+    },
+  },
+
+  {
+    id: '02-architecture:no-electron-in-libraries',
+    constraint: '02-architecture.md',
+    description: 'no library holds a window',
+    check({ path, text }) {
+      if (!isLibrarySource(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        for (const specifier of importSpecifiers(line)) {
+          if (specifier === 'electron') {
+            found.push({
+              line: index + 1,
+              message: 'Electron belongs to the app: a library that holds a window cannot be tested alone',
+              text: line.trim(),
+            })
+          }
+        }
+      })
+      return found
+    },
+  },
+
+  {
+    id: '02-architecture:libraries-point-one-way',
+    constraint: '02-architecture.md',
+    description: 'a library imports only what sits under it',
+    check({ path, text }) {
+      const mine = libraryOf(path)
+      if (mine === '') return []
+      const allowed = LIBRARY_DEPENDENCIES[mine] ?? []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        if (isComment(line)) return
+        for (const specifier of importSpecifiers(line)) {
+          if (specifier.startsWith('@alpha/')) {
+            if (allowed.includes(specifier)) continue
+            found.push({
+              line: index + 1,
+              message: `${specifier} is not below this library: C2.1 says which way the arrows point`,
+              text: line.trim(),
+            })
+            continue
+          }
+          const target = relativeTarget(path, specifier)
+          if (target !== '' && !target.startsWith(mine)) {
+            found.push({
+              line: index + 1,
+              message: 'a library reaches another through its package, and the app not at all',
               text: line.trim(),
             })
           }
@@ -669,7 +755,7 @@ export const RULES = [
       return found
     },
     checkAll(files) {
-      const contract = files.find((candidate) => candidate.path === 'packages/core/src/contract.ts')
+      const contract = files.find((candidate) => candidate.path === 'packages/contract/src/contract.ts')
       if (contract === undefined) return []
       const channels = contractChannels(contract.text)
       // The handlers are a table now, so what is handled is read from its keys rather than from

@@ -125,7 +125,9 @@ apps/desktop            the workbench: one package, three processes
   src/main              the runtime: the embedded agent, the gate, providers, sessions, the IPC handlers
   src/preload           the bridge: the only functions the window gets
   src/renderer          Solid, @solidjs/router, Tailwind, remark — the window and nothing else
-packages/core           pure: the transcript projection, the permission table, the IPC contract
+packages/i18n           pure: the dictionary, both languages, and text()
+packages/domain         pure: the rules — transcripts, permissions, providers, tasks, schedules
+packages/contract       pure: the channel names and the types the bridge exposes
 e2e                     Playwright specs that launch the built app
 tools/constraints       the checker that keeps the constraints honest
 ```

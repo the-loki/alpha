@@ -434,29 +434,96 @@ describe('01-typescript:ts-expect-error-reason', () => {
   })
 })
 
-describe('02-architecture:core-stays-pure', () => {
-  const rule = '02-architecture:core-stays-pure'
+describe('02-architecture:pure-packages-have-no-io', () => {
+  const rule = '02-architecture:pure-packages-have-no-io'
 
-  it('flags an electron import in core', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'import { app } from "electron"'))).toHaveLength(1)
+  it('flags an electron import in the dictionary, the rules and the contract alike', () => {
+    for (const path of ['packages/i18n/src/a.ts', 'packages/domain/src/a.ts', 'packages/contract/src/a.ts']) {
+      expect(violationsFor(rule, file(path, 'import { app } from "electron"')), path).toHaveLength(1)
+    }
   })
 
-  it('flags a node builtin import in core', () => {
+  it('flags a node builtin import in the pure packages', () => {
     expect(
-      violationsFor(rule, file('packages/core/src/a.ts', 'import { readFile } from "node:fs/promises"')),
+      violationsFor(rule, file('packages/domain/src/a.ts', 'import { readFile } from "node:fs/promises"')),
     ).toHaveLength(1)
   })
 
-  it('flags a bare fs import in core', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'import fs from "fs"'))).toHaveLength(1)
+  it('flags a bare fs import in the pure packages', () => {
+    expect(violationsFor(rule, file('packages/i18n/src/a.ts', 'import fs from "fs"'))).toHaveLength(1)
   })
 
-  it('passes core importing another core module', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'import { x } from "./b.ts"'))).toEqual([])
+  it('passes a pure module importing another module of its own package', () => {
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'import { x } from "./b.ts"'))).toEqual([])
   })
 
-  it('does not object to electron imports outside core', () => {
+  it('leaves the node-side libraries alone: a library may read the disk, it just may not hold a window', () => {
+    const disk = 'import { readFile } from "node:fs/promises"'
+    expect(violationsFor(rule, file('packages/sessions/src/a.ts', disk))).toEqual([])
+  })
+
+  it('does not object to electron imports outside the pure packages', () => {
     expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', 'import { app } from "electron"'))).toEqual([])
+  })
+})
+
+describe('02-architecture:no-electron-in-libraries', () => {
+  const rule = '02-architecture:no-electron-in-libraries'
+
+  it('flags a window in any library, whatever else the library is allowed to do', () => {
+    const imported = 'import { app } from "electron"'
+    expect(violationsFor(rule, file('packages/sessions/src/a.ts', imported))).toHaveLength(1)
+
+    const required = "const { app } = require('electron')"
+    expect(violationsFor(rule, file('packages/state/src/a.ts', required))).toHaveLength(1)
+  })
+
+  it('lets a library read the disk and the clock', () => {
+    expect(violationsFor(rule, file('packages/tasks/src/a.ts', 'import { readFileSync } from "node:fs"'))).toEqual([])
+  })
+
+  it('says nothing about the app, where Electron is the point', () => {
+    expect(violationsFor(rule, file('apps/desktop/src/main/window.ts', 'import { app } from "electron"'))).toEqual([])
+  })
+})
+
+describe('02-architecture:libraries-point-one-way', () => {
+  const rule = '02-architecture:libraries-point-one-way'
+
+  it('lets a library use what sits under it, and its own files', () => {
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', "import { text } from '@alpha/i18n'"))).toEqual([])
+    expect(
+      violationsFor(rule, file('packages/contract/src/a.ts', "import type { Undef } from '@alpha/domain'")),
+    ).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'import { x } from "./b.ts"'))).toEqual([])
+  })
+
+  it('flags a library reaching sideways, up, or for the name that is going away', () => {
+    const up = "import type { Undef } from '@alpha/domain'"
+    expect(violationsFor(rule, file('packages/i18n/src/a.ts', up))).toHaveLength(1)
+
+    const sideways = "import { IPC } from '@alpha/contract'"
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', sideways))).toHaveLength(1)
+
+    const goingAway = "import { text } from '@alpha/core'"
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', goingAway))).toHaveLength(1)
+  })
+
+  it('flags a library reaching into another package, or into the app, by path', () => {
+    const sibling = "import { EN } from '../../i18n/src/en.ts'"
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', sibling))).toHaveLength(1)
+
+    const app = "import { CHANNELS } from '../../../apps/desktop/src/main/channels.ts'"
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', app))).toHaveLength(1)
+  })
+
+  it('gives a package the table has never heard of no library to import', () => {
+    const text = "import type { Undef } from '@alpha/domain'"
+    expect(violationsFor(rule, file('packages/brand-new/src/a.ts', text))).toHaveLength(1)
+  })
+
+  it('says nothing about the app, which may depend on all of them', () => {
+    expect(violationsFor(rule, file('apps/desktop/src/main/a.ts', "import { text } from '@alpha/i18n'"))).toEqual([])
   })
 })
 
@@ -617,7 +684,7 @@ describe('02-architecture:contract-channels', () => {
   const crossViolations = (files) => ruleById(rule).checkAll(files)
 
   const contract = file(
-    'packages/core/src/contract.ts',
+    'packages/contract/src/contract.ts',
     ['export const IPC = {', "  ping: 'alpha:ping',", "  pong: 'alpha:pong',", '} as const'].join('\n'),
   )
   /** The table main declares: the handlers it answers with, and the channels it pushes. */

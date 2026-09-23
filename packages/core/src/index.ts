@@ -1,24 +1,9 @@
-export * from './attachments.ts'
-export * from './contract.ts'
-export * from './conversation.ts'
-export * from './conversation-index.ts'
-export * from './duration.ts'
-export * from './export.ts'
-export * from './i18n.ts'
-export * from './maybe.ts'
-export * from './permission.ts'
-export * from './persisted-state.ts'
-export * from './preview.ts'
-export * from './providers.ts'
-export * from './runtime-events.ts'
-export * from './schedule.ts'
-export * from './task.ts'
-export * from './task-tree.ts'
-export * from './tasks-snapshot.ts'
-export * from './text.ts'
-export * from './thinking.ts'
-export * from './tool-row.ts'
-export * from './tools.ts'
-export * from './transcript.ts'
-export * from './usage.ts'
-export * from './workspace.ts'
+/**
+ * Where the library used to be. The dictionary, the rules and the contract are packages of their
+ * own now; this re-export is what lets the call sites move over one directory at a time, and it
+ * goes when the last of them has.
+ */
+
+export * from '@alpha/contract'
+export * from '@alpha/domain'
+export * from '@alpha/i18n'

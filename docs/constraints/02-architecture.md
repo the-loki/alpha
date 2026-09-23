@@ -6,48 +6,58 @@ A conversation is an in-process agent session: Alpha embeds `@earendil-works/pi-
 main process and builds each run on it ([ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)).
 There is no child process to find, install or keep alive, and no package of Alpha's ships a CLI.
 What Alpha builds on top of the library is its own: the plugin base the agent is assembled from,
-the gate, the session store, the conversation list, and the credentials. The window and `core`
-never import a pi package — they reach the agent through the contract, and so does everything else.
+the gate, the session store, the conversation list, and the credentials. The window and the
+libraries never import a pi package — they reach the agent through the contract, and so does
+everything else.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:no-agent-dependency` fails on an
 import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
 `apps/desktop/src` except `main`, and anywhere under `packages/*/src`.
 
-## C2.1 — One workbench, one library, one direction
+## C2.1 — One workbench, a few libraries, one direction
 
 ```
 apps/desktop/src/          the app: one package, three processes
   main/      ──┐
-  preload/   ──┼──> @alpha/core    (pure TypeScript: domain rules, contracts, no I/O, no Electron)
-  renderer/  ──┘
+  preload/   ──┼──> @alpha/domain    (pure TypeScript: the rules the workbench decides with)
+  renderer/  ──┘    @alpha/contract   (the IPC contract the three processes meet at)
+                    @alpha/i18n       (the dictionary the interface is written in)
 ```
 
 | Package | Holds | May import |
 | --- | --- | --- |
-| `@alpha/core` | Domain rules, IPC contract types, validation schemas | nothing from this repo |
-| `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | `core`, node, electron (not in the renderer) |
+| `@alpha/i18n` | The dictionary: the interface's words in both languages, and `text()` | nothing from this repo |
+| `@alpha/domain` | The rules: permissions, providers, transcripts, tasks, schedules, tool rows, validation schemas | `@alpha/i18n` |
+| `@alpha/contract` | The IPC contract: the channel names and the types the bridge exposes | `@alpha/domain`, `@alpha/i18n` |
+| `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | the three, node, electron (not in the renderer) |
 
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
 `apps/desktop`, one package whose three processes are directories, which keeps the split the rest of
 this document is about (the window has no Node, the bridge is the only door, the runtime is in
 `main`) without pretending the workbench and the library it depends on are peers.
 
-Dependencies never point backwards: `core` knows nothing about the workbench, and no process imports
-`main`'s runtime.
+Dependencies never point backwards: the libraries know nothing about the workbench, and no process
+imports `main`'s runtime. While the call sites move over they still name `@alpha/core`, which
+re-exports the three; that name is on its way out, and goes when the last of them has.
 
-**Enforcement:** three of the checker's rules and one linter keep this shape.
+**Enforcement:** five of the checker's rules and one linter keep this shape.
 `02-architecture:processes-stay-apart` fails on a relative import from one of the app's three
 processes into another — the window cannot reach the runtime's files, the runtime cannot reach the
 window's — which is what separate packages used to enforce by existing.
-`02-architecture:core-stays-pure` fails on any `electron` or Node builtin import under
-`packages/core/src`, and `02-architecture:renderer-is-solid` keeps the window on the framework it was
-rebuilt on. Biome's `style/noRestrictedGlobals` keeps the renderer off `process`, `require`, and
-`Buffer`.
+`02-architecture:pure-packages-have-no-io` fails on any `electron` or Node builtin import under the
+dictionary, the rules and the contract; `02-architecture:no-electron-in-libraries` fails on an
+`electron` import under any package at all — a library may read the disk, it may never hold a
+window, because a library that owns a window cannot be tested on its own.
+`02-architecture:libraries-point-one-way` is the `May import` column above, read as a rule: it fails
+on an `@alpha/*` import that is not below the importing library (a package the table does not name
+may import none of them), and on a relative import that climbs out of its own package.
+And `02-architecture:renderer-is-solid` keeps the window on the framework it was rebuilt on.
+Biome's `style/noRestrictedGlobals` keeps the renderer off `process`, `require`, and `Buffer`.
 
 ## C2.2 — The renderer talks to the main process through one contract
 
-All cross-process traffic is declared once, as types plus channel names, in `core`'s contract
-module. The renderer never touches `ipcRenderer`; it calls the typed client the preload exposes
+All cross-process traffic is declared once, as types plus channel names, in `@alpha/contract`.
+The renderer never touches `ipcRenderer`; it calls the typed client the preload exposes
 on `window`. The main process registers one handler per contract channel and no others.
 
 Adding a capability means adding it to the contract first. A handler with no contract entry is
@@ -114,7 +124,7 @@ This is what makes resume, replay, and compaction tractable: the transcript is o
 array of messages, and every view state is derived from it plus a small amount of UI-local
 state (scroll position, composer draft, expanded tool cards).
 
-**Enforcement:** review; the shape is enforced by the event reducer in `core` being pure.
+**Enforcement:** review; the shape is enforced by the event reducer in `@alpha/domain` being pure.
 
 ## C2.7 — Streaming is a projection, not a re-render of everything
 
