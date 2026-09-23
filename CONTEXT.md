@@ -127,6 +127,15 @@ One part the agent is assembled from: a name and the hook faces it contributes �
 what it may block before a call runs, what it does when a run ends. Alpha's own base, never an
 extension format: the built-ins ship as the first plugins. Avoid: *extension*, *add-on*.
 
+### Base
+
+Not a place, a role: the base is the workbench as the thing capabilities are written for — it
+registers them, drives a run and judges its end, and it is why Alpha's plugins are Alpha's own
+rather than another product's extension format. Two packages carry the role's two halves: the
+plugin base is the contract a plugin is written against (`@alpha/plugin`, pure), and `@alpha/agent`
+is the mechanism, where those faces meet pi — the assembly and the `afterRun` driver. Avoid:
+*extension host*, *core*, *kernel*, and calling any one package "the base".
+
 ### Tool
 
 A capability the agent can invoke: reading a file, writing a file, running a command. A tool

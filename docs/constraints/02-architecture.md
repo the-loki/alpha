@@ -11,8 +11,9 @@ pi package — it reaches the agent through the contract.
 
 Two kinds of package may name it, and nothing else may: `main`, which owns the app, and the
 packages listed by name in the checker (`AGENT_LINKING_PACKAGES`, and the `May import` column in
-C2.1). They are the three that build *on* the agent: `@alpha/agent`, the base — the plugin contract
-bound to pi, the assembly, the `afterRun` driver; `@alpha/internal-plugins`, Alpha's own plugins,
+C2.1). They are the three that build *on* the agent: `@alpha/agent`, the mechanism half of the
+base — the plugin contract bound to pi, the assembly, the `afterRun` driver;
+`@alpha/internal-plugins`, Alpha's own plugins,
 whose faces are where pi's own shapes are the capability (a tool is an `AgentTool`, a hook is asked
 about pi's run), which is [C2.8](#c28--a-capability-is-a-plugin-not-a-branch-in-the-runtime)'s
 exception carrying its own adapter; and `@alpha/history`, the fold that turns a session's entries
@@ -46,8 +47,8 @@ apps/desktop/src/          the app: one package, three processes
 ```
 
 An arrow points the way an import goes: the app may import any library; the capabilities add what
-they need — the workbench's own gate sits on the plugin base and the state file, the base sits on
-the pure faces, and the built-in plugins sit on the gate, the history fold and the agent library
+they need — the workbench's own gate sits on the plugin base and the state file, the agent base
+sits on the pure faces, and the built-in plugins sit on the gate, the history fold and the agent library
 itself, which is what C2.0's exception is for; everything else sits directly on the rules.
 
 | Library | Holds | May import |
@@ -62,7 +63,7 @@ itself, which is what C2.0's exception is for; everything else sits directly on 
 | `@alpha/conversations` | The list the sidebar shows, the bookkeeping that keeps it true, and the messages waiting to be sent | `@alpha/domain` |
 | `@alpha/tasks` | The scheduled tasks: the file, the clock that decides when one comes due, the service | `@alpha/domain` |
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
-| `@alpha/agent` | The base: the plugin contract bound to pi, the assembly that makes one `Agent` of the plugins, and the `afterRun` driver | `@alpha/domain`, `@alpha/plugin`, the agent library |
+| `@alpha/agent` | The agent base: the plugin contract bound to pi, the assembly that makes one `Agent` of the plugins, and the `afterRun` driver | `@alpha/domain`, `@alpha/plugin`, the agent library |
 | `@alpha/gate` | The permission machinery the workbench owns: the ladder, the approvals broker, the refusal a run with nobody watching gets, and the ports into the workbench's own file | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
 | `@alpha/internal-plugins` | Alpha's own plugins, one file each: the gate on `beforeToolCall`, auto-retry on `afterRun`, the four tools, and compaction | `@alpha/domain`, `@alpha/gate`, `@alpha/history`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
