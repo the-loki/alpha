@@ -759,6 +759,54 @@ describe('02-architecture:contract-channels', () => {
   })
 })
 
+describe('02-architecture:capabilities-are-plugins', () => {
+  const rule = '02-architecture:capabilities-are-plugins'
+
+  it('passes the assembly, which is where capabilities are registered', () => {
+    const text = 'const plugins: AlphaPlugin[] = [createCodingToolsPlugin({ workspacePath })]'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/assemble-runtime.ts', text))).toEqual([])
+  })
+
+  it('passes the factory where it is written, and a factory in its own test', () => {
+    const declaration = 'export function createGatePlugin(ports: GatePluginPorts): AlphaPlugin {'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/gate-plugin.ts', declaration))).toEqual([])
+
+    const inTest = 'const plugin = createRetryPlugin({ delays: [0] })'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/retry-plugin.test.ts', inTest))).toEqual([])
+  })
+
+  it('flags a capability wired where it is used', () => {
+    const wired = 'this.#plugins.push(createCompactionPlugin({ store: this.#store }))'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/conversation-runtime.ts', wired))).toHaveLength(1)
+  })
+
+  it('flags it in a class or a method, and not only at the top level', () => {
+    const method = '  readonly #gate = createGatePlugin({ permissions })'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/manager.ts', method))).toHaveLength(1)
+  })
+
+  it('flags a namespaced call, which is what registration from somewhere else looks like', () => {
+    const namespaced = 'registry.createCompactionPlugin({ store })'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/manager.ts', namespaced))).toHaveLength(1)
+  })
+
+  it('passes a factory named inside a string, which is not a call to it', () => {
+    const prose = "const note = 'a capability is registered with createGatePlugin(...)'"
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/notes.ts', prose))).toEqual([])
+  })
+
+  it('lets a line opt out with a marker, like every other rule', () => {
+    const marked = 'const plugin = createGatePlugin({ permissions }) // constraints-ignore 02-architecture'
+    expect(violationsFor(rule, file('apps/desktop/src/main/runtime/manager.ts', marked))).toEqual([])
+  })
+
+  it('says nothing outside main, where a plugin cannot be reached at all', () => {
+    const text = 'const plugin = createGatePlugin({ permissions })'
+    expect(violationsFor(rule, file('apps/desktop/src/renderer/a.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/gate/src/a.ts', text))).toEqual([])
+  })
+})
+
 describe('checkFile', () => {
   it('runs every rule that applies to the path', () => {
     const found = checkFile(file('packages/domain/src/a.ts', 'const x: string | null = 1'))

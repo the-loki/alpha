@@ -149,3 +149,42 @@ transcript is written when a message ends.
 
 **Enforcement:** review, plus an E2E assertion that a 200-delta response produces a bounded
 number of store writes.
+
+## C2.8 — A capability is a plugin, not a branch in the runtime
+
+The agent is assembled from plugins of Alpha's own
+([ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)). A plugin is a name
+plus the faces it contributes, and the base attaches each face where it belongs: the tools it adds
+become the agent's tools, its `beforeToolCall` joins the chain the base hands the agent, and its
+`afterRun` is called when a run ends. So a capability is added as a face on that contract, with a
+decision behind it that stands without the agent. The base is what other functions are built on, not
+one more thing wired into the runtime.
+
+A plugin may also hand the runtime a handle, and two built-ins do: the compaction plugin's
+on-demand path, which "compact now" calls, and the retry plugin's decision, which the runtime asks
+when a run ends to learn whether the turn is over. Both are the plugin answering rather than the
+runtime knowing: they come back from the same registration point as the faces, and no policy is
+copied out of the plugin.
+
+Where that decision lives follows the rule the packages were split by ([C2.1](#c21--one-workbench-a-handful-of-libraries-one-direction)):
+the part that holds without pi names nothing of pi's and lives in a library, where it is read and
+tested alone, and the adapter that hands it to the agent stays in `main`. The gate is the worked
+example — `@alpha/gate` decides what a call may do, and `gate-plugin.ts` gives that decision its
+`beforeToolCall` face.
+
+`pluginsFor` in the assembly is the one place a capability is registered: the runtime holds the
+faces and handles the plugins gave it, and a feature that needs registration somewhere else to reach
+the agent has not found its face yet.
+
+Three things are neither plugins nor branches, and the distinction is worth keeping: what the agent
+is handed (the model, the system prompt, the history it starts from), what it writes through (the
+session store the assembly injects), and what drives it from outside (a prompt, a steer, a fork, a
+task coming due, compacting by hand). Those are the base's inputs and its callers; a capability is
+what the agent may do, and that is the contract.
+
+**Enforcement:** `pnpm check:constraints` rule `02-architecture:capabilities-are-plugins` fails on a
+plugin factory called anywhere in `main` but the assembly and a test file — the naming convention,
+`create<Something>Plugin`, is what makes its call sites findable, and a test may script a plugin to
+drive what it tests. Review covers the rest: whether a capability arrived as a face on the contract
+over a decision that stands alone, registered in the one place, or as one more branch in the
+runtime.

@@ -235,6 +235,16 @@ const relativeTarget = (from, specifier) => {
 const isMainSource = (path) => path.startsWith('apps/desktop/src/main/')
 const isPreloadSource = (path) => path.startsWith('apps/desktop/src/preload/')
 
+/**
+ * The one place a capability is registered (C2.8): the assembly lists the plugins a conversation
+ * is built from, and everything else asks the base for what is already there.
+ */
+const isPluginAssembly = (path) => path === 'apps/desktop/src/main/runtime/assemble-runtime.ts'
+
+/** A plugin factory is named `create<Something>Plugin`, which is what makes its call sites findable. */
+const PLUGIN_FACTORY_CALL = /\bcreate[A-Za-z0-9]*Plugin\s*\(/
+const PLUGIN_FACTORY_DECLARATION = /\bfunction\s+create[A-Za-z0-9]*Plugin\s*\(/
+
 /** The library a file belongs to, as a path prefix, or '' for anything that is not a library file. */
 const libraryOf = (path) => {
   const match = /^(packages\/[^/]+\/src\/)/.exec(path)
@@ -386,6 +396,30 @@ export const RULES = [
             })
           }
         }
+      })
+      return found
+    },
+  },
+
+  {
+    id: '02-architecture:capabilities-are-plugins',
+    constraint: '02-architecture.md',
+    description: 'a capability is registered in the assembly, not wired where it is used',
+    check({ path, text }) {
+      if (!isMainSource(path) || isTest(path) || isPluginAssembly(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        if (isComment(line)) return
+        // Strings are stripped first: a factory named inside one is not a call to it.
+        if (!PLUGIN_FACTORY_CALL.test(stripStrings(line)) || PLUGIN_FACTORY_DECLARATION.test(line)) return
+        if (ignoredFor(line, { id: '02-architecture:capabilities-are-plugins', constraint: '02-architecture.md' })) {
+          return
+        }
+        found.push({
+          line: index + 1,
+          message: 'a capability is registered in the assembly (assemble-runtime.ts), and nowhere else',
+          text: line.trim(),
+        })
       })
       return found
     },

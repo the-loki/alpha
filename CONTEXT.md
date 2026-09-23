@@ -121,6 +121,12 @@ the agent, which is a different action on a different control).
 working?", and they are deliberately not synonyms: one changes the next turn, the other changes
 this one.
 
+### Plugin
+
+One part the agent is assembled from: a name and the hook faces it contributes — the tools it adds,
+what it may block before a call runs, what it does when a run ends. Alpha's own base, never an
+extension format: the built-ins ship as the first plugins. Avoid: *extension*, *add-on*.
+
 ### Tool
 
 A capability the agent can invoke: reading a file, writing a file, running a command. A tool

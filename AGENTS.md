@@ -33,7 +33,8 @@ app depends on them and never backwards.
 
 `docs/constraints/` is binding, not advisory — it carries the size budgets, the `null` ban, the
 process split, and the scope cuts, each with how it is enforced. Decisions that were expensive to
-reverse are in `docs/adr/`.
+reverse are in `docs/adr/`. A new capability of the agent is a plugin on the base (C2.8), not a
+branch in the runtime: a pure decision in a library, a hook face in `main`.
 
 ## Agent skills
 

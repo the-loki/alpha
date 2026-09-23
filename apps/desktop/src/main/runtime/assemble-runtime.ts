@@ -93,6 +93,8 @@ export interface AssembledPlugins {
 /**
  * The plugins every real conversation is assembled from, in order: the coding tools always, the
  * gate when the caller hands over the permissions to run it with, then compaction and auto-retry.
+ * This is the one place a capability is registered (C2.8): a feature that needs to be wired
+ * somewhere else to reach the agent has not found its face yet.
  * The policies read the conversation through getters — the agent does not exist yet at assembly,
  * and the model and the session both move under a long-lived conversation.
  */
