@@ -138,5 +138,6 @@ packages/providers      the connections, the key vault, and the model a conversa
 packages/agent          the base: the plugin contract bound to pi, the assembly, the afterRun driver
 packages/gate           the permission machinery: the ladder, the approvals broker, the refusal
 packages/internal-plugins  Alpha's own plugins, one file each: gate, auto-retry, tools, compaction
-e2e                     Playwright specs that launch the built apptools/constraints       the checker that keeps the constraints honest
+e2e                     Playwright specs that launch the built app
+tools/constraints       the checker that keeps the constraints honest, one module per document
 ```
