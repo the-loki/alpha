@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { createEffect, onMount } from 'solid-js'
-import { ConversationPane } from '../components/ConversationPane.tsx'
+import { ConversationPane } from '../components/conversation/ConversationPane.tsx'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 import { shell, shellActions } from '../stores/shell.ts'
 

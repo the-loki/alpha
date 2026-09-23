@@ -8,7 +8,7 @@ import {
   type MdNode,
   safeUrl,
   treeOf,
-} from './markdown-tree.ts'
+} from '../../lib/markdown-tree.ts'
 
 /**
  * Message text renders as markdown, built from elements rather than injected HTML, so a model that

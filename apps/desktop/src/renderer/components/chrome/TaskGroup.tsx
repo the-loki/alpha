@@ -1,11 +1,11 @@
 import { formatAge, newTaskRun, type RunVerdict, type TaskNode } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
-import { useText } from '../stores/shell.ts'
-import { taskActions } from '../stores/tasks.ts'
+import { useText } from '../../stores/shell.ts'
+import { taskActions } from '../../stores/tasks.ts'
+import { RAIL_ROW, RAIL_STEP, TEXT_ACTION } from '../controls.ts'
+import { ClockIcon } from '../icons.tsx'
 import { ConversationRow } from './ConversationRow.tsx'
-import { RAIL_ROW, RAIL_STEP, TEXT_ACTION } from './controls.ts'
-import { ClockIcon } from './icons.tsx'
 
 /** How many of a task's runs the rail shows; the task's own page holds the rest. */
 const SHOWN_RUNS = 5

@@ -10,11 +10,11 @@ import {
   formatDuration,
 } from '@alpha/domain'
 import { createSignal, For, Index, type JSX, Match, Show, Switch } from 'solid-js'
-import { markdownOf } from '../lib/clipboard.ts'
-import { conversationActions, conversations } from '../stores/conversations.ts'
-import { useText } from '../stores/shell.ts'
+import { markdownOf } from '../../lib/clipboard.ts'
+import { conversationActions, conversations } from '../../stores/conversations.ts'
+import { useText } from '../../stores/shell.ts'
+import { FIELD_FRAME, GROUP_LABEL, NOTICE, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
 import { CopyButton } from './CopyButton.tsx'
-import { FIELD_FRAME, GROUP_LABEL, NOTICE, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from './controls.ts'
 import { Markdown } from './Markdown.tsx'
 import { ToolRow } from './ToolRow.tsx'
 

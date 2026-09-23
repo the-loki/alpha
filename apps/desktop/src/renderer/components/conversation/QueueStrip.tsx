@@ -1,8 +1,8 @@
 import type { Undef } from '@alpha/domain'
 import { createSignal, For, Show } from 'solid-js'
-import { conversationActions, conversations } from '../stores/conversations.ts'
-import { useText } from '../stores/shell.ts'
-import { DESTRUCTIVE_ACTION, GROUP_LABEL, NOTICE, TEXT_ACTION } from './controls.ts'
+import { conversationActions, conversations } from '../../stores/conversations.ts'
+import { useText } from '../../stores/shell.ts'
+import { DESTRUCTIVE_ACTION, GROUP_LABEL, NOTICE, TEXT_ACTION } from '../controls.ts'
 
 /**
  * What is waiting, in the order it will be sent: the steers the runtime is holding for this turn,

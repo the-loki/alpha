@@ -1,15 +1,15 @@
 import type { TextKey } from '@alpha/i18n'
 import { useSearchParams } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
+import { WindowControls } from '../components/chrome/TitleBar.tsx'
 import { GROUP_LABEL, LIVE_SPINE, RAIL_ROW, ROW_LIVE } from '../components/controls.ts'
 import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
-import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, PANEL_GROUPS, SCROLLS } from '../components/ledger.ts'
 import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
 import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
 import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
-import { WindowControls } from '../components/TitleBar.tsx'
+import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, PANEL_GROUPS, SCROLLS } from '../lib/ledger.ts'
 import { useText } from '../stores/shell.ts'
 
 /**

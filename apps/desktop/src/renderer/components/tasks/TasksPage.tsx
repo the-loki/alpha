@@ -10,8 +10,10 @@ import {
 } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
+import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, SCROLLS } from '../../lib/ledger.ts'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { runsOf, taskActions, taskOf, tasks } from '../../stores/tasks.ts'
+import { RailToggle, WindowControls } from '../chrome/TitleBar.tsx'
 import {
   DESTRUCTIVE_ACTION,
   GROUP_LABEL,
@@ -21,8 +23,6 @@ import {
   TEXT_ACTION,
 } from '../controls.ts'
 import { ClockIcon } from '../icons.tsx'
-import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, SCROLLS } from '../ledger.ts'
-import { RailToggle, WindowControls } from '../TitleBar.tsx'
 import { TaskForm } from './TaskForm.tsx'
 
 function scheduleText(t: ReturnType<typeof useText>, schedule: TaskSchedule): string {

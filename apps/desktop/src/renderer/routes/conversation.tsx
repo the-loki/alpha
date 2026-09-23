@@ -1,6 +1,6 @@
 import { useParams } from '@solidjs/router'
 import { createEffect } from 'solid-js'
-import { ConversationPane } from '../components/ConversationPane.tsx'
+import { ConversationPane } from '../components/conversation/ConversationPane.tsx'
 import { conversationActions, conversations } from '../stores/conversations.ts'
 
 export function ConversationRoute() {

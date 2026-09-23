@@ -10,9 +10,9 @@ import {
   type Undef,
 } from '@alpha/domain'
 import { For, Show } from 'solid-js'
+import { PANEL_GROUPS } from '../../lib/ledger.ts'
 import { shell, useText } from '../../stores/shell.ts'
 import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
-import { PANEL_GROUPS } from '../ledger.ts'
 
 /** A name is written, not measured: the text voice, on the field's one height. */
 const NAME_FIELD = `w-full px-2 font-text text-name ${CONTROL_HEIGHT} ${FIELD_FRAME}`

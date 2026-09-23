@@ -2,10 +2,10 @@ import { type ConversationSummary, type FolderNode, folderName, type TaskNode } 
 import { conversationCount } from '@alpha/i18n'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
-import { languageOf, shell, shellActions, useText } from '../stores/shell.ts'
+import { languageOf, shell, shellActions, useText } from '../../stores/shell.ts'
+import { RAIL_ROW } from '../controls.ts'
+import { ChevronDownIcon, FolderIcon, PlusIcon } from '../icons.tsx'
 import { ConversationRow } from './ConversationRow.tsx'
-import { RAIL_ROW } from './controls.ts'
-import { ChevronDownIcon, FolderIcon, PlusIcon } from './icons.tsx'
 import { TaskGroup } from './TaskGroup.tsx'
 
 /** What this file is: the rail's own sections — the folders, their conversations flat beneath

@@ -1,8 +1,9 @@
 import type { ConversationModel } from '@alpha/domain'
 import { createSignal, For, onMount, Show } from 'solid-js'
-import { inConversation, runningModel, setRunningModel } from '../stores/next-message.ts'
-import { providerActions, providers } from '../stores/providers.ts'
-import { useText } from '../stores/shell.ts'
+import { SCROLLS } from '../../lib/ledger.ts'
+import { inConversation, runningModel, setRunningModel } from '../../stores/next-message.ts'
+import { providerActions, providers } from '../../stores/providers.ts'
+import { useText } from '../../stores/shell.ts'
 import {
   CHIP_QUIET,
   CHIP as CHIP_SHAPE,
@@ -11,9 +12,8 @@ import {
   MENU_ROW_HOVER,
   MENU_SURFACE,
   useDismissed,
-} from './controls.ts'
-import { CheckIcon } from './icons.tsx'
-import { SCROLLS } from './ledger.ts'
+} from '../controls.ts'
+import { CheckIcon } from '../icons.tsx'
 
 /** A model's name is a proper noun the machine measures by — mono, set plain (C5.3). */
 const CHIP = `${CHIP_SHAPE} max-w-56 ${CHIP_QUIET}`

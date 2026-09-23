@@ -1,8 +1,8 @@
 import { THINKING_LEVELS, type ThinkingLevel, thinkingKey } from '@alpha/domain'
 import { For, Show } from 'solid-js'
-import { nextThinking, setNextThinking } from '../stores/next-message.ts'
-import { useText } from '../stores/shell.ts'
-import { CHIP_QUIET, CHIP as CHIP_SHAPE } from './controls.ts'
+import { nextThinking, setNextThinking } from '../../stores/next-message.ts'
+import { useText } from '../../stores/shell.ts'
+import { CHIP_QUIET, CHIP as CHIP_SHAPE } from '../controls.ts'
 
 /**
  * How hard the next turn thinks, at the model chip's right hand (C5.4): the effort is a decision

@@ -1,8 +1,8 @@
 import { formatCost, formatTokens, totalUsage } from '@alpha/domain'
 import { Show } from 'solid-js'
-import { conversations } from '../stores/conversations.ts'
-import { useText } from '../stores/shell.ts'
-import { BAND, BESIDE_SCROLLS } from './ledger.ts'
+import { BAND, BESIDE_SCROLLS } from '../../lib/ledger.ts'
+import { conversations } from '../../stores/conversations.ts'
+import { useText } from '../../stores/shell.ts'
 import { RailToggle, WindowControls } from './TitleBar.tsx'
 
 /**

@@ -1,8 +1,8 @@
 import type { TextKey, TextParams } from '@alpha/i18n'
 import { createSignal } from 'solid-js'
-import { copyText } from '../lib/clipboard.ts'
-import { useText } from '../stores/shell.ts'
-import { TEXT_ACTION } from './controls.ts'
+import { copyText } from '../../lib/clipboard.ts'
+import { useText } from '../../stores/shell.ts'
+import { TEXT_ACTION } from '../controls.ts'
 
 /**
  * Copies what is on screen: a message as markdown, a tool row as its output. Its words are keys,

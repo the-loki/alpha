@@ -1,7 +1,7 @@
 import { createSignal, Show } from 'solid-js'
-import { rememberedToken } from '../lib/network-bridge.ts'
-import { shellActions, useText } from '../stores/shell.ts'
-import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL, PRIMARY_ACTION } from './controls.ts'
+import { rememberedToken } from '../../lib/network-bridge.ts'
+import { shellActions, useText } from '../../stores/shell.ts'
+import { CONTROL_HEIGHT, FIELD_FRAME, GROUP_LABEL, PRIMARY_ACTION } from '../controls.ts'
 import { WindowCorner } from './WindowCorner.tsx'
 
 /**

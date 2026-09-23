@@ -1,7 +1,7 @@
 import { levelDescriptionKey, levelKey, levelTone, PERMISSION_LEVELS } from '@alpha/domain'
 import { createSignal, For, Show } from 'solid-js'
-import { inConversation, nextLevel, setNextLevel } from '../stores/next-message.ts'
-import { useText } from '../stores/shell.ts'
+import { inConversation, nextLevel, setNextLevel } from '../../stores/next-message.ts'
+import { useText } from '../../stores/shell.ts'
 import {
   CHIP,
   DOT_CLASS,
@@ -11,8 +11,8 @@ import {
   TONE_CLASS,
   TONE_HOVER,
   useDismissed,
-} from './controls.ts'
-import { CheckIcon } from './icons.tsx'
+} from '../controls.ts'
+import { CheckIcon } from '../icons.tsx'
 
 /**
  * The permission level, always visible, at the foot of the composer: what the message about to be

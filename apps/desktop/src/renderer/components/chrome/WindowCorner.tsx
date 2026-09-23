@@ -1,6 +1,6 @@
 import { Show } from 'solid-js'
-import { folded } from '../stores/fold.ts'
-import { shell } from '../stores/shell.ts'
+import { folded } from '../../stores/fold.ts'
+import { shell } from '../../stores/shell.ts'
 import { RailToggle, WindowControls } from './TitleBar.tsx'
 
 /**

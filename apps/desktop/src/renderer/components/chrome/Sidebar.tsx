@@ -1,13 +1,13 @@
 import { archivedConversations, folderTasks, folderTree, withoutRuns } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
-import { conversations } from '../stores/conversations.ts'
-import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
-import { tasks } from '../stores/tasks.ts'
-import { CONTROL_HEIGHT, GROUP_LABEL, ICON_ACTION, RAIL_ROW } from './controls.ts'
+import { SCROLLS } from '../../lib/ledger.ts'
+import { conversations } from '../../stores/conversations.ts'
+import { composerFolderOf, shell, shellActions, useText } from '../../stores/shell.ts'
+import { tasks } from '../../stores/tasks.ts'
+import { CONTROL_HEIGHT, GROUP_LABEL, ICON_ACTION, RAIL_ROW } from '../controls.ts'
+import { ClockIcon, PlusIcon, SearchIcon, TuneIcon } from '../icons.tsx'
 import { ArchivedSection, FolderSection } from './FolderTree.tsx'
-import { ClockIcon, PlusIcon, SearchIcon, TuneIcon } from './icons.tsx'
-import { SCROLLS } from './ledger.ts'
 
 /**
  * A control that is only its glyph: an action that belongs beside the thing it acts on rather than

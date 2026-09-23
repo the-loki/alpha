@@ -1,8 +1,8 @@
 import { Show } from 'solid-js'
-import { bridge } from '../lib/bridge.ts'
-import { foldActions, folded } from '../stores/fold.ts'
-import { shell, useText } from '../stores/shell.ts'
-import { RailIcon } from './icons.tsx'
+import { bridge } from '../../lib/bridge.ts'
+import { foldActions, folded } from '../../stores/fold.ts'
+import { shell, useText } from '../../stores/shell.ts'
+import { RailIcon } from '../icons.tsx'
 
 /**
  * The window's own three, at the standard control height — 2rem, the same body a button or a field

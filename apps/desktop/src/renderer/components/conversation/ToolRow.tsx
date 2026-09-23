@@ -1,9 +1,9 @@
 import { type ApprovalRecord, type ChatBlockTool, formatDuration, levelKey, riskKey, type Undef } from '@alpha/domain'
 import { type Language, type TextKey, text } from '@alpha/i18n'
 import { createEffect, createSignal, type JSX, Show } from 'solid-js'
-import { languageOf, shell, useText } from '../stores/shell.ts'
+import { languageOf, shell, useText } from '../../stores/shell.ts'
+import { GROUP_LABEL } from '../controls.ts'
 import { CopyButton } from './CopyButton.tsx'
-import { GROUP_LABEL } from './controls.ts'
 import { DiffView } from './DiffView.tsx'
 
 const GLYPH: Record<ChatBlockTool['risk'], string> = { read: '◇', write: '◆', execute: '▶' }

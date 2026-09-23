@@ -1,9 +1,9 @@
 import type { TextKey } from '@alpha/i18n'
 import { For, Show } from 'solid-js'
-import { composerFolderOf, shell, shellActions, useText } from '../stores/shell.ts'
+import { composerFolderOf, shell, shellActions, useText } from '../../stores/shell.ts'
+import { WindowCorner } from '../chrome/WindowCorner.tsx'
+import { CHIP_QUIET, CHIP as CHIP_SHAPE, PRIMARY_ACTION } from '../controls.ts'
 import { Composer, seedComposer } from './Composer.tsx'
-import { CHIP_QUIET, CHIP as CHIP_SHAPE, PRIMARY_ACTION } from './controls.ts'
-import { WindowCorner } from './WindowCorner.tsx'
 
 /** The hour decides the greeting; three periods, one line. */
 const greetingKey = (): TextKey => {

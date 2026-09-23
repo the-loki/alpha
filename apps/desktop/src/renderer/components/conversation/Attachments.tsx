@@ -1,9 +1,9 @@
 import type { Attachment, Undef } from '@alpha/domain'
 import { For, Show } from 'solid-js'
-import { readPicked } from '../lib/attachments.ts'
-import { useText } from '../stores/shell.ts'
-import { NOTICE } from './controls.ts'
-import { CloseIcon, PaperclipIcon } from './icons.tsx'
+import { readPicked } from '../../lib/attachments.ts'
+import { useText } from '../../stores/shell.ts'
+import { NOTICE } from '../controls.ts'
+import { CloseIcon, PaperclipIcon } from '../icons.tsx'
 
 /**
  * The attach control in the composer's foot: the foot's own glyph button — the standard height

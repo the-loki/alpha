@@ -1,11 +1,11 @@
 import { type Undef, visibleMessages } from '@alpha/domain'
 import { createEffect, createMemo, Show } from 'solid-js'
-import { conversations } from '../stores/conversations.ts'
-import { composerFolderOf, shell } from '../stores/shell.ts'
+import { BESIDE_SCROLLS, COLUMN, SCROLLS } from '../../lib/ledger.ts'
+import { conversations } from '../../stores/conversations.ts'
+import { composerFolderOf, shell } from '../../stores/shell.ts'
+import { DocHead } from '../chrome/DocHead.tsx'
 import { Composer } from './Composer.tsx'
-import { DocHead } from './DocHead.tsx'
 import { EmptyState } from './EmptyState.tsx'
-import { BESIDE_SCROLLS, COLUMN, SCROLLS } from './ledger.ts'
 import { MessageList } from './MessageList.tsx'
 
 /**

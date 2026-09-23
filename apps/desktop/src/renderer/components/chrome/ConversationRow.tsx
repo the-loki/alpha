@@ -1,8 +1,8 @@
 import { type ConversationSummary, canArchive, formatAge } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, Show } from 'solid-js'
-import { conversationActions, conversations } from '../stores/conversations.ts'
-import { useText } from '../stores/shell.ts'
+import { conversationActions, conversations } from '../../stores/conversations.ts'
+import { useText } from '../../stores/shell.ts'
 import {
   CONTROL_HEIGHT,
   DESTRUCTIVE_ACTION,
@@ -14,8 +14,8 @@ import {
   ROW_LIVE,
   TEXT_ACTION,
   useDismissed,
-} from './controls.ts'
-import { MoreIcon } from './icons.tsx'
+} from '../controls.ts'
+import { MoreIcon } from '../icons.tsx'
 
 /**
  * The three states a conversation can be in, told apart by colour and by a word: the accent is
