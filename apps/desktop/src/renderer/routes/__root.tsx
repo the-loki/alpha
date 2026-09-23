@@ -1,5 +1,5 @@
 import { useLocation } from '@solidjs/router'
-import { createEffect, createSignal, type JSX, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, type JSX, on, onCleanup, onMount, Show } from 'solid-js'
 import { ConversationPalette, useShortcuts } from '../components/chrome/ConversationPalette.tsx'
 import { Sidebar } from '../components/chrome/Sidebar.tsx'
 import { SpineHead } from '../components/chrome/TitleBar.tsx'
@@ -7,7 +7,7 @@ import { UnlockScreen } from '../components/chrome/UnlockScreen.tsx'
 import { bridge } from '../lib/bridge.ts'
 import { PANEL, PANEL_WHOLE } from '../lib/ledger.ts'
 import { conversationActions } from '../stores/conversations.ts'
-import { folded, narrow } from '../stores/fold.ts'
+import { foldActions, folded, narrow } from '../stores/fold.ts'
 import { shell, shellActions } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
 import { SettingsNav } from './settings.tsx'
@@ -31,6 +31,20 @@ export function RootLayout(props: { children?: JSX.Element }) {
   // Hidden rather than unmounted: what is typed into the composer, or into a settings form, is that
   // route's own state, and asking for the rail must not throw it away.
   const showPage = () => !narrow() || folded()
+  // The other half of what leaves the column on a phone: the page changing beside it. A tap in the
+  // column is the first half (`foldActions.choose`), because a row can ask for the page it is already
+  // showing — New conversation, on the title page — and change the screen without changing the
+  // address. The one arrival this must not fold for is settings itself: the settings menu is the
+  // column, so what was asked for is already on screen.
+  createEffect(
+    on(
+      () => `${location.pathname}${location.search}`,
+      (at) => {
+        if (narrow() && !at.startsWith('/settings')) foldActions.foldAway()
+      },
+      { defer: true },
+    ),
+  )
 
   onMount(() => {
     // The contract, whichever transport is behind it: a browser reaches the same events.

@@ -144,7 +144,6 @@ export function SettingsNav() {
       {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
       <a
         href="#/"
-        onClick={foldActions.foldAway}
         class={`mt-2 flex items-center py-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground ${RAIL_ROW}`}
       >
         <ArrowLeftIcon /> <span class="min-w-0 flex-1 truncate font-text text-name">{t('settings.back')}</span>
@@ -162,6 +161,8 @@ export function SettingsNav() {
                   <li>
                     <a
                       href={`#/settings?tab=${candidate}`}
+                      // Picking a panel is what leaves the menu on a phone; the row that asks for
+                      // settings does not fold it, because the menu is that same column (C5.4).
                       onClick={foldActions.foldAway}
                       aria-current={candidate === tab() ? 'page' : undefined}
                       // The panel you are on carries the accent's margin tick, the same mark the
