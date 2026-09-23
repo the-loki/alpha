@@ -1,0 +1,47 @@
+/**
+ * What a plugin is handed and what it answers, in Alpha's own words: one pending tool call, the
+ * verdict about it, the outcome of a run, and the retry policy's decision. Pure — no pi, no disk,
+ * no window — so the faces can be stated, implemented and tested without the agent being present.
+ * The adapter that hands these to pi lives in `main`.
+ */
+import type { Undef } from '@alpha/domain'
+
+/** One pending tool call a `beforeToolCall` hook is asked about. */
+export interface PluginToolCall {
+  toolCallId: string
+  toolName: string
+  args: unknown
+}
+
+/** A hook's answer about one tool call: a block carries the reason the model reads. */
+export interface ToolBlock {
+  reason: string
+}
+
+export interface ToolVerdict {
+  block?: ToolBlock
+}
+
+/** What a `beforeToolCall` hook is: the answer for one call, in order with the other hooks. */
+export type BeforeToolCallHook = (call: PluginToolCall) => Promise<Undef<ToolVerdict>>
+
+/** How the run that just ended turned out. */
+export interface AfterRunOutcome {
+  /** The failure the run ended with, when it failed; an abort is not a failure. */
+  failed: Undef<string>
+  aborted: boolean
+}
+
+export interface AfterRunVerdict {
+  /** Ask the base to continue the agent once the run settles. Ignored for an aborted run. */
+  retry?: boolean
+}
+
+/**
+ * The retry policy's pure decision — a failure, no abort, attempts to spend — consulted wherever a
+ * run's end is being judged: by the hook that takes an attempt, and by the translator that decides
+ * whether an ended run is over at all.
+ */
+export interface RetryDecider {
+  shouldRetry(outcome: AfterRunOutcome): boolean
+}

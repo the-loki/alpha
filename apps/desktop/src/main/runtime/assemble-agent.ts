@@ -5,6 +5,8 @@
  */
 
 import type { Undef } from '@alpha/domain'
+import type { PluginToolCall } from '@alpha/plugin'
+import { chainToolVerdicts } from '@alpha/plugin'
 import {
   Agent,
   type AgentMessage,
@@ -26,26 +28,25 @@ export interface AssembleOptions {
   sessionId?: string
 }
 
+/** pi hands a hook its own context; a face is handed `@alpha/plugin`'s call. */
+function toolCallOf(context: BeforeToolCallContext): PluginToolCall {
+  return { toolCallId: context.toolCall.id, toolName: context.toolCall.name, args: context.args }
+}
+
 /**
- * Chains the plugins' `beforeToolCall` hooks in assembly order onto the agent's one hook. The first
- * block short-circuits the chain; its reason becomes the blocked tool result the model reads.
+ * The plugins' `beforeToolCall` hooks, in assembly order, onto the agent's one hook: the chain is
+ * the library's (`chainToolVerdicts`), and a winning block becomes pi's shape, whose reason is the
+ * blocked tool result the model reads.
  */
 function chainBeforeToolCall(
   plugins: AlphaPlugin[],
 ): (context: BeforeToolCallContext) => Promise<Undef<BeforeToolCallResult>> {
   return async (context) => {
-    for (const plugin of plugins) {
-      const hook = plugin.beforeToolCall
-      if (hook === undefined) continue
-      const verdict = await hook({
-        toolCallId: context.toolCall.id,
-        toolName: context.toolCall.name,
-        args: context.args,
-      })
-      const block = verdict?.block
-      if (block !== undefined) return { block: true, reason: block.reason }
-    }
-    return undefined
+    // The list is read when a call happens rather than when the agent is assembled: registering a
+    // plugin is what puts it in the chain, and folding the list here is the whole of the adapter.
+    const hooks = plugins.flatMap((plugin) => (plugin.beforeToolCall === undefined ? [] : [plugin.beforeToolCall]))
+    const verdict = await chainToolVerdicts(hooks)(toolCallOf(context))
+    return verdict?.block === undefined ? undefined : { block: true, reason: verdict.block.reason }
   }
 }
 

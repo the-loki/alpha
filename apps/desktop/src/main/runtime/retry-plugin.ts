@@ -10,7 +10,8 @@
  * The decision decides and the hook acts — and nothing is written between the two.
  */
 
-import type { AlphaPlugin, RetryDecider } from './plugin-contract.ts'
+import type { RetryDecider } from '@alpha/plugin'
+import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** How the plugin waits: one delay per retry, in order. coding-agent's two retries. */
 export interface RetryPluginPorts {

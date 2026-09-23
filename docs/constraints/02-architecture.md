@@ -19,8 +19,9 @@ import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anyw
 ```
 apps/desktop/src/          the app: one package, three processes
   main/      ──┐
-  preload/   ──┼──> @alpha/domain ──> @alpha/i18n        the pure three: the rules, the wire
-  renderer/  ──┘          │         ──> @alpha/contract    between processes, the dictionary
+  preload/   ──┼──> @alpha/domain ──┬──> @alpha/i18n       the pure ones: the rules, the
+  renderer/  ──┘                    ├──> @alpha/contract     dictionary, the wire between
+                                    └──> @alpha/plugin       processes, and the plugin base
                           ├──> @alpha/state ──> @alpha/gate
                           ├──> @alpha/sessions
                           ├──> @alpha/conversations
@@ -36,6 +37,7 @@ An arrow points the way an import goes: the app may import any library, `@alpha/
 | `@alpha/i18n` | The dictionary: the interface's words in both languages, and `text()` | nothing from this repo |
 | `@alpha/domain` | The rules: permissions, providers, transcripts, tasks, schedules, tool rows, validation schemas | `@alpha/i18n` |
 | `@alpha/contract` | The IPC contract: the channel names and the types the bridge exposes | `@alpha/domain`, `@alpha/i18n` |
+| `@alpha/plugin` | The plugin base: what a face is handed and what it answers, and how faces in order become one decision | `@alpha/domain` |
 | `@alpha/state` | The one file the workbench persists for itself | `@alpha/domain` |
 | `@alpha/sessions` | The conversation on disk: the JSONL transcript, its entries, the decisions made about its tool calls | `@alpha/domain` |
 | `@alpha/conversations` | The list the sidebar shows, the bookkeeping that keeps it true, and the messages waiting to be sent | `@alpha/domain` |
@@ -60,9 +62,9 @@ rule rather than a sentence — nothing points sideways either.
 processes into another — the window cannot reach the runtime's files, the runtime cannot reach the
 window's — which is what separate packages used to enforce by existing.
 `02-architecture:pure-packages-have-no-io` fails on any `electron` or Node builtin import under the
-dictionary, the rules and the contract; `02-architecture:no-electron-in-libraries` fails on an
-`electron` import under any package at all — a library may read the disk, it may never hold a
-window, because a library that owns a window cannot be tested on its own.
+dictionary, the rules, the plugin base and the contract; `02-architecture:no-electron-in-libraries`
+fails on an `electron` import under any package at all — a library may read the disk, it may never
+hold a window, because a library that owns a window cannot be tested on its own.
 `02-architecture:libraries-point-one-way` is the `May import` column, read as a rule: it fails on an
 `@alpha/*` import that is not below the importing library (a package the table does not name may
 import none of them), and on a relative import that climbs out of its own package.
@@ -155,10 +157,10 @@ number of store writes.
 The agent is assembled from plugins of Alpha's own
 ([ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)). A plugin is a name
 plus the faces it contributes, and the base attaches each face where it belongs: the tools it adds
-become the agent's tools, its `beforeToolCall` joins the chain the base hands the agent, and its
-`afterRun` is called when a run ends. So a capability is added as a face on that contract, with a
-decision behind it that stands without the agent. The base is what other functions are built on, not
-one more thing wired into the runtime.
+become the agent's tools, its `beforeToolCall` joins the chain the base hands the agent (the chain
+itself is `chainToolVerdicts`, in `@alpha/plugin`), and its `afterRun` is called when a run ends.
+So a capability is added as a face on that contract, with a decision behind it that stands without
+the agent. The base is what other functions are built on, not one more thing wired into the runtime.
 
 A plugin may also hand the runtime a handle, and two built-ins do: the compaction plugin's
 on-demand path, which "compact now" calls, and the retry plugin's decision, which the runtime asks

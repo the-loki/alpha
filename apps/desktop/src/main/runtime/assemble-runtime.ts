@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
+import type { RetryDecider } from '@alpha/plugin'
 import { modelFor, type ProviderStore } from '@alpha/providers'
 import {
   type DecisionLedger,
@@ -24,7 +25,6 @@ import { contextOf } from './agent-context.ts'
 import { assembleAgent } from './assemble-agent.ts'
 import { createCodingToolsPlugin } from './coding-tools.ts'
 import { createCompactionPlugin } from './compaction-plugin.ts'
-import type { RetryDecider } from './conversation-runtime.ts'
 import { ConversationRuntime } from './conversation-runtime.ts'
 import { createGatePlugin } from './gate-plugin.ts'
 import { createModelRuntime } from './model-runtime.ts'

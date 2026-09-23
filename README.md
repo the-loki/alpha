@@ -128,6 +128,7 @@ apps/desktop            the workbench: one package, three processes
 packages/i18n           pure: the dictionary, both languages, and text()
 packages/domain         pure: the rules — transcripts, permissions, providers, tasks, schedules
 packages/contract       pure: the channel names and the types the bridge exposes
+packages/plugin         pure: the plugin base — a face's vocabulary, and how faces become one decision
 packages/state          the one file the workbench persists for itself
 packages/sessions       the conversation on disk: the transcript, its entries, its decisions
 packages/conversations  the list the sidebar shows, and the messages waiting to be sent

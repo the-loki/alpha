@@ -26,16 +26,14 @@ import {
   type UsageTotals,
   userBlocksOf,
 } from '@alpha/domain'
+import type { RetryDecider } from '@alpha/plugin'
 import { type AgentEntry, type DecisionLookup, type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import { runAfterRunHooks } from './after-run.ts'
 import { contextOf } from './agent-context.ts'
 import { AgentEventTranslator } from './agent-events.ts'
-import type { AlphaPlugin, RetryDecider } from './plugin-contract.ts'
-
-/** The retry policy's pure decision, kept with the other plugin faces in plugin-contract. */
-export type { RetryDecider } from './plugin-contract.ts'
+import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** What one conversation is built from: the assembled agent, its session, and the store behind it. */
 export interface ConversationRuntimeOptions {

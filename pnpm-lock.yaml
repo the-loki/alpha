@@ -41,6 +41,9 @@ importers:
       '@alpha/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@alpha/plugin':
+        specifier: workspace:*
+        version: link:../../packages/plugin
       '@alpha/providers':
         specifier: workspace:*
         version: link:../../packages/providers
@@ -137,6 +140,12 @@ importers:
         version: link:../state
 
   packages/i18n: {}
+
+  packages/plugin:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/providers:
     dependencies:

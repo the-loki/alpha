@@ -1,9 +1,10 @@
+import type { AfterRunOutcome } from '@alpha/plugin'
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
 import { runAfterRunHooks } from './after-run.ts'
 import { failedMessageOf } from './agent-events.ts'
 import { assembleAgent } from './assemble-agent.ts'
-import type { AfterRunOutcome, AlphaPlugin } from './plugin-contract.ts'
+import type { AlphaPlugin } from './plugin-contract.ts'
 import { createRetryPlugin } from './retry-plugin.ts'
 import { aModel, errorStream, scriptedModels, textStream } from './scripted-provider.ts'
 

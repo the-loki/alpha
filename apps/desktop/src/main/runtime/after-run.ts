@@ -6,9 +6,10 @@
  */
 
 import type { Undef } from '@alpha/domain'
+import type { AfterRunOutcome } from '@alpha/plugin'
 import type { Agent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
-import type { AfterRunOutcome, AlphaPlugin } from './plugin-contract.ts'
+import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** The transcript's last assistant message, or nothing when the run never produced one. */
 function lastAssistant(messages: AgentMessage[]): Undef<AssistantMessage> {

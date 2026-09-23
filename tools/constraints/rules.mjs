@@ -22,22 +22,25 @@ const isGenerated = (path) => path.startsWith('packages/i18n/src/')
 
 /**
  * The libraries that do no I/O at all: the dictionary the interface is written in, the rules the
- * workbench decides with, and the contract between its processes. Every other library may read the
- * disk and the clock — it just may not hold a window, which `no-electron-in-libraries` is about.
+ * workbench decides with, the plugin base a capability's policy half is written against, and the
+ * contract between the processes. Every other library may read the disk and the clock — it just
+ * may not hold a window, which `no-electron-in-libraries` is about.
  */
-const PURE_PACKAGES = ['packages/i18n/src/', 'packages/domain/src/', 'packages/contract/src/']
+const PURE_PACKAGES = ['packages/i18n/src/', 'packages/domain/src/', 'packages/plugin/src/', 'packages/contract/src/']
 
 /**
  * Which library may import which. The dictionary sits under everything, the rules know the
- * dictionary, the contract knows those two, and each library around the workbench's own files —
- * the sessions, the conversation list, the schedule, the connections, the gate — knows the rules,
- * plus the contract where a shape crosses the wire. A package this table has never heard of may
- * import no library at all: a new one asks for its dependencies by being written down here.
+ * dictionary, the contract and the plugin base know those two, and each library around the
+ * workbench's own files — the sessions, the conversation list, the schedule, the connections, the
+ * gate — knows the rules, plus the contract where a shape crosses the wire. A package this table
+ * has never heard of may import no library at all: a new one asks for its dependencies by being
+ * written down here.
  */
 const LIBRARY_DEPENDENCIES = {
   'packages/i18n/src/': [],
   'packages/domain/src/': ['@alpha/i18n'],
   'packages/contract/src/': ['@alpha/domain', '@alpha/i18n'],
+  'packages/plugin/src/': ['@alpha/domain'],
   'packages/state/src/': ['@alpha/domain'],
   'packages/sessions/src/': ['@alpha/domain'],
   'packages/conversations/src/': ['@alpha/domain'],

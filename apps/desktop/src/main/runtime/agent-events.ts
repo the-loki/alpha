@@ -32,7 +32,7 @@ import {
   usageTotals,
   userBlocksOf,
 } from '@alpha/domain'
-import type { RetryDecider } from './plugin-contract.ts'
+import type { RetryDecider } from '@alpha/plugin'
 
 /** A record off the agent's pipe, as it arrives: shaped by the agent, not by this file. */
 export interface RpcLikeEvent {
