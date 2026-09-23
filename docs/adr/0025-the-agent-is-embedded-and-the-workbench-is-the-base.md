@@ -40,7 +40,7 @@ heavier harness layer.
 **The agent runs in `main`, on the core.** One embedded agent per open conversation. A prompt is a
 method call and an event subscription; there is no framing, no correlation ids, no child to
 reap. The wall of constraints moves accordingly: C2.0 now forbids pi imports everywhere
-*except* `main` (the renderer and `core` keep the ban — the contract is still their only door),
+*except* `main` (the renderer and the libraries keep the ban — the contract is still their only door),
 and C2.4's key path ends at the model runtime's auth resolver instead of a child's environment.
 
 **The workbench is the plugin base.** Alpha defines the contract its agent is assembled from: a

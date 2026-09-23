@@ -18,7 +18,7 @@ converts the value at that boundary, so `null` never travels inward. The point i
 absence value, not two: the moment both are legal in the domain, every check has to be written
 twice and one of them is eventually forgotten.
 
-Neither is ever spelled as a bare union. `core` exports two aliases, and which one a value wears
+Neither is ever spelled as a bare union. `@alpha/domain` exports two aliases, and which one a value wears
 says where it came from:
 
 - **`Undef<T>`** — `T | undefined`, the domain's absence. This is the one the codebase uses: a
@@ -106,7 +106,7 @@ combination, model it as a discriminated union with a string literal tag. `isLoa
 `isError` + `data` is three fields that can lie; `{ status: "loading" } | { status: "error", ... }`
 cannot.
 
-**Enforcement:** review, and the shape is visible in the domain types under `packages/core`.
+**Enforcement:** review, and the shape is visible in the domain types under `packages/domain`.
 
 ## C1.9 — Biome is the linter and the formatter
 

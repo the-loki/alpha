@@ -29,9 +29,6 @@ importers:
       '@alpha/contract':
         specifier: workspace:*
         version: link:../../packages/contract
-      '@alpha/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@alpha/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -90,18 +87,6 @@ importers:
 
   packages/contract:
     dependencies:
-      '@alpha/domain':
-        specifier: workspace:*
-        version: link:../domain
-      '@alpha/i18n':
-        specifier: workspace:*
-        version: link:../i18n
-
-  packages/core:
-    dependencies:
-      '@alpha/contract':
-        specifier: workspace:*
-        version: link:../contract
       '@alpha/domain':
         specifier: workspace:*
         version: link:../domain

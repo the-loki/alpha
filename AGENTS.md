@@ -25,8 +25,7 @@ permission level, approval, provider, credential, model).
 `apps/desktop` is the workbench: `src/main` is the Electron main process and the agent runtime, `src/preload`
 is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its libraries — the dictionary
 (`@alpha/i18n`), the rules (`@alpha/domain`) and the IPC contract (`@alpha/contract`) — pure, and
-entered only from above. The app depends on them and never backwards; the name `@alpha/core`
-re-exports the three and goes once the call sites have stopped using it.
+entered only from above. The app depends on them and never backwards.
 
 ### Before writing code here
 

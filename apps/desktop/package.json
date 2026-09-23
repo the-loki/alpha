@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@alpha/contract": "workspace:*",
-    "@alpha/core": "workspace:*",
     "@alpha/domain": "workspace:*",
     "@alpha/i18n": "workspace:*",
     "@earendil-works/pi-agent-core": "0.86.1",

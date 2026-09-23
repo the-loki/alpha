@@ -18,7 +18,7 @@ inside a module. Alpha has four:
 
 | Seam | What it is | Test kind |
 | --- | --- | --- |
-| `core`'s domain functions | Pure functions and stores over domain types | Unit, no I/O |
+| `@alpha/domain`'s functions | Pure functions and stores over domain types | Unit, no I/O |
 | The IPC contract | The typed surface preload exposes, driven end to end | Integration, real runtime, scripted provider |
 | The agent runtime | Conversation lifecycle: prompt → turn → tool → result | Integration, scripted provider |
 | The window | What a user sees and can do | E2E, Playwright + Electron |
@@ -92,4 +92,4 @@ value read from the transcript after a real run.
 covered by tests over source strings that must pass and must fail, so a broken regex cannot
 silently pass the whole repo.
 
-**Enforcement:** `packages/core` unit tests plus a fixture-driven test in the checker package.
+**Enforcement:** `packages/domain`'s unit tests plus the checker's own fixtures.

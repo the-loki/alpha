@@ -11,7 +11,7 @@
 
 const GENERATED = [/(^|\/)node_modules\//, /(^|\/)out\//, /(^|\/)dist\//, /(^|\/)coverage\//, /\.gen\.ts$/]
 
-// The app is one package under apps/ (three process directories); the library is under packages/.
+// The app is one package under apps/ (three process directories); the libraries are under packages/.
 const isSource = (path) => /^(apps|packages)\/[^/]+\/src\//.test(path) || /^tools\//.test(path)
 const isTs = (path) => /\.tsx?$/.test(path)
 const isDeclaration = (path) => /\.d\.ts$/.test(path)
@@ -37,8 +37,6 @@ const LIBRARY_DEPENDENCIES = {
   'packages/i18n/src/': [],
   'packages/domain/src/': ['@alpha/i18n'],
   'packages/contract/src/': ['@alpha/domain', '@alpha/i18n'],
-  // On its way out: the call sites still name it while they move over, and it goes with them.
-  'packages/core/src/': ['@alpha/domain', '@alpha/contract', '@alpha/i18n'],
 }
 
 const stripStrings = (line) =>
@@ -261,8 +259,7 @@ export const RULES = [
     description: 'absence is Undef<T>, not a union spelled out',
     applies: (path) => isTs(path) && !isDeclaration(path) && !isTest(path),
     pattern: /\|\s*undefined\b/,
-    message:
-      'a bare union with undefined; name it Undef<T> from core, or use ? on a property or an omittable parameter (C1.2)',
+    message: 'a bare union with undefined; name it Undef<T>, or use ? on a property or an omittable parameter (C1.2)',
   }),
 
   lineRule({
@@ -460,7 +457,7 @@ export const RULES = [
   {
     id: '02-architecture:no-agent-dependency',
     constraint: '02-architecture.md',
-    description: 'the agent library links into main alone; the window and core stay clear of it',
+    description: 'the agent library links into main alone; the window and the libraries stay clear of it',
     check({ path, text }) {
       if (!isSource(path) || !path.includes('/src/')) return []
       // The runtime is where the agent lives now (ADR-0025); everywhere else the contract is the door.

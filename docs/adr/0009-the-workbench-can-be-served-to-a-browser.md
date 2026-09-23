@@ -1,7 +1,7 @@
 # The workbench can be served to a browser, and the browser is a full operator
 
 Alpha runs in the main process, and its window talks to it over the typed contract in
-`core/contract.ts`. That contract is the seam: a second adapter implements it over HTTP and a
+`packages/contract/src/contract.ts`. That contract is the seam: a second adapter implements it over HTTP and a
 server in the main process serves the same bundle to a browser. Anyone holding the token is as
 much an operator as the person at the desk — they can answer approval cards, change the permission
 level, and read every conversation.

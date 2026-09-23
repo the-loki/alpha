@@ -1,6 +1,6 @@
 # The interface is written in a dictionary, and only the interface
 
-The window has two languages, and the words it says come from a typed dictionary in `core` rather
+The window has two languages, and the words it says come from a typed dictionary in `@alpha/i18n` rather
 than from the places that draw them. What the agent is told stays in the conversation's own
 language, and so does anything a vendor or the operating system said: those are not the
 interface's words, and translating them would change what a conversation is.
@@ -38,11 +38,12 @@ with the code.
 - **Foreign text** — what a provider's API returned, what the OS said, a path, a model id. Quoted
   as-is. Translating a vendor error would be inventing a sentence nobody wrote.
 
-**The dictionary is data in `core`, and the compiler checks it.** `EN` and `ZH` are plain objects
-of `key: string`; `ZH` is declared `satisfies Record<TextKey, string>`, so a key added to one
-language and forgotten in the other is a type error rather than a blank line at runtime. Prose
-lives in `core/src/i18n.ts` with the types that name it, because a type's absence and a label's
-words are both vocabulary — but no framework, no store and no side effects, so `core` stays pure.
+**The dictionary is data in `@alpha/i18n`, and the compiler checks it.** `EN` and `ZH` are plain
+objects of `key: string`; `ZH` is declared `satisfies Record<TextKey, string>`, so a key added to one
+language and forgotten in the other is a type error rather than a blank line at runtime. Prose lives
+in `packages/i18n/src/en.ts` and its `zh.ts` twin — one table per language — with the types that name
+it, because a type's absence and a label's words are both vocabulary — but no framework, no store and
+no side effects, so `@alpha/i18n` stays pure.
 
 **Copy in a component is a `pnpm check` failure.** `05-design:copy-has-a-key` reads every `.tsx`
 under `apps/desktop/src/renderer/` and flags copy three ways it hides: an `aria-label`, `placeholder` or

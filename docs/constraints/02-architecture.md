@@ -34,11 +34,10 @@ apps/desktop/src/          the app: one package, three processes
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
 `apps/desktop`, one package whose three processes are directories, which keeps the split the rest of
 this document is about (the window has no Node, the bridge is the only door, the runtime is in
-`main`) without pretending the workbench and the library it depends on are peers.
+`main`) without pretending the workbench and the libraries it depends on are peers.
 
 Dependencies never point backwards: the libraries know nothing about the workbench, and no process
-imports `main`'s runtime. While the call sites move over they still name `@alpha/core`, which
-re-exports the three; that name is on its way out, and goes when the last of them has.
+imports `main`'s runtime.
 
 **Enforcement:** five of the checker's rules and one linter keep this shape.
 `02-architecture:processes-stay-apart` fails on a relative import from one of the app's three

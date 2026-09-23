@@ -48,7 +48,7 @@ something twice.
 The level is chosen per conversation, defaulting from the workspace, and is always visible in the
 window — a user must never have to guess which level is active.
 
-**Enforcement:** the level list is a closed union in `core`; a test asserts each level's decision
+**Enforcement:** the level list is a closed union in `@alpha/domain`; a test asserts each level's decision
 for each tool risk class, and the UI has a visible level chip in every conversation view.
 
 ## C3.5 — Reference points, and what is borrowed from each
@@ -75,7 +75,7 @@ The three are the mainstream: OpenAI's original shape, OpenAI's newer one, and A
 first covers most of the rest, since a gateway, a local server and a hosted provider that "speaks
 OpenAI" all take the same request.
 
-**Enforcement:** `PROVIDER_APIS` is a closed union in `core`, `pnpm check:constraints` scans for
+**Enforcement:** `PROVIDER_APIS` is a closed union in `@alpha/domain`, `pnpm check:constraints` scans for
 hosts, and no settings copy names a provider as a thing to add.
 
 ## C3.7 — Explicit non-goals for the first release

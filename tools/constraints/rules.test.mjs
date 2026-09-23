@@ -265,41 +265,41 @@ describe('01-typescript:no-null-union', () => {
   const rule = '01-typescript:no-null-union'
 
   it('flags a property typed with a null union', () => {
-    const found = violationsFor(rule, file('packages/core/src/a.ts', 'const x: string | null = 1'))
+    const found = violationsFor(rule, file('packages/domain/src/a.ts', 'const x: string | null = 1'))
     expect(found).toHaveLength(1)
     expect(found[0].line).toBe(1)
   })
 
   it('flags a null union in a return type, and names the alias that replaces it', () => {
-    const found = violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | null {}'))
+    const found = violationsFor(rule, file('packages/domain/src/a.ts', 'function f(): Thing | null {}'))
     expect(found).toHaveLength(1)
     expect(found[0].message).toContain('Null<T>')
   })
 
   it('flags the double union', () => {
-    const found = violationsFor(rule, file('packages/core/src/a.ts', 'let a: Foo | null | undefined'))
+    const found = violationsFor(rule, file('packages/domain/src/a.ts', 'let a: Foo | null | undefined'))
     expect(found).toHaveLength(1)
   })
 
   it('leaves an undefined union to the absence rule, which is the one that owns its spelling', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | undefined {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'function f(): Thing | undefined {}'))).toEqual([])
   })
 
   it('passes an optional property', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'interface A { foo?: string }'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'interface A { foo?: string }'))).toEqual([])
   })
 
   it('passes a union of real types', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'type T = "a" | "b"'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'type T = "a" | "b"'))).toEqual([])
   })
 
   it('passes a null union in a declaration file, where the vendor owns the type', () => {
-    expect(violationsFor(rule, file('packages/core/src/vendor.d.ts', 'type T = string | null'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/vendor.d.ts', 'type T = string | null'))).toEqual([])
   })
 
   it('passes a line carrying the escape hatch', () => {
     const text = 'const x: Foo | null = y // constraints-ignore 01-typescript: vendor signature'
-    expect(violationsFor(rule, file('packages/core/src/a.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', text))).toEqual([])
   })
 
   it('still flags the neighbouring line when one line is exempted', () => {
@@ -307,7 +307,7 @@ describe('01-typescript:no-null-union', () => {
       'const x: Foo | null = y // constraints-ignore 01-typescript: vendor',
       'const z: Bar | null = w',
     ].join('\n')
-    const found = violationsFor(rule, file('packages/core/src/a.ts', text))
+    const found = violationsFor(rule, file('packages/domain/src/a.ts', text))
     expect(found).toHaveLength(1)
     expect(found[0].line).toBe(2)
   })
@@ -317,7 +317,7 @@ describe('01-typescript:absence-is-named', () => {
   const rule = '01-typescript:absence-is-named'
 
   it('flags a union spelled out in a return type', () => {
-    const found = violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Thing | undefined {}'))
+    const found = violationsFor(rule, file('packages/domain/src/a.ts', 'function f(): Thing | undefined {}'))
     expect(found).toHaveLength(1)
     expect(found[0].message).toContain('Undef<T>')
   })
@@ -328,30 +328,30 @@ describe('01-typescript:absence-is-named', () => {
 
   it('flags a parameter the caller has to pass either way', () => {
     expect(
-      violationsFor(rule, file('packages/core/src/a.ts', 'function f(a: string | undefined, b: string) {}')),
+      violationsFor(rule, file('packages/domain/src/a.ts', 'function f(a: string | undefined, b: string) {}')),
     ).toHaveLength(1)
   })
 
   it('passes the named form, which is what the rule is for', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(): Undef<Thing> {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'function f(): Undef<Thing> {}'))).toEqual([])
   })
 
   it('passes an optional property and an omittable parameter, which keep their question mark', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'interface A { foo?: string }'))).toEqual([])
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(a?: string) {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'interface A { foo?: string }'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'function f(a?: string) {}'))).toEqual([])
   })
 
   it('passes a fixture that has to show the banned form', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.test.ts', 'const x: string | undefined = y'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.test.ts', 'const x: string | undefined = y'))).toEqual([])
   })
 
   it('flags the double union too, which the null rule also answers for', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'let a: Foo | null | undefined'))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'let a: Foo | null | undefined'))).toHaveLength(1)
   })
 
   it('passes a line carrying the escape hatch', () => {
     const text = 'const x: Foo | undefined = y // constraints-ignore 01-typescript: vendor signature'
-    expect(violationsFor(rule, file('packages/core/src/a.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', text))).toEqual([])
   })
 })
 
@@ -359,15 +359,15 @@ describe('01-typescript:no-default-export', () => {
   const rule = '01-typescript:no-default-export'
 
   it('flags a default-exported function', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'export default function f() {}'))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'export default function f() {}'))).toHaveLength(1)
   })
 
   it('flags a default-exported expression', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'export default {}'))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'export default {}'))).toHaveLength(1)
   })
 
   it('passes a named export', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'export function f() {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'export function f() {}'))).toEqual([])
   })
 
   it('does not police the build configs the tooling reads', () => {
@@ -387,12 +387,12 @@ describe('02-architecture:processes-stay-apart', () => {
     for (const [path, text] of cases) expect(violationsFor(rule, file(path, text))).toHaveLength(1)
   })
 
-  it('allows the library and the files of the process it is written in', () => {
+  it('allows the libraries and the files of the process they are written in', () => {
     const cases = [
-      ['apps/desktop/src/renderer/a.ts', "import { text } from '@alpha/core'"],
+      ['apps/desktop/src/renderer/a.ts', "import { text } from '@alpha/i18n'"],
       ['apps/desktop/src/renderer/a.ts', "import { shell } from './stores/shell.ts'"],
       ['apps/desktop/src/main/a.ts', "import { gate } from './runtime/gate.ts'"],
-      ['packages/core/src/a.ts', 'export const a = 1'],
+      ['packages/domain/src/a.ts', 'export const a = 1'],
     ]
     for (const [path, text] of cases) expect(violationsFor(rule, file(path, text))).toEqual([])
   })
@@ -402,7 +402,7 @@ describe('01-typescript:any-usage', () => {
   const rule = '01-typescript:any-usage'
 
   it('flags an any annotation', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(x: any) {}'))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'function f(x: any) {}'))).toHaveLength(1)
   })
 
   it('flags an any cast', () => {
@@ -410,11 +410,11 @@ describe('01-typescript:any-usage', () => {
   })
 
   it('passes the word any inside a string', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'const s = "any time"'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'const s = "any time"'))).toEqual([])
   })
 
   it('passes Unknown', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', 'function f(x: unknown) {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', 'function f(x: unknown) {}'))).toEqual([])
   })
 })
 
@@ -422,15 +422,17 @@ describe('01-typescript:ts-expect-error-reason', () => {
   const rule = '01-typescript:ts-expect-error-reason'
 
   it('flags a bare ts-expect-error', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', '// @ts-expect-error'))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', '// @ts-expect-error'))).toHaveLength(1)
   })
 
   it('flags ts-ignore outright', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', '// @ts-ignore'))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', '// @ts-ignore'))).toHaveLength(1)
   })
 
   it('passes ts-expect-error with a reason', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', '// @ts-expect-error vendor type is wrong'))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', '// @ts-expect-error vendor type is wrong'))).toEqual(
+      [],
+    )
   })
 })
 
@@ -498,15 +500,15 @@ describe('02-architecture:libraries-point-one-way', () => {
     expect(violationsFor(rule, file('packages/domain/src/a.ts', 'import { x } from "./b.ts"'))).toEqual([])
   })
 
-  it('flags a library reaching sideways, up, or for the name that is going away', () => {
+  it('flags a library reaching sideways, up, or for the app itself', () => {
     const up = "import type { Undef } from '@alpha/domain'"
     expect(violationsFor(rule, file('packages/i18n/src/a.ts', up))).toHaveLength(1)
 
     const sideways = "import { IPC } from '@alpha/contract'"
     expect(violationsFor(rule, file('packages/domain/src/a.ts', sideways))).toHaveLength(1)
 
-    const goingAway = "import { text } from '@alpha/core'"
-    expect(violationsFor(rule, file('packages/domain/src/a.ts', goingAway))).toHaveLength(1)
+    const theApp = "import { text } from '@alpha/desktop'"
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', theApp))).toHaveLength(1)
   })
 
   it('flags a library reaching into another package, or into the app, by path', () => {
@@ -549,8 +551,8 @@ describe('02-architecture:no-agent-dependency', () => {
     expect(violationsFor(rule, file('apps/desktop/src/renderer/a.ts', text))).toHaveLength(1)
   })
 
-  it('flags it in core', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', text))).toHaveLength(1)
+  it('flags it in the libraries', () => {
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', text))).toHaveLength(1)
   })
 
   it('passes it in the runtime, where the agent lives', () => {
@@ -596,23 +598,23 @@ describe('02-architecture:max-file-lines', () => {
 
   it('flags a file over the limit', () => {
     const text = Array.from({ length: 301 }, (_, i) => `const v${i} = ${i}`).join('\n')
-    expect(violationsFor(rule, file('packages/core/src/big.ts', text))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/big.ts', text))).toHaveLength(1)
   })
 
   it('passes a file at the limit', () => {
     const text = Array.from({ length: 300 }, (_, i) => `const v${i} = ${i}`).join('\n')
-    expect(violationsFor(rule, file('packages/core/src/big.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/big.ts', text))).toEqual([])
   })
 
   it('does not count blank lines or comments against the limit', () => {
     const body = Array.from({ length: 280 }, (_, i) => `const v${i} = ${i}`)
     const pad = Array.from({ length: 60 }, () => '')
-    expect(violationsFor(rule, file('packages/core/src/big.ts', [...body, ...pad].join('\n')))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/big.ts', [...body, ...pad].join('\n')))).toEqual([])
   })
 
   it('allows test files more room', () => {
     const text = Array.from({ length: 400 }, (_, i) => `const v${i} = ${i}`).join('\n')
-    expect(violationsFor(rule, file('packages/core/src/a.test.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.test.ts', text))).toEqual([])
   })
 })
 
@@ -623,11 +625,11 @@ describe('02-architecture:max-function-lines', () => {
     [`function ${name}() {`, ...Array.from({ length: bodyLines }, (_, i) => `  const a${i} = ${i}`), '}'].join('\n')
 
   it('flags a function body over 60 lines', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', fn('big', 61)))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', fn('big', 61)))).toHaveLength(1)
   })
 
   it('passes a function body of exactly 60 lines', () => {
-    expect(violationsFor(rule, file('packages/core/src/a.ts', fn('ok', 60)))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', fn('ok', 60)))).toEqual([])
   })
 
   it('flags an oversized component in the renderer at a lower limit', () => {
@@ -636,12 +638,12 @@ describe('02-architecture:max-function-lines', () => {
 
   it('reports the line the function starts on', () => {
     const text = ['// a comment', fn('big', 61)].join('\n')
-    expect(violationsFor(rule, file('packages/core/src/a.ts', text))[0].line).toBe(2)
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', text))[0].line).toBe(2)
   })
 
   it('measures a nested block as part of its function, not as a second function', () => {
     const text = ['function outer() {', '  if (true) {', '    return 1', '  }', '}'].join('\n')
-    expect(violationsFor(rule, file('packages/core/src/a.ts', text))).toEqual([])
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', text))).toEqual([])
   })
 })
 
@@ -656,7 +658,7 @@ describe('03-product-scope:no-hardcoded-hosts', () => {
 
   it('flags a provider host in the module that used to be allowed to hold one', () => {
     const text = 'const u = "https://api.anthropic.com"'
-    expect(violationsFor(rule, file('packages/core/src/providers.ts', text))).toHaveLength(1)
+    expect(violationsFor(rule, file('packages/domain/src/providers.ts', text))).toHaveLength(1)
   })
 
   it('passes the module that owns the workbench its own address', () => {
@@ -759,7 +761,7 @@ describe('02-architecture:contract-channels', () => {
 
 describe('checkFile', () => {
   it('runs every rule that applies to the path', () => {
-    const found = checkFile(file('packages/core/src/a.ts', 'const x: string | null = 1'))
+    const found = checkFile(file('packages/domain/src/a.ts', 'const x: string | null = 1'))
     expect(found.map((v) => v.rule)).toContain('01-typescript:no-null-union')
   })
 
@@ -772,7 +774,7 @@ describe('checkFile', () => {
   })
 
   it('carries the constraint file for each violation', () => {
-    const [first] = checkFile(file('packages/core/src/a.ts', 'const x: string | null = 1'))
+    const [first] = checkFile(file('packages/domain/src/a.ts', 'const x: string | null = 1'))
     expect(first.constraint).toBe('01-typescript.md')
   })
 })

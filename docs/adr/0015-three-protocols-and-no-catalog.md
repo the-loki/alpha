@@ -38,7 +38,7 @@ wanted.
 
 ## Decision
 
-**Three protocols, as a closed union in `core`.** `openai-completions`, `openai-responses`,
+**Three protocols, as a closed union in `@alpha/domain`.** `openai-completions`, `openai-responses`,
 `anthropic-messages`: the de-facto standard that gateways and local servers copy, OpenAI's newer
 shape, and Anthropic's own. The union is a closed list of names, and each name is written into the
 agent's `models.json` beside the base URL and the models that go with it.
