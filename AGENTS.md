@@ -37,7 +37,7 @@ never backwards.
 
 `docs/constraints/` is binding, not advisory — it carries the size budgets, the `null` ban, the
 process split, and the scope cuts, each with how it is enforced. Decisions that were expensive to
-reverse are in `docs/adr/`. A new capability of the agent is a plugin on the base (C2.8), not a
+reverse are in `docs/adr/`, mapped in its README (what binds today, and what replaced what). A new capability of the agent is a plugin on the base (C2.8), not a
 branch in the runtime: a file in `@alpha/internal-plugins` — a face, the decision behind it, and the
 adapter where the face is pi's own shape — with `main` keeping the registration.
 
