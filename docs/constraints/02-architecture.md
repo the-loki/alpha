@@ -131,8 +131,12 @@ stored, never read one back. Nor is it written into a file or an environment var
 no second process to hand it to, and a secret that sits in a file or an env line outlives the run
 that needed it.
 
-**Enforcement:** `pnpm check:constraints` fails if any renderer file reads a field whose name
-matches `/apiKey|secret|credential/i` off a provider payload; review covers the rest.
+**Enforcement:** `pnpm check:constraints` rule `02-architecture:renderer-has-no-credentials`
+fails on a renderer file that reads a property named `apiKey`, `api_key`, `secret`, `credential` or
+`credentials` — `provider.apiKey`, `snapshot['apiKey']` — which is the read C2.4 forbids. What the
+window is allowed to have passes: the boolean that says one exists (`hasCredential`), the field the
+person is typing into on its way *to* the vault, the call that stores it, and a dictionary key that
+merely names the thing. Review covers the rest.
 
 ## C2.5 — Size budgets
 

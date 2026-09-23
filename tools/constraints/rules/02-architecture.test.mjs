@@ -291,3 +291,32 @@ describe('02-architecture:capabilities-are-plugins', () => {
     expect(violationsFor(rule, file('packages/gate/src/a.ts', text))).toEqual([])
   })
 })
+
+describe('02-architecture:renderer-has-no-credentials', () => {
+  const rule = '02-architecture:renderer-has-no-credentials'
+  const renderer = 'apps/desktop/src/renderer/stores/providers.ts'
+
+  it('flags the window reading a credential field off a payload', () => {
+    expect(violationsFor(rule, file(renderer, 'const key = provider.apiKey'))).toHaveLength(1)
+    expect(violationsFor(rule, file(renderer, "const key = snapshot['apiKey']"))).toHaveLength(1)
+    expect(violationsFor(rule, file(renderer, 'const one = payload.secret'))).toHaveLength(1)
+    expect(violationsFor(rule, file(renderer, 'const set = stored.credentials'))).toHaveLength(1)
+  })
+
+  it('passes what C2.4 allows the window: that one exists, and the one being sent', () => {
+    expect(violationsFor(rule, file(renderer, 'props.provider.hasCredential ? a : b'))).toEqual([])
+    expect(violationsFor(rule, file(renderer, 'const [secret, setSecret] = createSignal("")'))).toEqual([])
+    expect(violationsFor(rule, file(renderer, "fetch('/x', { credentials: 'same-origin' })"))).toEqual([])
+    expect(violationsFor(rule, file(renderer, 'bridge.setCredential(id, secret)'))).toEqual([])
+  })
+
+  it('says nothing about the main process, where the key really is read', () => {
+    const main = 'apps/desktop/src/main/runtime/model-runtime.ts'
+    expect(violationsFor(rule, file(main, 'const key = vault.credential(providerId)'))).toEqual([])
+  })
+
+  it('lets a line opt out with a marker, like every other rule', () => {
+    const marked = 'const key = provider.apiKey // constraints-ignore 02-architecture'
+    expect(violationsFor(rule, file(renderer, marked))).toEqual([])
+  })
+})

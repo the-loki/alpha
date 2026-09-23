@@ -1,4 +1,11 @@
 /**
+ * The two shapes a credential field is read in, for the rule that keeps the window off them: a
+ * property whose name *is* the word, and the same name in brackets.
+ */
+const CREDENTIAL_FIELD = /\.(api_?key|secret|credential|credentials)\b/i
+const CREDENTIAL_INDEX = /\[\s*['"](api_?key|secret|credential|credentials)['"]\s*\]/i
+
+/**
  * The architecture rules that read one file: the process split, what a library may reach, what a package may name, where capabilities are registered, the size budgets.
  *
  * A rule reports violations and never edits: a pure function over a file's path and text.
@@ -199,6 +206,34 @@ export const ARCHITECTURE_RULES = [
             })
           }
         }
+      })
+      return found
+    },
+  },
+
+  {
+    id: '02-architecture:renderer-has-no-credentials',
+    constraint: '02-architecture.md',
+    description: 'a key goes from the vault to the model runtime, and nowhere else',
+    check({ path, text }) {
+      if (!path.startsWith('apps/desktop/src/renderer/') || !/\.(ts|tsx)$/.test(path)) return []
+      // A *field read* is the thing C2.4 forbids: `provider.apiKey`, `snapshot['apiKey']`. A boolean
+      // that says one exists (`hasCredential`), the field the person is typing into, and a name that
+      // merely contains the word (`setCredential`) are what the window is allowed to have. Strings
+      // are stripped first, so a dictionary key or a fetch literal is not a read of anything.
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        if (isComment(line)) return
+        const read = CREDENTIAL_FIELD.test(stripStrings(line)) || CREDENTIAL_INDEX.test(line)
+        if (!read) return
+        if (ignoredFor(line, { id: '02-architecture:renderer-has-no-credentials', constraint: '02-architecture.md' })) {
+          return
+        }
+        found.push({
+          line: index + 1,
+          message: 'the window may learn that a credential exists, never read one back',
+          text: line.trim(),
+        })
       })
       return found
     },
