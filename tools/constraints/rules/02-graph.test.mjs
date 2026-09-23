@@ -81,3 +81,57 @@ describe('02-architecture:contract-channels', () => {
     expect(violationsFor(rule, file('apps/desktop/src/renderer/a.tsx', 'const x = 1'))).toEqual([])
   })
 })
+
+describe('02-architecture:no-import-cycles', () => {
+  const rule = '02-architecture:no-import-cycles'
+  const cycles = (files) => ruleById(rule).checkAll(files)
+
+  it('flags two files importing each other, and a three-file chain that closes', () => {
+    expect(
+      cycles([
+        file('packages/domain/src/a.ts', "import { b } from './b.ts'"),
+        file('packages/domain/src/b.ts', "import { a } from './a.ts'"),
+      ]),
+    ).toHaveLength(1)
+
+    expect(
+      cycles([
+        file('packages/domain/src/a.ts', "import { b } from './b.ts'"),
+        file('packages/domain/src/b.ts', "import { c } from './c.ts'"),
+        file('packages/domain/src/c.ts', "import { a } from './a.ts'"),
+      ]),
+    ).toHaveLength(1)
+  })
+
+  it('flags a file that imports itself, and a cycle that runs through two packages', () => {
+    expect(cycles([file('packages/domain/src/a.ts', "import { a } from './a.ts'")])).toHaveLength(1)
+
+    expect(
+      cycles([
+        file('packages/i18n/src/index.ts', "import { TextKey } from '@alpha/domain'"),
+        file('packages/domain/src/index.ts', "export * from './a.ts'"),
+        file('packages/domain/src/a.ts', "import { text } from '@alpha/i18n'"),
+      ]),
+    ).toHaveLength(1)
+  })
+
+  it('passes a diamond: two paths meeting again is not a cycle', () => {
+    expect(
+      cycles([
+        file('packages/domain/src/a.ts', "import { b } from './b.ts'\nimport { c } from './c.ts'"),
+        file('packages/domain/src/b.ts', "import { d } from './d.ts'"),
+        file('packages/domain/src/c.ts', "import { d } from './d.ts'"),
+        file('packages/domain/src/d.ts', 'export const d = 1'),
+      ]),
+    ).toEqual([])
+  })
+
+  it('passes a test importing the file it tests, and imports from outside the repo', () => {
+    expect(
+      cycles([
+        file('packages/domain/src/a.test.ts', "import { a } from './a.ts'"),
+        file('packages/domain/src/a.ts', "import { readFileSync } from 'node:fs'\nimport { Type } from 'typebox'"),
+      ]),
+    ).toEqual([])
+  })
+})

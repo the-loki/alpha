@@ -1,5 +1,7 @@
 /**
- * The one architecture rule that reads the tree rather than a file: contract channels, agreed between the contract, the handlers, and the bridge.
+ * The architecture rules that read the tree rather than a file: the contract channels, agreed between
+ * the contract, the handlers and the bridge, and the import graph, which may not contain a cycle —
+ * C2.1's "nothing points sideways" said at file granularity, where the dependency table cannot see.
  *
  * A rule reports violations and never edits: a pure function over a file's path and text.
  */
@@ -8,14 +10,64 @@ import {
   contractChannels,
   handledNamesOf,
   ignoredFor,
+  importSpecifiers,
   isComment,
   isMainSource,
   isPreloadSource,
   isSeamFile,
+  isSource,
+  isTs,
   pushedNamesOf,
 } from '../lib.mjs'
 
-export const CONTRACT_RULES = [
+/**
+ * The specifiers a line depends on: a re-export is a dependency as surely as an import is, and
+ * `importSpecifiers` (the shared reader) stops at imports.
+ */
+const dependenciesOf = (line) => {
+  const reexport = line.trim().match(/^export\s[\s\S]*?from\s*['"]([^'"]+)['"]/)
+  return reexport === null ? importSpecifiers(line) : [reexport[1]]
+}
+
+/**
+ * Where an import points, as a path in the scanned set: a relative specifier resolves against the
+ * file that wrote it (the repo spells the extension), and `@alpha/x` is the package's entry. Anything
+ * else — pi, node, a third party — leaves the graph, so the rule stays about this repo.
+ */
+const importTarget = (from, specifier) => {
+  if (specifier.startsWith('.')) {
+    const parts = from.split('/').slice(0, -1)
+    for (const step of specifier.split('/')) {
+      if (step === '.' || step === '') continue
+      if (step === '..') parts.pop()
+      else parts.push(step)
+    }
+    return parts.join('/')
+  }
+  if (specifier.startsWith('@alpha/')) return `packages/${specifier.slice('@alpha/'.length)}/src/index.ts`
+  return ''
+}
+
+/** The graph of this repo's own imports, as `file -> the files it imports`. */
+const importGraph = (files) => {
+  const sources = files.filter((file) => isSource(file.path) && isTs(file.path))
+  const known = new Set(sources.map((file) => file.path))
+  const edges = new Map()
+  for (const file of sources) {
+    const targets = []
+    file.text.split('\n').forEach((line, index) => {
+      if (isComment(line)) return
+      for (const specifier of dependenciesOf(line)) {
+        const target = importTarget(file.path, specifier)
+        if (target !== '' && known.has(target)) targets.push({ target, line: index + 1, text: line.trim() })
+      }
+    })
+    edges.set(file.path, targets)
+  }
+  return { known, edges }
+}
+
+export const GRAPH_RULES = [
   {
     id: '02-architecture:contract-channels',
     constraint: '02-architecture.md',
@@ -87,6 +139,46 @@ export const CONTRACT_RULES = [
           text: waiting.text,
         })
       }
+      return found
+    },
+  },
+  {
+    id: '02-architecture:no-import-cycles',
+    constraint: '02-architecture.md',
+    description: 'the import graph is a DAG, at file granularity as well as between packages',
+    checkAll(files) {
+      const { edges } = importGraph(files)
+      const found = []
+      // Three colours: WHITE is unvisited (absent from the map), GREY is on the current path, BLACK
+      // is finished. A GREY target is a back edge, and the cycle is the path from it to here.
+      const state = new Map()
+      const path = []
+      const reported = new Set()
+      const walk = (file) => {
+        state.set(file, 'grey')
+        path.push(file)
+        for (const edge of edges.get(file) ?? []) {
+          const target = state.get(edge.target)
+          if (target === 'grey') {
+            const cycle = path.slice(path.indexOf(edge.target))
+            const key = [...cycle].sort().join('|')
+            if (!reported.has(key)) {
+              reported.add(key)
+              found.push({
+                path: file,
+                line: edge.line,
+                message: `a cycle: ${[...cycle, edge.target].map((one) => one.split('/').pop()).join(' → ')}`,
+                text: edge.text,
+              })
+            }
+            continue
+          }
+          if (target !== 'black') walk(edge.target)
+        }
+        path.pop()
+        state.set(file, 'black')
+      }
+      for (const file of edges.keys()) if (state.get(file) === undefined) walk(file)
       return found
     },
   },

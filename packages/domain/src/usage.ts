@@ -5,7 +5,7 @@
  * no figure.
  */
 
-import { recordOf } from './text.ts'
+import { recordOf } from './unknown.ts'
 
 export interface UsageTotals {
   input: number
