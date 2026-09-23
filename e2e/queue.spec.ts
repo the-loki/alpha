@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
-import { launchWorkbench } from './agent'
+import { launchWorkbench, sizeWindow } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
 /**
@@ -74,7 +74,7 @@ test('a queue and a full draft still leave the composer inside the page', async 
   // A short window, because the workbench can be served to a browser (ADR-0009) and a browser
   // window can be any height: the box holds its own contents rather than pushing its controls off
   // the bottom of the page.
-  await window.setViewportSize({ width: 1024, height: 520 })
+  await sizeWindow(app, window, 1024, 520)
 
   await composer(window).fill('the running turn')
   await composer(window).press('Enter')
@@ -101,6 +101,55 @@ test('a queue and a full draft still leave the composer inside the page', async 
     element.scrollTop = element.scrollHeight
   })
   await expect(window.getByText('waiting 7')).toBeVisible()
+
+  await app.close()
+})
+
+test('a narrow window leaves the composer inside the page too', async () => {
+  const { app, window } = await launch()
+  await composer(window).fill('the only thing')
+  await composer(window).press('Enter')
+  await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible({ timeout: 20_000 })
+
+  // The same demand on the other axis (ADR-0009): a browser window can be any width as well as any
+  // height. The page's own edges are the limit sideways, and the foot row of the writing box — the
+  // attach control, the level chip, the model chip, the effort knob and the control that sends —
+  // gives up its own width rather than running off the page (C5.3, C5.4). 700 and 480 are under any
+  // desktop window (`minWidth` is 1024) and reachable only through the browser; 480 is where the
+  // workbench stops being two columns and shows one at a time, so the page there is the whole width
+  // and the row's own room is the whole page (C5.4).
+  for (const width of [1024, 700, 480]) {
+    await sizeWindow(app, window, width, 640)
+    // The shape follows the width a frame behind it — the page is one width when the window reports
+    // it and the phone's shape once the renderer has heard — so the reading is polled.
+    await expect
+      .poll(
+        async () => {
+          const at = await window.getByRole('main').boundingBox()
+          return at === null ? null : `${at.x}×${Math.round(at.width)}`
+        },
+        { message: `the page should stand at its ${width} shape` },
+      )
+      .toBe(width <= 480 ? `0×${width}` : `256×${width - 256}`)
+
+    const page = await window.getByRole('main').boundingBox()
+    const send = await window.getByRole('button', { name: 'Send', exact: true }).boundingBox()
+    const attach = await window.getByRole('button', { name: 'Attach a picture' }).boundingBox()
+    if (page === null || send === null || attach === null) throw new Error('nothing to measure')
+
+    // The row's two ends are inside the page: the control that sends at its right end, the control
+    // that attaches at its left.
+    expect(send.x + send.width, `the foot row runs past the page's right edge at ${width}`).toBeLessThanOrEqual(
+      page.x + page.width,
+    )
+    expect(attach.x, `the foot row runs past the page's left edge at ${width}`).toBeGreaterThanOrEqual(page.x)
+
+    // And at the widths a desktop window can have, nothing about the box moves the page at all.
+    if (width >= 1024) {
+      const sideways = await window.getByRole('main').evaluate((element) => element.scrollWidth - element.clientWidth)
+      expect(sideways, `the page scrolls sideways at ${width}`).toBeLessThanOrEqual(0)
+    }
+  }
 
   await app.close()
 })

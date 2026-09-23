@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { type Launch, launchWorkbench } from './agent'
+import { type Launch, launchWorkbench, sizeWindow } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
@@ -21,7 +21,7 @@ async function launch(
     level: 'ask',
     network: options.network,
     replies: options.replies ?? [{ text: 'A short answer.' }],
-    viewport: false,
+    resize: false,
   })
 }
 
@@ -43,7 +43,7 @@ test('the interface is written in the language the workbench was told to use', a
   )
   await expect(window.getByRole('button', { name: '发送' })).toBeVisible()
 
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await window.screenshot({ path: join(SHOT_DIR, 'language-zh.png') })
   await app.close()
 })

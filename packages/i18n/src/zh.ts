@@ -309,9 +309,12 @@ export const ZH = {
   'settings.language': '语言',
   'settings.languageNote': '界面显示语言。对 agent 说什么语言由会话自身决定，不受这里影响。',
 
-  // 侧栏的折叠，按它将要做的动作命名（C5.4）：两个方向各一个说法。
+  // 侧栏的折叠，按它将要做的动作命名（C5.4）：两个方向各一个说法。手机上同一个控件移动的是设置菜单
+  // ——那是设置页保留的那一列，所以它另有一个名字。
   'sidebar.hideRail': '隐藏侧栏',
   'sidebar.showRail': '显示侧栏',
+  'settings.hideMenu': '隐藏设置菜单',
+  'settings.showMenu': '显示设置菜单',
   // 这个会话一共花了多少，只说一次——挂在视图头标题的悬停提示上（C5.4）。
   'header.spend': '本会话共 {tokens} tokens',
   'header.spendCost': '本会话共 {tokens} tokens · {cost}',

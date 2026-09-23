@@ -1,6 +1,7 @@
+import { useLocation } from '@solidjs/router'
 import { Show } from 'solid-js'
 import { bridge } from '../../lib/bridge.ts'
-import { foldActions, folded } from '../../stores/fold.ts'
+import { foldActions, folded, narrow } from '../../stores/fold.ts'
 import { shell, useText } from '../../stores/shell.ts'
 import { RailIcon } from '../icons.tsx'
 
@@ -59,16 +60,24 @@ export function WindowControls() {
   )
 }
 
+/** The two names this control can wear: the rail's, and the settings menu's — the same control over
+ * the column settings keeps (C5.4). */
+const RAIL_KEYS = { show: 'sidebar.showRail', hide: 'sidebar.hideRail' } as const
+const MENU_KEYS = { show: 'settings.showMenu', hide: 'settings.hideMenu' } as const
+
 /**
- * The rail's own control: one glyph, and a name that says which way it will move the rail — hide or
- * show (C5.4). The rail folds completely, so this button and ⌘/Ctrl-B are the only ways it comes
+ * The column's own control: one glyph, and a name that says which way it will move the column — hide
+ * or show (C5.4). The rail folds completely, so this button and ⌘/Ctrl-B are the only ways it comes
  * back, and the view head carries it at its left end. A caller that puts it in a head parks it in
  * the head's own left padding, so the page's title keeps the x its messages and its writing box
- * stand on; a caller in the corner's own row leaves it in the flow.
+ * stand on; a caller in the corner's own row leaves it in the flow. `menu` names the settings menu
+ * instead: on a phone that menu is the column, and the control that shows it stands in the panel's
+ * own head.
  */
-export function RailToggle() {
+export function RailToggle(props: { menu?: boolean }) {
   const t = useText()
-  const label = () => t(folded() ? 'sidebar.showRail' : 'sidebar.hideRail')
+  const keys = () => (props.menu === true ? MENU_KEYS : RAIL_KEYS)
+  const label = () => t(folded() ? keys().show : keys().hide)
 
   return (
     <button
@@ -88,13 +97,24 @@ export function RailToggle() {
  * with the whole of it a drag handle — with a page's view head, this is how a frameless window is
  * moved. The window's own controls do not live here: they are the window's corner, and the corner
  * is the top right (C5.4).
+ *
+ * On a phone this banner is also a head. The column is the whole screen there, so this row is where
+ * the column is left by, and it carries the toggle every view head carries (C5.4).
  */
 export function SpineHead() {
+  const location = useLocation()
+  const menu = () => location.pathname.startsWith('/settings')
+
   return (
     <header class="drag-region flex h-12 shrink-0 items-center gap-2 border-b border-line pl-3">
       <span class="drag-region flex items-center gap-2" title={`Alpha ${shell.appVersion}`}>
         <span class="font-mono text-label tracking-[0.2em] text-foreground">ALPHA</span>
       </span>
+      <Show when={narrow()}>
+        <span class="no-drag ml-auto pr-3">
+          <RailToggle menu={menu()} />
+        </span>
+      </Show>
     </header>
   )
 }

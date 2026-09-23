@@ -1,8 +1,8 @@
 import type { TextKey } from '@alpha/i18n'
 import { useSearchParams } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
-import { WindowControls } from '../components/chrome/TitleBar.tsx'
-import { GROUP_LABEL, LIVE_SPINE, RAIL_ROW, ROW_LIVE } from '../components/controls.ts'
+import { RailToggle, WindowControls } from '../components/chrome/TitleBar.tsx'
+import { GROUP_LABEL, LIVE_SPINE, PAGE_TITLE, RAIL_ROW, ROW_LIVE } from '../components/controls.ts'
 import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
 import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
 import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
@@ -10,6 +10,7 @@ import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
 import { BAND, BESIDE_SCROLLS, FORM_COLUMN, PAGE, PANEL_GROUPS, SCROLLS } from '../lib/ledger.ts'
+import { foldActions, narrow } from '../stores/fold.ts'
 import { useText } from '../stores/shell.ts'
 
 /**
@@ -90,13 +91,18 @@ export function Settings() {
     <div class="flex h-full min-h-0 flex-col">
       {/* The view head: what this panel is — the same head, height and padding the conversation
           and the tasks page wear, so the title stands on the same x wherever you are, and the
-          window's three keep the same y on every page. Settings replaces the rail, so there is no
-          rail to fold here and no toggle in this head: the column beside it is this panel's own
-          menu (C5.4). One hairline under the head and nothing raised. */}
+          window's three keep the same y on every page. Settings replaces the rail, so on a window
+          there is no rail to fold here and no toggle in this head: the column beside it is this
+          panel's own menu (C5.4). A phone is where that column is the screen, and then this head is
+          what calls the menu back, wearing the same toggle with the menu's own name. One hairline
+          under the head and nothing raised. */}
       <header class={`${BAND} ${BESIDE_SCROLLS}`}>
-        <h1 class="min-w-0 flex-1 truncate font-text text-title font-semibold tracking-tight text-foreground">
-          {t(TAB_LABELS[tab()])}
-        </h1>
+        <Show when={narrow()}>
+          <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
+            <RailToggle menu />
+          </span>
+        </Show>
+        <h1 class={`min-w-0 flex-1 truncate ${PAGE_TITLE} text-foreground`}>{t(TAB_LABELS[tab()])}</h1>
         {/* What acts on the window is not one of the panel's concerns: at the corner itself. */}
         <span class="no-drag -mr-8 flex shrink-0 items-center">
           <WindowControls />
@@ -138,12 +144,13 @@ export function SettingsNav() {
       {/* Settings is a place you go and come back from, so the way back is the first thing in it. */}
       <a
         href="#/"
+        onClick={foldActions.foldAway}
         class={`mt-2 flex items-center py-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground ${RAIL_ROW}`}
       >
         <ArrowLeftIcon /> <span class="min-w-0 flex-1 truncate font-text text-name">{t('settings.back')}</span>
       </a>
 
-      <h2 class="mt-5 px-2 font-text text-title font-semibold tracking-tight text-foreground">{t('settings.title')}</h2>
+      <h2 class={`mt-5 px-2 ${PAGE_TITLE} text-foreground`}>{t('settings.title')}</h2>
 
       <For each={TAB_GROUPS}>
         {(group) => (
@@ -155,6 +162,7 @@ export function SettingsNav() {
                   <li>
                     <a
                       href={`#/settings?tab=${candidate}`}
+                      onClick={foldActions.foldAway}
                       aria-current={candidate === tab() ? 'page' : undefined}
                       // The panel you are on carries the accent's margin tick, the same mark the
                       // rail puts on the conversation you are in (C5.5).

@@ -37,7 +37,7 @@ async function launchServing(port: number, options: { token?: string; level?: st
     // The suite hands a picture across the wire, so the connection serves a model that takes one,
     // and the provider it dials is the scripted endpoint this launch started.
     providerOptions: { images: true },
-    viewport: false,
+    resize: false,
   })
   return { ...launch, url: `http://127.0.0.1:${port}` }
 }
@@ -45,6 +45,9 @@ async function launchServing(port: number, options: { token?: string; level?: st
 /** A browser on this machine, opening the served workbench and unlocking it. */
 async function openInBrowser(browser: Browser, url: string, token: string) {
   const page = await browser.newPage()
+  // A viewport, and not `sizeWindow`: a browser draws no window of ours, so the page's own metrics
+  // are the whole of it here. (The Electron window beside it is the desktop client's, and no spec
+  // in this file asks it for a size.)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(url)
   await page.getByLabel('Access token').fill(token)

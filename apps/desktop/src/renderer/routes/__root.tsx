@@ -5,9 +5,9 @@ import { Sidebar } from '../components/chrome/Sidebar.tsx'
 import { SpineHead } from '../components/chrome/TitleBar.tsx'
 import { UnlockScreen } from '../components/chrome/UnlockScreen.tsx'
 import { bridge } from '../lib/bridge.ts'
-import { PANEL } from '../lib/ledger.ts'
+import { PANEL, PANEL_WHOLE } from '../lib/ledger.ts'
 import { conversationActions } from '../stores/conversations.ts'
-import { folded } from '../stores/fold.ts'
+import { folded, narrow } from '../stores/fold.ts'
 import { shell, shellActions } from '../stores/shell.ts'
 import { taskActions } from '../stores/tasks.ts'
 import { SettingsNav } from './settings.tsx'
@@ -21,8 +21,16 @@ export function RootLayout(props: { children?: JSX.Element }) {
   const inSettings = () => location.pathname.startsWith('/settings')
   // The rail folds completely — no icon strip, the page takes the whole width — and the state is
   // remembered (C5.4, `stores/fold.ts`). Settings is the one screen that keeps its column either
-  // way: that column is the settings menu itself, and settings has no rail to fold.
-  const showColumn = () => inSettings() || !folded()
+  // way: that column is the settings menu itself, and settings has no rail to fold. A phone is where
+  // both rules give way: there the two columns never share the page, so the column is the whole
+  // screen when it is not folded and the page has the whole width when it is (C5.4). Which of the
+  // two a phone is showing at any moment is not decided here but in the column's own rows: a tap in
+  // it is what leaves it (`foldActions.choose`), so a row that chooses the page it was already on —
+  // New conversation, on the title page — still changes the screen.
+  const showColumn = () => !folded() || (inSettings() && !narrow())
+  // Hidden rather than unmounted: what is typed into the composer, or into a settings form, is that
+  // route's own state, and asking for the rail must not throw it away.
+  const showPage = () => !narrow() || folded()
 
   onMount(() => {
     // The contract, whichever transport is behind it: a browser reaches the same events.
@@ -59,14 +67,16 @@ export function RootLayout(props: { children?: JSX.Element }) {
           implicit. */}
       <div class="flex h-screen bg-surface-0">
         <Show when={showColumn()}>
-          <div class={PANEL}>
+          <div class={narrow() ? PANEL_WHOLE : PANEL}>
             <SpineHead />
             <Show when={inSettings()} fallback={<Sidebar onSearch={() => setPaletteOpen(true)} />}>
               <SettingsNav />
             </Show>
           </div>
         </Show>
-        <main class="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-0">{props.children}</main>
+        <main class={`flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-0 ${showPage() ? '' : 'hidden'}`}>
+          {props.children}
+        </main>
       </div>
       <ConversationPalette open={paletteOpen()} onClose={() => setPaletteOpen(false)} />
     </Show>

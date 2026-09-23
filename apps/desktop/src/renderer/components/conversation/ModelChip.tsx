@@ -52,7 +52,11 @@ export function ModelChip() {
   }
 
   return (
-    <div class="relative no-drag" ref={container}>
+    // The chip has a ceiling, so the name it carries is truncated rather than allowed to push the
+    // row (C5.4): a model's name is as long as its provider made it, and the row it stands in ends
+    // at the page's edge. `min-w-0` on both the chip and its name, because an ellipsis needs a box
+    // that is allowed to be narrower than its text.
+    <div class="relative no-drag w-fit min-w-0 max-w-40" ref={container}>
       <button
         type="button"
         aria-haspopup="menu"
@@ -60,9 +64,9 @@ export function ModelChip() {
         disabled={providers.snapshot.providers.length === 0}
         title={title()}
         onClick={() => setOpen((value) => !value)}
-        class={`${CHIP} disabled:cursor-not-allowed disabled:opacity-60`}
+        class={`${CHIP} max-w-full disabled:cursor-not-allowed disabled:opacity-60`}
       >
-        <span class="truncate">{running.name() ?? t('model.none')}</span>
+        <span class="min-w-0 truncate">{running.name() ?? t('model.none')}</span>
       </button>
 
       <Show when={open()}>

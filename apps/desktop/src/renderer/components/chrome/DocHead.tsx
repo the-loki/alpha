@@ -3,15 +3,20 @@ import { Show } from 'solid-js'
 import { BAND, BESIDE_SCROLLS } from '../../lib/ledger.ts'
 import { conversations } from '../../stores/conversations.ts'
 import { useText } from '../../stores/shell.ts'
+import { PAGE_TITLE } from '../controls.ts'
 import { RailToggle, WindowControls } from './TitleBar.tsx'
 
 /**
- * The title of the page — the text voice at its title size, so the page says what it is in the
- * same voice it is written in. It takes the room that is left and truncates past its own floor.
+ * The title of the page — the text voice at the head's own step, so the page says what it is
+ * without competing with what it holds. It takes the room that is left and truncates past its own
+ * floor.
  *
  * What the session has spent is said here and nowhere else: one tooltip on the title, the sum of
  * what the turns cost. The transcript carries no tail lines under its messages and a single
- * message's cost is not shown at all (C5.4).
+ * message's cost is not shown at all (C5.4). The tooltip leads with the name, because the head is
+ * where a conversation's name is read and a pane narrow enough cuts it off there; what it repeats is
+ * the name the ledger keeps, which is the message's first line at `TITLE_LIMIT` already — so a
+ * sentence longer than that is not recovered here, and the window never held more of it than this.
  */
 function ConversationTitle() {
   const t = useText()
@@ -25,14 +30,17 @@ function ConversationTitle() {
 
   return (
     <Show when={conversations.transcript.summary}>
-      {(summary) => (
-        <h1
-          title={spend()}
-          class="min-w-24 flex-1 truncate font-text text-title font-semibold tracking-tight text-foreground"
-        >
-          {summary().title}
-        </h1>
-      )}
+      {(summary) => {
+        const hint = () => {
+          const spent = spend()
+          return spent === undefined ? summary().title : `${summary().title}\n${spent}`
+        }
+        return (
+          <h1 title={hint()} class={`min-w-24 flex-1 truncate ${PAGE_TITLE} text-foreground`}>
+            {summary().title}
+          </h1>
+        )
+      }}
     </Show>
   )
 }

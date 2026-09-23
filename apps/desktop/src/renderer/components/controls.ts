@@ -110,6 +110,15 @@ export const RAIL_STEP = 'pl-5'
 export const GROUP_LABEL = `font-mono text-label font-medium text-faint`
 
 /**
+ * The page's title: what the view head names the document. A head is chrome — it says what the page
+ * is, it does not announce it — so the title stands one step under the display voice an empty state
+ * speaks in and wears the emphasis weight: the only 600 left in a window is a page saying something
+ * of its own (C5.3). The title scale at that weight is still what prose inside an answer wears,
+ * because a heading the model wrote is content, and content outranks the chrome around it.
+ */
+export const PAGE_TITLE = `font-text text-page-title font-medium tracking-tight`
+
+/**
  * A name with a state on it: the permission level, the model a message will run on. Same height
  * as a button, because with one open they stand in the same row. The apparatus voice — the chip
  * measures the message rather than saying it — and the radius is the control radius, given here

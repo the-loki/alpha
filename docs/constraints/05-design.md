@@ -37,13 +37,13 @@ choice between the same two palettes; `system` is a choice, not a third theme.
 | `--surface-1` | `#F8F8F8` | `#0F1011` | A sunken step: code, inputs, wells |
 | `--surface-2` | `#F4F4F4` | `#141516` | A raised step: cards, the approval card, hover rows |
 | `--surface-3` | `#F0F0F0` | `#191A1B` | A floating step: menus, the command palette, dialogs |
-| `--text` | `#282A30` | `#F7F8F8` | Primary text |
-| `--text-secondary` | `#3C4149` | `#D0D6E0` | Secondary text, supporting sentences |
-| `--text-tertiary` | `#6F6E77` | `#8A8F98` | Labels, metadata that is still read |
-| `--text-faint` | `#86848D` | `#62666D` | Timestamps, disabled (3:1 only) |
-| `--border-subtle` | black 6% | white 6% | The hairline where kinds meet |
-| `--border` | black 12% | white 10% | Input and card frames |
-| `--border-strong` | black 18% | white 16% | Focused input border |
+| `--foreground` | `#282A30` | `#F7F8F8` | Primary text |
+| `--muted` | `#3C4149` | `#D0D6E0` | Secondary text, supporting sentences |
+| `--tertiary` | `#6F6E77` | `#8A8F98` | Labels, metadata that is still read |
+| `--faint` | `#86848D` | `#62666D` | Timestamps, disabled (3:1 only) |
+| `--line-subtle` | black 6% | white 6% | A step inside something: a nested frame (a code block, the approval card), a row's tint in a floating layer |
+| `--line` | black 12% | white 10% | Input and card frames — and the hairline where kinds meet: the rail from the page, a view head from its body, one group from the next |
+| `--line-strong` | black 18% | white 16% | Focused input border |
 | `--accent` | `#5E6AD2` | `#7170FF` | Here / now / primary / decisive (see C5.1) |
 | `--accent-strong` | `#5E6AD2` | `#5850EC` | The fill under white text on a solid button |
 | `--danger` | `#D92D20` | `#FF6161` | Failure, destruction, denial — and nothing else |
@@ -52,8 +52,15 @@ choice between the same two palettes; `system` is a choice, not a third theme.
 | `--info` | `#175CD3` | `#5EB0FF` | Neutral information |
 
 Borders are transparent overlays, not flat greys, so a frame on `--surface-3` still reads as a
-frame. Four surfaces exist; an overlay is `--surface-3` with `--border` and a shadow (C5.4), not
+frame. Four surfaces exist; an overlay is `--surface-3` with `--line` and a shadow (C5.4), not
 a fifth step.
+
+**Two kinds meeting is the `--line` step, not the subtle one.** The rail and the page, a view head
+and its body, one group and the next stand on the same surface, so the hairline is the whole of what
+separates them, and a line that is the whole of a separation takes the 12% step: at 6% the boundary
+is read only by someone looking for it (12% is `rgb(227 227 227)` on white, 6% is `rgb(242 242 242)`)
+and in the dark palette the two steps sit 4% apart. `--line-subtle` is for a step *inside* something,
+where a frame already says what it holds. A joint is `--line`; `--line-subtle` is never a joint.
 
 **Permission levels are stamps, and each is a different semantic colour** (no two levels share):
 
@@ -66,7 +73,7 @@ a fifth step.
 
 Every text/background pair above must clear **4.5:1** — every text step against every surface it
 stands on, `--accent` and the semantics as text against `--surface-0`, white on `--accent-strong`,
-white on `--danger`. `--text-faint` is metadata only and still clears 3:1. The level set must be
+white on `--danger`. `--faint` is metadata only and still clears 3:1. The level set must be
 four distinct hues. All of it is asserted in `theme.test.ts`.
 
 ## C5.3 — Type
@@ -81,11 +88,18 @@ in rem, so the window's own scale applies:
 | --- | --- | --- | --- |
 | The text: messages, prose, typed values | sans `text-body` | 0.9375rem / 1.55 | 400 |
 | A name: a rail row, a task, a heading in content | sans `text-name` | 0.875rem / 1.45 | 400–500 |
-| A page's title | sans `text-title` | 1.25rem / 1.3, `tracking-tight` | 600 |
+| A page's title: what a view head names, and the rail's own heading in Settings | sans `text-page-title` | 1.125rem / 1.3, `tracking-tight` | 500 |
+| A heading inside an answer | sans `text-title` | 1.25rem / 1.3, `tracking-tight` | 600 |
 | An empty state's display line | sans `text-display` | 1.75rem / 1.25, tighter tracking | 600 |
 | The apparatus: labels, buttons, chips, section names | mono `text-label` | 0.75rem / 1.4, sentence case | 500 |
 | Metadata: paths, counts, shortcuts, timestamps | mono `text-label` | 0.75rem / 1.4 | 400 |
 | Code, tool output, diffs, inline code | mono `text-code` | 0.8125rem / 1.6 | 400 |
+
+**A head is chrome, and the page's own words lead it.** The title a view head wears is one step
+under the title scale a heading inside an answer wears, and at the emphasis weight — so the 600 in
+a window belongs to the page saying something itself: the greeting a new conversation opens on, an
+empty state's one line, a heading the model wrote. A head that shouts competes with the words it
+names, and a mark that only decorates is not what makes a title a title.
 
 **Weights are 400, 500 and 600 — three, not two.** Hierarchy still comes from size, colour and
 space; 500 carries UI emphasis and 600 a heading alone. Nothing is bold, black, extrabold, light
@@ -141,6 +155,19 @@ its conversations flat beneath — name at the left, mono meta right-aligned at 
 dot leaders and no two-level tree — then Settings at its foot. A folder with nothing under it is
 a heading, not a control.
 
+**A phone shows one column at a time.** A desktop window stops at 1024 (`minWidth`); a browser has no
+floor at all (ADR-0009), and a phone is 22–27rem wide — less than the rail's 16rem plus the page's own
+floor, which is 236px where the window's three stand in the head, and less in a browser, which has
+none. So below 30rem the two columns never share the page: it opens on the page, the toggle in the
+head brings the column in **as the whole screen** — the same column, the same surface and the same
+rows, without the hairline, because a hairline divides nothing when nothing stands beside it — and
+what is chosen from it leaves it again, whether that is a conversation, a place or a settings panel.
+Settings is this same rule with its own menu in that column, and one arrival is not a choice: entering
+settings keeps the column, because the menu is what was asked for. The column carries the toggle in
+its own masthead as well, since on a phone that banner is a head. Nothing floats over the page — no
+drawer, no scrim, no overlay — so the page is never half-covered, and its frame never scrolls sideways
+at any width (asserted by `e2e/design.spec.ts`).
+
 **No band: the view head is embedded in the page.** The page's title and the rail's toggle stand
 in one row at the top of the content area — there is no separate 3rem strip between the window
 and the page. What is done *to* a conversation — rename, archive, export, delete — lives on the
@@ -160,7 +187,13 @@ beside it *is* the way back.
 **The composer is docked at the foot of a conversation** — an inset card on the page's own edges,
 growing with what is written into it (`field-sizing-content`, up to its cap), carrying the attach
 control, the level chip, the model chip and the thinking-effort knob in one foot row with send at
-the right. The knob stands at the model chip's right hand: the effort is a decision about the
+the right. One row wherever a window can be (its floor is 1024); in a browser narrow enough that the
+five do not fit — a phone — the row wraps into two lines, the attach control and the level chip on
+the first and the model, the knob and send on the second. It wraps rather than squeezing: a control
+that gives way under its own text is drawn over its neighbour. What may give is the model chip's
+name, which ellipsises inside its own ceiling; the level chip's name does not, because C5.7 pairs it
+with the colour, and the knob keeps the words of the effort it stands for. The knob stands at the
+model chip's right hand: the effort is a decision about the
 model's room, so it is chosen where the model is. While a run is live
 its top edge lights `--accent`: the margin is lit where the turn is being written. Queue,
 attachments and approval keep their existing behaviour — this is skin, not plumbing.
@@ -182,7 +215,10 @@ passes the fold.
 
 **What the window spends is said once**: the turn's total cost is a tooltip on the view head's
 session title — the transcript carries no per-turn tail lines, and single-message cost is not
-shown at all.
+shown at all. That tooltip leads with the name the head is showing, because a head truncates in a
+pane narrow enough and the name is the one the window is open on: one tooltip, both facts, the name
+first. What it repeats is the name the ledger keeps — the message's first line at `TITLE_LIMIT` —
+so it names the document rather than quoting more of the message than was ever stored.
 
 ## C5.5 — The distinctive pieces
 
@@ -202,7 +238,7 @@ removed:
 5. **The embedded view head.** Title in the content's own top row, the window's three locked to
    the window corner, no strip between window and page.
 6. **The approval card.** A pending approval is an inline card in the transcript — `--surface-2`,
-   rounded-xl, `--border-subtle`, a `medium` shadow, an amber mark while it waits — with the
+   rounded-xl, `--line-subtle`, a `medium` shadow, an amber mark while it waits — with the
    command in a copyable mono well and three same-height (2rem) decisions: Allow once, Always
    allow (with its scope), Deny (with its reason). The structure the gate locked is kept; the
    printed docket is not.

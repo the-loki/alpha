@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
-import { APP_DIR, configureProvider } from './agent'
+import { APP_DIR, configureProvider, sizeWindow } from './agent'
 import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 /**
@@ -71,7 +71,7 @@ test('a task missed while the workbench was closed runs, and refuses what nobody
   })
   const window = await app.firstWindow()
   await window.waitForSelector('#root > *')
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
 
   // The run is a conversation of its own, named after the task, and it starts on its own.
   await expect(

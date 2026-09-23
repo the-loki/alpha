@@ -73,6 +73,10 @@
   --text-name--line-height: 1.45;
   --text-body: 0.9375rem;
   --text-body--line-height: 1.55;
+  /* What a view head names its page: one step under the title scale a heading in prose wears, so a
+   * head stays chrome and the words it names lead (C5.3). */
+  --text-page-title: 1.125rem;
+  --text-page-title--line-height: 1.3;
   --text-title: 1.25rem;
   --text-title--line-height: 1.3;
   --text-display: 1.75rem;

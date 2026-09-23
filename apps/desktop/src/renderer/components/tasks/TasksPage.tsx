@@ -18,6 +18,7 @@ import {
   DESTRUCTIVE_ACTION,
   GROUP_LABEL,
   OUTLINED_ACTION,
+  PAGE_TITLE,
   PRIMARY_ACTION,
   ROW_HOVER,
   TEXT_ACTION,
@@ -161,9 +162,7 @@ export function TasksPage() {
         <span class="no-drag absolute top-1/2 left-0 -translate-y-1/2">
           <RailToggle />
         </span>
-        <h1 class="min-w-0 flex-1 truncate font-text text-title font-semibold tracking-tight text-foreground">
-          {t('tasks.title')}
-        </h1>
+        <h1 class={`min-w-0 flex-1 truncate ${PAGE_TITLE} text-foreground`}>{t('tasks.title')}</h1>
         <button type="button" onClick={() => start()} class={`no-drag ${PRIMARY_ACTION}`}>
           {t('tasks.new')}
         </button>

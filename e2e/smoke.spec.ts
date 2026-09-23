@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type ElectronApplication, expect, type Page, test } from '@playwright/test'
-import { launchWorkbench } from './agent'
+import { launchWorkbench, sizeWindow } from './agent'
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -17,7 +17,7 @@ async function launchApp(
     provider: false,
     dataDirectory: options.dataDirectory,
     env: options.env,
-    viewport: false,
+    resize: false,
   })
   return { app, window, dataDirectory }
 }
@@ -39,7 +39,7 @@ test('a fresh install opens on the empty workbench', async () => {
   })
   expect(shell.width).toBeGreaterThanOrEqual(1024)
 
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await window.screenshot({ path: join(SHOT_DIR, 'shell-fresh-install.png') })
   await app.close()
 })
@@ -67,7 +67,7 @@ test('the remembered workspace is restored on launch', async () => {
   await expect(window.getByRole('complementary').getByRole('heading', { name: 'alpha-e2e-workspace' })).toBeVisible()
   await expect(window.getByRole('main').getByTitle('/tmp/alpha-e2e-workspace')).toBeVisible()
 
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await window.screenshot({ path: join(SHOT_DIR, 'shell-restored-workspace.png') })
   await app.close()
 })
@@ -111,7 +111,7 @@ test('every remembered folder is in the sidebar, and the next message lands in t
   await sidebar.getByRole('button', { name: 'Start a conversation in alpha' }).click()
   await expect(window.getByRole('main').getByTitle(alpha)).toBeVisible()
 
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await window.screenshot({ path: join(SHOT_DIR, 'sidebar-folders.png') })
   await app.close()
 })
@@ -146,7 +146,7 @@ test('settings is a menu of panels, one at a time, each with its address', async
   const raised = await rowFillOf('Permissions')
   expect(raised).not.toBe(await rowFillOf('Providers'))
 
-  await window.setViewportSize({ width: 1440, height: 1000 })
+  await sizeWindow(app, window, 1440, 1000)
   await window.screenshot({ path: join(SHOT_DIR, 'settings-permissions.png') })
 
   // An address is a way in: asking for a panel by name opens it, without clicking the menu.

@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
-import { ask, launchWorkbench } from './agent'
+import { ask, launchWorkbench, sizeWindow } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
 const REPO_ROOT = process.cwd()
@@ -84,7 +84,7 @@ test('a tool call becomes a ledger row in the transcript', async () => {
   // the rows come to rest clear of it, which is what the read at the end of this test measures. The
   // pane is shrunk first, so the "taller than the pane" part is a fact the test sets up rather than
   // a fact about how much chrome the window happens to spend above the page.
-  await window.setViewportSize({ width: 1440, height: 520 })
+  await sizeWindow(app, window, 1440, 520)
   const geometry = await window.evaluate(() => {
     const last = [...document.querySelectorAll('[data-role]')].at(-1)
     let node: Element | null = last?.parentElement ?? null

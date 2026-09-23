@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, type Locator, test } from '@playwright/test'
-import { ask, type LaunchOptions, launchWorkbench } from './agent'
+import { ask, type LaunchOptions, launchWorkbench, sizeWindow } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
 test.afterEach(() => closeScriptedProviders())
@@ -41,7 +41,7 @@ async function launch(
     replies: options.replies ?? [REPLY],
     // The slow stream is what makes a turn catchable mid-answer, for the frames about streaming.
     ...(options.slow === true ? { slow: { tokenSize: 4, tokensPerSecond: 10 } } : {}),
-    viewport: false,
+    resize: false,
   }
   if (options.provider === false) {
     settings.provider = false
@@ -108,7 +108,7 @@ test('every menu closes the way every menu does', async () => {
 
 test('a message streams a reply into the transcript', async () => {
   const { app, window } = await launch()
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
 
   await ask(window, 'rename the parser module')
 
@@ -126,7 +126,7 @@ test('a message streams a reply into the transcript', async () => {
 
 test('the answer is visibly still arriving, with a caret at its end', async () => {
   const { app, window } = await launch({ slow: true })
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await ask(window, 'rename the parser module')
 
   // The caret is the state: while it is there the answer is still arriving, and the actions
@@ -164,7 +164,7 @@ test('the caret follows text that ends inside a code fence', async () => {
     slow: true,
     replies: ['Here it is:\n\n```ts\nconst answer = 42\nconst next = answer + 1\n'],
   })
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await ask(window, 'write me a snippet')
 
   // A stream rarely stops at a paragraph: an unclosed fence is a code block, and the caret has
@@ -194,7 +194,7 @@ test('the conversation is listed, titled, and restored after a relaunch', async 
   await first.app.close()
 
   const second = await launch({ dataDirectory: first.dataDirectory, workspace: first.workspace })
-  await second.window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(second.app, second.window, 1440, 900)
 
   const listed = second.window.getByRole('button', { name: /^rename the parser module (idle|working)$/ })
   await expect(listed).toBeVisible()
@@ -205,11 +205,32 @@ test('the conversation is listed, titled, and restored after a relaunch', async 
   await second.app.close()
 })
 
+test('the head can name itself in full, and says what the conversation spent', async () => {
+  const { app, window } = await launch()
+  // A conversation's name is a sentence the model wrote; the head is where the open one is read, and
+  // a pane narrow enough cuts it off there — so the head's own tooltip leads with the name. The spend
+  // rides along because the head is where the window says the spend once (C5.4): one tooltip, both
+  // facts, the name first. What the tooltip repeats is the name the ledger keeps, which is the
+  // message's first line at TITLE_LIMIT, so this holds the two facts together and not a longer name.
+  const name = 'refactor the session title pipeline so the head says what the document is'
+  await ask(window, name)
+  await expect(window.getByRole('main')).toContainText(REPLY, { timeout: 30_000 })
+
+  const title = window.getByRole('main').getByRole('heading', { level: 1 })
+  const shown = ((await title.textContent()) ?? '').trim()
+  const hint = (await title.getAttribute('title')) ?? ''
+  expect(shown.length).toBeGreaterThan(0)
+  expect(hint.startsWith(shown)).toBe(true)
+  expect(hint).toMatch(/Tokens/)
+
+  await app.close()
+})
+
 test('the model is chosen at the foot of the composer, and a new conversation starts on it', async () => {
   test.setTimeout(90_000)
   // No turn runs: the point is the control and the record, and nothing here dials out.
   const { app, window, dataDirectory, workspace } = await launch({ models: true })
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
 
   // With no conversation open the chip names what a new one will start on, and the menu is the
   // models the connection serves, under the name of that connection.
@@ -240,7 +261,7 @@ test('the page fills the room beside the rail, and the box stands in its column'
   const opening = await window.evaluate(() => `${globalThis.innerWidth}x${globalThis.innerHeight}`)
   expect(opening).toBe('1200x800')
 
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
   await ask(window, 'rename the parser module')
   await expect(window.getByRole('main')).toContainText('A short answer for the ledger.', { timeout: 15_000 })
 
@@ -260,7 +281,7 @@ test('the page fills the room beside the rail, and the box stands in its column'
   expect(box.x - words.x).toBeGreaterThan(-1)
 
   // Narrower changes nothing about that: the page is still the room beside the rail.
-  await window.setViewportSize({ width: 1024, height: 720 })
+  await sizeWindow(app, window, 1024, 720)
   const narrow = await boxOf(window.getByRole('main'))
   const narrowWidth = await window.evaluate(() => globalThis.innerWidth)
   expect(narrowWidth - (narrow.x + narrow.width)).toBeLessThanOrEqual(8.5)
@@ -271,7 +292,7 @@ test('the page fills the room beside the rail, and the box stands in its column'
 
 test('a long line wraps inside the box, and a long code line scrolls in its block', async () => {
   const { app, window } = await launch({ replies: [`\`\`\`ts\n${LONG_CODE}\n\`\`\`\nA short note.`] })
-  await window.setViewportSize({ width: 1440, height: 900 })
+  await sizeWindow(app, window, 1440, 900)
 
   const box = window.getByRole('textbox', { name: 'Message the agent' })
   const before = await boxOf(box)

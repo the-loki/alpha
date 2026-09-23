@@ -15,7 +15,7 @@ async function launch(dataDirectory?: string) {
   } = await launchWorkbench({
     provider: false,
     dataDirectory,
-    viewport: false,
+    resize: false,
   })
   return { app, window, directory, workspace }
 }

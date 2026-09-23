@@ -187,6 +187,7 @@ describe('[design] the type scale, shape and motion tokens', () => {
       ['--text-code', '0.8125rem', '1.6'],
       ['--text-name', '0.875rem', '1.45'],
       ['--text-body', '0.9375rem', '1.55'],
+      ['--text-page-title', '1.125rem', '1.3'],
       ['--text-title', '1.25rem', '1.3'],
       ['--text-display', '1.75rem', '1.25'],
     ]

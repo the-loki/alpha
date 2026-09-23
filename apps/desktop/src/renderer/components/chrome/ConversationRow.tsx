@@ -2,6 +2,7 @@ import { type ConversationSummary, canArchive, formatAge } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, Show } from 'solid-js'
 import { conversationActions, conversations } from '../../stores/conversations.ts'
+import { foldActions } from '../../stores/fold.ts'
 import { useText } from '../../stores/shell.ts'
 import {
   CONTROL_HEIGHT,
@@ -62,7 +63,7 @@ export function ConversationRow(props: {
         <li class="group relative flex items-center">
           <button
             type="button"
-            onClick={() => navigate(`/c/${props.conversation.id}`)}
+            onClick={foldActions.choose(() => navigate(`/c/${props.conversation.id}`))}
             aria-current={current()}
             class={`relative flex min-w-0 flex-1 items-center py-1.5 text-left transition-colors ${RAIL_ROW} ${
               current() ? `${ROW_LIVE} text-foreground` : 'text-muted hover:bg-surface-2 hover:text-foreground'

@@ -65,12 +65,23 @@ function ComposerFoot(props: {
 }) {
   const t = useText()
   return (
-    <div class="flex items-end gap-3">
-      <div class="flex min-w-0 flex-1 items-center gap-1">
+    // Two groups, and the row gives way rather than the page: `flex-wrap` because the workbench
+    // reaches a browser, and a browser window can be narrower than the five controls in this row are
+    // (`minWidth` stops a desktop window at 1024; ADR-0009 does not stop a phone, and a phone shows
+    // the composer at 375 — narrower than the five together, so there it wraps into two lines, the
+    // left group then the right). Neither group may shrink under its own contents: a group that can
+    // shrink to nothing does not wrap, it squeezes — and the controls inside it, which cannot shrink,
+    // are then drawn over the group beside them. What may shrink is a chip that has a ceiling of its
+    // own: the model chip's name ellipsises inside `max-w-40` rather than pushing the row past the
+    // page. The level chip's name is not a candidate, because C5.7 pairs it with the colour and a
+    // name that ellipsised would leave the colour carrying it alone.
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex flex-1 items-center gap-1">
         <AttachButton onPicked={props.onPicked} />
         <LevelChip />
       </div>
-      <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
+      {/* `ml-auto` keeps the controls at the row's right end, on their own line when there is one. */}
+      <div class="ml-auto flex items-center justify-end gap-1.5">
         <ModelChip />
         <ThinkingChip />
         <Show

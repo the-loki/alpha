@@ -48,6 +48,13 @@ export const RAIL_WIDTH = 'w-64'
 export const PANEL = `flex ${RAIL_WIDTH} shrink-0 flex-col border-r border-line bg-surface-0`
 
 /**
+ * The same column as a phone shows it: the whole width, and no hairline, because a phone shows one
+ * column at a time and a hairline divides nothing when there is nothing beside it (C5.4). Only the
+ * width and the rule differ — the column is the same column, in the same slot, on the same surface.
+ */
+export const PANEL_WHOLE = 'flex w-full shrink-0 flex-col bg-surface-0'
+
+/**
  * The view head a page wears at its top — the first row of the content area, embedded in the page
  * rather than drawn as a strip above it: what this page is, the controls that act on the page
  * rather than on one thing in it, and the rail's toggle at its left end. One height and one padding

@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { launchWorkbench, ask as send } from './agent'
+import { launchWorkbench, ask as send, sizeWindow } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
 /**
@@ -47,6 +47,16 @@ async function box(target: Locator): Promise<{ x: number; y: number; w: number; 
 
 async function heights(...controls: Locator[]): Promise<number[]> {
   return Promise.all(controls.map(async (control) => (await box(control)).h))
+}
+
+/**
+ * The size of the page a person is looking at. Read from the page itself rather than from
+ * Playwright's `viewportSize()`, which reports the override a test set — and nothing when there is
+ * none. The window is resized for real (`sizeWindow`), so the page's own width and height are the
+ * window's, which is what the two tests below are about.
+ */
+async function sizeOf(window: Page): Promise<{ width: number; height: number }> {
+  return window.evaluate(() => ({ width: globalThis.innerWidth, height: globalThis.innerHeight }))
 }
 
 /** The computed style of one property on one element. */
@@ -137,7 +147,7 @@ test('a page keeps its content on one edge, and the edge never moves', async () 
   })
 
   const narrow = await measure()
-  await window.setViewportSize({ width: 2400, height: 900 })
+  await sizeWindow(app, window, 2400, 900)
   const wide = await measure()
 
   expect(narrow.answer).toBe(narrow.title)
@@ -159,7 +169,7 @@ test('the answer fills the page, and a sentence of the interface keeps a measure
   const { app, window } = await launch()
   await ask(window, 'say something')
   await settled(window)
-  await window.setViewportSize({ width: 2400, height: 900 })
+  await sizeWindow(app, window, 2400, 900)
 
   // The answer's own prose fills the room the reader asked the window for; only a sentence the
   // interface itself writes is capped at the reading measure (C5.3).
@@ -170,7 +180,7 @@ test('the answer fills the page, and a sentence of the interface keeps a measure
   // The interface's capped sentence: the folder-less page's one explanation, at the measure while
   // the page under it fills the room.
   const bare = await launch({ noFolder: true })
-  await bare.window.setViewportSize({ width: 2400, height: 900 })
+  await sizeWindow(bare.app, bare.window, 2400, 900)
   const sentence = bare.window.getByText('A folder is what the agent reads and edits')
   await expect(sentence).toBeVisible()
   expect((await box(bare.window.getByRole('main'))).w).toBeGreaterThan(2000)
@@ -190,10 +200,9 @@ test('a new conversation greets you: the box in the middle, ways to start under 
   const greeting = window.getByRole('heading', { level: 1 })
   await expect(greeting).toContainText(/Good (morning|afternoon|evening)/)
   const composer = await box(window.getByRole('textbox', { name: 'Message the agent' }))
-  const viewport = window.viewportSize()
-  if (viewport === null) throw new Error('no viewport')
-  expect(composer.y).toBeGreaterThan(viewport.height * 0.2)
-  expect(composer.y).toBeLessThan(viewport.height * 0.65)
+  const page = await sizeOf(window)
+  expect(composer.y).toBeGreaterThan(page.height * 0.2)
+  expect(composer.y).toBeLessThan(page.height * 0.65)
   await expect(
     window.getByRole('button', { name: /Fix the last error|Review what changed|Write tests|Explain this folder/ }),
   ).toHaveCount(4)
@@ -234,11 +243,28 @@ test('a name is set in the text voice and a label in the apparatus — two voice
   const answer = window.getByRole('main').locator('[data-role="assistant"]').first()
   expect(await style(answer, 'font-family')).toContain('Geist Sans')
 
-  // The apparatus voice: the index's headings, the chips, the shortcuts.
+  // The apparatus voice: the index's headings and the chips.
   const heading = window.getByRole('complementary').getByRole('heading', { name: 'Folders' })
   expect(await style(heading, 'font-family')).toContain('Geist Mono')
   const chip = window.getByRole('button', { name: 'Full access' })
   expect(await style(chip, 'font-family')).toContain('Geist Mono')
+
+  await app.close()
+})
+
+test('the head names the page quietly, and the page’s own words lead', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
+
+  // A head is chrome: it names the document rather than announcing it. Its title stands one step
+  // under the title a heading inside an answer wears, and at the emphasis weight — so the 600 in a
+  // window belongs to the page saying something itself (C5.3), and a head that shouts competes with
+  // the words it names. These are numbers a redesign may change deliberately; a head that goes back
+  // to shouting is the accident this holds against.
+  const title = window.getByRole('main').getByRole('heading', { level: 1 })
+  expect(await style(title, 'font-weight')).toBe('500')
+  expect(await style(title, 'font-size')).toBe('18px')
 
   await app.close()
 })
@@ -260,6 +286,86 @@ test('the thinking knob sits at the model chip’s right hand, at the foot of th
   await app.close()
 })
 
+test('a phone shows one column at a time: the page, or the rail as the whole screen', async () => {
+  const { app, window } = await launch()
+  await ask(window, 'say something')
+  await settled(window)
+
+  // A phone is a browser's page — a window stops at 1024 (ADR-0009) — and the rail's 16rem is more
+  // than half of one, which leaves the page 119px and its own content nowhere to stand. Below 30rem
+  // the workbench therefore shows one column at a time: the page, or the rail as the whole screen
+  // (C5.4). Nothing floats over the page, so nothing of the page moves while it is being read.
+  const railRow = window.getByRole('button', { name: 'New conversation' })
+  const show = window.getByRole('button', { name: 'Show the rail' })
+  const hide = window.getByRole('button', { name: 'Hide the rail' })
+  const page = () => box(window.getByRole('main'))
+  const frame = () => window.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  // A polled reading, because the size is the window's and the answer is the renderer's: the page is
+  // one width when the window reports it and the phone's shape a frame later.
+  const pageIs = (expected: string) =>
+    expect
+      .poll(
+        async () => {
+          const at = await page()
+          return `${at.x}×${at.w}`
+        },
+        { message: `the page should stand at ${expected}` },
+      )
+      .toBe(expected)
+
+  for (const width of [480, 375]) {
+    await sizeWindow(app, window, width, 720)
+    // The page, whole, and its frame never scrolls sideways — with the rail beside it or with the
+    // rail a screen of its own.
+    await pageIs(`0×${width}`)
+    expect(await frame(), `the page's frame scrolls sideways at ${width}`).toBe(0)
+    await expect(railRow).toBeHidden()
+
+    // One tap in the head brings the rail in, and it takes the screen rather than a share of it.
+    await show.click()
+    await expect(window.getByRole('main')).toHaveCount(0)
+    await expect(railRow).toBeVisible()
+    expect(await frame(), `the rail's screen scrolls sideways at ${width}`).toBe(0)
+
+    // The rail's own masthead is where it is left again: the toggle stands in every head, and on a
+    // phone the rail's screen is a head of its own.
+    await hide.click()
+    await pageIs(`0×${width}`)
+  }
+
+  // A window's floor is 1024 and never reaches this: at its own narrowest the rail is a column
+  // beside the page again, on the edge it keeps at every width.
+  await sizeWindow(app, window, 1024, 720)
+  await pageIs('256×768')
+  await expect(railRow).toBeVisible()
+
+  await app.close()
+})
+
+test('a phone leaves the settings menu by picking a panel, and comes back to it', async () => {
+  const { app, window } = await launch()
+  await sizeWindow(app, window, 375, 720)
+
+  // The way into the rail is the tap a phone knows everywhere.
+  await window.getByRole('button', { name: 'Show the rail' }).click()
+  await window.getByRole('link', { name: 'Settings' }).click()
+
+  // Settings replaces the rail in the same column (C5.4), and the column is what a phone shows: the
+  // menu, with the way back to the workbench at its top. Picking a panel is what leaves it.
+  await expect(window.getByRole('link', { name: 'Back to the workbench' })).toBeVisible()
+  await window.getByRole('link', { name: 'Providers', exact: true }).click()
+  await expect(window.getByRole('main').getByRole('heading', { level: 1, name: 'Providers' })).toBeVisible()
+
+  // And the panel's own head is where the menu comes back from: a phone is never left on a screen
+  // with nothing to leave it by.
+  await window.getByRole('button', { name: 'Show the settings menu' }).click()
+  await expect(window.getByRole('link', { name: 'Back to the workbench' })).toBeVisible()
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await expect(window.getByRole('main')).toBeVisible()
+
+  await app.close()
+})
+
 test("the window's own controls sit in the top-right corner, on every page", async () => {
   const { app, window } = await launch()
   await ask(window, 'say something')
@@ -267,9 +373,8 @@ test("the window's own controls sit in the top-right corner, on every page", asy
 
   const corner = async () => {
     const close = await box(window.getByRole('button', { name: 'Close window' }))
-    const viewport = window.viewportSize()
-    if (viewport === null) throw new Error('no viewport')
-    expect(close.x + close.w).toBeGreaterThanOrEqual(viewport.width - 48)
+    const page = await sizeOf(window)
+    expect(close.x + close.w).toBeGreaterThanOrEqual(page.width - 48)
     expect(close.y).toBeLessThan(56)
     return { x: close.x + close.w, y: close.y }
   }

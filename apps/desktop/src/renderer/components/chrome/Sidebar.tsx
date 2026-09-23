@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
 import { SCROLLS } from '../../lib/ledger.ts'
 import { conversations } from '../../stores/conversations.ts'
+import { foldActions } from '../../stores/fold.ts'
 import { composerFolderOf, shell, shellActions, useText } from '../../stores/shell.ts'
 import { tasks } from '../../stores/tasks.ts'
 import { CONTROL_HEIGHT, GROUP_LABEL, ICON_ACTION, RAIL_ROW } from '../controls.ts'
@@ -67,15 +68,19 @@ export function Sidebar(props: { onSearch: () => void }) {
             icon={<PlusIcon />}
             label={t('sidebar.newConversation')}
             shortcut={`${modifier()}N`}
-            onClick={() => navigate('/')}
+            onClick={foldActions.choose(() => navigate('/'))}
           />
           <PlaceRow
             icon={<SearchIcon />}
             label={t('sidebar.search')}
             shortcut={`${modifier()}K`}
-            onClick={props.onSearch}
+            onClick={foldActions.choose(props.onSearch)}
           />
-          <PlaceRow icon={<ClockIcon />} label={t('sidebar.tasks')} onClick={() => navigate('/tasks')} />
+          <PlaceRow
+            icon={<ClockIcon />}
+            label={t('sidebar.tasks')}
+            onClick={foldActions.choose(() => navigate('/tasks'))}
+          />
         </div>
         <div class="mt-2 border-t border-line" />
       </nav>

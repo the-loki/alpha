@@ -10,7 +10,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { type ElectronApplication, _electron as electron, type Page } from '@playwright/test'
+import { type ElectronApplication, _electron as electron, expect, type Page } from '@playwright/test'
 
 import { startScriptedProvider } from './scripted-provider'
 
@@ -55,8 +55,11 @@ export type LaunchOptions = {
   /** Slows the stream, so a turn is catchable mid-answer. */
   slow?: { tokenSize: number; tokensPerSecond: number }
   env?: Record<string, string>
-  /** False leaves the window at the size the workbench opens at (1200x800). */
-  viewport?: boolean
+  /**
+   * False leaves the window at the size the workbench opens at (1200x800) — for a spec that is not
+   * about the window at all, and for the browser client, which has no window of ours to size.
+   */
+  resize?: boolean
 }
 
 /**
@@ -171,8 +174,68 @@ export async function launchWorkbench(options: LaunchOptions = {}): Promise<Laun
   })
   const window = await app.firstWindow()
   await window.waitForSelector('#root > *')
-  if (options.viewport !== false) await window.setViewportSize({ width: 1440, height: 900 })
+  if (options.resize !== false) await sizeWindow(app, window, 1440, 900)
   return { app, window, dataDirectory, workspace }
+}
+
+/**
+ * The window's size is the window's, not the page's. Playwright's `setViewportSize` overrides the
+ * page's own metrics and leaves the `BrowserWindow` exactly as Electron made it, so a spec that
+ * "sets 1440x900" that way leaves the workbench laid out for a window it does not have — and what a
+ * person watching the run sees is the app's own three drawn past the window's right edge and the
+ * composer below its bottom. Measured before this existed: the page 1440x900, the window 1200x800.
+ *
+ * So the resize is asked of the window, and the page is waited for — the renderer takes a moment to
+ * hear about it. A size under the app's own floor (`minWidth` 1024, `minHeight` 720) lowers the
+ * floor for that window and no other: a browser may show the workbench at any size (ADR-0009), and
+ * the specs that ask for one are about exactly that. A size the display cannot hold — the 2400-wide
+ * probe on a 1280-wide runner — falls back to the metric override, because the alternative is a
+ * suite that only passes on large monitors; that fallback says itself out loud rather than passing
+ * quietly. A window that fails to take a size the display *can* hold is not tolerated: that is this
+ * bug coming back, and it fails here naming both numbers.
+ */
+export async function sizeWindow(app: ElectronApplication, window: Page, width: number, height: number): Promise<void> {
+  const holdable = await app.evaluate(
+    ({ screen }, size) => {
+      const work = screen.getPrimaryDisplay().workAreaSize
+      return work.width >= size.width && work.height >= size.height
+    },
+    { width, height },
+  )
+
+  await app.evaluate(
+    ({ BrowserWindow }, size) => {
+      const target = BrowserWindow.getAllWindows()[0]
+      if (target === undefined) return
+      const [minWidth, minHeight] = target.getMinimumSize()
+      if (minWidth > size.width || minHeight > size.height) {
+        target.setMinimumSize(Math.min(minWidth, size.width), Math.min(minHeight, size.height))
+      }
+      target.setContentSize(size.width, size.height)
+    },
+    { width, height },
+  )
+
+  try {
+    await expect
+      .poll(() => window.evaluate(() => [globalThis.innerWidth, globalThis.innerHeight]), { timeout: 3_000 })
+      .toEqual([width, height])
+  } catch {
+    if (!holdable) {
+      console.log(`the display cannot hold ${width}x${height}: the page is emulated at that size instead`)
+      await window.setViewportSize({ width, height })
+      return
+    }
+    const bounds = await app.evaluate(({ BrowserWindow }) => {
+      const target = BrowserWindow.getAllWindows()[0]
+      return target === undefined ? null : target.getContentBounds()
+    })
+    throw new Error(
+      `the window is ${bounds?.width ?? '?'}x${bounds?.height ?? '?'} while the page was asked for ` +
+        `${width}x${height}: sizeWindow has to resize the window, because a page laid out for a size ` +
+        'its window does not have is what a person sees as content pushed off the edge',
+    )
+  }
 }
 
 /** The one way every spec speaks: fill the composer and press Enter. */

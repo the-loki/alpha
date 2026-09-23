@@ -318,9 +318,12 @@ export const EN = {
   'settings.languageNote':
     'Which language this interface is written in. What the agent is told stays in the language of the conversation itself, so translating the interface does not change how a conversation reads.',
 
-  // The rail's fold, named the way it will move (C5.4): one name for each direction.
+  // The rail's fold, named the way it will move (C5.4): one name for each direction. On a phone the
+  // same control moves the settings menu, which is the column settings keeps, and that name says so.
   'sidebar.hideRail': 'Hide the rail',
   'sidebar.showRail': 'Show the rail',
+  'settings.hideMenu': 'Hide the settings menu',
+  'settings.showMenu': 'Show the settings menu',
   // What the session has spent, said once — as the tooltip on the view head's title (C5.4).
   'header.spend': 'Tokens for this conversation: {tokens}',
   'header.spendCost': 'Tokens for this conversation: {tokens} · {cost}',
