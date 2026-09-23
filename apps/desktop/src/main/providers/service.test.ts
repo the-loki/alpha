@@ -1,11 +1,12 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ProviderModelDefinition } from '@alpha/core'
+import type { ProviderApi, ProviderAuthStyle, ProviderModelDefinition } from '@alpha/core'
 import type { Models } from '@earendil-works/pi-ai'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { aModel, scriptedModels, textStream } from '../runtime/scripted-provider.ts'
 import { CredentialVault } from './credential-vault.ts'
+import { closeScriptedWires, startScriptedWire } from './scripted-wire.ts'
 import { ProviderService } from './service.ts'
 import { ProviderStore } from './store.ts'
 
@@ -180,5 +181,101 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
     const answer = await providers.test('local', 'a')
     expect(answer.ok).toBe(false)
     expect(answer.message).toContain('did not answer')
+  })
+})
+
+/** The words the workbench asks a provider with, which the wire has to carry. */
+const ASKED = 'Reply with the single word: ready'
+
+/**
+ * What a base url holds per wire: the OpenAI-shaped clients append only the resource, so the
+ * version segment is part of what the person types; the Anthropic client appends `/v1/messages`
+ * itself, so its base url is the host. The protocol is what decides how the field is read.
+ */
+const BASE_PATH: Record<ProviderApi, string> = {
+  'openai-completions': '/v1',
+  'openai-responses': '/v1',
+  'anthropic-messages': '',
+}
+
+/**
+ * The three wires Alpha stores (ADR-0015), each driven for real: a stored provider points at a
+ * loopback endpoint that speaks that protocol, and the button that asks whether a provider answers
+ * is what runs. What the wire carried is read back — the path, the auth header, the body — because
+ * those are what speaking a protocol means, and the words that come out the far end are the proof
+ * the answer was parsed rather than merely received.
+ *
+ * A text turn only: the tool-call shapes each wire also has are the agent's business, and the
+ * scripted provider already covers that loop without a socket.
+ */
+describe('[agent-runtime] the three wires a provider can speak', () => {
+  afterEach(closeScriptedWires)
+
+  /** A stored provider whose connection is a loopback endpoint speaking `api`. */
+  const asking = async (api: ProviderApi, authStyle?: ProviderAuthStyle) => {
+    const wire = await startScriptedWire(api)
+    const { service: providers } = service()
+    providers.save({
+      id: 'local',
+      name: 'Local',
+      api,
+      baseUrl: `http://127.0.0.1:${wire.port}${BASE_PATH[api]}`,
+      ...(authStyle === undefined ? {} : { authStyle }),
+    })
+    providers.saveModels('local', [model('a')])
+    providers.setCredential('local', 'sk-test')
+    return { wire, providers }
+  }
+
+  it('openai-completions: chat completions, the key as a bearer, the answer parsed', async () => {
+    const { wire, providers } = await asking('openai-completions')
+
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    const [arrived] = wire.requests
+    expect(arrived).toMatchObject({
+      method: 'POST',
+      path: '/v1/chat/completions',
+      headers: { authorization: 'Bearer sk-test' },
+      body: { model: 'a', stream: true },
+    })
+    expect(JSON.stringify(arrived?.body)).toContain(ASKED)
+  })
+
+  it('openai-responses: responses, the key as a bearer, the answer parsed', async () => {
+    const { wire, providers } = await asking('openai-responses')
+
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    const [arrived] = wire.requests
+    expect(arrived).toMatchObject({
+      method: 'POST',
+      path: '/v1/responses',
+      headers: { authorization: 'Bearer sk-test' },
+      body: { model: 'a', stream: true },
+    })
+    expect(JSON.stringify(arrived?.body)).toContain(ASKED)
+  })
+
+  it('anthropic-messages: messages, the key in x-api-key, max_tokens, the answer parsed', async () => {
+    const { wire, providers } = await asking('anthropic-messages')
+
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    const [arrived] = wire.requests
+    expect(arrived?.path).toMatch(/^\/v1\/messages/)
+    expect(arrived).toMatchObject({
+      method: 'POST',
+      headers: { 'x-api-key': 'sk-test' },
+      body: { model: 'a', stream: true, max_tokens: expect.any(Number) },
+    })
+    expect(arrived?.headers['anthropic-version']).toBeDefined()
+    expect(JSON.stringify(arrived?.body)).toContain(ASKED)
+  })
+
+  it('anthropic-messages: a bearer-style key rides Authorization, and x-api-key is not sent', async () => {
+    const { wire, providers } = await asking('anthropic-messages', 'bearer')
+
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    const [arrived] = wire.requests
+    expect(arrived).toMatchObject({ headers: { authorization: 'Bearer sk-test' } })
+    expect(arrived?.headers['x-api-key']).toBeUndefined()
   })
 })
