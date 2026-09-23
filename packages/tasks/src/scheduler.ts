@@ -42,23 +42,23 @@ export class Scheduler {
   #timer: Undef<ReturnType<typeof setTimeout>>
   #running = false
 
-  constructor(ports: SchedulerPorts) {
+  public constructor(ports: SchedulerPorts) {
     this.#ports = ports
   }
 
-  start(): void {
+  public start(): void {
     this.stop()
     const gap = Math.min(CATCH_UP_DELAY_MS, this.#waitForNext())
     this.#timer = setTimeout(() => void this.tick(), gap)
   }
 
-  stop(): void {
+  public stop(): void {
     if (this.#timer !== undefined) clearTimeout(this.#timer)
     this.#timer = undefined
   }
 
   /** One pass over every task, then a timer for the nearest moment left. Called by the timer too. */
-  async tick(): Promise<void> {
+  public async tick(): Promise<void> {
     if (this.#running) return
     const now = this.#ports.now()
     for (const task of this.#ports.tasks.list()) {

@@ -43,28 +43,28 @@ export class CredentialVault {
   readonly #cipher: SecretCipher
   #entries: VaultEntry[]
 
-  constructor(dataDirectory: string, cipher: SecretCipher) {
+  public constructor(dataDirectory: string, cipher: SecretCipher) {
     this.#path = join(dataDirectory, 'credentials.json')
     this.#cipher = cipher
     this.#entries = this.#read()
   }
 
-  protection(): CredentialProtection {
+  public protection(): CredentialProtection {
     return this.#cipher.available ? 'os' : 'plaintext'
   }
 
-  has(providerId: string): boolean {
+  public has(providerId: string): boolean {
     return this.#entries.some((entry) => entry.providerId === providerId)
   }
 
   /** Main-process only. Never expose this over IPC. */
-  credential(providerId: string): Undef<string> {
+  public credential(providerId: string): Undef<string> {
     const entry = this.#entries.find((candidate) => candidate.providerId === providerId)
     if (entry === undefined) return undefined
     return entry.protection === 'os' ? this.#cipher.decrypt(entry.payload) : entry.payload
   }
 
-  set(providerId: string, secret: string): void {
+  public set(providerId: string, secret: string): void {
     const protection = this.protection()
     const payload = protection === 'os' ? this.#cipher.encrypt(secret) : secret
     this.#entries = [
@@ -74,12 +74,12 @@ export class CredentialVault {
     this.#flush()
   }
 
-  remove(providerId: string): void {
+  public remove(providerId: string): void {
     this.#entries = this.#entries.filter((entry) => entry.providerId !== providerId)
     this.#flush()
   }
 
-  ids(): string[] {
+  public ids(): string[] {
     return this.#entries.map((entry) => entry.providerId)
   }
 

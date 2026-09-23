@@ -23,41 +23,41 @@ export class ConversationIndexStore {
   readonly #path: string
   #index: ConversationIndex
 
-  constructor(dataDirectory: string) {
+  public constructor(dataDirectory: string) {
     this.#path = join(dataDirectory, 'conversations.json')
     this.#index = this.#read()
   }
 
-  all(): ConversationSummary[] {
+  public all(): ConversationSummary[] {
     return [...this.#index.conversations]
   }
 
-  forWorkspace(workspacePath: string): ConversationSummary[] {
+  public forWorkspace(workspacePath: string): ConversationSummary[] {
     return listForWorkspace(this.#index, workspacePath)
   }
 
-  find(id: string): Undef<ConversationSummary> {
+  public find(id: string): Undef<ConversationSummary> {
     return findConversation(this.#index, id)
   }
 
-  upsert(conversation: ConversationSummary): ConversationSummary {
+  public upsert(conversation: ConversationSummary): ConversationSummary {
     this.#index = upsertConversation(this.#index, conversation)
     this.#flush()
     return conversation
   }
 
-  remove(id: string): void {
+  public remove(id: string): void {
     this.#index = removeConversation(this.#index, id)
     this.#flush()
   }
 
   /** Putting it away, and taking it back out: the file is the only place the state lives. */
-  archive(id: string, at: number): void {
+  public archive(id: string, at: number): void {
     this.#index = archiveConversation(this.#index, id, at)
     this.#flush()
   }
 
-  unarchive(id: string): void {
+  public unarchive(id: string): void {
     this.#index = unarchiveConversation(this.#index, id)
     this.#flush()
   }

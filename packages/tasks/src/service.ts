@@ -35,7 +35,7 @@ export class TaskService {
   readonly #ports: TaskServicePorts
   readonly #scheduler: Scheduler
 
-  constructor(ports: TaskServicePorts) {
+  public constructor(ports: TaskServicePorts) {
     this.#ports = ports
     this.#scheduler = new Scheduler({
       tasks: ports.tasks,
@@ -47,15 +47,15 @@ export class TaskService {
     })
   }
 
-  start(): void {
+  public start(): void {
     this.#scheduler.start()
   }
 
-  stop(): void {
+  public stop(): void {
     this.#scheduler.stop()
   }
 
-  snapshot(): TasksSnapshot {
+  public snapshot(): TasksSnapshot {
     const tasks = this.#ports.tasks.list()
     return { tasks, runs: tasks.flatMap((task) => this.#ports.tasks.runs(task.id)) }
   }
@@ -64,7 +64,7 @@ export class TaskService {
    * A new task or an edit of one. An edit keeps the id, and a task's level is its own from the
    * moment it is made: a workspace's default may move, a promise already made may not (ADR-0012).
    */
-  save(input: Partial<ScheduledTask>): TasksSnapshot {
+  public save(input: Partial<ScheduledTask>): TasksSnapshot {
     const existing = input.id === undefined ? undefined : this.#ports.tasks.find(input.id)
     const schedule: TaskSchedule = isValidSchedule(input.schedule)
       ? input.schedule
@@ -88,14 +88,14 @@ export class TaskService {
     return this.snapshot()
   }
 
-  remove(id: string): TasksSnapshot {
+  public remove(id: string): TasksSnapshot {
     this.#ports.tasks.remove(id)
     this.#ports.changed()
     return this.snapshot()
   }
 
   /** Run now: the person pressing it is watching, so the gate may ask (ADR-0012). */
-  async runNow(id: string): Promise<TasksSnapshot> {
+  public async runNow(id: string): Promise<TasksSnapshot> {
     const task = this.#ports.tasks.find(id)
     if (task === undefined) throw new Error(`No task ${id}`)
     // A run started by hand is written down the same way the clock's runs are: one row, started

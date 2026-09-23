@@ -19,33 +19,33 @@ export class PendingQueue {
   readonly #paused = new Set<string>()
 
   /** Adds one to the back and answers with it, so the caller can name it in the window. */
-  add(conversationId: string, text: string): PendingSend {
+  public add(conversationId: string, text: string): PendingSend {
     const send: PendingSend = { id: crypto.randomUUID(), text }
     this.#queues.set(conversationId, [...this.#list(conversationId), send])
     return send
   }
 
   /** In place: editing a message is not the same as typing it again at the back. */
-  edit(conversationId: string, id: string, text: string): void {
+  public edit(conversationId: string, id: string, text: string): void {
     this.#queues.set(
       conversationId,
       this.#list(conversationId).map((send) => (send.id === id ? { ...send, text } : send)),
     )
   }
 
-  remove(conversationId: string, id: string): boolean {
+  public remove(conversationId: string, id: string): boolean {
     const list = this.#list(conversationId)
     const next = list.filter((send) => send.id !== id)
     this.#queues.set(conversationId, next)
     return next.length !== list.length
   }
 
-  list(conversationId: string): PendingSend[] {
+  public list(conversationId: string): PendingSend[] {
     return [...this.#list(conversationId)]
   }
 
   /** The head, removed: the caller is about to send it. */
-  take(conversationId: string): Undef<PendingSend> {
+  public take(conversationId: string): Undef<PendingSend> {
     const [head, ...rest] = this.#list(conversationId)
     if (head === undefined) return undefined
     this.#queues.set(conversationId, rest)
@@ -53,23 +53,23 @@ export class PendingQueue {
   }
 
   /** Giving one back, when sending it turned out to be impossible. */
-  unshift(conversationId: string, send: PendingSend): void {
+  public unshift(conversationId: string, send: PendingSend): void {
     this.#queues.set(conversationId, [send, ...this.#list(conversationId)])
   }
 
-  paused(conversationId: string): boolean {
+  public paused(conversationId: string): boolean {
     return this.#paused.has(conversationId)
   }
 
-  pause(conversationId: string): void {
+  public pause(conversationId: string): void {
     this.#paused.add(conversationId)
   }
 
-  resume(conversationId: string): void {
+  public resume(conversationId: string): void {
     this.#paused.delete(conversationId)
   }
 
-  forget(conversationId: string): void {
+  public forget(conversationId: string): void {
     this.#queues.delete(conversationId)
     this.#paused.delete(conversationId)
   }
@@ -97,49 +97,49 @@ export class QueueRunner {
   readonly #steers = new Map<string, QueuedMessage[]>()
   readonly #ports: QueuePorts
 
-  constructor(ports: QueuePorts) {
+  public constructor(ports: QueuePorts) {
     this.#ports = ports
   }
 
   /** Queuing one, and sending it at once if nothing is in the way. */
-  async add(conversationId: string, text: string): Promise<void> {
+  public async add(conversationId: string, text: string): Promise<void> {
     this.#queue.add(conversationId, text)
     this.#emit(conversationId)
     await this.flush(conversationId)
   }
 
-  edit(conversationId: string, entryId: string, text: string): void {
+  public edit(conversationId: string, entryId: string, text: string): void {
     this.#queue.edit(conversationId, entryId, text)
     this.#emit(conversationId)
   }
 
   /** Answers whether the id was the workbench's; the lane's own queue holds the steers. */
-  cancel(conversationId: string, entryId: string): boolean {
+  public cancel(conversationId: string, entryId: string): boolean {
     const mine = this.#queue.remove(conversationId, entryId)
     if (mine) this.#emit(conversationId)
     return mine
   }
 
   /** Started again by hand, after a failure or a Stop. */
-  async resume(conversationId: string): Promise<void> {
+  public async resume(conversationId: string): Promise<void> {
     this.#queue.resume(conversationId)
     this.#emit(conversationId)
     await this.flush(conversationId)
   }
 
   /** Stop means stop: the queue waits too, rather than firing as soon as the turn is cut short. */
-  stop(conversationId: string): void {
+  public stop(conversationId: string): void {
     this.#queue.pause(conversationId)
     this.#emit(conversationId)
   }
 
   /** What the lane is still holding for the running turn, which the window shows beside ours. */
-  rememberSteers(conversationId: string, steers: QueuedMessage[]): void {
+  public rememberSteers(conversationId: string, steers: QueuedMessage[]): void {
     this.#steers.set(conversationId, steers)
     this.#emit(conversationId)
   }
 
-  forget(conversationId: string): void {
+  public forget(conversationId: string): void {
     this.#queue.forget(conversationId)
     this.#steers.delete(conversationId)
   }
@@ -148,7 +148,7 @@ export class QueueRunner {
    * Sending the head, if there is one and nothing is in the way. Called when a turn ends normally
    * and when the queue is started again — the two ways a queue moves.
    */
-  async flush(conversationId: string): Promise<void> {
+  public async flush(conversationId: string): Promise<void> {
     if (this.#queue.paused(conversationId)) return
     if (this.#ports.statusOf(conversationId) !== 'idle') return
     const head = this.#queue.take(conversationId)

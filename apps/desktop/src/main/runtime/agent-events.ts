@@ -89,12 +89,12 @@ export class AgentEventTranslator {
   #openMessageId: Undef<string>
   #runOpen = false
 
-  constructor(conversationId: string, retry?: RetryDecider) {
+  public constructor(conversationId: string, retry?: RetryDecider) {
     this.#conversationId = conversationId
     this.#retry = retry
   }
 
-  translate(event: RpcLikeEvent): RuntimeEvent[] {
+  public translate(event: RpcLikeEvent): RuntimeEvent[] {
     if (event.type === 'agent_start') return this.#startRun()
     if (event.type === 'agent_end') return this.#endRun(event)
     if (event.type === 'agent_settled') return this.#settle()

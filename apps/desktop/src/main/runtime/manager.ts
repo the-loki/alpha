@@ -78,7 +78,7 @@ export class RuntimeManager {
   /** Runs with nobody watching, and the refusals their gate had to hand out (ADR-0012). */
   readonly #unattended = new UnattendedRuns()
 
-  constructor(options: RuntimeManagerOptions) {
+  public constructor(options: RuntimeManagerOptions) {
     this.#options = options
     this.#books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
     this.#sessions = new SessionStore(options.sessionsRoot)
@@ -91,29 +91,29 @@ export class RuntimeManager {
     })
   }
 
-  permissionRules(): PermissionRule[] {
+  public permissionRules(): PermissionRule[] {
     return this.#options.store.read().permissionRules
   }
 
-  revokeRule(ruleId: string): PermissionRule[] {
+  public revokeRule(ruleId: string): PermissionRule[] {
     const rules = revokeRule(this.#options.store, ruleId)
     this.#options.emitRules(rules)
     return rules
   }
 
-  answerApproval(id: string, requestId: string, answer: ApprovalAnswer): void {
+  public answerApproval(id: string, requestId: string, answer: ApprovalAnswer): void {
     this.#approvals.answer(id, requestId, answer)
   }
 
-  list(): ConversationSummary[] {
+  public list(): ConversationSummary[] {
     return this.#books.list()
   }
 
-  modelStatus(): ModelStatus {
+  public modelStatus(): ModelStatus {
     return describeRuntime(this.#options.providers)
   }
 
-  async create(workspacePath: string): Promise<OpenedConversation> {
+  public async create(workspacePath: string): Promise<OpenedConversation> {
     const conversation = newConversation({
       id: crypto.randomUUID(),
       workspacePath,
@@ -128,7 +128,7 @@ export class RuntimeManager {
     return { conversation, messages: [], usage: EMPTY_USAGE }
   }
 
-  async open(id: string): Promise<OpenedConversation> {
+  public async open(id: string): Promise<OpenedConversation> {
     const conversation = this.#requireConversation(id)
 
     this.#options.store.rememberConversation(id)
@@ -149,7 +149,7 @@ export class RuntimeManager {
    * The run is waited out here, because a refusal only happens while the run is in flight — the
    * watching ends when the run does, or the count would always be zero.
    */
-  async runUnattended(id: string, text: string): Promise<number> {
+  public async runUnattended(id: string, text: string): Promise<number> {
     this.#unattended.start(id)
     try {
       await this.prompt(id, text)
@@ -162,7 +162,7 @@ export class RuntimeManager {
     return this.#unattended.finish(id)
   }
 
-  async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
+  public async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
     const conversation = this.#requireConversation(id)
     // Why the turn may not start is said before anyone waits for one: no model, an unreadable key,
     // a picture the model cannot read (models.ts owns the sentences).
@@ -176,7 +176,7 @@ export class RuntimeManager {
     await (await this.#openFor(id)).prompt(text, attachments)
   }
 
-  async steer(id: string, text: string): Promise<void> {
+  public async steer(id: string, text: string): Promise<void> {
     await (await this.#openFor(id)).steer(text)
   }
 
@@ -184,7 +184,7 @@ export class RuntimeManager {
    * Compacting the conversation now, whatever the threshold says (ADR-0025). The answer says
    * whether a compaction happened: a conversation with nothing to summarize is a no, not an error.
    */
-  async compactConversation(id: string): Promise<boolean> {
+  public async compactConversation(id: string): Promise<boolean> {
     return (await this.#openFor(id)).compact()
   }
 
@@ -192,13 +192,13 @@ export class RuntimeManager {
    * Waiting for the turn to end is the workbench's own business (ADR-0011): the message goes into
    * our list, where it can be edited, and a new turn picks it up when the current one finishes.
    */
-  async queueMessage(id: string, text: string): Promise<void> {
+  public async queueMessage(id: string, text: string): Promise<void> {
     this.#requireConversation(id)
     await this.#queue.add(id, text)
   }
 
   /** Editing one where it stands: same position, new words. */
-  async editQueued(id: string, entryId: string, text: string): Promise<void> {
+  public async editQueued(id: string, entryId: string, text: string): Promise<void> {
     this.#queue.edit(id, entryId, text)
   }
 
@@ -206,45 +206,45 @@ export class RuntimeManager {
    * Taking back a message that has not been sent. The agent's queue is emptied whole and ours is
    * not, so which one an id belongs to decides which of the two is asked.
    */
-  async cancelQueued(id: string, entryId: string): Promise<void> {
+  public async cancelQueued(id: string, entryId: string): Promise<void> {
     if (this.#queue.cancel(id, entryId)) return
     await (await this.#openFor(id)).cancelQueued()
   }
 
   /** Starting a stopped queue again: pressing Stop, or a failed turn, is what stopped it. */
-  async resumeQueue(id: string): Promise<void> {
+  public async resumeQueue(id: string): Promise<void> {
     this.#requireConversation(id)
     await this.#queue.resume(id)
   }
 
   /** Both of these move the branch tip, and the editing module replaces the window's copy. */
-  async regenerate(id: string): Promise<void> {
+  public async regenerate(id: string): Promise<void> {
     await regenerate(this.#editPorts(), id)
   }
 
-  async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
+  public async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
     const opened = await editMessage(this.#editPorts(), id, index, text, effect)
     this.#options.store.rememberConversation(opened.conversation.id)
     return opened
   }
 
-  async abort(id: string): Promise<void> {
+  public async abort(id: string): Promise<void> {
     // An aborted run leaves nothing to decide, and a promise nobody will answer is a hang.
     this.#approvals.abandon(id, 'The run was stopped before this call was answered.')
     this.#queue.stop(id)
     await this.#open.get(id)?.abort()
   }
 
-  rename(id: string, title: string): ConversationSummary {
+  public rename(id: string, title: string): ConversationSummary {
     return this.#books.rename(id, title)
   }
 
-  archive(id: string): ConversationSummary[] {
+  public archive(id: string): ConversationSummary[] {
     this.#books.archive(id)
     return this.list()
   }
 
-  unarchive(id: string): ConversationSummary[] {
+  public unarchive(id: string): ConversationSummary[] {
     this.#books.unarchive(id)
     return this.list()
   }
@@ -253,7 +253,7 @@ export class RuntimeManager {
    * Deleting means deleting: the session goes with it, so the conversation is gone from the list
    * and from the disk, not merely hidden from one of them.
    */
-  async remove(id: string): Promise<ConversationSummary[]> {
+  public async remove(id: string): Promise<ConversationSummary[]> {
     const conversation = this.#requireConversation(id)
     this.#approvals.abandon(id, 'The conversation was deleted.')
     const runtime = this.#open.get(id)
@@ -270,13 +270,13 @@ export class RuntimeManager {
   }
 
   /** A markdown file beside the workspace, with everything the conversation said and did. */
-  async exportMarkdown(id: string): Promise<{ path: string }> {
+  public async exportMarkdown(id: string): Promise<{ path: string }> {
     const conversation = this.#requireConversation(id)
     return writeSessionMarkdown(conversation, await this.transcriptFor(id))
   }
 
   /** The transcript of a conversation, open or not: the same reading either way. */
-  async transcriptFor(id: string): Promise<ChatMessage[]> {
+  public async transcriptFor(id: string): Promise<ChatMessage[]> {
     const runtime = this.#open.get(id)
     if (runtime !== undefined) return runtime.transcript()
     const conversation = this.#requireConversation(id)
@@ -316,17 +316,17 @@ export class RuntimeManager {
   }
 
   /** The level in force for one conversation; the gate reads this at the moment of each call. */
-  setConversationLevel(id: string, level: PermissionLevel): ConversationSummary {
+  public setConversationLevel(id: string, level: PermissionLevel): ConversationSummary {
     this.#requireConversation(id)
     return this.#books.update(id, { permissionLevel: level, updatedAt: Date.now() })
   }
 
   /** The level new conversations in a workspace start at. */
-  setWorkspaceLevel(workspacePath: string, level: PermissionLevel): void {
+  public setWorkspaceLevel(workspacePath: string, level: PermissionLevel): void {
     rememberWorkspaceLevel(this.#options.store, workspacePath, level)
   }
 
-  async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
+  public async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
     this.#requireConversation(id)
     if (!servesModel(this.#options.providers.index(), { providerId, modelId })) {
       throw new Error(`${providerId} does not serve ${modelId}`)
@@ -335,13 +335,13 @@ export class RuntimeManager {
     return this.#books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
-  async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {
+  public async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {
     this.#requireConversation(id)
     await this.#open.get(id)?.setThinkingLevel(level)
     return this.#books.update(id, { thinkingLevel: level, updatedAt: Date.now() })
   }
 
-  async closeAll(): Promise<void> {
+  public async closeAll(): Promise<void> {
     for (const id of this.#open.keys()) this.#approvals.abandon(id, 'The window closed before this call was answered.')
     for (const runtime of this.#open.values()) await runtime.close()
     this.#open.clear()

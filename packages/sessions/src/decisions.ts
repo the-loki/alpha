@@ -36,7 +36,7 @@ export interface DecisionLookup {
 export class DecisionLog {
   readonly #directory: string
 
-  constructor(dataDirectory: string) {
+  public constructor(dataDirectory: string) {
     this.#directory = join(dataDirectory, 'decisions')
   }
 
@@ -44,7 +44,7 @@ export class DecisionLog {
    * The ledger for one conversation: what was decided before, and where the next decision goes.
    * The id is bound here, once, so no caller ever names the file.
    */
-  opened(conversationId: string): DecisionLedger {
+  public opened(conversationId: string): DecisionLedger {
     const location = { directory: this.#directory, name: this.#name(conversationId) }
     return new DecisionLedger({
       records: readRecords(location),
@@ -52,7 +52,7 @@ export class DecisionLog {
     })
   }
 
-  forget(conversationId: string): void {
+  public forget(conversationId: string): void {
     rmSync(join(this.#directory, this.#name(conversationId)), { force: true })
   }
 
@@ -82,19 +82,19 @@ export class DecisionLedger implements DecisionLookup {
   readonly #records: Map<string, ApprovalRecord>
   readonly #persist: Undef<(records: Map<string, ApprovalRecord>) => void>
 
-  constructor(
+  public constructor(
     options: { records?: Map<string, ApprovalRecord>; persist?: (records: Map<string, ApprovalRecord>) => void } = {},
   ) {
     this.#records = options.records ?? new Map()
     this.#persist = options.persist
   }
 
-  get(callId: string): Undef<ApprovalRecord> {
+  public get(callId: string): Undef<ApprovalRecord> {
     return this.#records.get(callId)
   }
 
   /** The gate's note: remembered for the rows still to come, and written for the next launch. */
-  note(callId: string, record: ApprovalRecord): void {
+  public note(callId: string, record: ApprovalRecord): void {
     this.#records.set(callId, record)
     this.#persist?.(this.#records)
   }

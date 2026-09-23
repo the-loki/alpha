@@ -3,7 +3,7 @@
  *
  * A rule reports violations and never edits: a pure function over a file's path and text.
  */
-import { isDeclaration, isSource, isTest, isTs, lineRule } from '../lib.mjs'
+import { ignoredFor, isComment, isDeclaration, isSource, isTest, isTs, lineRule, stripStrings } from '../lib.mjs'
 
 export const TYPESCRIPT_RULES = [
   lineRule({
@@ -63,6 +63,29 @@ export const TYPESCRIPT_RULES = [
         if (suppression && suppression[1].trim().length < 3) {
           found.push({ line: index + 1, message: '@ts-expect-error without a reason', text: line.trim() })
         }
+      })
+      return found
+    },
+  },
+
+  {
+    id: '01-typescript:no-private-modifier',
+    constraint: '01-typescript.md',
+    description: 'private is spelled #, the one the runtime enforces',
+    check({ path, text }) {
+      if (!isTs(path) || isDeclaration(path) || isTest(path)) return []
+      const found = []
+      text.split('\n').forEach((line, index) => {
+        if (isComment(line)) return
+        // Prose comes off first: a doc comment is allowed to discuss a private member, and a
+        // trailing note is a note rather than code.
+        if (!/\bprivate\b/.test(stripStrings(line).split('//')[0])) return
+        if (ignoredFor(line, { id: '01-typescript:no-private-modifier', constraint: '01-typescript.md' })) return
+        found.push({
+          line: index + 1,
+          message: 'the private keyword; a #name field is the private the language enforces (C1.10)',
+          text: line.trim(),
+        })
       })
       return found
     },

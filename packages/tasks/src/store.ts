@@ -21,16 +21,16 @@ export class TaskStore {
   #file: TaskFile
   #runs: TaskRun[] = []
 
-  constructor(dataDirectory: string) {
+  public constructor(dataDirectory: string) {
     this.#path = join(dataDirectory, 'tasks.json')
     this.#file = this.#read()
   }
 
-  list(): ScheduledTask[] {
+  public list(): ScheduledTask[] {
     return this.#file.tasks.map((task) => ({ ...task }))
   }
 
-  find(id: string): Undef<ScheduledTask> {
+  public find(id: string): Undef<ScheduledTask> {
     const task = this.#file.tasks.find((entry) => entry.id === id)
     return task === undefined ? undefined : { ...task }
   }
@@ -39,7 +39,7 @@ export class TaskStore {
    * One road for a new task and an edit of one: the id is what tells them apart. An edit keeps the
    * place the task already had, so the list does not reshuffle because someone changed a time.
    */
-  save(task: ScheduledTask): ScheduledTask {
+  public save(task: ScheduledTask): ScheduledTask {
     const known = this.#file.tasks.some((entry) => entry.id === task.id)
     const tasks = known
       ? this.#file.tasks.map((entry) => (entry.id === task.id ? task : entry))
@@ -49,19 +49,19 @@ export class TaskStore {
     return { ...task }
   }
 
-  remove(id: string): void {
+  public remove(id: string): void {
     this.#file = { version: 1, tasks: this.#file.tasks.filter((entry) => entry.id !== id) }
     this.#runs = this.#runs.filter((run) => run.taskId !== id)
     this.#flush()
   }
 
   /** When a task last ran, which is what its next run is measured from. */
-  markRan(id: string, at: number): void {
+  public markRan(id: string, at: number): void {
     const task = this.find(id)
     if (task !== undefined) this.save({ ...task, lastRunAt: at })
   }
 
-  runs(taskId: string): TaskRun[] {
+  public runs(taskId: string): TaskRun[] {
     return this.#runs.filter((run) => run.taskId === taskId).map((run) => ({ ...run }))
   }
 
@@ -70,7 +70,7 @@ export class TaskStore {
    * one row for the run that is going, which the run replacing it — with the conversation it turned
    * out to be, and then with how it ended — takes with it.
    */
-  record(run: TaskRun): void {
+  public record(run: TaskRun): void {
     const kept = this.#runs.filter((existing) => existing.taskId !== run.taskId || existing.outcome !== 'running')
     this.#runs = [run, ...kept].slice(0, RUNS_KEPT)
   }

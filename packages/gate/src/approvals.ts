@@ -15,12 +15,12 @@ export class ApprovalBroker {
   readonly #emit: (event: RuntimeEvent) => void
   readonly #waiting = new Map<string, Waiting>()
 
-  constructor(ports: { emit: (event: RuntimeEvent) => void }) {
+  public constructor(ports: { emit: (event: RuntimeEvent) => void }) {
     this.#emit = ports.emit
   }
 
   /** Puts the question to the window and resolves when the user answers it. */
-  ask(conversationId: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
+  public ask(conversationId: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
     const request: ApprovalRequest = { ...ask, requestId: crypto.randomUUID(), requestedAt: Date.now() }
     return new Promise<ApprovalAnswer>((resolve) => {
       this.#waiting.set(request.requestId, { conversationId, callId: ask.callId, resolve })
@@ -28,14 +28,14 @@ export class ApprovalBroker {
     })
   }
 
-  answer(conversationId: string, requestId: string, answer: ApprovalAnswer): void {
+  public answer(conversationId: string, requestId: string, answer: ApprovalAnswer): void {
     const waiting = this.#waiting.get(requestId)
     if (waiting === undefined || waiting.conversationId !== conversationId) return
     this.#settle(requestId, waiting, answer)
   }
 
   /** A conversation that closed, failed, or was aborted has nothing left to wait for. */
-  abandon(conversationId: string, reason: string): void {
+  public abandon(conversationId: string, reason: string): void {
     for (const [requestId, waiting] of [...this.#waiting]) {
       if (waiting.conversationId === conversationId) this.#settle(requestId, waiting, { decision: 'deny', reason })
     }

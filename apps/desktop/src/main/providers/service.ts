@@ -47,12 +47,12 @@ export class ProviderService {
   /** Builds the runtime a test dials with; tests script one, the app builds the real thing. */
   readonly #models: Undef<() => Models>
 
-  constructor(store: ProviderStore, options: { models?: () => Models } = {}) {
+  public constructor(store: ProviderStore, options: { models?: () => Models } = {}) {
     this.#store = store
     this.#models = options.models
   }
 
-  snapshot(): ProvidersSnapshot {
+  public snapshot(): ProvidersSnapshot {
     return {
       providers: this.#store.views(),
       protection: this.#store.protection(),
@@ -62,7 +62,7 @@ export class ProviderService {
   }
 
   /** A new provider serves nothing yet: its models are added on the models panel. */
-  save(input: unknown): ProvidersSnapshot {
+  public save(input: unknown): ProvidersSnapshot {
     const result = readProvider(input)
     if (result.provider === undefined) throw new Error(result.error ?? 'the provider is not valid')
     const known = this.#store.find(result.provider.id)
@@ -70,7 +70,7 @@ export class ProviderService {
     return this.snapshot()
   }
 
-  saveModels(id: string, input: unknown): ProvidersSnapshot {
+  public saveModels(id: string, input: unknown): ProvidersSnapshot {
     const result = readModels(input)
     if (result.models === undefined) throw new Error(result.error ?? 'the model list is not valid')
     this.#store.saveModels(id, result.models)
@@ -78,7 +78,7 @@ export class ProviderService {
   }
 
   /** What new conversations start on. Absent hands the choice back to the first model found. */
-  setDefaultModel(chosen: Undef<ConversationModel>): ProvidersSnapshot {
+  public setDefaultModel(chosen: Undef<ConversationModel>): ProvidersSnapshot {
     if (chosen !== undefined && !servesModel(this.#store.index(), chosen)) {
       throw new Error(`${chosen.providerId} does not serve ${chosen.modelId}`)
     }
@@ -86,12 +86,12 @@ export class ProviderService {
     return this.snapshot()
   }
 
-  remove(id: string): ProvidersSnapshot {
+  public remove(id: string): ProvidersSnapshot {
     this.#store.remove(id)
     return this.snapshot()
   }
 
-  setCredential(id: string, secret: string): ProvidersSnapshot {
+  public setCredential(id: string, secret: string): ProvidersSnapshot {
     if (this.#store.find(id) === undefined) throw new Error(`No provider ${id}`)
     this.#store.setCredential(id, secret)
     return this.snapshot()
@@ -102,7 +102,7 @@ export class ProviderService {
    * refusals come before any dialing: no provider, no key, a model nobody serves — each a sentence
    * the panel can show.
    */
-  async test(providerId: string, modelId: string): Promise<ProviderTestResult> {
+  public async test(providerId: string, modelId: string): Promise<ProviderTestResult> {
     const provider = this.#store.find(providerId)
     if (provider === undefined) return { ok: false, message: `No provider ${providerId}` }
     if (!this.#store.hasCredential(providerId)) {

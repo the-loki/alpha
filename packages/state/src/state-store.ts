@@ -11,23 +11,23 @@ export class StateStore {
   readonly #path: string
   #state: PersistedState
 
-  constructor(dataDirectory: string) {
+  public constructor(dataDirectory: string) {
     this.#path = join(dataDirectory, 'workbench-state.json')
     this.#state = this.#read()
   }
 
-  read(): PersistedState {
+  public read(): PersistedState {
     return this.#state
   }
 
-  write(next: PersistedState): PersistedState {
+  public write(next: PersistedState): PersistedState {
     this.#state = next
     writeFileSync(this.#path, JSON.stringify(next, null, 2), 'utf-8')
     return this.#state
   }
 
   /** Which conversation is open, so the next launch can come back to it (T2). */
-  rememberConversation(id: string): void {
+  public rememberConversation(id: string): void {
     this.write({ ...this.#state, lastConversationId: id })
   }
 

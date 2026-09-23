@@ -77,7 +77,7 @@ export class ConversationRuntime {
   /** The message announced as held for the running turn, until the agent takes it into the run. */
   #held: Undef<string>
 
-  constructor(options: ConversationRuntimeOptions) {
+  public constructor(options: ConversationRuntimeOptions) {
     this.#conversationId = options.conversationId
     this.#agent = options.agent
     this.#models = options.models
@@ -93,7 +93,7 @@ export class ConversationRuntime {
   }
 
   /** Announces the message in the session first, then starts the run behind it. */
-  async prompt(text: string, attachments?: Attachment[]): Promise<void> {
+  public async prompt(text: string, attachments?: Attachment[]): Promise<void> {
     const agent = this.#agent
     if (agent === undefined) {
       this.#failed('No model is configured for this conversation, so it cannot run.')
@@ -123,7 +123,7 @@ export class ConversationRuntime {
   }
 
   /** A message for the run in flight: it arrives now, and changes what the agent does next. */
-  async steer(text: string): Promise<void> {
+  public async steer(text: string): Promise<void> {
     this.#agent?.steer(this.#userMessage(text))
     this.#held = text
     this.#emit(this.#queued(text))
@@ -134,13 +134,13 @@ export class ConversationRuntime {
    * workbench keeps its own list for messages that are waiting for a turn: those are Alpha's, and
    * they are taken back one at a time there.
    */
-  async cancelQueued(): Promise<void> {
+  public async cancelQueued(): Promise<void> {
     this.#agent?.clearAllQueues()
     this.#emit({ conversationId: this.#conversationId, type: 'queue_updated', queued: [], paused: false })
   }
 
   /** Stops the run in flight: the agent keeps the message it was writing, marked interrupted. */
-  async abort(): Promise<void> {
+  public async abort(): Promise<void> {
     this.#agent?.abort()
   }
 
@@ -148,7 +148,7 @@ export class ConversationRuntime {
    * Compacting by hand (ADR-0025): the compaction plugin's one path, threshold aside. The answer
    * says whether a compaction happened — nothing to summarize is no, not an error.
    */
-  async compact(): Promise<boolean> {
+  public async compact(): Promise<boolean> {
     if (this.#compact === undefined) return false
     return this.#compact()
   }
@@ -157,7 +157,7 @@ export class ConversationRuntime {
    * How a gated call got past, announced the moment the gate has decided. The row is already on
    * screen — the agent announced the call before it asked — so the decision lands on it here.
    */
-  decided(callId: string, approval: ApprovalRecord): void {
+  public decided(callId: string, approval: ApprovalRecord): void {
     this.#emit({ conversationId: this.#conversationId, type: 'tool_decided', callId, approval })
   }
 
@@ -165,7 +165,7 @@ export class ConversationRuntime {
    * Whether a run is in flight. It starts false for every runtime, so a run is in flight exactly
    * when this process is running it: a turn that was cut off by a closed window is over.
    */
-  isRunning(): boolean {
+  public isRunning(): boolean {
     return this.#driving !== undefined
   }
 
@@ -175,27 +175,27 @@ export class ConversationRuntime {
    * rather than guessing. The run's other half, the plugins' afterRun loop, is part of the promise
    * waited on.
    */
-  async settle(): Promise<void> {
+  public async settle(): Promise<void> {
     await this.#driving
   }
 
   /** The conversation as it stands, read from the store: what a window just opening it draws. */
-  async transcript(): Promise<ChatMessage[]> {
+  public async transcript(): Promise<ChatMessage[]> {
     return this.#store.transcript(this.#sessionId, this.#workspacePath, this.#decisions)
   }
 
   /** What the session has spent so far, which is what a window opening it has to show. */
-  async usage(): Promise<UsageTotals> {
+  public async usage(): Promise<UsageTotals> {
     return this.#store.usage(this.#sessionId, this.#workspacePath)
   }
 
   /** The user's own messages, in order: what a resend or a fork works from. */
-  async userEntries(): Promise<AgentEntry[]> {
+  public async userEntries(): Promise<AgentEntry[]> {
     return this.#store.userEntries(this.#sessionId, this.#workspacePath)
   }
 
   /** Switches the model this conversation runs on; takes effect on the next turn. */
-  async setModel(providerId: string, modelId: string): Promise<void> {
+  public async setModel(providerId: string, modelId: string): Promise<void> {
     const agent = this.#agent
     const model = this.#models.getModel(providerId, modelId)
     if (agent === undefined || model === undefined) {
@@ -209,7 +209,7 @@ export class ConversationRuntime {
    * Alpha's ladder and pi's are the same words, 'off' included: the agent reads 'off' as no
    * reasoning at all, so the level crosses as it is.
    */
-  async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+  public async setThinkingLevel(level: ThinkingLevel): Promise<void> {
     if (this.#agent !== undefined) this.#agent.state.thinkingLevel = level
   }
 
@@ -218,7 +218,7 @@ export class ConversationRuntime {
    * runtime carries on in the copy — its id from now on, its history in the agent. The id of the
    * copy is what the conversation has to record.
    */
-  async forkAt(entryId: string): Promise<Undef<string>> {
+  public async forkAt(entryId: string): Promise<Undef<string>> {
     const forked = this.#store.fork(this.#sessionId, this.#workspacePath, entryId)
     if (forked === undefined) return undefined
     this.#sessionId = forked
@@ -234,7 +234,7 @@ export class ConversationRuntime {
    * Stops a run that is still in flight before closing: an abandoned run would keep writing into a
    * session nobody is driving (ADR-0008). There is nothing to reap — no child was ever started.
    */
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     if (this.#driving === undefined) return
     this.#agent?.abort()
     await this.settle()

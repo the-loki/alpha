@@ -42,12 +42,12 @@ export class NetworkService {
   #server: Undef<RunningServer>
   #error = ''
 
-  constructor(options: NetworkServiceOptions) {
+  public constructor(options: NetworkServiceOptions) {
     this.#options = options
   }
 
   /** What the settings page shows: what is stored, and what the server made of it. */
-  state(): NetworkState {
+  public state(): NetworkState {
     const access = this.#options.store.read().network
     // Bound to this machine, only this machine's address is a way in — listing the LAN addresses
     // anyway would invite someone to try one and wonder why it does not answer.
@@ -60,7 +60,7 @@ export class NetworkService {
   }
 
   /** Starts, stops or restarts the server so that it matches what the user asked for. */
-  async apply(): Promise<NetworkState> {
+  public async apply(): Promise<NetworkState> {
     await this.#stop()
     this.#error = ''
     const access = this.#options.store.read().network
@@ -86,7 +86,7 @@ export class NetworkService {
     return this.state()
   }
 
-  async set(patch: NetworkPatch): Promise<NetworkState> {
+  public async set(patch: NetworkPatch): Promise<NetworkState> {
     const state = this.#options.store.read()
     const next: NetworkAccess = { ...state.network, ...patch }
     if (next.enabled && next.token === '') next.token = mintToken()
@@ -95,14 +95,14 @@ export class NetworkService {
   }
 
   /** A new token, which stops every browser that was holding the old one. */
-  async regenerateToken(): Promise<NetworkState> {
+  public async regenerateToken(): Promise<NetworkState> {
     const state = this.#options.store.read()
     const next: NetworkAccess = { ...state.network, token: mintToken() }
     this.#options.store.write({ ...state, network: next })
     return this.apply()
   }
 
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     await this.#stop()
   }
 

@@ -56,35 +56,35 @@ export class ConversationBookkeeper {
   /** Conversations the user has named, so the first message does not rename them back. */
   readonly #named = new Set<string>()
 
-  constructor(options: BookkeeperOptions) {
+  public constructor(options: BookkeeperOptions) {
     this.#store = new ConversationIndexStore(options.dataDirectory)
     this.#emit = options.emit
   }
 
-  list(): ConversationSummary[] {
+  public list(): ConversationSummary[] {
     return this.#store.all()
   }
 
-  find(id: string): Undef<ConversationSummary> {
+  public find(id: string): Undef<ConversationSummary> {
     return this.#store.find(id)
   }
 
-  upsert(conversation: ConversationSummary): ConversationSummary {
+  public upsert(conversation: ConversationSummary): ConversationSummary {
     this.#store.upsert(conversation)
     return conversation
   }
 
-  forget(id: string): void {
+  public forget(id: string): void {
     this.#store.remove(id)
     this.#named.delete(id)
   }
 
   /** Stable, like a fork: the new conversation keeps the name it was given rather than the first message. */
-  markNamed(id: string): void {
+  public markNamed(id: string): void {
     this.#named.add(id)
   }
 
-  rename(id: string, title: string): ConversationSummary {
+  public rename(id: string, title: string): ConversationSummary {
     const conversation = this.#store.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
     this.#named.add(id)
@@ -97,7 +97,7 @@ export class ConversationBookkeeper {
    * because the card asking for that answer lives inside its transcript and folding it away hides
    * the one thing that needs a person. The window greys the action out for the same reason.
    */
-  archive(id: string): Undef<ConversationSummary> {
+  public archive(id: string): Undef<ConversationSummary> {
     const conversation = this.#store.find(id)
     if (conversation === undefined || !canArchive(conversation)) return undefined
     return this.update(id, { archivedAt: Date.now() })
@@ -107,13 +107,13 @@ export class ConversationBookkeeper {
    * Taking it back out. The key is removed rather than set to `undefined` — absent is how "not
    * archived" is spelled — and `update` with nothing to change is what re-reads and announces it.
    */
-  unarchive(id: string): ConversationSummary {
+  public unarchive(id: string): ConversationSummary {
     this.#store.unarchive(id)
     return this.update(id, {})
   }
 
   /** What the runtime said, before the window hears it. */
-  observe(event: RuntimeEvent): void {
+  public observe(event: RuntimeEvent): void {
     const conversation = this.#store.find(event.conversationId)
     if (conversation === undefined) {
       this.#emit(event)
@@ -144,7 +144,7 @@ export class ConversationBookkeeper {
    * field — the title, the level, the model, the thinking effort, the status — goes through here,
    * so the window's copy is never a partial answer and never has to be assembled by its caller.
    */
-  update(id: string, changes: Partial<ConversationSummary>): ConversationSummary {
+  public update(id: string, changes: Partial<ConversationSummary>): ConversationSummary {
     const conversation = this.#store.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
     return this.#update(conversation, changes)

@@ -23,14 +23,14 @@ export class Broadcast {
   readonly #subscribers = new Set<Subscriber>()
 
   /** Subscribes until the returned function is called, which is what closing a client does. */
-  subscribe(subscriber: Subscriber): () => void {
+  public subscribe(subscriber: Subscriber): () => void {
     this.#subscribers.add(subscriber)
     return () => {
       this.#subscribers.delete(subscriber)
     }
   }
 
-  send(channel: PushChannel, payload: unknown): void {
+  public send(channel: PushChannel, payload: unknown): void {
     for (const subscriber of [...this.#subscribers]) {
       try {
         subscriber({ channel, payload })

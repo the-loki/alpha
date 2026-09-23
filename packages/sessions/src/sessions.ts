@@ -145,29 +145,29 @@ export class SessionStore {
   readonly #root: string
   readonly #tips = new Map<string, Null<string>>()
 
-  constructor(root: string) {
+  public constructor(root: string) {
     this.#root = root
   }
 
   /** Reads a session: every entry in its file, and where its tip is. */
-  entries(sessionId: string, workspacePath: string): { entries: AgentEntry[]; leafId: Null<string> } {
+  public entries(sessionId: string, workspacePath: string): { entries: AgentEntry[]; leafId: Null<string> } {
     const file = findSessionFile(sessionDirectoryFor(this.#root, workspacePath), sessionId)
     if (file === undefined) return { entries: [], leafId: null }
     return parseSession(readFileSync(file, 'utf-8'))
   }
 
-  transcript(sessionId: string, workspacePath: string, decisions?: DecisionLookup): ChatMessage[] {
+  public transcript(sessionId: string, workspacePath: string, decisions?: DecisionLookup): ChatMessage[] {
     const { entries, leafId } = this.entries(sessionId, workspacePath)
     return entriesToMessages(tipPath(entries, leafId), decisions)
   }
 
-  usage(sessionId: string, workspacePath: string): UsageTotals {
+  public usage(sessionId: string, workspacePath: string): UsageTotals {
     const { entries, leafId } = this.entries(sessionId, workspacePath)
     return usageOf(tipPath(entries, leafId))
   }
 
   /** The user's own messages, in order: what a resend or a fork works from. */
-  userEntries(sessionId: string, workspacePath: string): AgentEntry[] {
+  public userEntries(sessionId: string, workspacePath: string): AgentEntry[] {
     const { entries, leafId } = this.entries(sessionId, workspacePath)
     return tipPath(entries, leafId).filter((entry) => entry.type === 'message' && entry.message?.role === 'user')
   }
@@ -176,7 +176,7 @@ export class SessionStore {
    * Appends one entry and answers it as it now stands: identified, chained to the tip, on the
    * disk. The caller says what happened; the store says where it went.
    */
-  append(options: { sessionId: string; workspacePath: string; entry: NewEntry }): AgentEntry {
+  public append(options: { sessionId: string; workspacePath: string; entry: NewEntry }): AgentEntry {
     const directory = sessionDirectoryFor(this.#root, options.workspacePath)
     mkdirSync(directory, { recursive: true })
     const file = findSessionFile(directory, options.sessionId) ?? this.#createFile(options)
@@ -198,7 +198,7 @@ export class SessionStore {
   }
 
   /** A compaction, written where the summary stands in for what came before it. */
-  compact(options: {
+  public compact(options: {
     sessionId: string
     workspacePath: string
     summary: string
@@ -220,7 +220,7 @@ export class SessionStore {
    * what was replaced stays in the file it was written to, and the copy is where the conversation
    * carries on. The answer is the copy's id, or nothing when there is no such entry.
    */
-  fork(sessionId: string, workspacePath: string, entryId: string): Undef<string> {
+  public fork(sessionId: string, workspacePath: string, entryId: string): Undef<string> {
     const { entries, leafId } = this.entries(sessionId, workspacePath)
     const path = tipPath(entries, leafId)
     const at = path.findIndex((entry) => entry.id === entryId)
@@ -248,7 +248,7 @@ export class SessionStore {
   }
 
   /** Taking a session off the disk: a deleted conversation is deleted, not hidden. */
-  remove(sessionId: string, workspacePath: string): void {
+  public remove(sessionId: string, workspacePath: string): void {
     const file = findSessionFile(sessionDirectoryFor(this.#root, workspacePath), sessionId)
     if (file !== undefined) rmSync(file, { force: true })
     this.#tips.delete(sessionId)

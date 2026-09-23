@@ -39,7 +39,7 @@ const TOKEN_KEY = 'alpha.token'
 
 /** A refusal this adapter knows the shape of: the session is missing or stale. */
 export class Unauthorized extends Error {
-  constructor() {
+  public constructor() {
     super('This browser is not signed in to the workbench.')
   }
 }

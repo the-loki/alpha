@@ -21,21 +21,21 @@ export interface AuthRequest {
 export class SessionGate {
   #token: string
 
-  constructor(token?: string) {
+  public constructor(token?: string) {
     this.#token = token ?? mintToken()
   }
 
-  get token(): string {
+  public get token(): string {
     return this.#token
   }
 
   /** The cookie to set for a correct token, or undefined for anything else. */
-  exchange(candidate: unknown): Undef<string> {
+  public exchange(candidate: unknown): Undef<string> {
     if (typeof candidate !== 'string' || !sameSecret(candidate, this.#token)) return undefined
     return `${COOKIE_NAME}=${this.#token}; HttpOnly; SameSite=Strict; Path=/`
   }
 
-  allows(request: AuthRequest): boolean {
+  public allows(request: AuthRequest): boolean {
     const bearer = request.authorization?.startsWith('Bearer ') === true ? request.authorization.slice(7) : ''
     if (sameSecret(bearer, this.#token)) return true
     return sameSecret(cookieFrom(request.cookie ?? ''), this.#token)

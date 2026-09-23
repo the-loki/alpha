@@ -38,7 +38,11 @@
         "useConst": "error",
         "useTemplate": "error",
         "noRestrictedGlobals": "off",
-        "noRestrictedImports": "off"
+        "noRestrictedImports": "off",
+        "useConsistentMemberAccessibility": {
+          "level": "error",
+          "options": { "accessibility": "explicit" }
+        }
       },
       "complexity": {
         "useLiteralKeys": "error"

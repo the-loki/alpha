@@ -116,3 +116,24 @@ express — the architecture rules, the size budgets, the `null` ban — lives i
 `pnpm check:constraints`, so the two never disagree about the same thing.
 
 **Enforcement:** `pnpm check` runs both.
+
+## C1.10 — Every class member says who may touch it
+
+A member's accessibility is a decision the class makes about itself, so it is written down rather
+than inherited from a default. `public` is spelled out on the members that are the class's surface.
+Private state and private helpers are `#name`. Those are the only two spellings, because the
+missing modifier is the thing this rule is for: in review, a member that never said anything looks
+exactly like a member somebody meant to be public.
+
+`private` is never written. It is a compile-time claim rather than a wall — `holder['count']`
+compiles, `Object.keys(holder)` hands the field over, and a spread copies it — while `#count` is
+enforced by the language itself, which is the property worth having for the one field that must
+stay in. `protected` is the exception, and it is earned only where a class has subclasses to hand
+a seam to: no class here has one, so it appears nowhere, and the day a base class needs to give a
+subclass a handle it says `protected` with a reason rather than reaching for it by reflex.
+
+**Enforcement:** Biome's `style/useConsistentMemberAccessibility` with `accessibility: "explicit"`
+is an error on any class member that does not carry a modifier, and `pnpm check:constraints` rule
+`01-typescript:no-private-modifier` reads the keyword, which keeps `#` the only way to say private.
+Test files are exempt from the checker's half, as they are from the rules above: a fixture has to
+be able to show the banned form.

@@ -154,3 +154,56 @@ describe('01-typescript:ts-expect-error-reason', () => {
     )
   })
 })
+
+describe('01-typescript:no-private-modifier', () => {
+  const rule = '01-typescript:no-private-modifier'
+
+  it('flags a private field, and names the spelling that replaces it', () => {
+    const found = violationsFor(rule, file('packages/state/src/a.ts', '  private count = 0'))
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('#')
+  })
+
+  it('flags a private method', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  private helper(): void {}'))).toHaveLength(1)
+  })
+
+  it('flags a parameter property, which is a private field by another road', () => {
+    const text = 'constructor(private readonly opts: string) {}'
+    expect(violationsFor(rule, file('packages/state/src/a.ts', text))).toHaveLength(1)
+  })
+
+  it('passes the hash spelling, which is the whole point of the rule', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  readonly #path: string'))).toEqual([])
+  })
+
+  it('passes public and protected, neither of which is this rule', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  public read(): PersistedState {}'))).toEqual([])
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  protected seam(): void {}'))).toEqual([])
+  })
+
+  it('passes the word in a doc comment, where it is prose about a decision', () => {
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', ' * otherwise silently cover a private one.'))).toEqual(
+      [],
+    )
+  })
+
+  it('passes the word inside a string', () => {
+    expect(violationsFor(rule, file('packages/domain/src/a.ts', "const s = 'a private conversation'"))).toEqual([])
+  })
+
+  it('passes the word in a trailing comment', () => {
+    expect(
+      violationsFor(rule, file('packages/domain/src/a.ts', 'const held = 1 // not private, merely quiet')),
+    ).toEqual([])
+  })
+
+  it('passes a fixture that has to show the banned form', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.test.ts', '  private count = 0'))).toEqual([])
+  })
+
+  it('passes a line carrying the escape hatch', () => {
+    const text = 'private count = 0 // constraints-ignore 01-typescript: vendor decorator injects here'
+    expect(violationsFor(rule, file('packages/state/src/a.ts', text))).toEqual([])
+  })
+})
