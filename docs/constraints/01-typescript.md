@@ -120,20 +120,25 @@ express — the architecture rules, the size budgets, the `null` ban — lives i
 ## C1.10 — Every class member says who may touch it
 
 A member's accessibility is a decision the class makes about itself, so it is written down rather
-than inherited from a default. `public` is spelled out on the members that are the class's surface.
-Private state and private helpers are `#name`. Those are the only two spellings, because the
-missing modifier is the thing this rule is for: in review, a member that never said anything looks
-exactly like a member somebody meant to be public.
+than inherited from a default. `public` on the members that are the class's surface, `private` on
+the ones that stay inside, `protected` where a subclass is handed a seam. The modifier is spelled
+out at every member, including the private ones, because the default is the thing this rule is for:
+in review, a member that never said anything looks exactly like a member somebody meant to be
+public, and there is no way to tell a decision from an omission.
 
-`private` is never written. It is a compile-time claim rather than a wall — `holder['count']`
-compiles, `Object.keys(holder)` hands the field over, and a spread copies it — while `#count` is
-enforced by the language itself, which is the property worth having for the one field that must
-stay in. `protected` is the exception, and it is earned only where a class has subclasses to hand
-a seam to: no class here has one, so it appears nowhere, and the day a base class needs to give a
-subclass a handle it says `protected` with a reason rather than reaching for it by reflex.
+`#name` is kept for the two classes whose object as a whole must not be handed out: the credential
+vault, whose material a stray `JSON.stringify`, spread, or `Object.keys` in a log line would hand
+over, and the session gate, which holds a bearer token. There the danger is the object rather than
+the individual field — `Object.keys` lists what a spread then copies — so those classes declare all
+their fields `#`. TypeScript forbids `private #x`, which is why the keyword cannot simply be added
+there: `#` is how those two say private, and it is the only place it says it. `protected` is earned
+only where a class has subclasses to hand a seam to; no class here has one today, so it appears
+nowhere, and the day a base class needs to give a subclass a handle it says `protected` with a
+reason rather than reaching for it by reflex.
 
 **Enforcement:** Biome's `style/useConsistentMemberAccessibility` with `accessibility: "explicit"`
 is an error on any class member that does not carry a modifier, and `pnpm check:constraints` rule
-`01-typescript:no-private-modifier` reads the keyword, which keeps `#` the only way to say private.
-Test files are exempt from the checker's half, as they are from the rules above: a fixture has to
-be able to show the banned form.
+`01-typescript:hash-is-for-secrets` holds the reservation the other way: a `#` member outside those
+two classes is a violation, so the keyword cannot quietly go missing again. Test files are exempt
+from the checker's half, as they are from the rules above: a fixture has to be able to show the
+banned form.

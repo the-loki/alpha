@@ -3,7 +3,14 @@
  *
  * A rule reports violations and never edits: a pure function over a file's path and text.
  */
-import { ignoredFor, isComment, isDeclaration, isSource, isTest, isTs, lineRule, stripStrings } from '../lib.mjs'
+import { ignoredFor, isDeclaration, isSource, isTest, isTs, lineRule, stripStrings } from '../lib.mjs'
+
+/**
+ * The two classes whose object as a whole must not be handed out: the credential material and the
+ * session token, where a stray stringify, a spread or a log line is the leak. TypeScript forbids
+ * `private #x`, so these say private with `#` alone (C1.10).
+ */
+const SECRET_HOLDERS = ['packages/providers/src/credential-vault.ts', 'apps/desktop/src/main/server/session.ts']
 
 export const TYPESCRIPT_RULES = [
   lineRule({
@@ -69,21 +76,18 @@ export const TYPESCRIPT_RULES = [
   },
 
   {
-    id: '01-typescript:no-private-modifier',
+    id: '01-typescript:hash-is-for-secrets',
     constraint: '01-typescript.md',
-    description: 'private is spelled #, the one the runtime enforces',
+    description: 'the # spelling is kept for the state that must not be reachable at runtime',
     check({ path, text }) {
-      if (!isTs(path) || isDeclaration(path) || isTest(path)) return []
+      if (!isTs(path) || isDeclaration(path) || isTest(path) || SECRET_HOLDERS.includes(path)) return []
       const found = []
       text.split('\n').forEach((line, index) => {
-        if (isComment(line)) return
-        // Prose comes off first: a doc comment is allowed to discuss a private member, and a
-        // trailing note is a note rather than code.
-        if (!/\bprivate\b/.test(stripStrings(line).split('//')[0])) return
-        if (ignoredFor(line, { id: '01-typescript:no-private-modifier', constraint: '01-typescript.md' })) return
+        if (!/^\s+(?:readonly\s+|async\s+)?#[A-Za-z_]\w*\s*[(:=]/.test(stripStrings(line))) return
+        if (ignoredFor(line, { id: '01-typescript:hash-is-for-secrets', constraint: '01-typescript.md' })) return
         found.push({
           line: index + 1,
-          message: 'the private keyword; a #name field is the private the language enforces (C1.10)',
+          message: 'a # member outside the two classes that hold what must not be handed out; write private (C1.10)',
           text: line.trim(),
         })
       })

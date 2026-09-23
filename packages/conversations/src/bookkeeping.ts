@@ -51,44 +51,44 @@ export interface BookkeeperOptions {
 }
 
 export class ConversationBookkeeper {
-  readonly #store: ConversationIndexStore
-  readonly #emit: (event: RuntimeEvent) => void
+  private readonly store: ConversationIndexStore
+  private readonly emit: (event: RuntimeEvent) => void
   /** Conversations the user has named, so the first message does not rename them back. */
-  readonly #named = new Set<string>()
+  private readonly named = new Set<string>()
 
   public constructor(options: BookkeeperOptions) {
-    this.#store = new ConversationIndexStore(options.dataDirectory)
-    this.#emit = options.emit
+    this.store = new ConversationIndexStore(options.dataDirectory)
+    this.emit = options.emit
   }
 
   public list(): ConversationSummary[] {
-    return this.#store.all()
+    return this.store.all()
   }
 
   public find(id: string): Undef<ConversationSummary> {
-    return this.#store.find(id)
+    return this.store.find(id)
   }
 
   public upsert(conversation: ConversationSummary): ConversationSummary {
-    this.#store.upsert(conversation)
+    this.store.upsert(conversation)
     return conversation
   }
 
   public forget(id: string): void {
-    this.#store.remove(id)
-    this.#named.delete(id)
+    this.store.remove(id)
+    this.named.delete(id)
   }
 
   /** Stable, like a fork: the new conversation keeps the name it was given rather than the first message. */
   public markNamed(id: string): void {
-    this.#named.add(id)
+    this.named.add(id)
   }
 
   public rename(id: string, title: string): ConversationSummary {
-    const conversation = this.#store.find(id)
+    const conversation = this.store.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
-    this.#named.add(id)
-    return this.#update(conversation, { title: title.trim() })
+    this.named.add(id)
+    return this.apply(conversation, { title: title.trim() })
   }
 
   /**
@@ -98,7 +98,7 @@ export class ConversationBookkeeper {
    * the one thing that needs a person. The window greys the action out for the same reason.
    */
   public archive(id: string): Undef<ConversationSummary> {
-    const conversation = this.#store.find(id)
+    const conversation = this.store.find(id)
     if (conversation === undefined || !canArchive(conversation)) return undefined
     return this.update(id, { archivedAt: Date.now() })
   }
@@ -108,35 +108,35 @@ export class ConversationBookkeeper {
    * archived" is spelled — and `update` with nothing to change is what re-reads and announces it.
    */
   public unarchive(id: string): ConversationSummary {
-    this.#store.unarchive(id)
+    this.store.unarchive(id)
     return this.update(id, {})
   }
 
   /** What the runtime said, before the window hears it. */
   public observe(event: RuntimeEvent): void {
-    const conversation = this.#store.find(event.conversationId)
+    const conversation = this.store.find(event.conversationId)
     if (conversation === undefined) {
-      this.#emit(event)
+      this.emit(event)
       return
     }
 
-    if (event.type === 'user_message' && !this.#named.has(event.conversationId)) {
+    if (event.type === 'user_message' && !this.named.has(event.conversationId)) {
       const text = event.message.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join(' ')
-      this.#named.add(event.conversationId)
-      this.#update(conversation, { title: titleFromMessage(text) })
+      this.named.add(event.conversationId)
+      this.apply(conversation, { title: titleFromMessage(text) })
     }
 
     // A message means it is in use again, so it leaves the archived section (#79). After the
     // rename above, so the title and the unarchiving are not two answers about the same summary.
     if (event.type === 'user_message' && conversation.archivedAt !== undefined) this.unarchive(conversation.id)
 
-    if (event.type === 'turn_started') this.#update(conversation, { status: 'running' })
+    if (event.type === 'turn_started') this.apply(conversation, { status: 'running' })
     // Waiting on a person is neither working nor finished, and the sidebar says which it is.
-    if (event.type === 'approval_requested') this.#update(conversation, { status: 'waiting' })
-    if (event.type === 'approval_decided') this.#update(conversation, { status: 'running' })
-    if (event.type === 'turn_finished' || event.type === 'run_failed') this.#update(conversation, { status: 'idle' })
+    if (event.type === 'approval_requested') this.apply(conversation, { status: 'waiting' })
+    if (event.type === 'approval_decided') this.apply(conversation, { status: 'running' })
+    if (event.type === 'turn_finished' || event.type === 'run_failed') this.apply(conversation, { status: 'idle' })
 
-    this.#emit(event)
+    this.emit(event)
   }
 
   /**
@@ -145,15 +145,15 @@ export class ConversationBookkeeper {
    * so the window's copy is never a partial answer and never has to be assembled by its caller.
    */
   public update(id: string, changes: Partial<ConversationSummary>): ConversationSummary {
-    const conversation = this.#store.find(id)
+    const conversation = this.store.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
-    return this.#update(conversation, changes)
+    return this.apply(conversation, changes)
   }
 
-  #update(conversation: ConversationSummary, changes: Partial<ConversationSummary>): ConversationSummary {
+  private apply(conversation: ConversationSummary, changes: Partial<ConversationSummary>): ConversationSummary {
     const updated = summarize(conversation, changes)
-    this.#store.upsert(updated)
-    this.#emit({ conversationId: updated.id, type: 'conversation_updated', conversation: updated })
+    this.store.upsert(updated)
+    this.emit({ conversationId: updated.id, type: 'conversation_updated', conversation: updated })
     return updated
   }
 }

@@ -142,16 +142,16 @@ export interface NewEntry {
 
 /** The store: one file per session, written the moment an entry exists. */
 export class SessionStore {
-  readonly #root: string
-  readonly #tips = new Map<string, Null<string>>()
+  private readonly root: string
+  private readonly tips = new Map<string, Null<string>>()
 
   public constructor(root: string) {
-    this.#root = root
+    this.root = root
   }
 
   /** Reads a session: every entry in its file, and where its tip is. */
   public entries(sessionId: string, workspacePath: string): { entries: AgentEntry[]; leafId: Null<string> } {
-    const file = findSessionFile(sessionDirectoryFor(this.#root, workspacePath), sessionId)
+    const file = findSessionFile(sessionDirectoryFor(this.root, workspacePath), sessionId)
     if (file === undefined) return { entries: [], leafId: null }
     return parseSession(readFileSync(file, 'utf-8'))
   }
@@ -177,23 +177,23 @@ export class SessionStore {
    * disk. The caller says what happened; the store says where it went.
    */
   public append(options: { sessionId: string; workspacePath: string; entry: NewEntry }): AgentEntry {
-    const directory = sessionDirectoryFor(this.#root, options.workspacePath)
+    const directory = sessionDirectoryFor(this.root, options.workspacePath)
     mkdirSync(directory, { recursive: true })
-    const file = findSessionFile(directory, options.sessionId) ?? this.#createFile(options)
-    if (!this.#tips.has(options.sessionId)) {
-      this.#tips.set(options.sessionId, this.entries(options.sessionId, options.workspacePath).leafId)
+    const file = findSessionFile(directory, options.sessionId) ?? this.createFile(options)
+    if (!this.tips.has(options.sessionId)) {
+      this.tips.set(options.sessionId, this.entries(options.sessionId, options.workspacePath).leafId)
     }
     const entry: AgentEntry = {
       type: options.entry.type,
       id: randomBytes(4).toString('hex'),
-      parentId: this.#tips.get(options.sessionId) ?? null,
+      parentId: this.tips.get(options.sessionId) ?? null,
       timestamp: new Date().toISOString(),
       ...(options.entry.message === undefined ? {} : { message: options.entry.message }),
       ...(options.entry.summary === undefined ? {} : { summary: options.entry.summary }),
       ...(options.entry.firstKeptEntryId === undefined ? {} : { firstKeptEntryId: options.entry.firstKeptEntryId }),
     }
     appendFileSync(file, `${JSON.stringify(entry)}\n`, 'utf-8')
-    this.#tips.set(options.sessionId, entry.id)
+    this.tips.set(options.sessionId, entry.id)
     return entry
   }
 
@@ -226,7 +226,7 @@ export class SessionStore {
     const at = path.findIndex((entry) => entry.id === entryId)
     if (at === -1) return undefined
     const copyId = randomBytes(4).toString('hex')
-    const directory = sessionDirectoryFor(this.#root, workspacePath)
+    const directory = sessionDirectoryFor(this.root, workspacePath)
     mkdirSync(directory, { recursive: true })
     const header = `${JSON.stringify({
       type: HEADER_TYPE,
@@ -243,20 +243,20 @@ export class SessionStore {
         .join('')}`,
       'utf-8',
     )
-    this.#tips.set(copyId, path[at - 1]?.id ?? null)
+    this.tips.set(copyId, path[at - 1]?.id ?? null)
     return copyId
   }
 
   /** Taking a session off the disk: a deleted conversation is deleted, not hidden. */
   public remove(sessionId: string, workspacePath: string): void {
-    const file = findSessionFile(sessionDirectoryFor(this.#root, workspacePath), sessionId)
+    const file = findSessionFile(sessionDirectoryFor(this.root, workspacePath), sessionId)
     if (file !== undefined) rmSync(file, { force: true })
-    this.#tips.delete(sessionId)
+    this.tips.delete(sessionId)
   }
 
   /** A session with no file yet gets one: the header line is its whole creation. */
-  #createFile(options: { sessionId: string; workspacePath: string }): string {
-    const file = join(sessionDirectoryFor(this.#root, options.workspacePath), fileName(options.sessionId, Date.now()))
+  private createFile(options: { sessionId: string; workspacePath: string }): string {
+    const file = join(sessionDirectoryFor(this.root, options.workspacePath), fileName(options.sessionId, Date.now()))
     writeFileSync(
       file,
       `${JSON.stringify({
@@ -268,7 +268,7 @@ export class SessionStore {
       })}\n`,
       'utf-8',
     )
-    this.#tips.set(options.sessionId, null)
+    this.tips.set(options.sessionId, null)
     return file
   }
 }

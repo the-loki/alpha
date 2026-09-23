@@ -56,59 +56,59 @@ export interface ConversationRuntimeOptions {
 }
 
 export class ConversationRuntime {
-  readonly #conversationId: string
-  readonly #models: Models
-  readonly #store: SessionStore
-  readonly #plugins: AlphaPlugin[]
-  readonly #compact: Undef<() => Promise<boolean>>
-  readonly #decisions: Undef<DecisionLookup>
-  readonly #emit: (event: RuntimeEvent) => void
-  readonly #translator: AgentEventTranslator
-  #agent: Undef<Agent>
-  #sessionId: string
-  readonly #workspacePath: string
-  #inFlight: Undef<Promise<void>>
+  private readonly conversationId: string
+  private readonly models: Models
+  private readonly store: SessionStore
+  private readonly plugins: AlphaPlugin[]
+  private readonly compactor: Undef<() => Promise<boolean>>
+  private readonly decisions: Undef<DecisionLookup>
+  private readonly emit: (event: RuntimeEvent) => void
+  private readonly translator: AgentEventTranslator
+  private agent: Undef<Agent>
+  private sessionId: string
+  private readonly workspacePath: string
+  private inFlight: Undef<Promise<void>>
   /**
    * The whole of the run now ending — retries included — so the next one starts after it. This is
    * the one answer to "is a run in flight": assigned when a prompt is asked for, gone when the
    * run's last half (the plugins' afterRun loop) has finished.
    */
-  #driving: Undef<Promise<void>>
+  private driving: Undef<Promise<void>>
   /** The message announced as held for the running turn, until the agent takes it into the run. */
-  #held: Undef<string>
+  private held: Undef<string>
 
   public constructor(options: ConversationRuntimeOptions) {
-    this.#conversationId = options.conversationId
-    this.#agent = options.agent
-    this.#models = options.models
-    this.#store = options.store
-    this.#plugins = options.plugins
-    this.#compact = options.compact
-    this.#decisions = options.decisions
-    this.#emit = options.emit
-    this.#sessionId = options.session.id
-    this.#workspacePath = options.session.workspacePath
-    this.#translator = new AgentEventTranslator(options.conversationId, options.retry)
-    options.agent?.subscribe((event) => this.#onEvent(event))
+    this.conversationId = options.conversationId
+    this.agent = options.agent
+    this.models = options.models
+    this.store = options.store
+    this.plugins = options.plugins
+    this.compactor = options.compact
+    this.decisions = options.decisions
+    this.emit = options.emit
+    this.sessionId = options.session.id
+    this.workspacePath = options.session.workspacePath
+    this.translator = new AgentEventTranslator(options.conversationId, options.retry)
+    options.agent?.subscribe((event) => this.onEvent(event))
   }
 
   /** Announces the message in the session first, then starts the run behind it. */
   public async prompt(text: string, attachments?: Attachment[]): Promise<void> {
-    const agent = this.#agent
+    const agent = this.agent
     if (agent === undefined) {
-      this.#failed('No model is configured for this conversation, so it cannot run.')
+      this.failed('No model is configured for this conversation, so it cannot run.')
       return
     }
     // One run at a time: the agent refuses to overlap them, so a prompt sent while the last one is
     // still settling waits for it, and then runs.
-    await this.#driving
+    await this.driving
     const images = imagesOf(attachments) ?? []
-    const entry = this.#append({
+    const entry = this.append({
       type: 'message',
       message: { role: 'user', content: [{ type: 'text', text }, ...images], timestamp: Date.now() },
     })
-    this.#emit({
-      conversationId: this.#conversationId,
+    this.emit({
+      conversationId: this.conversationId,
       type: 'user_message',
       message: {
         id: entry.id,
@@ -118,15 +118,15 @@ export class ConversationRuntime {
         status: 'complete',
       },
     })
-    this.#inFlight = agent.prompt(text, images)
-    this.#driving = this.#drive()
+    this.inFlight = agent.prompt(text, images)
+    this.driving = this.drive()
   }
 
   /** A message for the run in flight: it arrives now, and changes what the agent does next. */
   public async steer(text: string): Promise<void> {
-    this.#agent?.steer(this.#userMessage(text))
-    this.#held = text
-    this.#emit(this.#queued(text))
+    this.agent?.steer(this.userMessage(text))
+    this.held = text
+    this.emit(this.queued(text))
   }
 
   /**
@@ -135,13 +135,13 @@ export class ConversationRuntime {
    * they are taken back one at a time there.
    */
   public async cancelQueued(): Promise<void> {
-    this.#agent?.clearAllQueues()
-    this.#emit({ conversationId: this.#conversationId, type: 'queue_updated', queued: [], paused: false })
+    this.agent?.clearAllQueues()
+    this.emit({ conversationId: this.conversationId, type: 'queue_updated', queued: [], paused: false })
   }
 
   /** Stops the run in flight: the agent keeps the message it was writing, marked interrupted. */
   public async abort(): Promise<void> {
-    this.#agent?.abort()
+    this.agent?.abort()
   }
 
   /**
@@ -149,8 +149,8 @@ export class ConversationRuntime {
    * says whether a compaction happened — nothing to summarize is no, not an error.
    */
   public async compact(): Promise<boolean> {
-    if (this.#compact === undefined) return false
-    return this.#compact()
+    if (this.compactor === undefined) return false
+    return this.compactor()
   }
 
   /**
@@ -158,7 +158,7 @@ export class ConversationRuntime {
    * screen — the agent announced the call before it asked — so the decision lands on it here.
    */
   public decided(callId: string, approval: ApprovalRecord): void {
-    this.#emit({ conversationId: this.#conversationId, type: 'tool_decided', callId, approval })
+    this.emit({ conversationId: this.conversationId, type: 'tool_decided', callId, approval })
   }
 
   /**
@@ -166,7 +166,7 @@ export class ConversationRuntime {
    * when this process is running it: a turn that was cut off by a closed window is over.
    */
   public isRunning(): boolean {
-    return this.#driving !== undefined
+    return this.driving !== undefined
   }
 
   /**
@@ -176,30 +176,30 @@ export class ConversationRuntime {
    * waited on.
    */
   public async settle(): Promise<void> {
-    await this.#driving
+    await this.driving
   }
 
   /** The conversation as it stands, read from the store: what a window just opening it draws. */
   public async transcript(): Promise<ChatMessage[]> {
-    return this.#store.transcript(this.#sessionId, this.#workspacePath, this.#decisions)
+    return this.store.transcript(this.sessionId, this.workspacePath, this.decisions)
   }
 
   /** What the session has spent so far, which is what a window opening it has to show. */
   public async usage(): Promise<UsageTotals> {
-    return this.#store.usage(this.#sessionId, this.#workspacePath)
+    return this.store.usage(this.sessionId, this.workspacePath)
   }
 
   /** The user's own messages, in order: what a resend or a fork works from. */
   public async userEntries(): Promise<AgentEntry[]> {
-    return this.#store.userEntries(this.#sessionId, this.#workspacePath)
+    return this.store.userEntries(this.sessionId, this.workspacePath)
   }
 
   /** Switches the model this conversation runs on; takes effect on the next turn. */
   public async setModel(providerId: string, modelId: string): Promise<void> {
-    const agent = this.#agent
-    const model = this.#models.getModel(providerId, modelId)
+    const agent = this.agent
+    const model = this.models.getModel(providerId, modelId)
     if (agent === undefined || model === undefined) {
-      this.#failed(`Alpha has no model ${modelId} on ${providerId} to run this conversation on.`)
+      this.failed(`Alpha has no model ${modelId} on ${providerId} to run this conversation on.`)
       return
     }
     agent.state.model = model
@@ -210,7 +210,7 @@ export class ConversationRuntime {
    * reasoning at all, so the level crosses as it is.
    */
   public async setThinkingLevel(level: ThinkingLevel): Promise<void> {
-    if (this.#agent !== undefined) this.#agent.state.thinkingLevel = level
+    if (this.agent !== undefined) this.agent.state.thinkingLevel = level
   }
 
   /**
@@ -219,13 +219,13 @@ export class ConversationRuntime {
    * copy is what the conversation has to record.
    */
   public async forkAt(entryId: string): Promise<Undef<string>> {
-    const forked = this.#store.fork(this.#sessionId, this.#workspacePath, entryId)
+    const forked = this.store.fork(this.sessionId, this.workspacePath, entryId)
     if (forked === undefined) return undefined
-    this.#sessionId = forked
-    const agent = this.#agent
+    this.sessionId = forked
+    const agent = this.agent
     if (agent !== undefined) {
       agent.sessionId = forked
-      this.#reload(agent)
+      this.reload(agent)
     }
     return forked
   }
@@ -235,40 +235,40 @@ export class ConversationRuntime {
    * session nobody is driving (ADR-0008). There is nothing to reap — no child was ever started.
    */
   public async close(): Promise<void> {
-    if (this.#driving === undefined) return
-    this.#agent?.abort()
+    if (this.driving === undefined) return
+    this.agent?.abort()
     await this.settle()
   }
 
   /** The run's other half: wait it out, then let the plugins see how it went. A failure is news. */
-  async #drive(): Promise<void> {
-    const agent = this.#agent
+  private async drive(): Promise<void> {
+    const agent = this.agent
     if (agent === undefined) return
     try {
-      await this.#inFlight
-      await runAfterRunHooks(agent, this.#plugins)
+      await this.inFlight
+      await runAfterRunHooks(agent, this.plugins)
     } catch (error) {
-      this.#failed(error instanceof Error ? error.message : 'The run failed.')
+      this.failed(error instanceof Error ? error.message : 'The run failed.')
     } finally {
       // The run is over, however it went: the next prompt starts a run of its own.
-      this.#driving = undefined
+      this.driving = undefined
     }
   }
 
   /** Every agent event: persisted as it arrived, then translated for the window. */
-  #onEvent(event: AgentEvent): void {
-    this.#persist(event)
-    for (const translated of this.#translator.translate(event)) this.#note(translated)
+  private onEvent(event: AgentEvent): void {
+    this.persist(event)
+    for (const translated of this.translator.translate(event)) this.note(translated)
   }
 
   /** What the run produced, written to the session the moment it exists — the store is the record. */
-  #persist(event: AgentEvent): void {
+  private persist(event: AgentEvent): void {
     if (event.type === 'message_end' && recordOf(event.message).role === 'assistant') {
-      this.#append({ type: 'message', message: event.message })
+      this.append({ type: 'message', message: event.message })
     }
     if (event.type === 'tool_execution_end') {
       const result = recordOf(event.result)
-      this.#append({
+      this.append({
         type: 'message',
         message: {
           role: 'toolResult',
@@ -283,45 +283,45 @@ export class ConversationRuntime {
     }
   }
 
-  #append(entry: NewEntry): ReturnType<SessionStore['append']> {
-    return this.#store.append({ sessionId: this.#sessionId, workspacePath: this.#workspacePath, entry })
+  private append(entry: NewEntry): ReturnType<SessionStore['append']> {
+    return this.store.append({ sessionId: this.sessionId, workspacePath: this.workspacePath, entry })
   }
 
   /** The agent continues from the copy: its context becomes the copy's history. */
-  #reload(agent: Agent): void {
-    const read = this.#store.entries(this.#sessionId, this.#workspacePath)
+  private reload(agent: Agent): void {
+    const read = this.store.entries(this.sessionId, this.workspacePath)
     const system = agent.state.messages.find((message) => message.role === 'system')
     const history = historyOf(tipPath(read.entries, read.leafId))
     agent.state.messages = system === undefined ? history : [system, ...history]
   }
 
-  #userMessage(text: string): AgentMessage {
+  private userMessage(text: string): AgentMessage {
     return { role: 'user', content: [{ type: 'text', text }], timestamp: Date.now() }
   }
 
-  #queued(text: string): RuntimeEvent {
+  private queued(text: string): RuntimeEvent {
     return {
-      conversationId: this.#conversationId,
+      conversationId: this.conversationId,
       type: 'queue_updated',
       queued: [{ entryId: crypto.randomUUID(), text, kind: 'steer' }],
       paused: false,
     }
   }
 
-  #note(event: RuntimeEvent): void {
-    if (event.type === 'user_message') this.#steerTaken()
-    if (event.type === 'turn_finished' || event.type === 'run_failed') this.#endRun()
-    this.#emit(event)
+  private note(event: RuntimeEvent): void {
+    if (event.type === 'user_message') this.steerTaken()
+    if (event.type === 'turn_finished' || event.type === 'run_failed') this.endRun()
+    this.emit(event)
   }
 
   /**
    * The run is over, however it went. Nothing is held for a turn that is over, so a steer that
    * never reached the conversation stops being announced as held.
    */
-  #endRun(): void {
-    if (this.#held !== undefined) {
-      this.#held = undefined
-      this.#emit({ conversationId: this.#conversationId, type: 'queue_updated', queued: [], paused: false })
+  private endRun(): void {
+    if (this.held !== undefined) {
+      this.held = undefined
+      this.emit({ conversationId: this.conversationId, type: 'queue_updated', queued: [], paused: false })
     }
   }
 
@@ -332,14 +332,14 @@ export class ConversationRuntime {
    * the strip that shows what waits says so. The words are not matched against anything: the agent
    * decides, and the window believes it.
    */
-  #steerTaken(): void {
-    if (this.#held === undefined) return
-    if (this.#agent?.hasQueuedMessages() === true) return
-    this.#held = undefined
-    this.#emit({ conversationId: this.#conversationId, type: 'queue_updated', queued: [], paused: false })
+  private steerTaken(): void {
+    if (this.held === undefined) return
+    if (this.agent?.hasQueuedMessages() === true) return
+    this.held = undefined
+    this.emit({ conversationId: this.conversationId, type: 'queue_updated', queued: [], paused: false })
   }
 
-  #failed(message: string): void {
-    this.#emit({ conversationId: this.#conversationId, type: 'run_failed', message })
+  private failed(message: string): void {
+    this.emit({ conversationId: this.conversationId, type: 'run_failed', message })
   }
 }

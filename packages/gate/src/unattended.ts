@@ -14,26 +14,26 @@ export const UNATTENDED_REFUSAL =
 
 export class UnattendedRuns {
   /** Conversation ids whose current run has nobody watching, and what each had to refuse. */
-  readonly #refusals = new Map<string, number>()
+  private readonly refusals = new Map<string, number>()
 
   public start(conversationId: string): void {
-    this.#refusals.set(conversationId, 0)
+    this.refusals.set(conversationId, 0)
   }
 
   public finish(conversationId: string): number {
-    const count = this.#refusals.get(conversationId) ?? 0
-    this.#refusals.delete(conversationId)
+    const count = this.refusals.get(conversationId) ?? 0
+    this.refusals.delete(conversationId)
     return count
   }
 
   public watching(conversationId: string): boolean {
-    return !this.#refusals.has(conversationId)
+    return !this.refusals.has(conversationId)
   }
 
   /** The refusal that stands in for an approval card, or nothing when somebody is watching. */
   public refuse(conversationId: string): Undef<ApprovalAnswer> {
     if (this.watching(conversationId)) return undefined
-    this.#refusals.set(conversationId, (this.#refusals.get(conversationId) ?? 0) + 1)
+    this.refusals.set(conversationId, (this.refusals.get(conversationId) ?? 0) + 1)
     return { decision: 'deny', reason: UNATTENDED_REFUSAL }
   }
 }

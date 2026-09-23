@@ -34,10 +34,10 @@ export interface DecisionLookup {
 }
 
 export class DecisionLog {
-  readonly #directory: string
+  private readonly directory: string
 
   public constructor(dataDirectory: string) {
-    this.#directory = join(dataDirectory, 'decisions')
+    this.directory = join(dataDirectory, 'decisions')
   }
 
   /**
@@ -45,7 +45,7 @@ export class DecisionLog {
    * The id is bound here, once, so no caller ever names the file.
    */
   public opened(conversationId: string): DecisionLedger {
-    const location = { directory: this.#directory, name: this.#name(conversationId) }
+    const location = { directory: this.directory, name: this.name(conversationId) }
     return new DecisionLedger({
       records: readRecords(location),
       persist: (records) => writeRecords(location, records),
@@ -53,10 +53,10 @@ export class DecisionLog {
   }
 
   public forget(conversationId: string): void {
-    rmSync(join(this.#directory, this.#name(conversationId)), { force: true })
+    rmSync(join(this.directory, this.name(conversationId)), { force: true })
   }
 
-  #name(conversationId: string): string {
+  private name(conversationId: string): string {
     // The id is a uuid we generated, and it is still the one thing standing between a bug and a
     // path outside this directory, so it is checked rather than trusted.
     const safe = /^[A-Za-z0-9-]+$/.test(conversationId) ? conversationId : 'unknown'
@@ -79,24 +79,24 @@ interface LedgerLocation {
  * what it decided, the rows carry that provenance, and only the writing is absent.
  */
 export class DecisionLedger implements DecisionLookup {
-  readonly #records: Map<string, ApprovalRecord>
-  readonly #persist: Undef<(records: Map<string, ApprovalRecord>) => void>
+  private readonly records: Map<string, ApprovalRecord>
+  private readonly persist: Undef<(records: Map<string, ApprovalRecord>) => void>
 
   public constructor(
     options: { records?: Map<string, ApprovalRecord>; persist?: (records: Map<string, ApprovalRecord>) => void } = {},
   ) {
-    this.#records = options.records ?? new Map()
-    this.#persist = options.persist
+    this.records = options.records ?? new Map()
+    this.persist = options.persist
   }
 
   public get(callId: string): Undef<ApprovalRecord> {
-    return this.#records.get(callId)
+    return this.records.get(callId)
   }
 
   /** The gate's note: remembered for the rows still to come, and written for the next launch. */
   public note(callId: string, record: ApprovalRecord): void {
-    this.#records.set(callId, record)
-    this.#persist?.(this.#records)
+    this.records.set(callId, record)
+    this.persist?.(this.records)
   }
 }
 

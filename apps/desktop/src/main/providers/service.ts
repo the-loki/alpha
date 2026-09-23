@@ -43,21 +43,21 @@ const TEST_TIMEOUT_MS = 15_000
 const TEST_PROMPT = 'Reply with the single word: ready'
 
 export class ProviderService {
-  readonly #store: ProviderStore
+  private readonly store: ProviderStore
   /** Builds the runtime a test dials with; tests script one, the app builds the real thing. */
-  readonly #models: Undef<() => Models>
+  private readonly models: Undef<() => Models>
 
   public constructor(store: ProviderStore, options: { models?: () => Models } = {}) {
-    this.#store = store
-    this.#models = options.models
+    this.store = store
+    this.models = options.models
   }
 
   public snapshot(): ProvidersSnapshot {
     return {
-      providers: this.#store.views(),
-      protection: this.#store.protection(),
-      defaultModel: this.#store.effectiveModel(),
-      defaultModelChoice: this.#store.chosenModel(),
+      providers: this.store.views(),
+      protection: this.store.protection(),
+      defaultModel: this.store.effectiveModel(),
+      defaultModelChoice: this.store.chosenModel(),
     }
   }
 
@@ -65,35 +65,35 @@ export class ProviderService {
   public save(input: unknown): ProvidersSnapshot {
     const result = readProvider(input)
     if (result.provider === undefined) throw new Error(result.error ?? 'the provider is not valid')
-    const known = this.#store.find(result.provider.id)
-    this.#store.save({ ...result.provider, models: known?.models ?? [] })
+    const known = this.store.find(result.provider.id)
+    this.store.save({ ...result.provider, models: known?.models ?? [] })
     return this.snapshot()
   }
 
   public saveModels(id: string, input: unknown): ProvidersSnapshot {
     const result = readModels(input)
     if (result.models === undefined) throw new Error(result.error ?? 'the model list is not valid')
-    this.#store.saveModels(id, result.models)
+    this.store.saveModels(id, result.models)
     return this.snapshot()
   }
 
   /** What new conversations start on. Absent hands the choice back to the first model found. */
   public setDefaultModel(chosen: Undef<ConversationModel>): ProvidersSnapshot {
-    if (chosen !== undefined && !servesModel(this.#store.index(), chosen)) {
+    if (chosen !== undefined && !servesModel(this.store.index(), chosen)) {
       throw new Error(`${chosen.providerId} does not serve ${chosen.modelId}`)
     }
-    this.#store.setDefaultModel(chosen)
+    this.store.setDefaultModel(chosen)
     return this.snapshot()
   }
 
   public remove(id: string): ProvidersSnapshot {
-    this.#store.remove(id)
+    this.store.remove(id)
     return this.snapshot()
   }
 
   public setCredential(id: string, secret: string): ProvidersSnapshot {
-    if (this.#store.find(id) === undefined) throw new Error(`No provider ${id}`)
-    this.#store.setCredential(id, secret)
+    if (this.store.find(id) === undefined) throw new Error(`No provider ${id}`)
+    this.store.setCredential(id, secret)
     return this.snapshot()
   }
 
@@ -103,24 +103,24 @@ export class ProviderService {
    * the panel can show.
    */
   public async test(providerId: string, modelId: string): Promise<ProviderTestResult> {
-    const provider = this.#store.find(providerId)
+    const provider = this.store.find(providerId)
     if (provider === undefined) return { ok: false, message: `No provider ${providerId}` }
-    if (!this.#store.hasCredential(providerId)) {
+    if (!this.store.hasCredential(providerId)) {
       return { ok: false, message: credentialRequirement({ hasCredential: false }).reason }
     }
-    const problem = this.#store.keyProblem(providerId)
+    const problem = this.store.keyProblem(providerId)
     if (problem !== undefined) return { ok: false, message: problem }
-    const models = this.#models?.() ?? this.#modelRuntime(provider)
+    const models = this.models?.() ?? this.modelRuntime(provider)
     const model = models.getModel(providerId, modelId)
     if (model === undefined) return { ok: false, message: `${providerId} does not serve ${modelId}.` }
     return askOnce(models, model)
   }
 
   /** The throwaway runtime for one test: this provider alone, its key read per request. */
-  #modelRuntime(provider: StoredProvider): Models {
+  private modelRuntime(provider: StoredProvider): Models {
     return createModelRuntime({
       providers: [provider],
-      credential: (id) => this.#store.credential(id),
+      credential: (id) => this.store.credential(id),
     })
   }
 }

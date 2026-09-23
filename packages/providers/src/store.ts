@@ -21,38 +21,38 @@ import {
 import type { CredentialProtection, CredentialVault } from './credential-vault.ts'
 
 export class ProviderStore {
-  readonly #path: string
-  readonly #vault: CredentialVault
-  #index: ProviderIndex
+  private readonly path: string
+  private readonly vault: CredentialVault
+  private file: ProviderIndex
 
   public constructor(dataDirectory: string, vault: CredentialVault) {
-    this.#path = join(dataDirectory, 'providers.json')
-    this.#vault = vault
-    this.#index = this.#read()
+    this.path = join(dataDirectory, 'providers.json')
+    this.vault = vault
+    this.file = this.read()
   }
 
   public list(): StoredProvider[] {
-    return [...this.#index.providers]
+    return [...this.file.providers]
   }
 
   /** What the settings screen gets: definitions plus whether a key is stored, never the key. */
   public views(): ProviderView[] {
-    return this.#index.providers.map((provider) => ({ ...provider, hasCredential: this.#vault.has(provider.id) }))
+    return this.file.providers.map((provider) => ({ ...provider, hasCredential: this.vault.has(provider.id) }))
   }
 
   public find(id: string): Undef<StoredProvider> {
-    return this.#index.providers.find((provider) => provider.id === id)
+    return this.file.providers.find((provider) => provider.id === id)
   }
 
   /** The two facts every model rule reads, in the shape `@alpha/domain`'s rules take them. */
   public index(): ModelIndex {
-    return this.#index
+    return this.file
   }
 
   public save(provider: StoredProvider): void {
-    const others = this.#index.providers.filter((existing) => existing.id !== provider.id)
-    this.#index = { ...this.#index, providers: [...others, provider] }
-    this.#flush()
+    const others = this.file.providers.filter((existing) => existing.id !== provider.id)
+    this.file = { ...this.file, providers: [...others, provider] }
+    this.flush()
   }
 
   /** The model list of one provider, which is the models panel's whole job. */
@@ -66,36 +66,36 @@ export class ProviderStore {
 
   /** What the user chose, which may be nothing: the models panel shows this one as selected. */
   public chosenModel(): Undef<ConversationModel> {
-    return defaultModelOf(this.#index)
+    return defaultModelOf(this.file)
   }
 
   /** What a new conversation actually starts on: the choice, or the first model there is. */
   public effectiveModel(): Undef<ConversationModel> {
-    return effectiveModelOf(this.#index)
+    return effectiveModelOf(this.file)
   }
 
   public setDefaultModel(chosen: Undef<ConversationModel>): void {
-    this.#index = { ...this.#index, defaultModel: chosen }
-    this.#flush()
+    this.file = { ...this.file, defaultModel: chosen }
+    this.flush()
   }
 
   public remove(id: string): void {
-    this.#index = { ...this.#index, providers: this.#index.providers.filter((provider) => provider.id !== id) }
-    this.#flush()
-    this.#vault.remove(id)
+    this.file = { ...this.file, providers: this.file.providers.filter((provider) => provider.id !== id) }
+    this.flush()
+    this.vault.remove(id)
   }
 
   public setCredential(id: string, secret: string): void {
-    this.#vault.set(id, secret)
+    this.vault.set(id, secret)
   }
 
   public hasCredential(id: string): boolean {
-    return this.#vault.has(id)
+    return this.vault.has(id)
   }
 
   /** Main-process only: the model runtime is the one caller. */
   public credential(id: string): Undef<string> {
-    return this.#vault.credential(id)
+    return this.vault.credential(id)
   }
 
   /**
@@ -118,16 +118,16 @@ export class ProviderStore {
   }
 
   public protection(): CredentialProtection {
-    return this.#vault.protection()
+    return this.vault.protection()
   }
 
-  #flush(): void {
-    writeFileSync(this.#path, JSON.stringify(this.#index, null, 2), 'utf-8')
+  private flush(): void {
+    writeFileSync(this.path, JSON.stringify(this.file, null, 2), 'utf-8')
   }
 
-  #read(): ProviderIndex {
+  private read(): ProviderIndex {
     try {
-      return parseProviders(readFileSync(this.#path, 'utf-8'))
+      return parseProviders(readFileSync(this.path, 'utf-8'))
     } catch {
       return emptyProviderIndex()
     }

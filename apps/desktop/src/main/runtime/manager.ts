@@ -67,50 +67,50 @@ export interface RuntimeManagerOptions {
 }
 
 export class RuntimeManager {
-  readonly #options: RuntimeManagerOptions
-  readonly #books: ConversationBookkeeper
-  readonly #sessions: SessionStore
-  readonly #open = new Map<string, ConversationRuntime>()
-  readonly #approvals: ApprovalBroker
-  readonly #decisions: DecisionLog
+  private readonly options: RuntimeManagerOptions
+  private readonly books: ConversationBookkeeper
+  private readonly sessions: SessionStore
+  private readonly opened = new Map<string, ConversationRuntime>()
+  private readonly approvals: ApprovalBroker
+  private readonly decisions: DecisionLog
   /** Messages waiting for a turn of their own, and what the agent is holding for this one. */
-  readonly #queue: QueueRunner
+  private readonly queue: QueueRunner
   /** Runs with nobody watching, and the refusals their gate had to hand out (ADR-0012). */
-  readonly #unattended = new UnattendedRuns()
+  private readonly unattended = new UnattendedRuns()
 
   public constructor(options: RuntimeManagerOptions) {
-    this.#options = options
-    this.#books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
-    this.#sessions = new SessionStore(options.sessionsRoot)
-    this.#approvals = new ApprovalBroker({ emit: options.emit })
-    this.#decisions = new DecisionLog(options.dataDirectory)
-    this.#queue = new QueueRunner({
-      statusOf: (id) => this.#books.find(id)?.status,
+    this.options = options
+    this.books = new ConversationBookkeeper({ dataDirectory: options.dataDirectory, emit: options.emit })
+    this.sessions = new SessionStore(options.sessionsRoot)
+    this.approvals = new ApprovalBroker({ emit: options.emit })
+    this.decisions = new DecisionLog(options.dataDirectory)
+    this.queue = new QueueRunner({
+      statusOf: (id) => this.books.find(id)?.status,
       send: (id, text) => this.prompt(id, text),
       emit: options.emit,
     })
   }
 
   public permissionRules(): PermissionRule[] {
-    return this.#options.store.read().permissionRules
+    return this.options.store.read().permissionRules
   }
 
   public revokeRule(ruleId: string): PermissionRule[] {
-    const rules = revokeRule(this.#options.store, ruleId)
-    this.#options.emitRules(rules)
+    const rules = revokeRule(this.options.store, ruleId)
+    this.options.emitRules(rules)
     return rules
   }
 
   public answerApproval(id: string, requestId: string, answer: ApprovalAnswer): void {
-    this.#approvals.answer(id, requestId, answer)
+    this.approvals.answer(id, requestId, answer)
   }
 
   public list(): ConversationSummary[] {
-    return this.#books.list()
+    return this.books.list()
   }
 
   public modelStatus(): ModelStatus {
-    return describeRuntime(this.#options.providers)
+    return describeRuntime(this.options.providers)
   }
 
   public async create(workspacePath: string): Promise<OpenedConversation> {
@@ -118,27 +118,27 @@ export class RuntimeManager {
       id: crypto.randomUUID(),
       workspacePath,
       now: Date.now(),
-      permissionLevel: defaultLevelFor(this.#options.store.read(), workspacePath),
-      model: this.#startingModel(),
+      permissionLevel: defaultLevelFor(this.options.store.read(), workspacePath),
+      model: this.startingModel(),
     })
-    await this.#launch(conversation)
-    this.#books.upsert(conversation)
-    this.#options.store.rememberConversation(conversation.id)
+    await this.launch(conversation)
+    this.books.upsert(conversation)
+    this.options.store.rememberConversation(conversation.id)
 
     return { conversation, messages: [], usage: EMPTY_USAGE }
   }
 
   public async open(id: string): Promise<OpenedConversation> {
-    const conversation = this.#requireConversation(id)
+    const conversation = this.requireConversation(id)
 
-    this.#options.store.rememberConversation(id)
-    const existing = this.#open.get(id)
+    this.options.store.rememberConversation(id)
+    const existing = this.opened.get(id)
     if (existing !== undefined) {
       return { conversation, messages: await existing.transcript(), usage: await existing.usage() }
     }
 
-    const runtime = await this.#launch(conversation)
-    if (conversation.title !== DEFAULT_TITLE) this.#books.markNamed(id)
+    const runtime = await this.launch(conversation)
+    if (conversation.title !== DEFAULT_TITLE) this.books.markNamed(id)
 
     return { conversation, messages: await runtime.transcript(), usage: await runtime.usage() }
   }
@@ -150,34 +150,34 @@ export class RuntimeManager {
    * watching ends when the run does, or the count would always be zero.
    */
   public async runUnattended(id: string, text: string): Promise<number> {
-    this.#unattended.start(id)
+    this.unattended.start(id)
     try {
       await this.prompt(id, text)
-      await (await this.#openFor(id)).settle()
+      await (await this.openFor(id)).settle()
     } catch (error) {
       // A run that threw still stops being watched, and the caller hears about the failure.
-      this.#unattended.finish(id)
+      this.unattended.finish(id)
       throw error
     }
-    return this.#unattended.finish(id)
+    return this.unattended.finish(id)
   }
 
   public async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
-    const conversation = this.#requireConversation(id)
+    const conversation = this.requireConversation(id)
     // Why the turn may not start is said before anyone waits for one: no model, an unreadable key,
     // a picture the model cannot read (models.ts owns the sentences).
     const problem = startProblem({
-      index: this.#options.providers.index(),
-      keyProblem: (providerId) => this.#options.agent.keyProblem(providerId),
+      index: this.options.providers.index(),
+      keyProblem: (providerId) => this.options.agent.keyProblem(providerId),
       model: conversation.model,
       pictures: attachments?.length ?? 0,
     })
     if (problem !== undefined) throw new Error(problem)
-    await (await this.#openFor(id)).prompt(text, attachments)
+    await (await this.openFor(id)).prompt(text, attachments)
   }
 
   public async steer(id: string, text: string): Promise<void> {
-    await (await this.#openFor(id)).steer(text)
+    await (await this.openFor(id)).steer(text)
   }
 
   /**
@@ -185,7 +185,7 @@ export class RuntimeManager {
    * whether a compaction happened: a conversation with nothing to summarize is a no, not an error.
    */
   public async compactConversation(id: string): Promise<boolean> {
-    return (await this.#openFor(id)).compact()
+    return (await this.openFor(id)).compact()
   }
 
   /**
@@ -193,13 +193,13 @@ export class RuntimeManager {
    * our list, where it can be edited, and a new turn picks it up when the current one finishes.
    */
   public async queueMessage(id: string, text: string): Promise<void> {
-    this.#requireConversation(id)
-    await this.#queue.add(id, text)
+    this.requireConversation(id)
+    await this.queue.add(id, text)
   }
 
   /** Editing one where it stands: same position, new words. */
   public async editQueued(id: string, entryId: string, text: string): Promise<void> {
-    this.#queue.edit(id, entryId, text)
+    this.queue.edit(id, entryId, text)
   }
 
   /**
@@ -207,45 +207,45 @@ export class RuntimeManager {
    * not, so which one an id belongs to decides which of the two is asked.
    */
   public async cancelQueued(id: string, entryId: string): Promise<void> {
-    if (this.#queue.cancel(id, entryId)) return
-    await (await this.#openFor(id)).cancelQueued()
+    if (this.queue.cancel(id, entryId)) return
+    await (await this.openFor(id)).cancelQueued()
   }
 
   /** Starting a stopped queue again: pressing Stop, or a failed turn, is what stopped it. */
   public async resumeQueue(id: string): Promise<void> {
-    this.#requireConversation(id)
-    await this.#queue.resume(id)
+    this.requireConversation(id)
+    await this.queue.resume(id)
   }
 
   /** Both of these move the branch tip, and the editing module replaces the window's copy. */
   public async regenerate(id: string): Promise<void> {
-    await regenerate(this.#editPorts(), id)
+    await regenerate(this.editPorts(), id)
   }
 
   public async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
-    const opened = await editMessage(this.#editPorts(), id, index, text, effect)
-    this.#options.store.rememberConversation(opened.conversation.id)
+    const opened = await editMessage(this.editPorts(), id, index, text, effect)
+    this.options.store.rememberConversation(opened.conversation.id)
     return opened
   }
 
   public async abort(id: string): Promise<void> {
     // An aborted run leaves nothing to decide, and a promise nobody will answer is a hang.
-    this.#approvals.abandon(id, 'The run was stopped before this call was answered.')
-    this.#queue.stop(id)
-    await this.#open.get(id)?.abort()
+    this.approvals.abandon(id, 'The run was stopped before this call was answered.')
+    this.queue.stop(id)
+    await this.opened.get(id)?.abort()
   }
 
   public rename(id: string, title: string): ConversationSummary {
-    return this.#books.rename(id, title)
+    return this.books.rename(id, title)
   }
 
   public archive(id: string): ConversationSummary[] {
-    this.#books.archive(id)
+    this.books.archive(id)
     return this.list()
   }
 
   public unarchive(id: string): ConversationSummary[] {
-    this.#books.unarchive(id)
+    this.books.unarchive(id)
     return this.list()
   }
 
@@ -254,151 +254,151 @@ export class RuntimeManager {
    * and from the disk, not merely hidden from one of them.
    */
   public async remove(id: string): Promise<ConversationSummary[]> {
-    const conversation = this.#requireConversation(id)
-    this.#approvals.abandon(id, 'The conversation was deleted.')
-    const runtime = this.#open.get(id)
+    const conversation = this.requireConversation(id)
+    this.approvals.abandon(id, 'The conversation was deleted.')
+    const runtime = this.opened.get(id)
     if (runtime !== undefined) {
       await runtime.close()
-      this.#open.delete(id)
+      this.opened.delete(id)
     }
-    this.#sessions.remove(sessionIdOf(conversation), conversation.workspacePath)
-    this.#decisions.forget(id)
-    this.#queue.forget(id)
-    this.#books.forget(id)
-    if (this.#options.store.read().lastConversationId === id) this.#options.store.rememberConversation('')
+    this.sessions.remove(sessionIdOf(conversation), conversation.workspacePath)
+    this.decisions.forget(id)
+    this.queue.forget(id)
+    this.books.forget(id)
+    if (this.options.store.read().lastConversationId === id) this.options.store.rememberConversation('')
     return this.list()
   }
 
   /** A markdown file beside the workspace, with everything the conversation said and did. */
   public async exportMarkdown(id: string): Promise<{ path: string }> {
-    const conversation = this.#requireConversation(id)
+    const conversation = this.requireConversation(id)
     return writeSessionMarkdown(conversation, await this.transcriptFor(id))
   }
 
   /** The transcript of a conversation, open or not: the same reading either way. */
   public async transcriptFor(id: string): Promise<ChatMessage[]> {
-    const runtime = this.#open.get(id)
+    const runtime = this.opened.get(id)
     if (runtime !== undefined) return runtime.transcript()
-    const conversation = this.#requireConversation(id)
-    return readSessionTranscript(this.#sessions, conversation, this.#decisions.opened(id))
+    const conversation = this.requireConversation(id)
+    return readSessionTranscript(this.sessions, conversation, this.decisions.opened(id))
   }
 
   /**
    * The runtime's events, and the two moments the queue changes because of them: a turn that
    * finished sends the next message, and a turn that failed stops the queue.
    */
-  #observe(event: RuntimeEvent): void {
+  private observe(event: RuntimeEvent): void {
     if (event.type === 'queue_updated') {
-      this.#books.observe(event)
-      this.#queue.rememberSteers(event.conversationId, event.queued)
+      this.books.observe(event)
+      this.queue.rememberSteers(event.conversationId, event.queued)
       return
     }
 
-    this.#books.observe(event)
-    if (event.type === 'run_failed') this.#queue.stop(event.conversationId)
-    if (event.type === 'turn_finished') void this.#queue.flush(event.conversationId)
+    this.books.observe(event)
+    if (event.type === 'run_failed') this.queue.stop(event.conversationId)
+    if (event.type === 'turn_finished') void this.queue.flush(event.conversationId)
   }
 
-  #editPorts(): EditingPorts {
+  private editPorts(): EditingPorts {
     return {
-      conversation: (id) => this.#requireConversation(id),
-      runtime: (id) => this.#openFor(id),
+      conversation: (id) => this.requireConversation(id),
+      runtime: (id) => this.openFor(id),
       register: (conversation) => {
-        this.#books.upsert(conversation)
-        this.#books.markNamed(conversation.id)
+        this.books.upsert(conversation)
+        this.books.markNamed(conversation.id)
       },
       openConversation: (id) => this.open(id),
-      agent: this.#options.agent,
-      adopt: (id, sessionId) => void this.#books.update(id, { sessionId, updatedAt: Date.now() }),
+      agent: this.options.agent,
+      adopt: (id, sessionId) => void this.books.update(id, { sessionId, updatedAt: Date.now() }),
       replaceTranscript: (id, messages) =>
-        this.#options.emit({ conversationId: id, type: 'transcript_replaced', messages }),
+        this.options.emit({ conversationId: id, type: 'transcript_replaced', messages }),
     }
   }
 
   /** The level in force for one conversation; the gate reads this at the moment of each call. */
   public setConversationLevel(id: string, level: PermissionLevel): ConversationSummary {
-    this.#requireConversation(id)
-    return this.#books.update(id, { permissionLevel: level, updatedAt: Date.now() })
+    this.requireConversation(id)
+    return this.books.update(id, { permissionLevel: level, updatedAt: Date.now() })
   }
 
   /** The level new conversations in a workspace start at. */
   public setWorkspaceLevel(workspacePath: string, level: PermissionLevel): void {
-    rememberWorkspaceLevel(this.#options.store, workspacePath, level)
+    rememberWorkspaceLevel(this.options.store, workspacePath, level)
   }
 
   public async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
-    this.#requireConversation(id)
-    if (!servesModel(this.#options.providers.index(), { providerId, modelId })) {
+    this.requireConversation(id)
+    if (!servesModel(this.options.providers.index(), { providerId, modelId })) {
       throw new Error(`${providerId} does not serve ${modelId}`)
     }
-    await this.#open.get(id)?.setModel(providerId, modelId)
-    return this.#books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
+    await this.opened.get(id)?.setModel(providerId, modelId)
+    return this.books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
   public async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {
-    this.#requireConversation(id)
-    await this.#open.get(id)?.setThinkingLevel(level)
-    return this.#books.update(id, { thinkingLevel: level, updatedAt: Date.now() })
+    this.requireConversation(id)
+    await this.opened.get(id)?.setThinkingLevel(level)
+    return this.books.update(id, { thinkingLevel: level, updatedAt: Date.now() })
   }
 
   public async closeAll(): Promise<void> {
-    for (const id of this.#open.keys()) this.#approvals.abandon(id, 'The window closed before this call was answered.')
-    for (const runtime of this.#open.values()) await runtime.close()
-    this.#open.clear()
+    for (const id of this.opened.keys()) this.approvals.abandon(id, 'The window closed before this call was answered.')
+    for (const runtime of this.opened.values()) await runtime.close()
+    this.opened.clear()
   }
 
   /** The runtime for a conversation, opening it first when it is not already open. */
-  async #openFor(id: string): Promise<ConversationRuntime> {
-    const open = this.#open.get(id)
-    if (open !== undefined) return open
+  private async openFor(id: string): Promise<ConversationRuntime> {
+    const existing = this.opened.get(id)
+    if (existing !== undefined) return existing
     await this.open(id)
-    const opened = this.#open.get(id)
-    if (opened === undefined) throw new Error(`No conversation ${id}`)
-    return opened
+    const runtime = this.opened.get(id)
+    if (runtime === undefined) throw new Error(`No conversation ${id}`)
+    return runtime
   }
 
-  #requireConversation(id: string): ConversationSummary {
-    const conversation = this.#books.find(id)
+  private requireConversation(id: string): ConversationSummary {
+    const conversation = this.books.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
     return conversation
   }
 
   /** Where a new conversation starts, and what it is named while it has no name of its own. */
-  #startingModel(): ConversationSummary['model'] {
-    return defaultModel(this.#options.providers)
+  private startingModel(): ConversationSummary['model'] {
+    return defaultModel(this.options.providers)
   }
 
   /** Opens a conversation's runtime, or returns the one already open. */
-  async #launch(conversation: ConversationSummary): Promise<ConversationRuntime> {
+  private async launch(conversation: ConversationSummary): Promise<ConversationRuntime> {
     const runtime = await openRuntime({
       conversation,
-      sessions: this.#sessions,
-      sessionsRoot: this.#options.sessionsRoot,
-      providers: this.#options.providers,
-      models: this.#options.models,
-      compactionSettings: this.#options.compactionSettings,
-      retryDelays: this.#options.retryDelays,
-      decisions: this.#decisions.opened(conversation.id),
-      permissions: () => this.#permissionPorts(),
-      emit: (event) => this.#observe(event),
+      sessions: this.sessions,
+      sessionsRoot: this.options.sessionsRoot,
+      providers: this.options.providers,
+      models: this.options.models,
+      compactionSettings: this.options.compactionSettings,
+      retryDelays: this.options.retryDelays,
+      decisions: this.decisions.opened(conversation.id),
+      permissions: () => this.permissionPorts(),
+      emit: (event) => this.observe(event),
     })
-    this.#open.set(conversation.id, runtime)
+    this.opened.set(conversation.id, runtime)
     return runtime
   }
 
   /** A question nobody is there to answer becomes a refusal, or a card when somebody is. */
-  #askOrRefuse(id: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
-    const refusal = this.#unattended.refuse(id)
-    return refusal === undefined ? this.#approvals.ask(id, ask) : Promise.resolve(refusal)
+  private askOrRefuse(id: string, ask: ApprovalAsk): Promise<ApprovalAnswer> {
+    const refusal = this.unattended.refuse(id)
+    return refusal === undefined ? this.approvals.ask(id, ask) : Promise.resolve(refusal)
   }
 
   /** The gate's ports over the workbench: the level in force, the rules, and the person to ask. */
-  #permissionPorts(): PermissionPorts {
+  private permissionPorts(): PermissionPorts {
     return createPermissionPorts({
-      store: this.#options.store,
-      levelOf: (id) => this.#books.find(id)?.permissionLevel ?? this.#options.store.read().permissionLevel,
-      ask: (id, ask) => this.#askOrRefuse(id, ask),
-      changed: this.#options.emitRules,
+      store: this.options.store,
+      levelOf: (id) => this.books.find(id)?.permissionLevel ?? this.options.store.read().permissionLevel,
+      ask: (id, ask) => this.askOrRefuse(id, ask),
+      changed: this.options.emitRules,
     })
   }
 }

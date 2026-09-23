@@ -38,77 +38,77 @@ export function networkUrls(port: number, interfaces: ReturnType<typeof networkI
 }
 
 export class NetworkService {
-  readonly #options: NetworkServiceOptions
-  #server: Undef<RunningServer>
-  #error = ''
+  private readonly options: NetworkServiceOptions
+  private server: Undef<RunningServer>
+  private error = ''
 
   public constructor(options: NetworkServiceOptions) {
-    this.#options = options
+    this.options = options
   }
 
   /** What the settings page shows: what is stored, and what the server made of it. */
   public state(): NetworkState {
-    const access = this.#options.store.read().network
+    const access = this.options.store.read().network
     // Bound to this machine, only this machine's address is a way in — listing the LAN addresses
     // anyway would invite someone to try one and wonder why it does not answer.
     const reachable = access.bind === 'network' ? networkInterfaces() : {}
     return {
       ...access,
-      urls: this.#server === undefined ? [] : networkUrls(this.#server.port, reachable),
-      error: this.#error,
+      urls: this.server === undefined ? [] : networkUrls(this.server.port, reachable),
+      error: this.error,
     }
   }
 
   /** Starts, stops or restarts the server so that it matches what the user asked for. */
   public async apply(): Promise<NetworkState> {
-    await this.#stop()
-    this.#error = ''
-    const access = this.#options.store.read().network
+    await this.stop()
+    this.error = ''
+    const access = this.options.store.read().network
     if (!access.enabled) return this.state()
-    if (!existsSync(join(this.#options.bundleDirectory, 'index.html'))) {
-      this.#error = 'The interface has not been built yet. Run `pnpm build` and switch it on again.'
+    if (!existsSync(join(this.options.bundleDirectory, 'index.html'))) {
+      this.error = 'The interface has not been built yet. Run `pnpm build` and switch it on again.'
       return this.state()
     }
 
     try {
-      this.#server = await startServer({
-        ports: this.#options.ports(),
-        broadcast: this.#options.broadcast,
-        bundleDirectory: this.#options.bundleDirectory,
+      this.server = await startServer({
+        ports: this.options.ports(),
+        broadcast: this.options.broadcast,
+        bundleDirectory: this.options.bundleDirectory,
         token: access.token,
         port: access.port,
         bind: access.bind,
       })
     } catch (failure) {
       // A port that is taken is a fact about this machine, and the switch is where it is read.
-      this.#error = `${failure instanceof Error ? failure.message : String(failure)}`
+      this.error = `${failure instanceof Error ? failure.message : String(failure)}`
     }
     return this.state()
   }
 
   public async set(patch: NetworkPatch): Promise<NetworkState> {
-    const state = this.#options.store.read()
+    const state = this.options.store.read()
     const next: NetworkAccess = { ...state.network, ...patch }
     if (next.enabled && next.token === '') next.token = mintToken()
-    this.#options.store.write({ ...state, network: next })
+    this.options.store.write({ ...state, network: next })
     return this.apply()
   }
 
   /** A new token, which stops every browser that was holding the old one. */
   public async regenerateToken(): Promise<NetworkState> {
-    const state = this.#options.store.read()
+    const state = this.options.store.read()
     const next: NetworkAccess = { ...state.network, token: mintToken() }
-    this.#options.store.write({ ...state, network: next })
+    this.options.store.write({ ...state, network: next })
     return this.apply()
   }
 
   public async close(): Promise<void> {
-    await this.#stop()
+    await this.stop()
   }
 
-  async #stop(): Promise<void> {
-    const server = this.#server
-    this.#server = undefined
+  private async stop(): Promise<void> {
+    const server = this.server
+    this.server = undefined
     if (server !== undefined) await server.close()
   }
 }

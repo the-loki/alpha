@@ -8,32 +8,32 @@ import { join } from 'node:path'
 import { emptyPersistedState, type PersistedState, parsePersistedState } from '@alpha/domain'
 
 export class StateStore {
-  readonly #path: string
-  #state: PersistedState
+  private readonly path: string
+  private state: PersistedState
 
   public constructor(dataDirectory: string) {
-    this.#path = join(dataDirectory, 'workbench-state.json')
-    this.#state = this.#read()
+    this.path = join(dataDirectory, 'workbench-state.json')
+    this.state = this.load()
   }
 
   public read(): PersistedState {
-    return this.#state
+    return this.state
   }
 
   public write(next: PersistedState): PersistedState {
-    this.#state = next
-    writeFileSync(this.#path, JSON.stringify(next, null, 2), 'utf-8')
-    return this.#state
+    this.state = next
+    writeFileSync(this.path, JSON.stringify(next, null, 2), 'utf-8')
+    return this.state
   }
 
   /** Which conversation is open, so the next launch can come back to it (T2). */
   public rememberConversation(id: string): void {
-    this.write({ ...this.#state, lastConversationId: id })
+    this.write({ ...this.state, lastConversationId: id })
   }
 
-  #read(): PersistedState {
+  private load(): PersistedState {
     try {
-      return parsePersistedState(readFileSync(this.#path, 'utf-8'))
+      return parsePersistedState(readFileSync(this.path, 'utf-8'))
     } catch {
       return emptyPersistedState()
     }

@@ -155,55 +155,49 @@ describe('01-typescript:ts-expect-error-reason', () => {
   })
 })
 
-describe('01-typescript:no-private-modifier', () => {
-  const rule = '01-typescript:no-private-modifier'
+describe('01-typescript:hash-is-for-secrets', () => {
+  const rule = '01-typescript:hash-is-for-secrets'
 
-  it('flags a private field, and names the spelling that replaces it', () => {
-    const found = violationsFor(rule, file('packages/state/src/a.ts', '  private count = 0'))
+  it('flags a hash field in an ordinary class, and says what to write instead', () => {
+    const found = violationsFor(rule, file('packages/state/src/a.ts', '  readonly #path: string'))
     expect(found).toHaveLength(1)
-    expect(found[0].message).toContain('#')
+    expect(found[0].message).toContain('private')
   })
 
-  it('flags a private method', () => {
-    expect(violationsFor(rule, file('packages/state/src/a.ts', '  private helper(): void {}'))).toHaveLength(1)
+  it('flags a hash method', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  #read(): PersistedState {}'))).toHaveLength(1)
   })
 
-  it('flags a parameter property, which is a private field by another road', () => {
-    const text = 'constructor(private readonly opts: string) {}'
-    expect(violationsFor(rule, file('packages/state/src/a.ts', text))).toHaveLength(1)
-  })
-
-  it('passes the hash spelling, which is the whole point of the rule', () => {
-    expect(violationsFor(rule, file('packages/state/src/a.ts', '  readonly #path: string'))).toEqual([])
-  })
-
-  it('passes public and protected, neither of which is this rule', () => {
-    expect(violationsFor(rule, file('packages/state/src/a.ts', '  public read(): PersistedState {}'))).toEqual([])
-    expect(violationsFor(rule, file('packages/state/src/a.ts', '  protected seam(): void {}'))).toEqual([])
-  })
-
-  it('passes the word in a doc comment, where it is prose about a decision', () => {
-    expect(violationsFor(rule, file('packages/domain/src/a.ts', ' * otherwise silently cover a private one.'))).toEqual(
-      [],
-    )
-  })
-
-  it('passes the word inside a string', () => {
-    expect(violationsFor(rule, file('packages/domain/src/a.ts', "const s = 'a private conversation'"))).toEqual([])
-  })
-
-  it('passes the word in a trailing comment', () => {
+  it('flags an async hash method, which is a member like any other', () => {
     expect(
-      violationsFor(rule, file('packages/domain/src/a.ts', 'const held = 1 // not private, merely quiet')),
-    ).toEqual([])
+      violationsFor(rule, file('packages/tasks/src/a.ts', '  async #run(task: ScheduledTask): Promise<void> {}')),
+    ).toHaveLength(1)
+  })
+
+  it('passes the credential vault, whose object must not be handed out at all', () => {
+    const text = '  readonly #path: string\n  #entries: VaultEntry[]'
+    expect(violationsFor(rule, file('packages/providers/src/credential-vault.ts', text))).toEqual([])
+  })
+
+  it('passes the session gate, which holds the token itself', () => {
+    expect(violationsFor(rule, file('apps/desktop/src/main/server/session.ts', '  #token: string'))).toEqual([])
+  })
+
+  it('passes the modifiers, which are the spelling this rule wants', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  private readonly path: string'))).toEqual([])
+    expect(violationsFor(rule, file('packages/state/src/a.ts', '  private load(): PersistedState {}'))).toEqual([])
+  })
+
+  it('passes a hash inside a string, which is not a member', () => {
+    expect(violationsFor(rule, file('packages/state/src/a.ts', "const colour = '#fff'"))).toEqual([])
   })
 
   it('passes a fixture that has to show the banned form', () => {
-    expect(violationsFor(rule, file('packages/state/src/a.test.ts', '  private count = 0'))).toEqual([])
+    expect(violationsFor(rule, file('packages/state/src/a.test.ts', '  readonly #path: string'))).toEqual([])
   })
 
   it('passes a line carrying the escape hatch', () => {
-    const text = 'private count = 0 // constraints-ignore 01-typescript: vendor decorator injects here'
+    const text = '  #count = 0 // constraints-ignore 01-typescript: the debugger reads it by name'
     expect(violationsFor(rule, file('packages/state/src/a.ts', text))).toEqual([])
   })
 })

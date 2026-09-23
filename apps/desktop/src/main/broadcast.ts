@@ -20,18 +20,18 @@ export interface Push {
 export type Subscriber = (push: Push) => void
 
 export class Broadcast {
-  readonly #subscribers = new Set<Subscriber>()
+  private readonly subscribers = new Set<Subscriber>()
 
   /** Subscribes until the returned function is called, which is what closing a client does. */
   public subscribe(subscriber: Subscriber): () => void {
-    this.#subscribers.add(subscriber)
+    this.subscribers.add(subscriber)
     return () => {
-      this.#subscribers.delete(subscriber)
+      this.subscribers.delete(subscriber)
     }
   }
 
   public send(channel: PushChannel, payload: unknown): void {
-    for (const subscriber of [...this.#subscribers]) {
+    for (const subscriber of [...this.subscribers]) {
       try {
         subscriber({ channel, payload })
       } catch {

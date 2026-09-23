@@ -32,15 +32,15 @@ export interface TaskServicePorts {
 }
 
 export class TaskService {
-  readonly #ports: TaskServicePorts
-  readonly #scheduler: Scheduler
+  private readonly ports: TaskServicePorts
+  private readonly scheduler: Scheduler
 
   public constructor(ports: TaskServicePorts) {
-    this.#ports = ports
-    this.#scheduler = new Scheduler({
+    this.ports = ports
+    this.scheduler = new Scheduler({
       tasks: ports.tasks,
       workspaceExists: ports.workspaceExists,
-      run: (task, started) => this.#run(task, false, started),
+      run: (task, started) => this.run(task, false, started),
       runs: (run) => ports.tasks.record(run),
       changed: ports.changed,
       now: ports.now,
@@ -48,16 +48,16 @@ export class TaskService {
   }
 
   public start(): void {
-    this.#scheduler.start()
+    this.scheduler.start()
   }
 
   public stop(): void {
-    this.#scheduler.stop()
+    this.scheduler.stop()
   }
 
   public snapshot(): TasksSnapshot {
-    const tasks = this.#ports.tasks.list()
-    return { tasks, runs: tasks.flatMap((task) => this.#ports.tasks.runs(task.id)) }
+    const tasks = this.ports.tasks.list()
+    return { tasks, runs: tasks.flatMap((task) => this.ports.tasks.runs(task.id)) }
   }
 
   /**
@@ -65,7 +65,7 @@ export class TaskService {
    * moment it is made: a workspace's default may move, a promise already made may not (ADR-0012).
    */
   public save(input: Partial<ScheduledTask>): TasksSnapshot {
-    const existing = input.id === undefined ? undefined : this.#ports.tasks.find(input.id)
+    const existing = input.id === undefined ? undefined : this.ports.tasks.find(input.id)
     const schedule: TaskSchedule = isValidSchedule(input.schedule)
       ? input.schedule
       : (existing?.schedule ?? DEFAULT_SCHEDULE)
@@ -77,50 +77,50 @@ export class TaskService {
       permissionLevel: input.permissionLevel ?? existing?.permissionLevel ?? 'ask',
       schedule,
       enabled: input.enabled ?? existing?.enabled ?? true,
-      createdAt: existing?.createdAt ?? this.#ports.now().getTime(),
+      createdAt: existing?.createdAt ?? this.ports.now().getTime(),
       ...(existing?.lastRunAt === undefined ? {} : { lastRunAt: existing.lastRunAt }),
     }
     if (task.name === '' || task.prompt === '' || task.workspacePath === '') {
       throw new Error('A task needs a name, a prompt, and a folder to run in.')
     }
-    this.#ports.tasks.save(task)
-    this.#ports.changed()
+    this.ports.tasks.save(task)
+    this.ports.changed()
     return this.snapshot()
   }
 
   public remove(id: string): TasksSnapshot {
-    this.#ports.tasks.remove(id)
-    this.#ports.changed()
+    this.ports.tasks.remove(id)
+    this.ports.changed()
     return this.snapshot()
   }
 
   /** Run now: the person pressing it is watching, so the gate may ask (ADR-0012). */
   public async runNow(id: string): Promise<TasksSnapshot> {
-    const task = this.#ports.tasks.find(id)
+    const task = this.ports.tasks.find(id)
     if (task === undefined) throw new Error(`No task ${id}`)
     // A run started by hand is written down the same way the clock's runs are: one row, started
     // and then ended, so a task's history does not depend on who started it.
     const row: TaskRun = {
       taskId: task.id,
       conversationId: '',
-      startedAt: this.#ports.now().getTime(),
+      startedAt: this.ports.now().getTime(),
       outcome: 'running',
       refusals: 0,
     }
-    this.#ports.tasks.record(row)
-    this.#ports.changed()
-    const outcome = await this.#run(task, true, (conversationId) => {
-      this.#ports.tasks.record({ ...row, conversationId })
-      this.#ports.changed()
+    this.ports.tasks.record(row)
+    this.ports.changed()
+    const outcome = await this.run(task, true, (conversationId) => {
+      this.ports.tasks.record({ ...row, conversationId })
+      this.ports.changed()
     })
-    this.#ports.tasks.record({
+    this.ports.tasks.record({
       ...row,
       conversationId: outcome.conversationId,
       outcome: outcome.outcome,
       refusals: outcome.refusals,
-      endedAt: this.#ports.now().getTime(),
+      endedAt: this.ports.now().getTime(),
     })
-    this.#ports.changed()
+    this.ports.changed()
     return this.snapshot()
   }
 
@@ -129,14 +129,18 @@ export class TaskService {
    * outcome answered back. A run that throws is a failed run — the conversation holds the reason,
    * and the task's history says how it went.
    */
-  async #run(task: ScheduledTask, attended: boolean, started: RunStarted = () => undefined): Promise<RunOutcome> {
-    const conversationId = await this.#ports.create(task.workspacePath)
-    this.#ports.rename(conversationId, task.name)
-    this.#ports.setLevel(conversationId, task.permissionLevel)
+  private async run(
+    task: ScheduledTask,
+    attended: boolean,
+    started: RunStarted = () => undefined,
+  ): Promise<RunOutcome> {
+    const conversationId = await this.ports.create(task.workspacePath)
+    this.ports.rename(conversationId, task.name)
+    this.ports.setLevel(conversationId, task.permissionLevel)
     started(conversationId)
     try {
-      const refusals = attended ? 0 : await this.#ports.runUnattended(conversationId, task.prompt)
-      if (attended) await this.#ports.prompt(conversationId, task.prompt)
+      const refusals = attended ? 0 : await this.ports.runUnattended(conversationId, task.prompt)
+      if (attended) await this.ports.prompt(conversationId, task.prompt)
       return { conversationId, outcome: 'ok', refusals }
     } catch {
       return { conversationId, outcome: 'failed', refusals: 0 }

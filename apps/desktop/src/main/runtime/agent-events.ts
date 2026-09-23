@@ -83,40 +83,40 @@ export function failedMessageOf(event: RpcLikeEvent): Undef<string> {
 }
 
 export class AgentEventTranslator {
-  readonly #conversationId: string
-  readonly #retry: Undef<RetryDecider>
-  #usage: UsageTotals = EMPTY_USAGE
-  #openMessageId: Undef<string>
-  #runOpen = false
+  private readonly conversationId: string
+  private readonly retry: Undef<RetryDecider>
+  private usage: UsageTotals = EMPTY_USAGE
+  private openMessageId: Undef<string>
+  private runOpen = false
 
   public constructor(conversationId: string, retry?: RetryDecider) {
-    this.#conversationId = conversationId
-    this.#retry = retry
+    this.conversationId = conversationId
+    this.retry = retry
   }
 
   public translate(event: RpcLikeEvent): RuntimeEvent[] {
-    if (event.type === 'agent_start') return this.#startRun()
-    if (event.type === 'agent_end') return this.#endRun(event)
-    if (event.type === 'agent_settled') return this.#settle()
-    if (event.type === 'message_start') return this.#startMessage(event)
-    if (event.type === 'message_update') return this.#update(event)
-    if (event.type === 'message_end') return this.#endMessage(event)
-    if (event.type === 'entry_appended') return this.#appended(event)
-    if (event.type === 'tool_execution_start') return [this.#toolStarted(event)]
-    if (event.type === 'tool_execution_update') return [this.#toolOutput(event)]
-    if (event.type === 'tool_execution_end') return [this.#toolFinished(event)]
-    if (event.type === 'queue_update') return [this.#queue(event)]
-    if (event.type === 'compaction_end') return this.#compacted(event)
+    if (event.type === 'agent_start') return this.startRun()
+    if (event.type === 'agent_end') return this.endRun(event)
+    if (event.type === 'agent_settled') return this.settle()
+    if (event.type === 'message_start') return this.startMessage(event)
+    if (event.type === 'message_update') return this.update(event)
+    if (event.type === 'message_end') return this.endMessage(event)
+    if (event.type === 'entry_appended') return this.appended(event)
+    if (event.type === 'tool_execution_start') return [this.toolStarted(event)]
+    if (event.type === 'tool_execution_update') return [this.toolOutput(event)]
+    if (event.type === 'tool_execution_end') return [this.toolFinished(event)]
+    if (event.type === 'queue_update') return [this.queue(event)]
+    if (event.type === 'compaction_end') return this.compacted(event)
     return []
   }
 
-  #startRun(): RuntimeEvent[] {
+  private startRun(): RuntimeEvent[] {
     // A retry starts the agent again inside the same run: the turn the composer is following has
     // already begun, and saying so twice is a second turn that never happened.
-    if (this.#runOpen) return []
-    this.#runOpen = true
-    this.#usage = EMPTY_USAGE
-    return [{ conversationId: this.#conversationId, type: 'turn_started' }]
+    if (this.runOpen) return []
+    this.runOpen = true
+    this.usage = EMPTY_USAGE
+    return [{ conversationId: this.conversationId, type: 'turn_started' }]
   }
 
   /**
@@ -124,98 +124,98 @@ export class AgentEventTranslator {
    * whether that failure is final is the retry policy's one decision, the same one its own hook
    * consults when it takes an attempt. Nothing is written on the event to coordinate the two.
    */
-  #endRun(event: RpcLikeEvent): RuntimeEvent[] {
-    if (!this.#runOpen) return []
+  private endRun(event: RpcLikeEvent): RuntimeEvent[] {
+    if (!this.runOpen) return []
     const failed = failedMessageOf(event)
-    if (failed !== undefined && this.#retry?.shouldRetry({ failed, aborted: false }) === true) return []
-    this.#runOpen = false
-    this.#openMessageId = undefined
+    if (failed !== undefined && this.retry?.shouldRetry({ failed, aborted: false }) === true) return []
+    this.runOpen = false
+    this.openMessageId = undefined
     return failed === undefined
-      ? [{ conversationId: this.#conversationId, type: 'turn_finished' }]
-      : [{ conversationId: this.#conversationId, type: 'run_failed', message: failed }]
+      ? [{ conversationId: this.conversationId, type: 'turn_finished' }]
+      : [{ conversationId: this.conversationId, type: 'run_failed', message: failed }]
   }
 
   /** `agent_settled` follows `agent_end`: whichever comes first closes the run, the other is quiet. */
-  #settle(): RuntimeEvent[] {
-    if (!this.#runOpen) return []
-    this.#runOpen = false
-    return [{ conversationId: this.#conversationId, type: 'turn_finished' }]
+  private settle(): RuntimeEvent[] {
+    if (!this.runOpen) return []
+    this.runOpen = false
+    return [{ conversationId: this.conversationId, type: 'turn_finished' }]
   }
 
-  #startMessage(event: RpcLikeEvent): RuntimeEvent[] {
+  private startMessage(event: RpcLikeEvent): RuntimeEvent[] {
     const message = recordOf(event.message)
     if (message.role !== 'assistant') return []
     const opened = {
-      conversationId: this.#conversationId,
+      conversationId: this.conversationId,
       type: 'assistant_message_started' as const,
       messageId: crypto.randomUUID(),
       createdAt: Date.now(),
     }
-    this.#openMessageId = opened.messageId
+    this.openMessageId = opened.messageId
     return [opened]
   }
 
-  #update(event: RpcLikeEvent): RuntimeEvent[] {
+  private update(event: RpcLikeEvent): RuntimeEvent[] {
     const events: RuntimeEvent[] = []
     const delta = recordOf(event.assistantMessageEvent)
     const at = Date.now()
     const text = typeof delta.delta === 'string' ? delta.delta : ''
-    if (this.#openMessageId !== undefined && delta.type === 'text_delta' && text !== '') {
+    if (this.openMessageId !== undefined && delta.type === 'text_delta' && text !== '') {
       events.push({
-        conversationId: this.#conversationId,
+        conversationId: this.conversationId,
         type: 'assistant_text_delta',
-        messageId: this.#openMessageId,
+        messageId: this.openMessageId,
         delta: text,
         at,
       })
     }
-    if (this.#openMessageId !== undefined && delta.type === 'thinking_delta' && text !== '') {
+    if (this.openMessageId !== undefined && delta.type === 'thinking_delta' && text !== '') {
       events.push({
-        conversationId: this.#conversationId,
+        conversationId: this.conversationId,
         type: 'assistant_thinking_delta',
-        messageId: this.#openMessageId,
+        messageId: this.openMessageId,
         delta: text,
         at,
       })
     }
     const reported = reportedUsage(event)
-    const added = difference(reported, this.#usage)
-    this.#usage = reported
+    const added = difference(reported, this.usage)
+    this.usage = reported
     if (!isNothing(added)) {
-      events.push({ conversationId: this.#conversationId, type: 'usage_recorded', usage: added })
+      events.push({ conversationId: this.conversationId, type: 'usage_recorded', usage: added })
     }
     return events
   }
 
-  #endMessage(event: RpcLikeEvent): RuntimeEvent[] {
+  private endMessage(event: RpcLikeEvent): RuntimeEvent[] {
     const message = recordOf(event.message)
-    if (message.role !== 'assistant' || this.#openMessageId === undefined) return []
+    if (message.role !== 'assistant' || this.openMessageId === undefined) return []
     const finished: RuntimeEvent = {
-      conversationId: this.#conversationId,
+      conversationId: this.conversationId,
       type: 'assistant_message_finished',
-      messageId: this.#openMessageId,
+      messageId: this.openMessageId,
       interrupted: message.stopReason === 'aborted',
     }
-    this.#openMessageId = undefined
+    this.openMessageId = undefined
     const reported = reportedUsage(event)
-    const added = difference(reported, this.#usage)
-    this.#usage = reported
+    const added = difference(reported, this.usage)
+    this.usage = reported
     return isNothing(added)
       ? [finished]
-      : [finished, { conversationId: this.#conversationId, type: 'usage_recorded', usage: added }]
+      : [finished, { conversationId: this.conversationId, type: 'usage_recorded', usage: added }]
   }
 
   /**
    * The person's own message, which pi records rather than streams: it arrives as the entry that
    * was added to the session, complete, and it is what the window draws on the left.
    */
-  #appended(event: RpcLikeEvent): RuntimeEvent[] {
+  private appended(event: RpcLikeEvent): RuntimeEvent[] {
     const entry = recordOf(event.entry)
     const message = recordOf(entry.message)
     if (entry.type !== 'message' || message.role !== 'user') return []
     return [
       {
-        conversationId: this.#conversationId,
+        conversationId: this.conversationId,
         type: 'user_message',
         message: {
           id: typeof entry.id === 'string' ? entry.id : crypto.randomUUID(),
@@ -228,10 +228,10 @@ export class AgentEventTranslator {
     ]
   }
 
-  #toolStarted(event: RpcLikeEvent): RuntimeEvent {
+  private toolStarted(event: RpcLikeEvent): RuntimeEvent {
     const callId = String(event.toolCallId ?? '')
     return {
-      conversationId: this.#conversationId,
+      conversationId: this.conversationId,
       type: 'tool_started',
       callId,
       name: String(event.toolName ?? ''),
@@ -240,9 +240,9 @@ export class AgentEventTranslator {
     }
   }
 
-  #toolOutput(event: RpcLikeEvent): RuntimeEvent {
+  private toolOutput(event: RpcLikeEvent): RuntimeEvent {
     return {
-      conversationId: this.#conversationId,
+      conversationId: this.conversationId,
       type: 'tool_output',
       callId: String(event.toolCallId ?? ''),
       // pi accumulates the partial result rather than streaming a delta, and the row replaces
@@ -251,10 +251,10 @@ export class AgentEventTranslator {
     }
   }
 
-  #toolFinished(event: RpcLikeEvent): RuntimeEvent {
+  private toolFinished(event: RpcLikeEvent): RuntimeEvent {
     const details = recordOf(event.result).details
     return {
-      conversationId: this.#conversationId,
+      conversationId: this.conversationId,
       type: 'tool_finished',
       callId: String(event.toolCallId ?? ''),
       status: (event.isError === true ? 'failed' : 'ok') as ToolStatus,
@@ -264,18 +264,18 @@ export class AgentEventTranslator {
     }
   }
 
-  #queue(event: RpcLikeEvent): RuntimeEvent {
+  private queue(event: RpcLikeEvent): RuntimeEvent {
     const steered = listOf(event.steering).flatMap((text) =>
       typeof text === 'string' ? [{ entryId: crypto.randomUUID(), text, kind: 'steer' as const }] : [],
     )
-    return { conversationId: this.#conversationId, type: 'queue_updated', queued: steered, paused: false }
+    return { conversationId: this.conversationId, type: 'queue_updated', queued: steered, paused: false }
   }
 
   /** A compaction is a structural change: the summary stands in for what came before it. */
-  #compacted(event: RpcLikeEvent): RuntimeEvent[] {
+  private compacted(event: RpcLikeEvent): RuntimeEvent[] {
     const result = recordOf(event.result)
     const summary = typeof result.summary === 'string' ? result.summary : ''
     if (summary === '') return []
-    return [{ conversationId: this.#conversationId, type: 'history_compacted', summary, at: Date.now() }]
+    return [{ conversationId: this.conversationId, type: 'history_compacted', summary, at: Date.now() }]
   }
 }

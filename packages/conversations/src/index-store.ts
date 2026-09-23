@@ -20,55 +20,55 @@ import {
 } from '@alpha/domain'
 
 export class ConversationIndexStore {
-  readonly #path: string
-  #index: ConversationIndex
+  private readonly path: string
+  private index: ConversationIndex
 
   public constructor(dataDirectory: string) {
-    this.#path = join(dataDirectory, 'conversations.json')
-    this.#index = this.#read()
+    this.path = join(dataDirectory, 'conversations.json')
+    this.index = this.read()
   }
 
   public all(): ConversationSummary[] {
-    return [...this.#index.conversations]
+    return [...this.index.conversations]
   }
 
   public forWorkspace(workspacePath: string): ConversationSummary[] {
-    return listForWorkspace(this.#index, workspacePath)
+    return listForWorkspace(this.index, workspacePath)
   }
 
   public find(id: string): Undef<ConversationSummary> {
-    return findConversation(this.#index, id)
+    return findConversation(this.index, id)
   }
 
   public upsert(conversation: ConversationSummary): ConversationSummary {
-    this.#index = upsertConversation(this.#index, conversation)
-    this.#flush()
+    this.index = upsertConversation(this.index, conversation)
+    this.flush()
     return conversation
   }
 
   public remove(id: string): void {
-    this.#index = removeConversation(this.#index, id)
-    this.#flush()
+    this.index = removeConversation(this.index, id)
+    this.flush()
   }
 
   /** Putting it away, and taking it back out: the file is the only place the state lives. */
   public archive(id: string, at: number): void {
-    this.#index = archiveConversation(this.#index, id, at)
-    this.#flush()
+    this.index = archiveConversation(this.index, id, at)
+    this.flush()
   }
 
   public unarchive(id: string): void {
-    this.#index = unarchiveConversation(this.#index, id)
-    this.#flush()
+    this.index = unarchiveConversation(this.index, id)
+    this.flush()
   }
 
-  #flush(): void {
-    writeFileSync(this.#path, JSON.stringify(this.#index, null, 2), 'utf-8')
+  private flush(): void {
+    writeFileSync(this.path, JSON.stringify(this.index, null, 2), 'utf-8')
   }
 
-  #read(): ConversationIndex {
+  private read(): ConversationIndex {
     try {
-      return parseConversationIndex(readFileSync(this.#path, 'utf-8'))
+      return parseConversationIndex(readFileSync(this.path, 'utf-8'))
     } catch {
       return emptyConversationIndex()
     }
