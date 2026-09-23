@@ -147,6 +147,14 @@ are tools: the same gate, the same rows, and a name that says which server they 
 is not a plugin: a plugin is Alpha's own assembly (above), and a server is reached over a protocol
 (ADR-0028). Avoid: *connector*, *integration*, and calling a server a plugin.
 
+### Subagent
+
+An agent the workbench's agent runs for the length of one `task` call: assembled from the same
+plugins — the tools its definition lists, and every block the caller is under — given one
+instruction, and answering with one message. It is not a conversation: nothing of its work is written
+to a session, and the window sees one row. Avoid: *child agent*, *worker*, *orchestration* (one
+delegation happens, not a graph).
+
 ### Permission Level
 
 The standing answer to "may the agent act without asking?". Exactly four levels exist:

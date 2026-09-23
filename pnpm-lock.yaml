@@ -194,6 +194,9 @@ importers:
       '@alpha/sessions':
         specifier: workspace:*
         version: link:../sessions
+      '@alpha/subagents':
+        specifier: workspace:*
+        version: link:../subagents
       '@earendil-works/pi-agent-core':
         specifier: 0.86.1
         version: 0.86.1(ws@8.21.3)
@@ -238,6 +241,12 @@ importers:
         version: 1.3.7
 
   packages/state:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
+
+  packages/subagents:
     dependencies:
       '@alpha/domain':
         specifier: workspace:*

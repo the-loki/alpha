@@ -83,11 +83,15 @@ hosts, and no settings copy names a provider as a thing to add.
 
 ## C3.7 — Explicit non-goals
 
-Each of these is a deliberate cut, not an oversight. Four of them were written for the first
+Each of these is a deliberate cut, not an oversight. Five of them were written for the first
 release and have since been decided the other way — or narrowed, which is said the same way; what
 changed is written with them rather than quietly dropped.
 
-- No multi-agent orchestration, no sub-agent spawning from the UI.
+- No multi-agent orchestration. *Narrowed:* one agent may hand one task to a subagent
+  ([ADR-0029](../adr/0029-a-subagent-is-one-tool-call.md)) — a second agent on the same plugins,
+  started by a tool call and answering into the transcript as one row. What stays cut is everything
+  that makes agents a graph: no UI for arranging them, no parallel subagents, no messaging between
+  them, and no subagent that hands work to a subagent.
 - No extension API for other people's code, and no user-authored tools. The plugin base (C2.8) is
   Alpha's own assembly — the shape a capability inside this repository is written in — not a surface
   a person installs something onto. *Changed:* a workbench may be configured with **MCP servers**

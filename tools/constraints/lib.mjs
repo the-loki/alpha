@@ -61,15 +61,18 @@ export const LIBRARY_DEPENDENCIES = {
   'packages/tasks/src/': ['@alpha/domain'],
   'packages/providers/src/': ['@alpha/contract', '@alpha/domain'],
   'packages/mcp/src/': ['@alpha/domain'],
+  'packages/subagents/src/': ['@alpha/domain'],
   'packages/gate/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/state'],
   'packages/agent/src/': ['@alpha/domain', '@alpha/plugin', '@alpha/sessions'],
   'packages/internal-plugins/src/': [
     '@alpha/agent',
+    '@alpha/agent/testing',
     '@alpha/domain',
     '@alpha/gate',
     '@alpha/mcp',
     '@alpha/plugin',
     '@alpha/sessions',
+    '@alpha/subagents',
   ],
 }
 

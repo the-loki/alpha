@@ -12,6 +12,7 @@ import {
   type AgentMessage,
   type BeforeToolCallContext,
   type BeforeToolCallResult,
+  type ShouldStopAfterTurnContext,
   type ThinkingLevel,
 } from '@earendil-works/pi-agent-core'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
@@ -26,6 +27,11 @@ export interface AssembleOptions {
   messages?: AgentMessage[]
   thinkingLevel?: ThinkingLevel
   sessionId?: string
+  /**
+   * Where a run decides it has had enough turns — pi's own option, passed through, because a caller
+   * that hands the agent a budget is the only one that knows what the budget is.
+   */
+  shouldStopAfterTurn?: (context: ShouldStopAfterTurnContext, signal?: AbortSignal) => boolean | Promise<boolean>
 }
 
 /** pi hands a hook its own context; a face is handed `@alpha/plugin`'s call. */
@@ -63,5 +69,6 @@ export function assembleAgent(options: AssembleOptions): Agent {
     streamFn: options.models.streamSimple.bind(options.models),
     beforeToolCall: chainBeforeToolCall(options.plugins),
     ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
+    ...(options.shouldStopAfterTurn === undefined ? {} : { shouldStopAfterTurn: options.shouldStopAfterTurn }),
   })
 }

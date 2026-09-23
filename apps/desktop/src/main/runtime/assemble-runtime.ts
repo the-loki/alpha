@@ -16,6 +16,7 @@ import {
   createGatePlugin,
   createMcpPlugin,
   createRetryPlugin,
+  createSubagentsPlugin,
   createWorkspaceToolsPlugin,
 } from '@alpha/internal-plugins'
 import type { McpServers } from '@alpha/mcp'
@@ -101,7 +102,9 @@ export interface AssembledPlugins {
 /**
  * The plugins every real conversation is assembled from, in order: the workspace tools always, the
  * MCP servers' tools when this run holds any, the gate when the caller hands over the permissions to
- * run it with, then compaction and auto-retry.
+ * run it with, then compaction, auto-retry and the subagents. The last three are pushed after the
+ * rest on purpose: a subagent is assembled out of the plugins the caller runs on, so what it reads
+ * at a call is that list — the tools, and every block — and not itself.
  * This is the one place a capability is registered (C2.8): a feature that needs to be wired
  * somewhere else to reach the agent has not found its face yet.
  * The policies read the conversation through getters — the agent does not exist yet at assembly,
@@ -141,7 +144,14 @@ function pluginsFor(
     ...(options.compactionSettings === undefined ? {} : { settings: options.compactionSettings }),
   })
   const retry = createRetryPlugin(options.retryDelays === undefined ? {} : { delays: options.retryDelays })
-  return { plugins: [...plugins, compaction, retry], compact: () => compaction.compact(), retry }
+  const subagents = createSubagentsPlugin({
+    plugins: () => plugins,
+    models,
+    model: () => agent()?.state.model,
+    systemPrompt: async (subagent) =>
+      `${await systemPromptFor(session.workspacePath, readTextFile)}\n\n${subagent.prompt}`,
+  })
+  return { plugins: [...plugins, compaction, retry, subagents], compact: () => compaction.compact(), retry }
 }
 
 /** The assembled agent, or nothing when no model is configured: then nothing can run. */

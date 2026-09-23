@@ -107,4 +107,23 @@ describe('assembling the plugins into one agent', () => {
     expect(toolResultOf(agent.state.messages)).toMatchObject({ isError: true, text: 'the gate says no' })
     expect(assistantOf(agent.state.messages)?.content[0]).toMatchObject({ type: 'text', text: 'giving up' })
   })
+
+  /**
+   * A run that stops after a turn (the budget a subagent runs under): the turn's tool result is in
+   * hand and the loop ends there, rather than going back to the model for another turn. Without the
+   * option the second drive would be asked for, so the script is what makes the difference visible.
+   */
+  it('stops after the turn an option names, with the tool result already taken', async () => {
+    const models = scriptedModels([() => toolUseStream('read', { text: 'a.txt' }), () => textStream('and then')])
+    const agent = assembleAgent({
+      models,
+      model: aModel(),
+      plugins: [{ name: 'tools', tools: () => [toolNamed('read')] }],
+      systemPrompt: 's',
+      shouldStopAfterTurn: () => true,
+    })
+
+    await agent.prompt('go')
+    expect(agent.state.messages.map((message) => message.role)).toEqual(['system', 'user', 'assistant', 'toolResult'])
+  })
 })

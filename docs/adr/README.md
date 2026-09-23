@@ -34,6 +34,7 @@ does today.
 | [0022](0022-a-live-run-may-reach-a-provider.md) | A live run may reach a provider |
 | [0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) | The agent is embedded, and the workbench is the base |
 | [0028](0028-an-mcp-server-is-reached-not-loaded.md) | An MCP server is reached, not loaded in |
+| [0029](0029-a-subagent-is-one-tool-call.md) | A subagent is one tool call, and its work stays out of the conversation |
 | [0027](0027-caliper-design-language.md) | Caliper: an instrument in near-neutral and indigo |
 
 ## Superseded
