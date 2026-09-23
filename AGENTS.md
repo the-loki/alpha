@@ -23,13 +23,13 @@ permission level, approval, provider, credential, model).
 ### Layout
 
 `apps/desktop` is the workbench: `src/main` is the Electron main process and the agent runtime, `src/preload`
-is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its twelve libraries — the dictionary
+is the contextBridge, `src/renderer` is the Solid UI. `packages/` holds its fourteen libraries — the dictionary
 (`@alpha/i18n`), the rules (`@alpha/domain`), the contract between the processes (`@alpha/contract`), the plugin
-base (`@alpha/plugin`), the capabilities hung on that base (`@alpha/gate`, `@alpha/retry`, `@alpha/coding-tools`
-— the last names the agent library, which is what C2.0's exception is for), and the files the workbench keeps for
-itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`, `@alpha/tasks`, `@alpha/providers`. No library
-may import Electron, and only a capability package carrying its own adapter may name the agent library; the app
-depends on them and never backwards.
+base (`@alpha/plugin`), the capabilities hung on that base (`@alpha/gate`, `@alpha/retry`, `@alpha/coding-tools`,
+`@alpha/compaction`), the fold from a session's entries to the messages an agent starts from (`@alpha/history`),
+and the files the workbench keeps for itself: `@alpha/state`, `@alpha/sessions`, `@alpha/conversations`,
+`@alpha/tasks`, `@alpha/providers`. No library may import Electron, and only the packages C2.0 lists may name the
+agent library; the app depends on them and never backwards.
 
 ### Before writing code here
 

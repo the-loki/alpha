@@ -199,3 +199,10 @@ The persisted, replayable record of a conversation: its messages, tool calls, an
 Rendered by the workbench; never edited by hand. The store is Alpha's own — append-only JSONL
 entries, written as the run produces them — and a transcript written in the pi era is read in
 place, not converted.
+
+### History
+
+The messages an agent starts a run with, folded from the transcript's entries: every message entry
+crosses as it was written, and a compaction stands in for everything before it. The transcript is
+what is stored; the history is what the agent reads. Avoid: *context*, which is pi's word for the
+same array and says nothing about where it came from.

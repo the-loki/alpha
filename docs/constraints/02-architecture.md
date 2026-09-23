@@ -10,11 +10,12 @@ the gate, the session store, the conversation list, and the credentials. The win
 pi package — it reaches the agent through the contract.
 
 Two kinds of package may name it, and nothing else may: `main`, which drives the run, and the
-capability packages whose face *is* the agent's own shape (a tool is an `AgentTool`), which is
+packages listed by name in the checker (`AGENT_LINKING_PACKAGES`, and the `May import` column in
+C2.1) — the capabilities whose face *is* the agent's own shape (a tool is an `AgentTool`), which is
 [C2.8](#c28--a-capability-is-a-plugin-not-a-branch-in-the-runtime)'s exception carrying its own
-adapter. A capability package that names the library has left the workbench's vocabulary behind, so
-it is listed by name in the checker (`AGENT_LINKING_PACKAGES`, and the `May import` column in C2.1)
-rather than inferred: the exception stays countable.
+adapter, and `@alpha/history`, the fold that turns a session's entries into the messages an agent
+starts from. The list is written down rather than inferred, so the exception stays countable, and
+a package that wants in asks by adding itself to it and to the table.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:no-agent-dependency` fails on an
 import of a `@earendil-works/*` package (or a `pi-agent-core`/`pi-ai` name) anywhere under
@@ -32,18 +33,21 @@ apps/desktop/src/          the app: one package, three processes
                                     └──> @alpha/plugin       processes, and the plugin base
                           ├──> @alpha/state
                           ├──> @alpha/sessions
+                          ├──> @alpha/history ──> @alpha/sessions
                           ├──> @alpha/conversations
                           ├──> @alpha/tasks
                           ├──> @alpha/providers ──> @alpha/contract
                           ├──> @alpha/gate ──> @alpha/plugin, @alpha/state
                           ├──> @alpha/retry ──> @alpha/plugin
-                          └──> @alpha/coding-tools ──> the agent library
+                          ├──> @alpha/coding-tools ──> the agent library
+                          └──> @alpha/compaction ──> @alpha/history, @alpha/plugin, the agent library
 ```
 
 An arrow points the way an import goes: the app may import any library; the capabilities add what
-they need — the two on the pure base take the base (the gate also reads the state file), and
-`@alpha/coding-tools` names the agent library itself, which is what C2.0's exception is for;
-everything else sits directly on the rules.
+they need — the two pure ones take the plugin base (the gate also reads the state file), compaction
+takes the plugin base, the session store and the history fold, and the two that carry their own
+adapters name the agent library, which is what C2.0's exception is for; everything else sits
+directly on the rules.
 
 | Library | Holds | May import |
 | --- | --- | --- |
@@ -53,12 +57,14 @@ everything else sits directly on the rules.
 | `@alpha/plugin` | The plugin base: what a face is handed and what it answers, and how faces in order become one decision | `@alpha/domain` |
 | `@alpha/state` | The one file the workbench persists for itself | `@alpha/domain` |
 | `@alpha/sessions` | The conversation on disk: the JSONL transcript, its entries, the decisions made about its tool calls | `@alpha/domain` |
+| `@alpha/history` | The messages an agent starts from: the entries folded into pi's transcript, with the entry each message came from | `@alpha/domain`, `@alpha/sessions`, the agent library |
 | `@alpha/conversations` | The list the sidebar shows, the bookkeeping that keeps it true, and the messages waiting to be sent | `@alpha/domain` |
 | `@alpha/tasks` | The scheduled tasks: the file, the clock that decides when one comes due, the service | `@alpha/domain` |
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
 | `@alpha/gate` | The permission ladder, the approvals broker, the refusal a run with nobody watching gets, the ports into the workbench's own file, and the face it hangs on the agent | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
 | `@alpha/retry` | Auto-retry: the decision a failed run's end is judged with, and the hook that spends an attempt on it | `@alpha/plugin` |
 | `@alpha/coding-tools` | The four tools the agent works with — read, bash, edit, write — over the conversation's workspace, as a face on the base | the agent library, node |
+| `@alpha/compaction` | Folding a long conversation: what it occupies, the tail a summary leaves, and the plugin that summarizes, rewrites the agent and writes the entry | `@alpha/domain`, `@alpha/history`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
 
 `packages/` holds libraries — what the workbench depends on. The workbench lives in
@@ -190,12 +196,13 @@ copied out of the plugin.
 
 Where that decision lives follows the rule the packages were split by ([C2.1](#c21--one-workbench-a-handful-of-libraries-one-direction)):
 the part that holds without pi names nothing of pi's and lives in a library, where it is read and
-tested alone. Three capabilities now go all the way — `@alpha/gate` decides what a call may do
-*and* carries its own `beforeToolCall` face; `@alpha/retry` decides whether a failed run is driven
-again *and* carries its own `afterRun`; `@alpha/coding-tools` offers the four tools and names the
-agent library to do it — so the app holds nothing but the registrations. What stays in `main` is the
-run itself: assembly, the `afterRun` driver, the events translated for the window. That is the base
-rather than a capability, and a capability never grows a branch there.
+tested alone. Four capabilities now go all the way — `@alpha/gate` decides what a call may do *and*
+carries its own `beforeToolCall` face; `@alpha/retry` decides whether a failed run is driven again
+*and* carries its own `afterRun`; `@alpha/coding-tools` offers the four tools and names the agent
+library to do it; `@alpha/compaction` measures, summarizes and rewrites, with its threshold as a
+policy that needs no agent — so the app holds nothing but the registrations. What stays in `main` is
+the run itself: assembly, the `afterRun` driver, the events translated for the window. That is the
+base rather than a capability, and a capability never grows a branch there.
 
 `pluginsFor` in the assembly is the one place a capability is registered: the runtime holds the
 faces and handles the plugins gave it, and a feature that needs registration somewhere else to reach

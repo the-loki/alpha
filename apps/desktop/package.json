@@ -15,10 +15,12 @@
   },
   "dependencies": {
     "@alpha/coding-tools": "workspace:*",
+    "@alpha/compaction": "workspace:*",
     "@alpha/contract": "workspace:*",
     "@alpha/conversations": "workspace:*",
     "@alpha/domain": "workspace:*",
     "@alpha/gate": "workspace:*",
+    "@alpha/history": "workspace:*",
     "@alpha/i18n": "workspace:*",
     "@alpha/plugin": "workspace:*",
     "@alpha/providers": "workspace:*",

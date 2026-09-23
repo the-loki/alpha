@@ -1,6 +1,6 @@
 import type { AgentEntry } from '@alpha/sessions'
 import { describe, expect, it } from 'vitest'
-import { alignedHistoryOf, contextOf } from './agent-context.ts'
+import { alignedHistoryOf, contextOf } from './history.ts'
 
 /** An entry as the store writes it: identified, chained, carrying its message. */
 const message = (id: string, role: string, text: string): AgentEntry => ({

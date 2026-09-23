@@ -29,6 +29,9 @@ importers:
       '@alpha/coding-tools':
         specifier: workspace:*
         version: link:../../packages/coding-tools
+      '@alpha/compaction':
+        specifier: workspace:*
+        version: link:../../packages/compaction
       '@alpha/contract':
         specifier: workspace:*
         version: link:../../packages/contract
@@ -41,6 +44,9 @@ importers:
       '@alpha/gate':
         specifier: workspace:*
         version: link:../../packages/gate
+      '@alpha/history':
+        specifier: workspace:*
+        version: link:../../packages/history
       '@alpha/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -121,6 +127,27 @@ importers:
         specifier: ^1.3.7
         version: 1.3.7
 
+  packages/compaction:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@alpha/history':
+        specifier: workspace:*
+        version: link:../history
+      '@alpha/plugin':
+        specifier: workspace:*
+        version: link:../plugin
+      '@alpha/sessions':
+        specifier: workspace:*
+        version: link:../sessions
+      '@earendil-works/pi-agent-core':
+        specifier: 0.86.1
+        version: 0.86.1(ws@8.21.3)
+      '@earendil-works/pi-ai':
+        specifier: 0.86.1
+        version: 0.86.1(ws@8.21.3)
+
   packages/contract:
     dependencies:
       '@alpha/domain':
@@ -156,6 +183,18 @@ importers:
       '@alpha/state':
         specifier: workspace:*
         version: link:../state
+
+  packages/history:
+    dependencies:
+      '@alpha/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@alpha/sessions':
+        specifier: workspace:*
+        version: link:../sessions
+      '@earendil-works/pi-agent-core':
+        specifier: 0.86.1
+        version: 0.86.1(ws@8.21.3)
 
   packages/i18n: {}
 

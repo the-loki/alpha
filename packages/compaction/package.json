@@ -1,0 +1,17 @@
+{
+  "name": "@alpha/compaction",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@alpha/domain": "workspace:*",
+    "@alpha/history": "workspace:*",
+    "@alpha/plugin": "workspace:*",
+    "@alpha/sessions": "workspace:*",
+    "@earendil-works/pi-agent-core": "0.86.1",
+    "@earendil-works/pi-ai": "0.86.1"
+  }
+}

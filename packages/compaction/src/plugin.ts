@@ -9,23 +9,19 @@
  * Everything about the conversation is read at the moment of compacting — the agent, the model,
  * the session id — because all three move under a long-lived conversation: a model swap takes
  * effect on the next turn, and a fork moves the session the store writes into.
+ *
+ * The threshold and the tail are `policy.ts`, which needs no agent; what is here is the half that
+ * does — the summary through the model, the rewrite, the entry.
  */
-
 import type { Undef } from '@alpha/domain'
+import { alignedHistoryOf } from '@alpha/history'
+import type { AfterRunHook } from '@alpha/plugin'
 import { type SessionStore, tipPath } from '@alpha/sessions'
-import type { Agent, AgentMessage } from '@earendil-works/pi-agent-core'
-import {
-  type CompactionSettings,
-  calculateContextTokens,
-  DEFAULT_COMPACTION_SETTINGS,
-  estimateTokens,
-  generateSummaryWithUsage,
-  shouldCompact,
-} from '@earendil-works/pi-agent-core'
+import type { Agent, AgentMessage, CompactionSettings } from '@earendil-works/pi-agent-core'
+import { DEFAULT_COMPACTION_SETTINGS, generateSummaryWithUsage } from '@earendil-works/pi-agent-core'
 import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
-import { alignedHistoryOf } from './agent-context.ts'
-import type { AlphaPlugin } from './plugin-contract.ts'
+import { compactionDue, keptCountOf } from './policy.ts'
 
 /** What the plugin needs. The getters are read per compaction, never captured. */
 export interface CompactionPluginPorts {
@@ -45,33 +41,10 @@ export interface CompactionPluginPorts {
 }
 
 /** The plugin plus the on-demand path the runtime's `compact()` calls. */
-export interface CompactionPlugin extends AlphaPlugin {
+export interface CompactionPlugin {
+  name: string
+  afterRun: AfterRunHook
   compact(): Promise<boolean>
-}
-
-/** The context the transcript says it occupies: the largest assistant usage seen. */
-function tokensOf(messages: AgentMessage[]): number {
-  let largest = 0
-  for (const message of messages) {
-    if (message.role !== 'assistant' || message.usage === undefined) continue
-    largest = Math.max(largest, calculateContextTokens(message.usage))
-  }
-  return largest
-}
-
-/** How many trailing messages fit in the tokens the settings keep — the tail a summary leaves. */
-function keptCountOf(messages: AgentMessage[], keepRecentTokens: number): number {
-  let kept = 0
-  let tokens = 0
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index]
-    if (message === undefined) continue
-    const cost = estimateTokens(message)
-    if (tokens + cost > keepRecentTokens) break
-    tokens += cost
-    kept += 1
-  }
-  return kept
 }
 
 export function createCompactionPlugin(ports: CompactionPluginPorts): CompactionPlugin {
@@ -144,7 +117,7 @@ async function compactNow(
   const agent = ports.agent()
   const model = ports.model()
   if (agent === undefined || model === undefined) return false
-  if (!force && !shouldCompact(tokensOf(agent.state.messages), model.contextWindow, settings)) return false
+  if (!force && !compactionDue(agent.state.messages, model.contextWindow, settings)) return false
   const body = messagesOf(agent)
   const kept = keptCountOf(body, settings.keepRecentTokens)
   const summarized = body.slice(0, body.length - kept)
