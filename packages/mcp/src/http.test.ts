@@ -42,7 +42,12 @@ beforeAll(async () => {
       body += String(chunk)
     })
     request.on('end', () => {
-      const message = JSON.parse(body) as { id?: unknown; method?: string; params?: Record<string, unknown> }
+      const message = JSON.parse(body) as {
+        id?: unknown
+        method?: string
+        params?: Record<string, unknown>
+        error?: { code?: number }
+      }
       seen.push({ method: message.method, authorization: request.headers.authorization, body })
       if (request.url === '/broken') {
         response.writeHead(500).end('no')
@@ -53,7 +58,23 @@ beforeAll(async () => {
         response.writeHead(202).end()
         return
       }
+      if (message.method === undefined) {
+        response.writeHead(202).end()
+        return
+      }
       const answer = JSON.stringify(answerFor({ ...message, id: message.id }))
+      if (request.url === '/reverse' && message.method === 'tools/call') {
+        const reverse = JSON.stringify({
+          jsonrpc: '2.0',
+          id: message.id,
+          method: 'sampling/createMessage',
+          params: { messages: [] },
+        })
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        response.write(`event: message\ndata: ${reverse}\n\n`)
+        setTimeout(() => response.end(`event: message\ndata: ${answer}\n\n`), 50)
+        return
+      }
       if (request.url === '/stream') {
         response.writeHead(200, { 'content-type': 'text/event-stream' })
         response.end(`event: message\ndata: ${answer}\n\n`)
@@ -73,6 +94,25 @@ afterAll(async () => {
 })
 
 describe('an MCP server over HTTP', () => {
+  it('answers a same-id server request without consuming the tool result', async () => {
+    const servers = await connectMcpServers([{ name: 'remote', url: `${origin}/reverse` }])
+    const result = await servers.call('remote', 'reach', {})
+    expect(result.content).toEqual([{ type: 'text', text: 'reached reach' }])
+
+    const call = seen.findLast((request) => request.method === 'tools/call')
+    const callId = call === undefined ? undefined : (JSON.parse(call.body) as { id: unknown }).id
+    const replied = () =>
+      seen.some((request) => {
+        const reply = JSON.parse(request.body) as { id?: unknown; error?: { code?: number } }
+        return reply.id === callId && reply.error?.code === -32601
+      })
+    for (let attempt = 0; attempt < 100 && !replied(); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    expect(replied()).toBe(true)
+    await servers.close()
+  })
+
   it('lists and calls a server that answers with a JSON body', async () => {
     const servers = await connectMcpServers([
       { name: 'remote', url: `${origin}/json`, headers: { authorization: 'Bearer s3cret' } },

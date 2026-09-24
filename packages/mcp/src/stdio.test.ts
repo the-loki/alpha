@@ -81,6 +81,13 @@ describe('an MCP server over stdio', () => {
     await servers.close()
   })
 
+  it('waits for the real answer after a server request reuses the tool call id', async () => {
+    const servers = await connectMcpServers([scripted()])
+    const result = await servers.call('scripted', 'reverse', {})
+    expect(result.content).toEqual([{ type: 'text', text: 'real result' }])
+    await servers.close()
+  })
+
   it('keeps a failure the server reported, and refuses a method it does not have', async () => {
     const servers = await connectMcpServers([scripted()])
     const refused = await servers.call('scripted', 'boom', {})

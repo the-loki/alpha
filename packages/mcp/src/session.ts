@@ -53,16 +53,22 @@ interface Answer {
 
 type Notify = (method: string, params: unknown) => void
 
-/** How a frame's messages are read: an answer to whoever waits, and anything else to the caller. */
-function handlersOf(waiting: Map<number, Waiting>, end: (why: string) => void, notifications?: Notify): FrameHandlers {
+/** How a frame's messages are read: an answer to whoever waits, or an inbound request/notification. */
+function handlersOf(
+  waiting: Map<number, Waiting>,
+  end: (why: string) => void,
+  rejectRequest: (id: string | number) => void,
+  notifications?: Notify,
+): FrameHandlers {
   return {
     message: (text) => {
       const answer = answerOf(text)
       if (answer === undefined) return
-      // A message with a method and no id is the server saying something, not answering: it has
-      // nobody waiting for it, and what it means is the caller's to decide.
-      if (answer.id === undefined && typeof answer.method === 'string') {
-        notifications?.(answer.method, answer.params)
+      // Requests and notifications carry a method; neither can answer our outbound request, even
+      // when the server reused the same id in its own direction.
+      if (typeof answer.method === 'string') {
+        if (answer.id === undefined) notifications?.(answer.method, answer.params)
+        else if (typeof answer.id === 'string' || typeof answer.id === 'number') rejectRequest(answer.id)
         return
       }
       deliver(answer, waiting)
@@ -103,6 +109,13 @@ function stopOf(waiting: Map<number, Waiting>, notify: Notify, id: number, metho
   }
 }
 
+function rejectUnknownRequest(frame: McpFrame, id: string | number): void {
+  const reply = { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } }
+  void frame.send(JSON.stringify(reply)).catch(() => {
+    // No caller waits for this answer; the server may already have gone away.
+  })
+}
+
 export function createSession(
   open: (handlers: FrameHandlers) => McpFrame,
   notifications?: (method: string, params: unknown) => void,
@@ -120,7 +133,8 @@ export function createSession(
     }
   }
 
-  const frame = open(handlersOf(waiting, end, notifications))
+  let frame: McpFrame
+  frame = open(handlersOf(waiting, end, (id) => rejectUnknownRequest(frame, id), notifications))
 
   const notify: Notify = (method, params) => {
     void frame.send(JSON.stringify({ jsonrpc: '2.0', method, params })).catch(() => {

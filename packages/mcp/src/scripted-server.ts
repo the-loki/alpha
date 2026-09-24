@@ -92,6 +92,11 @@ function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
   const args = params.arguments
   const given = typeof args === 'object' && args !== null ? (args as Record<string, unknown>) : {}
   if (name === 'quit') process.exit(4)
+  if (name === 'reverse') {
+    write({ jsonrpc: '2.0', id, method: 'sampling/createMessage', params: { messages: [] } })
+    queueMicrotask(() => write({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'real result' }] } }))
+    return undefined
+  }
   if (name === 'grow') {
     TOOLS.push(GROWN)
     // The answer comes first and the notification after it, in the order a server would send them.

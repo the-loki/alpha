@@ -86,4 +86,6 @@ second place to audit and a way to say yes without ever being asked.
   is nothing here they belong to (`progress` is for calls we never gave a token, `message` is a log
   with no log, `cancelled` cancels requests we did not send). Server-pushed *requests* — sampling,
   elicitation — are still the second face this ADR left alone: they need a hook pointing inward,
-  and the decisions that come with it (#185).
+  and the decisions that come with it (#185). Until that hook exists, Alpha declares neither
+  capability and answers such requests with `Method not found`; a request with an ID is never
+  mistaken for a response to Alpha's own call, even when the IDs match (#209).
