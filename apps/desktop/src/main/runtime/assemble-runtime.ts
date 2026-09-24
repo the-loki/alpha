@@ -100,11 +100,18 @@ export interface AssembledPlugins {
 }
 
 /**
- * The plugins every real conversation is assembled from, in order: the workspace tools always, the
- * MCP servers' tools when this run holds any, the gate when the caller hands over the permissions to
- * run it with, then compaction, auto-retry and the subagents. The last three are pushed after the
- * rest on purpose: a subagent is assembled out of the plugins the caller runs on, so what it reads
- * at a call is that list — the tools, and every block — and not itself.
+ * The plugins every real conversation is assembled from: the workspace tools always, the MCP
+ * servers' tools when this run holds any, the gate when the caller hands over the permissions to
+ * run it with, then compaction, auto-retry and the subagents.
+ *
+ * It is written as two lists, and which one a capability goes in is what decides whether a subagent
+ * sees it. `shared` is what the run and every child it hands work to are both made of — a
+ * capability's tools, and the blocks that stand in front of them — and `shared` is what the
+ * subagents plugin is given, so a child is built out of what came before it and never out of
+ * itself. The after-run half (compaction, retry, the `task` tool) stays out of `shared`, because it
+ * belongs to the conversation that is running: `@alpha/internal-plugins` says as much for its own
+ * face, and the registry never lists `task` for a subagent either, so no child can hand work on.
+ *
  * This is the one place a capability is registered (C2.8): a feature that needs to be wired
  * somewhere else to reach the agent has not found its face yet.
  * The policies read the conversation through getters — the agent does not exist yet at assembly,
@@ -117,11 +124,11 @@ function pluginsFor(
   agent: () => Undef<Agent>,
   announce: (callId: string, record: ApprovalRecord) => void,
 ): AssembledPlugins {
-  const plugins: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
-  if (options.mcp !== undefined) plugins.push(createMcpPlugin({ servers: options.mcp, agent: () => agent() }))
+  const shared: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
+  if (options.mcp !== undefined) shared.push(createMcpPlugin({ servers: options.mcp, agent: () => agent() }))
   const permissions = options.permissions?.()
   if (permissions !== undefined) {
-    plugins.push(
+    shared.push(
       createGatePlugin({
         conversationId: options.conversation.id,
         workspacePath: session.workspacePath,
@@ -145,13 +152,13 @@ function pluginsFor(
   })
   const retry = createRetryPlugin(options.retryDelays === undefined ? {} : { delays: options.retryDelays })
   const subagents = createSubagentsPlugin({
-    plugins: () => plugins,
+    plugins: () => shared,
     models,
     model: () => agent()?.state.model,
     systemPrompt: async (subagent) =>
       `${await systemPromptFor(session.workspacePath, readTextFile)}\n\n${subagent.prompt}`,
   })
-  return { plugins: [...plugins, compaction, retry, subagents], compact: () => compaction.compact(), retry }
+  return { plugins: [...shared, compaction, retry, subagents], compact: () => compaction.compact(), retry }
 }
 
 /** The assembled agent, or nothing when no model is configured: then nothing can run. */
