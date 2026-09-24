@@ -56,11 +56,8 @@ export interface OpenRuntimeOptions {
   models?: () => Models
   /** The conversation's ledger: it keeps the gate's decisions, and reads them for the rows. */
   decisions: DecisionLedger
-  /**
-   * The gate's reach into the workbench, when the caller has one: absent ports leave every call
-   * ungated, which the tests use and a caller who decided that does too.
-   */
-  permissions?: () => PermissionPorts
+  /** The gate's reach into the workbench, required for every assembled agent. */
+  permissions: () => PermissionPorts
   /**
    * The MCP servers this workbench run holds, when it has any: one hub for the run, connected by
    * `main`, whose tools join the agent's own. Absent means this workbench reaches no server.
@@ -101,8 +98,7 @@ export interface AssembledPlugins {
 
 /**
  * The plugins every real conversation is assembled from: the workspace tools always, the MCP
- * servers' tools when this run holds any, the gate when the caller hands over the permissions to
- * run it with, then compaction, auto-retry and the subagents.
+ * servers' tools when this run holds any, the gate, then compaction, auto-retry and the subagents.
  *
  * It is written as two lists, and which one a capability goes in is what decides whether a subagent
  * sees it. `shared` is what the run and every child it hands work to are both made of — a
@@ -126,18 +122,15 @@ function pluginsFor(
 ): AssembledPlugins {
   const shared: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
   if (options.mcp !== undefined) shared.push(createMcpPlugin({ servers: options.mcp, agent: () => agent() }))
-  const permissions = options.permissions?.()
-  if (permissions !== undefined) {
-    shared.push(
-      createGatePlugin({
-        conversationId: options.conversation.id,
-        workspacePath: session.workspacePath,
-        permissions,
-        note: (callId, record) => options.decisions.note(callId, record),
-        onDecided: announce,
-      }),
-    )
-  }
+  shared.push(
+    createGatePlugin({
+      conversationId: options.conversation.id,
+      workspacePath: session.workspacePath,
+      permissions: options.permissions(),
+      note: (callId, record) => options.decisions.note(callId, record),
+      onDecided: announce,
+    }),
+  )
   const compaction = createCompactionPlugin({
     conversationId: options.conversation.id,
     workspacePath: session.workspacePath,

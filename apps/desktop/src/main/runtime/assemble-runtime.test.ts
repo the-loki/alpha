@@ -12,9 +12,7 @@ import { openRuntime } from './assemble-runtime.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 
 /**
- * What a real opening assembles (ADR-0025): the workspace tools always, and the gate exactly when the
- * caller hands over the permissions to run it with — absent ports leave calls ungated, which is
- * the behavior the tests have always had, and the option stays honest about it.
+ * What a real opening assembles (ADR-0025): the workspace tools and their gate are always present.
  */
 
 const testCipher: SecretCipher = {
@@ -43,9 +41,16 @@ const conversationIn = (workspace: string): ConversationSummary => ({
   thinkingLevel: 'off',
 })
 
+const permissionsAt = (level: PermissionLevel): PermissionPorts => ({
+  level: () => level,
+  rules: () => [],
+  remember: () => undefined,
+  ask: async () => ({ decision: 'deny' }),
+})
+
 interface OpenOptions {
   drives: Array<() => AssistantMessageEventStream>
-  /** The permissions the gate decides with, or nothing — which is the ungated case. */
+  /** The answer to a call that the gate asks about. */
   ports?: Pick<PermissionPorts, 'ask'>
   level?: PermissionLevel
   /** The backoff the assembled retry policy waits with, shrunk for the test. */
@@ -72,18 +77,13 @@ const opened = async (
     models: () => scriptedModels(options.drives),
     decisions: new DecisionLog(dataDirectory).opened(conversation.id),
     retryDelays: options.retryDelays,
-    permissions:
-      ports === undefined
-        ? undefined
-        : () => ({
-            level: () => level,
-            rules: () => [],
-            remember: () => undefined,
-            ask: async (conversationId: string, ask: Parameters<PermissionPorts['ask']>[1]) => {
-              asked.push(ask.callId)
-              return ports.ask(conversationId, ask)
-            },
-          }),
+    permissions: () => ({
+      ...permissionsAt(level),
+      ask: async (conversationId: string, ask: Parameters<PermissionPorts['ask']>[1]) => {
+        asked.push(ask.callId)
+        return ports?.ask(conversationId, ask) ?? { decision: 'deny' }
+      },
+    }),
     emit: (event) => events.push(event),
   })
   return { runtime, events, asked }
@@ -96,16 +96,19 @@ const runAndSettle = async (runtime: ConversationRuntime, text: string): Promise
 }
 
 describe('[runtime] what an opening assembles', () => {
-  it('no permissions ports means calls run ungated, as the tests have always had it', async () => {
-    const { runtime, events } = await opened({
-      drives: [() => toolUseStream('bash', { command: 'echo ungated' }), () => endOf('Done.')],
+  it('a Plan conversation cannot run bash through the assembled runtime', async () => {
+    const { runtime, events, asked } = await opened({
+      level: 'plan',
+      drives: [() => toolUseStream('bash', { command: 'echo must-not-run' }), () => endOf('Done.')],
     })
 
     await runAndSettle(runtime, 'run it')
 
-    expect(events.some((event) => event.type === 'approval_requested')).toBe(false)
+    expect(asked).toEqual([])
+    const decided = events.find((event) => event.type === 'tool_decided')
+    expect(decided?.type === 'tool_decided' ? decided.approval.kind : '').toBe('blocked')
     const finished = events.find((event) => event.type === 'tool_finished')
-    expect(finished?.type === 'tool_finished' ? finished.output : '').toContain('ungated')
+    expect(finished?.type === 'tool_finished' ? finished.status : '').toBe('failed')
   })
 
   it('ports on the opening put the gate on the path, and the announcement rides the runtime', async () => {
@@ -176,6 +179,7 @@ describe('[runtime] the policies an opening assembles', () => {
         providers,
         models: () => scriptedModels(drives, [{ ...aModel(), contextWindow: 5 }]),
         decisions: new DecisionLog(dataDirectory).opened('c1'),
+        permissions: () => permissionsAt('ask'),
         compactionSettings: { enabled: true, reserveTokens: 4, keepRecentTokens: 0 },
         emit: (event) => events.push(event),
       })
