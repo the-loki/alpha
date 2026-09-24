@@ -47,9 +47,11 @@ conversation would have been the obvious wiring — `pluginsFor` is where a capa
 and it is the wrong lifetime: a conversation is opened and closed as a person moves around the
 window, and a server is a child process or an endpoint that must not be started again for each one.
 
-**A server's tool is a tool.** No new face is added to the base for them. The name the model sees
-carries the server (`mcp__<server>__<tool>`), because two servers may each offer a `read` and the
-model has to reach the one it means; the parameters are the server's JSON Schema, taken as the shape
+**A server's tool is a tool.** No new face is added to the base for them. Ordinary names carry the
+server (`mcp__<server>__<tool>`), because two servers may each offer a `read` and the model has to
+reach the one it means. Names with special characters use a readable part plus a stable digest, and
+long names use a fixed-length digest; this keeps distinct tools distinct within the provider's
+64-character name limit. The parameters are the server's JSON Schema, taken as the shape
 it promised; calls run one at a time, because a server may not answer two at once; the `AbortSignal`
 a stop travels on is forwarded, and a cancelled request is announced to the server as the protocol
 asks. Whether a call may run is the ladder's answer and nothing else's — an MCP tool name is a name

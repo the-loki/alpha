@@ -58,6 +58,39 @@ describe('[mcp] the plugin face', () => {
     expect(tool?.executionMode).toBe('sequential')
   })
 
+  it('assembles distinct punctuation and underscore names and still calls the original tool', async () => {
+    const { servers, asked } = hubOf(() => answered('the dotted tool'))
+    const offered = [TOOL, { ...TOOL, name: 'read.file' }]
+    const plugin = createMcpPlugin({ servers: { ...servers, tools: () => offered }, conversationId: 'conversation-1' })
+    const host = createPluginHost([plugin])
+    const { agent } = assembleAgentWithHost({
+      models: scriptedModels([]),
+      model: aModel(),
+      host,
+      systemPrompt: 's',
+    })
+    const names = agent.state.tools.map((tool) => tool.name)
+
+    expect(new Set(names).size).toBe(2)
+    expect(names).toContain('mcp__files__read_file')
+    const dotted = agent.state.tools.find((tool) => tool.name === mcpToolName('files', 'read.file'))
+    await dotted?.execute('call-1', {})
+    expect(asked[0]?.tool).toBe('read.file')
+    await host.close()
+  })
+
+  it('bounds exceptional and long names without merging distinct tools', () => {
+    const names = [
+      mcpToolName('files', 'read.file'),
+      mcpToolName('files', 'read_file'),
+      mcpToolName('files', 'x__cmVhZC5maWxl'),
+      mcpToolName('s'.repeat(80), 'a'.repeat(100)),
+      mcpToolName('s'.repeat(80), 'b'.repeat(100)),
+    ]
+    expect(new Set(names).size).toBe(names.length)
+    expect(names.every((name) => name.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(name))).toBe(true)
+  })
+
   it('carries the call to the server that owns the tool, arguments and all', async () => {
     const { servers, asked } = hubOf(() => answered('the file'))
     const [tool] = createMcpPlugin({ servers, conversationId: 'conversation-1' }).tools()
@@ -129,6 +162,10 @@ describe('[mcp] the plugin face', () => {
       'mcp__files__stat_file',
       'read',
     ])
+    offered = [...offered, { server: 'files', name: 'read.file', description: 'Reads a dot.', inputSchema: {} }]
+    for (const listener of listeners) listener()
+    expect(agent.state.tools.map((tool) => tool.name)).toContain(mcpToolName('files', 'read.file'))
+    expect(new Set(agent.state.tools.map((tool) => tool.name)).size).toBe(4)
     await host.close()
     expect(listeners.size).toBe(0)
   })

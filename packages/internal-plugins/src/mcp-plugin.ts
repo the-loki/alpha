@@ -19,6 +19,7 @@
  * story: there is nothing to add and nothing to remember to add.
  */
 
+import { createHash } from 'node:crypto'
 import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { type TSchema, Type } from 'typebox'
@@ -38,13 +39,25 @@ export interface McpPlugin {
 
 /** What every tool from a server is called. */
 const MCP_PREFIX = 'mcp__'
+const MAX_TOOL_NAME = 64
+const SAFE_SERVER = /^[a-z0-9][a-z0-9-]*$/
+const SAFE_TOOL = /^[a-zA-Z0-9_-]+$/
 
 /** The name the model sees: the server's in front of the tool's, so two servers cannot collide. */
 export function mcpToolName(server: string, tool: string): string {
-  return `${MCP_PREFIX}${wordOf(server)}__${wordOf(tool)}`
+  const ordinary = `${MCP_PREFIX}${server}__${tool}`
+  if (SAFE_SERVER.test(server) && SAFE_TOOL.test(tool) && !tool.startsWith('x__') && ordinary.length <= MAX_TOOL_NAME) {
+    return ordinary
+  }
+  const digest = createHash('sha256')
+    .update(JSON.stringify([server, tool]))
+    .digest('base64url')
+  const encoded = `${MCP_PREFIX}${server}__x__${wordOf(tool).slice(0, 24)}__${digest.slice(0, 22)}`
+  // The triple underscore cannot begin an ordinary name: configured server ids never start there.
+  return SAFE_SERVER.test(server) && encoded.length <= MAX_TOOL_NAME ? encoded : `${MCP_PREFIX}_${digest}`
 }
 
-/** A name a provider will take: the characters a function name may carry, and nothing else. */
+/** A readable part for exceptional tool names; the digest, rather than this part, distinguishes them. */
 function wordOf(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, '_')
 }
