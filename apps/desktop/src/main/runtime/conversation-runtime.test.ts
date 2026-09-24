@@ -154,7 +154,7 @@ describe('[runtime] a conversation turn, driven by the assembled agent', () => {
     const { runtime, events, store, workspace } = openRuntime({ drives: [() => textStream('Hello there.')] })
 
     await runtime.prompt('fix the parser')
-    await runtime.settle()
+    expect(await runtime.settle()).toBe(true)
     await runtime.close()
 
     const said = events.find((event) => event.type === 'user_message')
@@ -372,7 +372,7 @@ describe('[runtime] stopping a run', () => {
     await waitedFor(events, 'assistant_message_started')
     await runtime.abort()
     stream?.push({ type: 'error', reason: 'aborted', error: partialAssistant('the part that arrived', 'aborted') })
-    await runtime.settle()
+    expect(await runtime.settle()).toBe(false)
     await runtime.close()
 
     expect(typesOf(events)).toContain('turn_finished')
@@ -415,7 +415,7 @@ describe('[runtime] a transient failure the retry policy takes', () => {
     })
 
     await runtime.prompt('fix the parser')
-    await runtime.settle()
+    expect(await runtime.settle()).toBe(true)
     await runtime.close()
 
     // The turn stayed open across the retry: started once, finished once, never failed.
@@ -457,7 +457,7 @@ describe('[runtime] a transient failure the retry policy takes', () => {
     })
 
     await runtime.prompt('fix the parser')
-    await runtime.settle()
+    expect(await runtime.settle()).toBe(false)
     await runtime.close()
 
     expect(rowOf(events, 'turn_started')).toHaveLength(1)

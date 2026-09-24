@@ -67,6 +67,7 @@ export class ConversationRuntime {
   private sessionId: string
   private readonly workspacePath: string
   private inFlight: Undef<Promise<void>>
+  private lastRunSucceeded = false
   private lastFailedEntryId: Undef<string>
   private lastFailedMessageId: Undef<string>
   /**
@@ -109,6 +110,7 @@ export class ConversationRuntime {
     // One run at a time: the agent refuses to overlap them, so a prompt sent while the last one is
     // still settling waits for it, and then runs.
     await this.driving
+    this.lastRunSucceeded = false
     this.lastFailedEntryId = undefined
     this.lastFailedMessageId = undefined
     const images = imagesOf(attachments) ?? []
@@ -167,8 +169,9 @@ export class ConversationRuntime {
    * rather than guessing. The run's other half, the plugins' afterRun loop, is part of the promise
    * waited on.
    */
-  public async settle(): Promise<void> {
+  public async settle(): Promise<boolean> {
     await this.driving
+    return this.lastRunSucceeded
   }
 
   /** Switches the model this conversation runs on; takes effect on the next turn. */
@@ -231,7 +234,8 @@ export class ConversationRuntime {
     if (agent === undefined) return
     try {
       await this.inFlight
-      await runAfterRunHooks(agent, this.plugins, () => this.branchPastFailedAttempt())
+      const outcome = await runAfterRunHooks(agent, this.plugins, () => this.branchPastFailedAttempt())
+      this.lastRunSucceeded = outcome.failed === undefined && !outcome.aborted
     } catch (error) {
       // A throw's own words are quoted as they came, and a throw with nothing to say is the same
       // failure as a message with nothing to say: the sentence for that case is the window's, in

@@ -67,14 +67,17 @@ export class Scheduler {
     if (this.running) return
     const now = this.ports.now()
     const wasActive = this.active
-    for (const task of this.ports.tasks.list()) {
-      if (wasActive && !this.active) break
-      if (!task.enabled) continue
-      const due = runDue(task.schedule, new Date(task.createdAt), now, task.lastRunAt)
-      if (due === undefined) continue
-      await this.runOne(task, due)
+    try {
+      for (const task of this.ports.tasks.list()) {
+        if (wasActive && !this.active) break
+        if (!task.enabled) continue
+        const due = runDue(task.schedule, new Date(task.createdAt), now, task.lastRunAt)
+        if (due === undefined) continue
+        await this.runOne(task, due)
+      }
+    } finally {
+      this.reschedule()
     }
-    this.reschedule()
   }
 
   private schedule(delay: number): void {
@@ -111,10 +114,17 @@ export class Scheduler {
     this.ports.runs(row)
     this.ports.changed()
     try {
-      const outcome = await this.ports.run(task, (conversationId) => {
-        this.ports.runs({ ...row, conversationId })
-        this.ports.changed()
-      })
+      let conversationId = ''
+      let outcome: RunOutcome
+      try {
+        outcome = await this.ports.run(task, (startedId) => {
+          conversationId = startedId
+          this.ports.runs({ ...row, conversationId })
+          this.ports.changed()
+        })
+      } catch {
+        outcome = { conversationId, outcome: 'failed', refusals: 0 }
+      }
       this.ports.runs({
         taskId: task.id,
         conversationId: outcome.conversationId,

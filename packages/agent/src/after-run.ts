@@ -53,11 +53,16 @@ function hooksOf(plugins: AlphaPlugin[]): AfterRunHook[] {
 }
 
 /** Waits the current run out, then asks the plugins' `afterRun` chain, retrying on its answer. */
-export async function runAfterRunHooks(agent: Agent, plugins: AlphaPlugin[], onRetry?: () => void): Promise<void> {
+export async function runAfterRunHooks(
+  agent: Agent,
+  plugins: AlphaPlugin[],
+  onRetry?: () => void,
+): Promise<AfterRunOutcome> {
   await agent.waitForIdle()
   for (;;) {
-    const verdict = await chainAfterRunVerdicts(hooksOf(plugins))(outcomeOf(agent))
-    if (verdict?.retry !== true) return
+    const outcome = outcomeOf(agent)
+    const verdict = await chainAfterRunVerdicts(hooksOf(plugins))(outcome)
+    if (verdict?.retry !== true) return outcome
     onRetry?.()
     dropFailedTurn(agent)
     await agent.continue()

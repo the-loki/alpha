@@ -48,6 +48,24 @@ const harness = (tasks: ScheduledTask[], run: SchedulerPorts['run'], nowMs: numb
 }
 
 describe('[tasks] the clock', () => {
+  it('records a thrown run as failed and continues to the next due task', async () => {
+    const tasks = [task('a', { createdAt: 0 }), task('b', { createdAt: 0 })]
+    const run = vi.fn(async (candidate: ScheduledTask, started: (conversationId: string) => void) => {
+      started(`c-${candidate.id}`)
+      if (candidate.id === 'a') throw new Error('run failed')
+      return { conversationId: `c-${candidate.id}`, refusals: 0, outcome: 'ok' as const }
+    })
+    const { scheduler, runs } = harness(tasks, run, 60 * 60_000)
+
+    await scheduler.tick()
+
+    expect(run).toHaveBeenCalledTimes(2)
+    expect(runs.filter((row) => row.outcome !== 'running')).toMatchObject([
+      { taskId: 'a', conversationId: 'c-a', outcome: 'failed' },
+      { taskId: 'b', conversationId: 'c-b', outcome: 'ok' },
+    ])
+  })
+
   it('runs a task when its moment has come, and remembers when it started', async () => {
     const tasks = [task('a', { createdAt: 0, schedule: { kind: 'every', minutes: 30 } })]
     const run = vi.fn(async () => ({ conversationId: 'c1', refusals: 0, outcome: 'ok' as const }))

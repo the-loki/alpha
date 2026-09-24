@@ -12,8 +12,6 @@ import {
   type TaskRun,
   type TaskSchedule,
   type TasksSnapshot,
-  type TurnRefusal,
-  type Undef,
 } from '@alpha/domain'
 import { type RunOutcome, type RunStarted, Scheduler } from './scheduler.ts'
 import type { TaskStore } from './store.ts'
@@ -24,10 +22,10 @@ export interface TaskServicePorts {
   rename: (conversationId: string, title: string) => void
   /** The level the run acts at, which is the task's own and not the folder's default (ADR-0012). */
   setLevel: (conversationId: string, level: PermissionLevel) => void
-  /** One turn with nobody watching; answers with how many steps the gate had to refuse. */
-  runUnattended: (conversationId: string, text: string) => Promise<number>
-  /** One turn with the person who pressed "run now" watching, so the gate may ask. */
-  prompt: (conversationId: string, text: string) => Promise<Undef<TurnRefusal>>
+  /** One complete turn with nobody watching, including its gate refusals. */
+  runUnattended: (conversationId: string, text: string) => Promise<{ refusals: number; succeeded: boolean }>
+  /** One complete turn with the person who pressed "run now" watching. */
+  runAttended: (conversationId: string, text: string) => Promise<boolean>
   workspaceExists: (path: string) => boolean
   changed: () => void
   now: () => Date
@@ -138,16 +136,16 @@ export class TaskService {
     attended: boolean,
     started: RunStarted = () => undefined,
   ): Promise<RunOutcome> {
-    const conversationId = await this.ports.create(task.workspacePath)
-    this.ports.rename(conversationId, task.name)
-    this.ports.setLevel(conversationId, task.permissionLevel)
-    started(conversationId)
+    let conversationId = ''
     try {
-      const refusals = attended ? 0 : await this.ports.runUnattended(conversationId, task.prompt)
-      if (attended && (await this.ports.prompt(conversationId, task.prompt)) !== undefined) {
-        return { conversationId, outcome: 'failed', refusals: 0 }
-      }
-      return { conversationId, outcome: 'ok', refusals }
+      conversationId = await this.ports.create(task.workspacePath)
+      this.ports.rename(conversationId, task.name)
+      this.ports.setLevel(conversationId, task.permissionLevel)
+      started(conversationId)
+      const result = attended
+        ? { refusals: 0, succeeded: await this.ports.runAttended(conversationId, task.prompt) }
+        : await this.ports.runUnattended(conversationId, task.prompt)
+      return { conversationId, outcome: result.succeeded ? 'ok' : 'failed', refusals: result.refusals }
     } catch {
       return { conversationId, outcome: 'failed', refusals: 0 }
     }

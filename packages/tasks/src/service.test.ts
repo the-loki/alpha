@@ -6,6 +6,64 @@ import { TaskService } from './service.ts'
 import { TaskStore } from './store.ts'
 
 describe('[tasks] the task service', () => {
+  it('records a scheduled turn as failed when it finishes unsuccessfully', async () => {
+    vi.useFakeTimers()
+    const at = (hour: number, minute = 0) => new Date(2026, 8, 18, hour, minute).getTime()
+    vi.setSystemTime(at(8, 59))
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-task-outcome-'))
+    const service = new TaskService({
+      tasks: new TaskStore(dataDirectory),
+      create: async () => 'run-1',
+      rename: () => undefined,
+      setLevel: () => undefined,
+      runUnattended: async () => ({ refusals: 2, succeeded: false }),
+      runAttended: async () => true,
+      workspaceExists: () => true,
+      changed: () => undefined,
+      now: () => new Date(Date.now()),
+    })
+    try {
+      service.save({
+        name: 'Morning note',
+        prompt: 'Write a note',
+        workspacePath: '/tmp/alpha-workspace',
+        schedule: { kind: 'daily', at: '09:00' },
+      })
+      service.start()
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(service.snapshot().runs).toMatchObject([{ outcome: 'failed', refusals: 2 }])
+    } finally {
+      service.stop()
+      vi.useRealTimers()
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
+  it('finishes a manual run as failed when its conversation cannot be created', async () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-task-create-'))
+    const service = new TaskService({
+      tasks: new TaskStore(dataDirectory),
+      create: async () => {
+        throw new Error('conversation unavailable')
+      },
+      rename: () => undefined,
+      setLevel: () => undefined,
+      runUnattended: async () => ({ refusals: 0, succeeded: true }),
+      runAttended: async () => true,
+      workspaceExists: () => true,
+      changed: () => undefined,
+      now: () => new Date(),
+    })
+    try {
+      const saved = service.save({ name: 'Check', prompt: 'Inspect this', workspacePath: '/tmp/work' })
+      const result = await service.runNow(saved.tasks[0].id)
+      expect(result.runs).toMatchObject([{ conversationId: '', outcome: 'failed', refusals: 0 }])
+      expect(result.runs[0].endedAt).toBeDefined()
+    } finally {
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
   it('wakes for a task saved after the clock has started', async () => {
     vi.useFakeTimers()
     const at = (hour: number, minute = 0) => new Date(2026, 8, 18, hour, minute).getTime()
@@ -17,8 +75,8 @@ describe('[tasks] the task service', () => {
       create,
       rename: () => undefined,
       setLevel: () => undefined,
-      runUnattended: async () => 0,
-      prompt: async () => undefined,
+      runUnattended: async () => ({ refusals: 0, succeeded: true }),
+      runAttended: async () => true,
       workspaceExists: () => true,
       changed: () => undefined,
       now: () => new Date(Date.now()),

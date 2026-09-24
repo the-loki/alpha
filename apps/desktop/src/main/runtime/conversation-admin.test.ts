@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
+import { aModel, errorStream, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
 import {
   type ChatMessage,
   type ConversationSummary,
@@ -52,6 +52,7 @@ interface FixtureOptions {
   toolCall?: { name: string; args: Record<string, string> }
   /** A script of the test's own, for the shapes `replies` and `toolCall` cannot say. */
   drives?: Array<() => AssistantMessageEventStream>
+  retryDelays?: number[]
   /** The compaction thresholds the assembled policy runs with, shrunk for the test. */
   compactionSettings?: { reserveTokens: number; keepRecentTokens: number }
   /** The MCP servers this run holds, when the test gives it any. */
@@ -95,6 +96,7 @@ const freshManager = (options: FixtureOptions = {}) => {
           ),
       ),
     mcp: held === undefined ? undefined : () => Promise.resolve(held),
+    retryDelays: options.retryDelays,
     compactionSettings:
       options.compactionSettings === undefined ? undefined : { enabled: true, ...options.compactionSettings },
     emit: (event) => events.push(event),
@@ -532,6 +534,24 @@ describe('[runtime] exporting a conversation', () => {
  * broker holds the card, the unattended runs refuse theirs, and the runtime announces each verdict.
  */
 describe('[runtime] the gate on the full path', () => {
+  it('reports a scheduled run as unsuccessful after its provider retries fail', async () => {
+    const { manager, workspace, events } = freshManager({
+      drives: [() => errorStream('first error', 'error'), () => errorStream('last error', 'error')],
+      retryDelays: [0],
+    })
+    const created = await manager.create(workspace)
+
+    const result = await manager.runUnattended(created.conversation.id, 'run it')
+
+    expect(result).toEqual({ refusals: 0, succeeded: false })
+    expect(events).toContainEqual({
+      conversationId: created.conversation.id,
+      type: 'run_failed',
+      message: 'last error',
+    })
+    await manager.closeAll()
+  })
+
   it('asks before a risky call, and the answer lets it run: the order the window sees', async () => {
     const { manager, workspace, events } = freshManager({
       toolCall: { name: 'bash', args: { command: 'echo manager-gate' } },
@@ -566,7 +586,7 @@ describe('[runtime] the gate on the full path', () => {
     const refusals = await manager.runUnattended(created.conversation.id, 'run it')
     await manager.closeAll()
 
-    expect(refusals).toBe(1)
+    expect(refusals).toEqual({ refusals: 1, succeeded: true })
     expect(events.some((event) => event.type === 'approval_requested')).toBe(false)
     const finished = events.find((event) => event.type === 'tool_finished')
     expect(finished?.type === 'tool_finished' ? finished.output : '').toContain('Nobody is watching this run')

@@ -53,7 +53,7 @@ describe('driving the afterRun hooks', () => {
     const running = agent.prompt('hello')
     const driven = runAfterRunHooks(agent, plugins)
     await running
-    await driven
+    expect(await driven).toEqual({ failed: undefined, aborted: false })
     expect(drives).toBe(2)
     expect(outcomes).toEqual([
       { failed: { message: 'transient boom' }, aborted: false },

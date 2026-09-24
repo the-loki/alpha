@@ -128,25 +128,31 @@ export class RuntimeManager {
 
   /**
    * Runs one turn with nobody watching (a scheduled task, ADR-0012) and answers with what the gate
-   * had to refuse. A run started by hand is attended: whoever pressed "run now" is right there.
+   * had to refuse and whether the final turn succeeded. A run started by hand is attended.
    * The run is waited out here, because a refusal only happens while the run is in flight and the
    * watching ends when the run does. A turn that did not start has ended too, so the watching ends
    * with it — and the caller hears it as a throw, because a task says how it went, not why.
    */
-  public async runUnattended(id: string, text: string): Promise<number> {
+  public async runUnattended(id: string, text: string): Promise<{ refusals: number; succeeded: boolean }> {
     this.unattended.start(id)
     try {
       const refusal = await this.prompt(id, text)
       // A turn that did not start has ended too, and the caller hears it as a throw: a task records
       // how it went rather than why, and the why was said to the conversation when it was refused.
       if (refusal !== undefined) throw new Error(`The turn did not start: ${refusal.kind}`)
-      await (await this.openFor(id)).settle()
+      const succeeded = await (await this.openFor(id)).settle()
+      return { refusals: this.unattended.finish(id), succeeded }
     } catch (error) {
       // A run that threw still stops being watched, and the caller hears about the failure.
       this.unattended.finish(id)
       throw error
     }
-    return this.unattended.finish(id)
+  }
+
+  /** A task started by hand can ask the gate, but still reports only after its turn finishes. */
+  public async runAttended(id: string, text: string): Promise<boolean> {
+    if ((await this.prompt(id, text)) !== undefined) return false
+    return (await this.openFor(id)).settle()
   }
 
   /**

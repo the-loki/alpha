@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { scriptedModels, textStream } from '@alpha/agent/testing'
 import { IPC } from '@alpha/contract'
-import type { PermissionRule, TurnRefusal, Undef } from '@alpha/domain'
+import type { PermissionRule, TasksSnapshot, TurnRefusal, Undef } from '@alpha/domain'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
 import { TaskService, TaskStore } from '@alpha/tasks'
@@ -54,6 +54,7 @@ const ports = (
   drives: Array<() => AssistantMessageEventStream> = [() => textStream('Noted.')],
   /** Which key refusal the run is answered with, when the test is about a turn that cannot start. */
   keyProblem: (providerId: string) => Undef<TurnRefusal> = () => undefined,
+  retryDelays?: number[],
 ): ChannelPorts & { events: unknown[] } => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-channels-'))
   const events: unknown[] = []
@@ -83,6 +84,7 @@ const ports = (
     // The embedded agent, driven by a provider that streams from a script (ADR-0025's test seam).
     agent: { sessionsRoot: join(dataDirectory, 'sessions'), keyProblem },
     models: () => scriptedModels(drives),
+    retryDelays,
     emit: (event) => events.push(event),
     emitRules: (rules: PermissionRule[]) => events.push(rules),
   })
@@ -98,7 +100,7 @@ const ports = (
       create: async (workspacePath) => (await runtime.create(workspacePath)).conversation.id,
       rename: (conversationId, title) => void runtime.rename(conversationId, title),
       setLevel: (conversationId, level) => void runtime.setConversationLevel(conversationId, level),
-      prompt: (conversationId, text) => runtime.prompt(conversationId, text),
+      runAttended: (conversationId, text) => runtime.runAttended(conversationId, text),
       runUnattended: (conversationId, text) => runtime.runUnattended(conversationId, text),
       workspaceExists: () => true,
       changed: () => undefined,
@@ -378,6 +380,40 @@ describe('[main] the channel table', () => {
 
     const listed = (await CHANNELS.listConversations(context, [])) as { id: string }[]
     expect(listed.map((conversation) => conversation.id)).toContain(created.conversation.id)
+    await context.runtime.closeAll()
+  })
+})
+
+describe('[main] task runs through the channel table', () => {
+  it('answers a manual run only after its model turn has finished', async () => {
+    const context = ports([slowStream('finished the task', 200)])
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-task-'))
+    const saved = CHANNELS.saveTask(context, [
+      { name: 'Daily check', prompt: 'check this', workspacePath: workspace },
+    ]) as TasksSnapshot
+
+    const result = (await CHANNELS.runTaskNow(context, [saved.tasks[0].id])) as TasksSnapshot
+
+    expect(turns(context.events, 'turn_finished')).toBe(1)
+    expect(result.runs[0]).toMatchObject({ taskId: saved.tasks[0].id, outcome: 'ok' })
+    await context.runtime.closeAll()
+  })
+
+  it('records a manual run as failed when its model turn fails after retry', async () => {
+    const context = ports(
+      [() => failingStream('temporary error', 'error'), () => failingStream('final error', 'error')],
+      undefined,
+      [0],
+    )
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-task-failed-'))
+    const saved = CHANNELS.saveTask(context, [
+      { name: 'Daily check', prompt: 'check this', workspacePath: workspace },
+    ]) as TasksSnapshot
+
+    const result = (await CHANNELS.runTaskNow(context, [saved.tasks[0].id])) as TasksSnapshot
+
+    expect(turns(context.events, 'run_failed')).toBe(1)
+    expect(result.runs[0]).toMatchObject({ taskId: saved.tasks[0].id, outcome: 'failed' })
     await context.runtime.closeAll()
   })
 })
