@@ -5,8 +5,9 @@ import { conversationActions, conversations } from '../../stores/conversations.t
 import { runningModel } from '../../stores/next-message.ts'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { OUTLINED_ACTION, WARNING_ACTION } from '../controls.ts'
-import { ArrowUpIcon, FolderIcon } from '../icons.tsx'
+import { ArrowUpIcon } from '../icons.tsx'
 import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from './Attachments.tsx'
+import { FolderLine } from './FolderLine.tsx'
 import { LevelChip } from './LevelChip.tsx'
 import { ModelChip } from './ModelChip.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
@@ -254,15 +255,11 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
         class={`rounded-lg border-x border-b border-line bg-surface-1 border-t-2 ${props.streaming === true ? 'border-t-accent' : 'border-t-line'}`}
       >
         <div class="px-3 pt-2 pb-2">
-          <Show when={props.folder === true ? composerFolder() : undefined}>
-            {(picked) => (
-              // Which work this conversation is being started in, said on the box itself: the name
-              // in the apparatus voice, its address on the tooltip (C5.4).
-              <div title={picked().path} class="mb-1.5 flex items-center gap-1.5 font-mono text-label text-faint">
-                <FolderIcon />
-                {picked().name}
-              </div>
-            )}
+          {/* Which work this conversation is being started in, and the control that changes it: the
+              welcome page is where that choice is being made (C5.4). Only a new conversation shows
+              it — an open one was started in a folder and stays there. */}
+          <Show when={props.folder === true}>
+            <FolderLine />
           </Show>
           <PendingAttachments items={attached()} onRemove={(index) => removeAt(index)} />
           <textarea

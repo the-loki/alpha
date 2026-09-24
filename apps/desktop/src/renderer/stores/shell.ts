@@ -74,7 +74,8 @@ export { shell }
 
 /**
  * The folder the composer's next message belongs to. One folder is "current" at a time — the one
- * the next conversation is created in — and the sidebar is what changes it.
+ * the next conversation is created in. The rail changes it, and so does the line on the composer of
+ * a conversation that has not started.
  */
 export const composerFolderOf = (state: ShellState): Undef<WorkspaceRef> =>
   composerFolder({ selection: state.workspace, recents: state.recents })

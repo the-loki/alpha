@@ -209,9 +209,16 @@ attachments and approval keep their existing behaviour — this is skin, not plu
 **A new conversation is a welcome.** Before its first question the page holds a composition in
 the middle of the room: the workbench's name faint above (decoration, hidden from a reader), a greeting
 in the largest text voice — the hour decides which — the writing box standing there rather than
-at the foot, the folder the message will be written in said on the box's own top edge with its
-address on the tooltip, and starter chips under it that lay their words in the box. With no
-folder at all there is no welcome: the foot keeps the box, saying a folder comes first.
+at the foot, and starter chips under it that lay their words in the box. With no folder at all
+there is no welcome: the foot keeps the box, saying a folder comes first.
+
+**Which folder that conversation starts in is said on the box, and changed there.** It is a control
+rather than a label — the welcome is exactly where that decision is being made, and the rail may be
+folded or absent on a phone — and it is a *row*, not a chip: it stands inside the writing card, above
+the caret, and a second frame in there would box a box. So it lights under the hand the way a rail
+row does and carries a chevron, and the menu that opens under it lists the folders the workbench
+remembers, the current one marked, with the folder picker under a hairline at its foot. A browser
+has no picker, so it gets that hairline's sentence instead of a row that would refuse when pressed.
 
 **Where a hairline goes**: between two *different kinds* of thing — the view head from the body,
 the rail from the page, one settings group from the next. Two of the same thing repeating get

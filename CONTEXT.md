@@ -19,7 +19,8 @@ served to a browser. Avoid: *app*, *client*, *studio*.
 A folder on disk that conversations are scoped to. Every conversation belongs to exactly one
 workspace. A workspace carries its own permission defaults and its own agent instructions.
 The workbench holds several at once and shows them together; one of them is *current*, which
-means no more than this: the one the next conversation will be created in.
+means no more than this: the one the next conversation will be created in. The rail changes which
+one that is, and so does the folder line on the composer of a conversation that has not started.
 Avoid: *project*, *repo*, *directory* (a directory is a filesystem fact, not a domain object).
 
 ### Language
