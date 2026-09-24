@@ -86,12 +86,14 @@ export class TaskService {
       throw new Error('A task needs a name, a prompt, and a folder to run in.')
     }
     this.ports.tasks.save(task)
+    this.scheduler.reschedule()
     this.ports.changed()
     return this.snapshot()
   }
 
   public remove(id: string): TasksSnapshot {
     this.ports.tasks.remove(id)
+    this.scheduler.reschedule()
     this.ports.changed()
     return this.snapshot()
   }

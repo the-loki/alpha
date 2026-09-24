@@ -8,7 +8,7 @@
  * recorded, because two runs touch the same folder and the second was written for the state the
  * first is in the middle of changing.
  */
-import { runDue, type ScheduledTask, type TaskRun, type Undef } from '@alpha/domain'
+import { nextRunAt, runDue, type ScheduledTask, type TaskRun, type Undef } from '@alpha/domain'
 import type { TaskStore } from './store.ts'
 
 export interface RunOutcome {
@@ -35,39 +35,51 @@ export interface SchedulerPorts {
 /** How long after starting to look for missed work: long enough for the window to be up. */
 const CATCH_UP_DELAY_MS = 2_000
 /** A very long timer is a very long timer; waking once a day costs nothing. */
-const LONGEST_WAIT_MS = 60 * 60_000
+const LONGEST_WAIT_MS = 24 * 60 * 60_000
 
 export class Scheduler {
   private readonly ports: SchedulerPorts
   private timer: Undef<ReturnType<typeof setTimeout>>
   private running = false
+  private active = false
 
   public constructor(ports: SchedulerPorts) {
     this.ports = ports
   }
 
   public start(): void {
-    this.stop()
-    const gap = Math.min(CATCH_UP_DELAY_MS, this.waitForNext())
-    this.timer = setTimeout(() => void this.tick(), gap)
+    this.active = true
+    this.schedule(Math.min(CATCH_UP_DELAY_MS, this.waitForNext()))
   }
 
   public stop(): void {
+    this.active = false
     if (this.timer !== undefined) clearTimeout(this.timer)
     this.timer = undefined
+  }
+
+  public reschedule(): void {
+    if (this.active) this.schedule(this.waitForNext())
   }
 
   /** One pass over every task, then a timer for the nearest moment left. Called by the timer too. */
   public async tick(): Promise<void> {
     if (this.running) return
     const now = this.ports.now()
+    const wasActive = this.active
     for (const task of this.ports.tasks.list()) {
+      if (wasActive && !this.active) break
       if (!task.enabled) continue
       const due = runDue(task.schedule, new Date(task.createdAt), now, task.lastRunAt)
       if (due === undefined) continue
       await this.runOne(task, due)
     }
-    this.start()
+    this.reschedule()
+  }
+
+  private schedule(delay: number): void {
+    if (this.timer !== undefined) clearTimeout(this.timer)
+    this.timer = setTimeout(() => void this.tick(), delay)
   }
 
   private async runOne(task: ScheduledTask, due: number): Promise<void> {
@@ -137,10 +149,7 @@ export class Scheduler {
       .map((task) => {
         const due = runDue(task.schedule, new Date(task.createdAt), now, task.lastRunAt)
         if (due !== undefined) return 0
-        const next =
-          task.schedule.kind === 'every'
-            ? (task.lastRunAt ?? task.createdAt) + task.schedule.minutes * 60_000
-            : new Date(now.getTime() + 24 * 60 * 60_000).getTime()
+        const next = nextRunAt(task.schedule, new Date(task.createdAt), task.lastRunAt)
         return Math.max(1_000, next - now.getTime())
       })
     return waits.length === 0 ? LONGEST_WAIT_MS : Math.min(...waits, LONGEST_WAIT_MS)

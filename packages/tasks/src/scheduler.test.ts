@@ -158,6 +158,90 @@ describe('[tasks] the clock', () => {
 })
 
 describe('[tasks] the timer', () => {
+  it('starts no further task after the clock is stopped during a run', async () => {
+    const tasks = [task('a', { createdAt: 0 }), task('b', { createdAt: 0 })]
+    let finish: (() => void) | undefined
+    const run = vi.fn(async (candidate: ScheduledTask) => {
+      if (candidate.id === 'a')
+        await new Promise<void>((resolve) => {
+          finish = resolve
+        })
+      return { conversationId: `c-${candidate.id}`, refusals: 0, outcome: 'ok' as const }
+    })
+    const { scheduler } = harness(tasks, run, 60 * 60_000)
+
+    scheduler.start()
+    const pass = scheduler.tick()
+    expect(run).toHaveBeenCalledTimes(1)
+    scheduler.stop()
+    finish?.()
+    await pass
+
+    expect(run).toHaveBeenCalledTimes(1)
+  })
+
+  it('wakes for a daily task later today', async () => {
+    vi.useFakeTimers()
+    const at = (hour: number, minute = 0) => new Date(2026, 8, 18, hour, minute).getTime()
+    vi.setSystemTime(at(8, 59))
+    try {
+      const tasks = [task('a', { createdAt: at(8), schedule: { kind: 'daily', at: '09:00' } })]
+      const run = vi.fn(async () => ({ conversationId: 'c', refusals: 0, outcome: 'ok' as const }))
+      const scheduler = new Scheduler({
+        tasks: fakeStore(tasks),
+        workspaceExists: () => true,
+        run,
+        runs: () => undefined,
+        changed: () => undefined,
+        now: () => new Date(Date.now()),
+      })
+
+      scheduler.start()
+      await vi.advanceTimersToNextTimerAsync()
+      expect(run).not.toHaveBeenCalled()
+      await vi.advanceTimersToNextTimerAsync()
+      expect(Date.now()).toBe(at(9))
+      expect(run).toHaveBeenCalledTimes(1)
+      scheduler.stop()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sleeps until a daily task due tomorrow', async () => {
+    vi.useFakeTimers()
+    const today = (hour: number, minute = 0) => new Date(2026, 8, 18, hour, minute).getTime()
+    const tomorrowAtNine = new Date(2026, 8, 19, 9).getTime()
+    vi.setSystemTime(today(9, 1))
+    try {
+      const tasks = [
+        task('a', {
+          createdAt: today(8),
+          lastRunAt: today(9),
+          schedule: { kind: 'daily', at: '09:00' },
+        }),
+      ]
+      const run = vi.fn(async () => ({ conversationId: 'c', refusals: 0, outcome: 'ok' as const }))
+      const scheduler = new Scheduler({
+        tasks: fakeStore(tasks),
+        workspaceExists: () => true,
+        run,
+        runs: () => undefined,
+        changed: () => undefined,
+        now: () => new Date(Date.now()),
+      })
+
+      scheduler.start()
+      await vi.advanceTimersToNextTimerAsync()
+      await vi.advanceTimersToNextTimerAsync()
+      expect(Date.now()).toBe(tomorrowAtNine)
+      expect(run).toHaveBeenCalledTimes(1)
+      scheduler.stop()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('arms itself for the next moment, and stopping clears it', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)
