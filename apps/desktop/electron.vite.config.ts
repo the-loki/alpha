@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'electron-vite'
 import solid from 'vite-plugin-solid'
@@ -39,7 +40,7 @@ export default defineConfig({
     plugins: [solid(), tailwindcss()],
     build: {
       rollupOptions: {
-        input: { index: 'src/renderer/index.html' },
+        input: { index: resolve(process.cwd(), 'src/renderer/index.html') },
       },
     },
   },
