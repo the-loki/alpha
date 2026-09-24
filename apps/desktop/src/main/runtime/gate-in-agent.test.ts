@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AlphaPlugin } from '@alpha/agent'
@@ -216,6 +216,42 @@ describe('[runtime] the gate plugin', () => {
       expect(existsSync(marker)).toBe(false)
     } finally {
       rmSync(marker, { force: true })
+    }
+  })
+
+  it('a remembered folder does not approve a write through its parent', async () => {
+    const rules: PermissionRule[] = []
+    const f = gated({
+      level: 'plan',
+      rules,
+      drives: [
+        () => toolUseStream('write', { path: 'src/parser/../secret.txt', content: 'escaped' }),
+        () => textStream('Done.'),
+      ],
+    })
+    mkdirSync(join(f.workspace, 'src/parser'), { recursive: true })
+    const marker = join(f.workspace, 'src/secret.txt')
+    rules.push({
+      id: 'approved-folder',
+      scope: 'workspace',
+      conversationId: '',
+      workspacePath: f.workspace,
+      toolName: 'write',
+      pattern: 'src/parser',
+      createdAt: 1,
+    })
+
+    try {
+      await f.runtime.prompt('write it')
+      await f.runtime.settle()
+      await f.runtime.close()
+
+      expect(f.asked).toEqual([])
+      expect(recordsOf(f.events).map((record) => record.kind)).toEqual(['blocked'])
+      expect(finishedOf(f.events).status).toBe('failed')
+      expect(existsSync(marker)).toBe(false)
+    } finally {
+      rmSync(join(f.workspace, 'src'), { recursive: true, force: true })
     }
   })
 

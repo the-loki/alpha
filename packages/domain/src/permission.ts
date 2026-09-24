@@ -188,5 +188,8 @@ function matchesCommand(pattern: string, command: string): boolean {
 /** Exact, or anything under it: a rule for a folder covers the files in it. */
 function matchesPath(pattern: string, path: string): boolean {
   const approved = normalizePath(pattern)
-  return path === approved || path.startsWith(`${approved}/`)
+  if (approved === '') return false
+  if (path === approved) return true
+  if (approved.split('/').includes('..') || path.split('/').includes('..')) return false
+  return path.startsWith(`${approved}/`)
 }

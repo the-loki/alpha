@@ -223,6 +223,15 @@ describe('[domain] matching a rule', () => {
     expect(ruleMatches(pathRule, 'edit', { path: 'src//parser/index.ts' })).toBe(true)
   })
 
+  it('does not let a folder rule reach outside it through a parent segment', () => {
+    const pathRule = rule({ toolName: 'write', pattern: 'src/parser' })
+    expect(ruleMatches(pathRule, 'write', { path: 'src/parser/../secret.txt' })).toBe(false)
+  })
+
+  it('does not treat an empty file pattern as every absolute path', () => {
+    expect(ruleMatches(rule({ toolName: 'write', pattern: '' }), 'write', { path: '/private/secret.txt' })).toBe(false)
+  })
+
   it('does not match when the arguments carry nothing to match on', () => {
     expect(ruleMatches(rule(), 'bash', {})).toBe(false)
     expect(ruleMatches(rule({ toolName: 'write', pattern: 'a.txt' }), 'write', {})).toBe(false)
