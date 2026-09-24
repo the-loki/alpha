@@ -20,6 +20,7 @@ import type {
 } from './runtime-events.ts'
 import { emptyAnswerIsEvidence, patchToolRow, toolRowOf } from './tool-row.ts'
 import { addUsage, EMPTY_USAGE, type UsageTotals } from './usage.ts'
+import type { WorkspaceChangeSet } from './workspace-changes.ts'
 
 /** One turn's spending, in the order the turns happened. */
 export interface TurnUsage {
@@ -32,6 +33,8 @@ export interface TranscriptState {
   conversationId: string
   summary?: ConversationSummary
   messages: ChatMessage[]
+  /** Final workspace observations, newest run first; kept beside, not inside, the transcript. */
+  workspaceChanges: WorkspaceChangeSet[]
   streaming?: ChatMessage
   /** Calls waiting on the user, oldest first. */
   approvals: ApprovalRequest[]
@@ -53,6 +56,7 @@ export function emptyTranscript(conversationId: string): TranscriptState {
   return {
     conversationId,
     messages: [],
+    workspaceChanges: [],
     approvals: [],
     queued: [],
     queuedPaused: false,
@@ -73,11 +77,13 @@ export function openingTranscript(
   conversation: ConversationSummary,
   messages: ChatMessage[],
   usage: UsageTotals,
+  workspaceChanges: WorkspaceChangeSet[] = [],
 ): TranscriptState {
   return {
     ...emptyTranscript(conversationId),
     summary: conversation,
     messages,
+    workspaceChanges,
     turns: usage.totalTokens === 0 ? [] : [{ usage, earlier: true }],
   }
 }
@@ -100,7 +106,13 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
 
   switch (event.type) {
     case 'conversation_opened':
-      return openingTranscript(state.conversationId, event.conversation, event.messages, event.usage)
+      return openingTranscript(
+        state.conversationId,
+        event.conversation,
+        event.messages,
+        event.usage,
+        event.workspaceChanges,
+      )
 
     case 'conversation_updated':
       return { ...state, summary: event.conversation }
@@ -169,6 +181,9 @@ function discardAssistantMessage(state: TranscriptState, messageId: string): Tra
 /** The gate's own events: a call waiting on the user, and the answer that releases it. */
 function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): TranscriptState {
   switch (event.type) {
+    case 'workspace_changes_recorded':
+      return { ...state, workspaceChanges: [event.changeSet, ...state.workspaceChanges].slice(0, 20) }
+
     case 'tool_started':
       return appendToolCall(state, event)
 

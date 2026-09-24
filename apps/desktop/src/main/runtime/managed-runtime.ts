@@ -2,7 +2,7 @@ import type { ConversationSummary, ModelIndex, PermissionRule, RuntimeEvent } fr
 import type { PermissionPorts } from '@alpha/gate'
 import type { McpServers } from '@alpha/mcp'
 import type { ProviderStore } from '@alpha/providers'
-import type { AgentPorts, DecisionLedger, SessionStore } from '@alpha/sessions'
+import type { AgentPorts, DecisionLedger, SessionStore, WorkspaceChangeLog } from '@alpha/sessions'
 import type { StateStore } from '@alpha/state'
 import type { CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
@@ -35,6 +35,7 @@ export async function openManagedRuntime(
   conversation: ConversationSummary,
   sessions: SessionStore,
   decisions: DecisionLedger,
+  changes: WorkspaceChangeLog,
   permissions: () => PermissionPorts,
   emit: (event: RuntimeEvent) => void,
 ): Promise<ConversationRuntime> {
@@ -48,6 +49,7 @@ export async function openManagedRuntime(
     compactionSettings: options.compactionSettings,
     retryDelays: options.retryDelays,
     decisions,
+    changes,
     permissions,
     emit,
   })

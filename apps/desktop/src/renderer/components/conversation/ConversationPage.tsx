@@ -1,12 +1,14 @@
 import { type Undef, visibleMessages } from '@alpha/domain'
-import { createEffect, createMemo, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, Show } from 'solid-js'
 import { BESIDE_SCROLLS, COLUMN, SCROLLS } from '../../lib/ledger.ts'
 import { conversations } from '../../stores/conversations.ts'
 import { composerFolderOf, shell } from '../../stores/shell.ts'
 import { DocHead } from '../chrome/DocHead.tsx'
 import { Composer } from './Composer.tsx'
+import { ConversationTabs, type ConversationView } from './ConversationTabs.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MessageList } from './MessageList.tsx'
+import { WorkspaceChangesView } from './WorkspaceChangesView.tsx'
 
 /**
  * The page itself: the view head that names it, the body that scrolls, and the writing box at its
@@ -14,11 +16,17 @@ import { MessageList } from './MessageList.tsx'
  * (C5.4) — and everything drawn in it stands on one pair of edges.
  */
 export function ConversationPage() {
+  const [view, setView] = createSignal<ConversationView>('conversation')
   const streaming = () => conversations.transcript.status === 'running'
   const composerFolder = () => composerFolderOf(shell)
   const hasSummary = () => conversations.transcript.summary !== undefined
   const hasMessages = () =>
     conversations.transcript.messages.length > 0 || conversations.transcript.streaming !== undefined
+
+  createEffect(() => {
+    conversations.activeId
+    setView('conversation')
+  })
 
   let scroller: Undef<HTMLDivElement>
   let atBottom = true
@@ -43,6 +51,7 @@ export function ConversationPage() {
     <div class="flex h-full flex-col">
       <Show when={hasSummary()}>
         <DocHead />
+        <ConversationTabs view={view} onViewChange={setView} />
       </Show>
 
       {/* The body: one scroll, the wheel's room always reserved. Sideways is never the answer: a
@@ -60,8 +69,17 @@ export function ConversationPage() {
         data-region="transcript"
       >
         <div class={`flex min-h-full flex-col pt-6 pb-2 ${COLUMN}`} data-column="conversation">
-          <Show when={hasMessages()} fallback={<EmptyState />}>
-            <MessageList transcript={conversations.transcript} />
+          <Show
+            when={view() === 'conversation'}
+            fallback={<WorkspaceChangesView changeSets={conversations.transcript.workspaceChanges} />}
+          >
+            <Show when={hasSummary()} fallback={<EmptyState />}>
+              <div role="tabpanel" id="conversation-view" aria-labelledby="conversation-view-tab">
+                <Show when={hasMessages()} fallback={<EmptyState />}>
+                  <MessageList transcript={conversations.transcript} />
+                </Show>
+              </div>
+            </Show>
           </Show>
         </div>
       </div>
@@ -72,7 +90,7 @@ export function ConversationPage() {
           lands on the exact edge the rows end on (C5.4). A folder's title page carries its own box
           in the welcome instead — but with no folder at all the box stays here, saying a folder
           comes first. */}
-      <Show when={hasMessages() || composerFolder() === undefined}>
+      <Show when={view() === 'changes' || hasMessages() || composerFolder() === undefined}>
         <div class={`w-full shrink-0 pb-4 ${BESIDE_SCROLLS}`} data-column="conversation">
           <Composer streaming={streaming()} />
         </div>

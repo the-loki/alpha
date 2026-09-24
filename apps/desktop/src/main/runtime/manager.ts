@@ -9,12 +9,10 @@
  */
 
 import type { EditEffect, ModelStatus, OpenedConversation } from '@alpha/contract'
-import { ConversationBookkeeper, DEFAULT_TITLE, newConversation, QueueRunner } from '@alpha/conversations'
+import { ConversationBookkeeper, DEFAULT_TITLE, QueueRunner } from '@alpha/conversations'
 import {
   type Attachment,
   type ConversationSummary,
-  defaultLevelFor,
-  EMPTY_USAGE,
   type PermissionLevel,
   type PermissionRule,
   type RuntimeEvent,
@@ -32,11 +30,19 @@ import {
   revokeRule,
   UnattendedRuns,
 } from '@alpha/gate'
-import { defaultModel, describeRuntime, startProblem } from '@alpha/providers'
-import { ConversationReads, DecisionLog, SessionStore, sessionIdOf, writeSessionMarkdown } from '@alpha/sessions'
+import { describeRuntime, startProblem } from '@alpha/providers'
+import {
+  ConversationReads,
+  DecisionLog,
+  SessionStore,
+  sessionIdOf,
+  WorkspaceChangeLog,
+  writeSessionMarkdown,
+} from '@alpha/sessions'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import { openManagedRuntime, type RuntimeManagerOptions, RuntimeRefresh } from './managed-runtime.ts'
+import { createOpenedConversation, openedConversation } from './opened-conversation.ts'
 import { askOrRefuse } from './unattended.ts'
 
 export class RuntimeManager {
@@ -47,6 +53,7 @@ export class RuntimeManager {
   private readonly runtimeRefresh = new RuntimeRefresh()
   private readonly approvals: ApprovalBroker
   private readonly decisions: DecisionLog
+  private readonly changes: WorkspaceChangeLog
   /**
    * Everything read back out of a conversation, addressed by its id: the transcript, what it has
    * spent, the user's own messages. It is the door a caller that only reads takes (a markdown
@@ -64,6 +71,7 @@ export class RuntimeManager {
     this.sessions = new SessionStore(options.sessionsRoot)
     this.approvals = new ApprovalBroker({ emit: options.emit })
     this.decisions = new DecisionLog(options.dataDirectory)
+    this.changes = new WorkspaceChangeLog(options.dataDirectory)
     this.reads = new ConversationReads({
       conversation: (id) => this.requireConversation(id),
       store: this.sessions,
@@ -99,22 +107,14 @@ export class RuntimeManager {
   }
 
   public async create(workspacePath: string): Promise<OpenedConversation> {
-    const conversation = newConversation({
-      id: crypto.randomUUID(),
-      workspacePath,
-      now: Date.now(),
-      permissionLevel: defaultLevelFor(this.options.store.read(), workspacePath),
-      model: defaultModel(this.options.providers),
-    })
-    await this.launch(conversation)
-    this.books.upsert(conversation)
-    this.options.store.rememberConversation(conversation.id)
-
-    return { conversation, messages: [], usage: EMPTY_USAGE }
+    return createOpenedConversation(workspacePath, this.options, this.books, (conversation) =>
+      this.launch(conversation),
+    )
   }
 
   public async open(id: string): Promise<OpenedConversation> {
     const conversation = this.requireConversation(id)
+    this.changes.recover(id, Date.now())
 
     this.options.store.rememberConversation(id)
     // A conversation that is already running is not launched again, and it was named when it was.
@@ -123,7 +123,7 @@ export class RuntimeManager {
       if (conversation.title !== DEFAULT_TITLE) this.books.markNamed(id)
     }
 
-    return { conversation, messages: this.reads.transcript(id), usage: this.reads.usage(id) }
+    return openedConversation(conversation, this.reads, this.changes)
   }
 
   /**
@@ -275,6 +275,7 @@ export class RuntimeManager {
     }
     this.sessions.remove(sessionIdOf(conversation), conversation.workspacePath)
     this.decisions.forget(id)
+    this.changes.forget(id)
     this.queue.forget(id)
     this.books.forget(id)
     if (this.options.store.read().lastConversationId === id) this.options.store.rememberConversation('')
@@ -394,6 +395,7 @@ export class RuntimeManager {
       conversation,
       this.sessions,
       this.decisions.opened(conversation.id),
+      this.changes,
       () => this.permissionPorts(),
       (event) => this.observe(event),
     )

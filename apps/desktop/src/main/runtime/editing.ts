@@ -68,9 +68,9 @@ export async function editMessage(
       await runtime.settle()
       const messages = ports.reads.transcript(id)
       ports.replaceTranscript(id, messages)
-      return { conversation, messages, usage: ports.reads.usage(id) }
+      return ports.openConversation(id)
     }
-    return { conversation, messages: ports.reads.transcript(id), usage: ports.reads.usage(id) }
+    return ports.openConversation(id)
   }
 
   // The copy is made outside this conversation's runtime, so the conversation on screen is not
@@ -88,11 +88,10 @@ export async function editMessage(
     status: 'idle',
   }
   ports.register(copy)
-  const opened = await ports.openConversation(copy.id)
   const forkedRuntime = await ports.runtime(copy.id)
   await forkedRuntime.prompt(text)
   await forkedRuntime.settle()
-  return { conversation: copy, messages: ports.reads.transcript(copy.id), usage: opened.usage }
+  return ports.openConversation(copy.id)
 }
 
 /** Moves the conversation's tip, recording the session the agent forked it into. */

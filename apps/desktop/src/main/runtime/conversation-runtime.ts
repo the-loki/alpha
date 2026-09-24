@@ -28,7 +28,7 @@ import {
   type Undef,
 } from '@alpha/domain'
 import type { RetryDecider } from '@alpha/plugin'
-import { type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
+import { type NewEntry, type SessionStore, tipPath, type WorkspaceChangeLog } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import { AgentEventTranslator } from './agent-events.ts'
@@ -50,6 +50,7 @@ export interface ConversationRuntimeOptions {
   compact?: () => Promise<boolean>
   /** The retry policy, whose decision keeps the turn open across a retry it has planned. */
   retry?: RetryDecider
+  changes?: WorkspaceChangeLog
   emit: (event: RuntimeEvent) => void
 }
 
@@ -63,11 +64,13 @@ export class ConversationRuntime {
   private readonly compactor: Undef<() => Promise<boolean>>
   private readonly emit: (event: RuntimeEvent) => void
   private readonly translator: AgentEventTranslator
+  private readonly changes: Undef<WorkspaceChangeLog>
   private agent: Undef<Agent>
   private sessionId: string
   private readonly workspacePath: string
   private inFlight: Undef<Promise<void>>
   private lastRunSucceeded = false
+  private captureActive = false
   private lastFailedEntryId: Undef<string>
   private lastFailedMessageId: Undef<string>
   /**
@@ -89,6 +92,7 @@ export class ConversationRuntime {
     this.sessionId = options.session.id
     this.workspacePath = options.session.workspacePath
     this.translator = new AgentEventTranslator(options.conversationId, options.retry)
+    this.changes = options.changes
     this.unsubscribe = options.agent?.subscribe((event) => this.onEvent(event))
   }
 
@@ -109,12 +113,17 @@ export class ConversationRuntime {
     }
     // One run at a time: the agent refuses to overlap them, so a prompt sent while the last one is
     // still settling waits for it, and then runs.
-    await this.driving
+    while (this.driving !== undefined) await this.driving
     this.lastRunSucceeded = false
     this.lastFailedEntryId = undefined
     this.lastFailedMessageId = undefined
     const images = imagesOf(attachments) ?? []
-    this.inFlight = agent.prompt(text, images)
+    this.beginWorkspaceReview()
+    try {
+      this.inFlight = agent.prompt(text, images)
+    } catch (error) {
+      this.inFlight = Promise.reject(error)
+    }
     this.driving = this.drive()
     return undefined
   }
@@ -242,8 +251,31 @@ export class ConversationRuntime {
       // the language the window is in (ADR-0010), so nothing is invented here for it.
       this.failed(error instanceof Error && error.message !== '' ? error.message : undefined)
     } finally {
+      this.finishWorkspaceReview()
       // The run is over, however it went: the next prompt starts a run of its own.
       this.driving = undefined
+    }
+  }
+
+  private beginWorkspaceReview(): void {
+    if (this.changes === undefined) return
+    try {
+      this.changes.begin(this.conversationId, this.workspacePath, Date.now())
+      this.captureActive = true
+    } catch (error) {
+      console.warn('Workspace review could not start', error)
+    }
+  }
+
+  private finishWorkspaceReview(): void {
+    if (!this.captureActive) return
+    this.captureActive = false
+    try {
+      const changeSet = this.changes?.finish(this.conversationId, Date.now())
+      if (changeSet !== undefined)
+        this.emit({ conversationId: this.conversationId, type: 'workspace_changes_recorded', changeSet })
+    } catch (error) {
+      console.warn('Workspace review could not finish', error)
     }
   }
 

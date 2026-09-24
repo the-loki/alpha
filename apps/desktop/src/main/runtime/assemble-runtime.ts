@@ -29,6 +29,7 @@ import {
   sessionDirectoryFor,
   sessionIdOf,
   tipPath,
+  type WorkspaceChangeLog,
 } from '@alpha/sessions'
 import type { Agent, CompactionSettings } from '@earendil-works/pi-agent-core'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
@@ -67,6 +68,7 @@ export interface OpenRuntimeOptions {
   compactionSettings?: CompactionSettings
   /** The retry backoff, when the caller shrinks it; the default is two retries at 2s and 8s. */
   retryDelays?: number[]
+  changes?: WorkspaceChangeLog
   emit: (event: RuntimeEvent) => void
 }
 
@@ -210,6 +212,7 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
     host,
     compact: policies.compact,
     retry: policies.retry,
+    changes: options.changes,
     emit: options.emit,
   })
   return runtime

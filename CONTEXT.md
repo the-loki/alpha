@@ -256,3 +256,11 @@ A conversation as it is read on the page: the messages, the tool rows, and what 
 decided by, in order — the rendered form of the transcript, and the word the interface uses for the
 thing a person audits afterwards. The transcript is what is stored; the ledger is what is read, and
 a row in it says what ran *and why nothing stopped it* (ADR-0007).
+
+### Workspace Changes
+
+The net files observed to differ between the start and end of one agent run in its workspace.
+The **Changes** view keeps one review per run beside the conversation's transcript, including
+work before a failure or Stop. It is an observation of the folder, not a claim that a particular
+tool or the agent caused each change; another process may have edited the same files meanwhile.
+An incomplete review says some paths were not scanned, not that the listed paths were guessed.

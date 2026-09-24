@@ -25,6 +25,7 @@ import type {
   TurnRefusal,
   Undef,
   UsageTotals,
+  WorkspaceChangeSet,
   WorkspaceRef,
   WorkspaceSelection,
 } from '@alpha/domain'
@@ -157,6 +158,7 @@ export type EditEffect = 'replace' | 'fork'
 export interface OpenedConversation {
   conversation: ConversationSummary
   messages: ChatMessage[]
+  workspaceChanges: WorkspaceChangeSet[]
   /** What this conversation has spent, so a window opening it shows the same totals as before. */
   usage: UsageTotals
 }

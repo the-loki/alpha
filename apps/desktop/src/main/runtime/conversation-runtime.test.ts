@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync } from 'node:fs'
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AlphaPlugin } from '@alpha/agent'
@@ -6,11 +6,11 @@ import { assembleAgent, historyOf } from '@alpha/agent'
 import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
 import { emptyTranscript, type RuntimeEvent, reduceTranscript, totalUsage, type Undef } from '@alpha/domain'
 import { createRetryPlugin, type RetryPlugin } from '@alpha/internal-plugins'
-import { SessionStore, sessionDirectoryFor, tipPath } from '@alpha/sessions'
+import { SessionStore, sessionDirectoryFor, tipPath, WorkspaceChangeLog } from '@alpha/sessions'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ConversationRuntime } from './conversation-runtime.ts'
 
 /**
@@ -30,6 +30,7 @@ interface OpenOptions {
   workspace?: string
   /** The retry policy the turn is driven with, wired where the annotation reads it. */
   retry?: RetryPlugin
+  changes?: WorkspaceChangeLog
 }
 
 const openRuntime = (options: OpenOptions = {}) => {
@@ -61,6 +62,7 @@ const openRuntime = (options: OpenOptions = {}) => {
     store,
     plugins,
     retry: options.retry,
+    changes: options.changes,
     emit: (event) => events.push(event),
   })
   return { runtime, events, store, workspace, agent, id }
@@ -356,6 +358,25 @@ describe('[runtime] steering a running turn', () => {
 })
 
 describe('[runtime] stopping a run', () => {
+  it('records the final workspace state after Stop', async () => {
+    const changes = new WorkspaceChangeLog(mkdtempSync(join(tmpdir(), 'alpha-changes-')))
+    const { runtime, events, workspace } = openRuntime({
+      changes,
+      drives: [slowStream('unfinished', 200)],
+    })
+
+    await runtime.prompt('change a file')
+    await waitedFor(events, 'assistant_message_started')
+    writeFileSync(join(workspace, 'stopped.txt'), 'written before Stop')
+    await runtime.abort()
+    await runtime.settle()
+
+    expect(events.filter((event) => event.type === 'workspace_changes_recorded')).toMatchObject([
+      { changeSet: { files: [{ path: 'stopped.txt', kind: 'added', afterText: 'written before Stop' }] } },
+    ])
+    await runtime.close()
+  })
+
   it('abort ends the turn with the message marked interrupted, persisted as aborted', async () => {
     let stream: Undef<AssistantMessageEventStream>
     const { runtime, events, store, workspace } = openRuntime({
@@ -404,6 +425,54 @@ describe('[runtime] stopping a run', () => {
     expect(typesOf(events)).toContain('turn_finished')
     // A second drive would have found the script dry and failed the run all over again.
     expect(typesOf(events)).not.toContain('run_failed')
+  })
+})
+
+describe('[runtime] workspace review failures', () => {
+  it.each(['begin', 'finish'] as const)('does not prevent an agent turn when %s throws', async (phase) => {
+    const changes = new WorkspaceChangeLog(mkdtempSync(join(tmpdir(), 'alpha-changes-')))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(changes, phase).mockImplementation(() => {
+      throw new Error('review failed')
+    })
+    const { runtime, events } = openRuntime({ changes, drives: [() => textStream('Answer.')] })
+
+    await expect(runtime.prompt('hello')).resolves.toBeUndefined()
+    await expect(runtime.settle()).resolves.toBe(true)
+    expect(typesOf(events)).toContain('turn_finished')
+    expect(runtime.isRunning()).toBe(false)
+    expect(warn).toHaveBeenCalledOnce()
+    await runtime.close()
+    warn.mockRestore()
+  })
+})
+
+describe('[runtime] consecutive workspace reviews', () => {
+  it('does not let concurrent prompts overwrite the first run baseline', async () => {
+    const changes = new WorkspaceChangeLog(mkdtempSync(join(tmpdir(), 'alpha-changes-')))
+    const { runtime, events, workspace } = openRuntime({
+      changes,
+      drives: [slowStream('first', 100), slowStream('second', 100)],
+    })
+
+    await runtime.prompt('first')
+    await waitedFor(events, 'turn_started')
+    const second = runtime.prompt('second')
+    writeFileSync(join(workspace, 'first.txt'), 'first run')
+    await waitedFor(events, 'workspace_changes_recorded')
+    await second
+    for (let attempt = 0; attempt < 100 && rowOf(events, 'turn_started').length < 2; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    writeFileSync(join(workspace, 'second.txt'), 'second run')
+    await runtime.settle()
+
+    const reviews = events.filter((event) => event.type === 'workspace_changes_recorded')
+    expect(reviews.map((event) => event.changeSet.files)).toMatchObject([
+      [{ path: 'first.txt', kind: 'added' }],
+      [{ path: 'second.txt', kind: 'added' }],
+    ])
+    await runtime.close()
   })
 })
 

@@ -218,7 +218,13 @@ describe('[domain] reduceTranscript', () => {
   it('replaces everything when the conversation is opened', () => {
     const opened = reduce([
       event({ type: 'assistant_message_started', messageId: 'stale', createdAt: 5 }),
-      event({ type: 'conversation_opened', conversation: summary, messages: [userMessage], usage: EMPTY_USAGE }),
+      event({
+        type: 'conversation_opened',
+        conversation: summary,
+        messages: [userMessage],
+        usage: EMPTY_USAGE,
+        workspaceChanges: [],
+      }),
     ])
     expect(opened.messages).toEqual([userMessage])
     expect(opened.streaming).toBeUndefined()
@@ -227,9 +233,40 @@ describe('[domain] reduceTranscript', () => {
 
   it('carries the summary that arrived with the opened conversation', () => {
     const opened = reduce([
-      event({ type: 'conversation_opened', conversation: summary, messages: [], usage: EMPTY_USAGE }),
+      event({
+        type: 'conversation_opened',
+        conversation: summary,
+        messages: [],
+        usage: EMPTY_USAGE,
+        workspaceChanges: [],
+      }),
     ])
     expect(opened.summary).toEqual(summary)
+  })
+
+  it('restores workspace reviews and prepends a finished run without changing messages', () => {
+    const earlier = { id: 'r1', startedAt: 10, endedAt: 20, recovered: false, incomplete: false, files: [] }
+    const latest = {
+      id: 'r2',
+      startedAt: 30,
+      endedAt: 40,
+      recovered: false,
+      incomplete: false,
+      files: [{ path: 'source.ts', kind: 'added' as const, afterText: 'new' }],
+    }
+    const state = reduce([
+      event({
+        type: 'conversation_opened',
+        conversation: summary,
+        messages: [userMessage],
+        usage: EMPTY_USAGE,
+        workspaceChanges: [earlier],
+      }),
+      event({ type: 'workspace_changes_recorded', changeSet: latest }),
+    ])
+
+    expect(state.workspaceChanges).toEqual([latest, earlier])
+    expect(state.messages).toEqual([userMessage])
   })
 
   it('ignores events addressed to a different conversation', () => {
@@ -590,6 +627,7 @@ describe('[domain] usage', () => {
         conversation: summary,
         messages: [userMessage],
         usage: spending(2500, 0.02),
+        workspaceChanges: [],
       }),
     ])
 

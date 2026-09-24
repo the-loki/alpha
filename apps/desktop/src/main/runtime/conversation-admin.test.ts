@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aModel, errorStream, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
@@ -12,6 +12,7 @@ import {
 } from '@alpha/domain'
 import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
+import { WorkspaceChangeLog } from '@alpha/sessions'
 import { StateStore } from '@alpha/state'
 import type { AssistantMessage, Model } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
@@ -380,6 +381,45 @@ describe('[runtime] what a conversation runs on', () => {
 })
 
 describe('[runtime] open, prompt, and the events between', () => {
+  it('announces final workspace changes and restores them after reopening', async () => {
+    const { manager, workspace, dataDirectory, events } = freshManager({ slowReply: { text: 'Done.', afterMs: 150 } })
+    const created = await manager.create(workspace)
+    const id = created.conversation.id
+
+    const running = manager.runAttended(id, 'change the file')
+    await waitedFor(events, 'turn_started')
+    writeFileSync(join(workspace, 'result.txt'), 'finished work')
+    await running
+
+    const announced = events.filter((event) => event.type === 'workspace_changes_recorded')
+    expect(announced).toMatchObject([
+      { changeSet: { files: [{ path: 'result.txt', kind: 'added', afterText: 'finished work' }] } },
+    ])
+    await manager.closeAll()
+
+    const reopened = freshManagerAt(dataDirectory)
+    const opened = await reopened.manager.open(id)
+    expect(opened.workspaceChanges).toEqual(announced.map((event) => event.changeSet))
+    await reopened.manager.remove(id)
+    expect(new WorkspaceChangeLog(dataDirectory).list(id)).toEqual([])
+    await reopened.manager.closeAll()
+  })
+
+  it('recovers an unfinished workspace review when its conversation reopens', async () => {
+    const { manager, workspace, dataDirectory } = freshManager()
+    const id = (await manager.create(workspace)).conversation.id
+    await manager.closeAll()
+    new WorkspaceChangeLog(dataDirectory).begin(id, workspace, 10)
+    writeFileSync(join(workspace, 'after-exit.txt'), 'kept')
+
+    const reopened = freshManagerAt(dataDirectory)
+    const opened = await reopened.manager.open(id)
+    expect(opened.workspaceChanges).toMatchObject([
+      { recovered: true, files: [{ path: 'after-exit.txt', kind: 'added' }] },
+    ])
+    await reopened.manager.closeAll()
+  })
+
   it('runs a turn end to end, and the window hears the whole of it', async () => {
     const { manager, workspace, events } = freshManager({ replies: ['Noted.'] })
     const created = await manager.create(workspace)

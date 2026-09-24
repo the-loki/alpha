@@ -1,4 +1,4 @@
-import type { ApprovalAnswerInput, EditEffect } from '@alpha/contract'
+import type { ApprovalAnswerInput, EditEffect, OpenedConversation } from '@alpha/contract'
 import {
   type Attachment,
   type ChatMessage,
@@ -43,14 +43,16 @@ const listWithUpdated = (list: ConversationSummary[], updated: ConversationSumma
     ? list.map((conversation) => (conversation.id === updated.id ? updated : conversation))
     : [updated, ...list]
 
-const openedState = (opened: {
-  conversation: ConversationSummary
-  messages: ChatMessage[]
-  usage: Parameters<typeof openingTranscript>[3]
-}) => ({
+const openedState = (opened: OpenedConversation) => ({
   list: listWithUpdated(conversations.list, opened.conversation),
   activeId: opened.conversation.id,
-  transcript: openingTranscript(opened.conversation.id, opened.conversation, opened.messages, opened.usage),
+  transcript: openingTranscript(
+    opened.conversation.id,
+    opened.conversation,
+    opened.messages,
+    opened.usage,
+    opened.workspaceChanges,
+  ),
 })
 
 export const conversationActions = {
