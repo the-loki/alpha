@@ -194,6 +194,8 @@ export const ZH = {
   'message.fork': '分叉成新会话',
   'message.editNote': '重发会丢掉这条之后的消息；分叉会把它们复制到一个新会话，本会话不动。',
   'message.stopped': '已停止 — 停止前收到的内容保留',
+  // 跑失败却什么也没说的一句：这句话是界面的，所以它在词典里、用界面自己的语言。失败自己说了
+  // 什么则是 provider 的原话，照原样引用（ADR-0010），随事件一起走。
   'message.failed': '这一轮失败了。',
   'message.thinking': '思考',
   'message.compacted': '历史在这里被摘要',

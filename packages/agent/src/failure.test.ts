@@ -1,24 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { failureOf, RUN_FAILED } from './failure.ts'
+import { failureOf } from './failure.ts'
 
 /**
  * The one reading of a run's failure. Both ends of a run depend on it — the window's `run_failed`
- * carries this sentence, and the retry policy is asked about exactly what was said — so the rule
- * is pinned here rather than only through the two callers.
+ * carries what was read, and the retry policy is asked about exactly that — so the rule is pinned
+ * here rather than only through the two callers.
+ *
+ * Whether a run failed and what it said are two answers and the failure carries both: a provider
+ * that erred without a sentence is a failed run that said nothing, not a run that did not fail, and
+ * the sentence for that case belongs to the window — in the language the window is in (ADR-0010).
  */
 describe('[agent] the failure a message carries', () => {
-  it('says what the failed message said', () => {
-    expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' })).toBe(
-      'the provider hung up',
-    )
+  it('carries what the failed message said', () => {
+    expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' })).toEqual({
+      message: 'the provider hung up',
+    })
   })
 
-  it('says a run failed even when the message had nothing to say', () => {
-    // A provider that errs with an empty message is still a failed run: the default is what both
-    // the window and the retry policy read, and reading it as "no failure" is what left a turn
-    // neither retried nor reported.
-    expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: '' })).toBe(RUN_FAILED)
-    expect(failureOf({ role: 'assistant', stopReason: 'error' })).toBe(RUN_FAILED)
+  it('is a failure with nothing in it when the message had nothing to say', () => {
+    expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: '' })).toEqual({})
+    expect(failureOf({ role: 'assistant', stopReason: 'error' })).toEqual({})
   })
 
   it('reads an abort, a finished turn, and a tool result as no failure', () => {

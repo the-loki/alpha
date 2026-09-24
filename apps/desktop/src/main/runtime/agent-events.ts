@@ -33,7 +33,7 @@ import {
   usageTotals,
   userBlocksOf,
 } from '@alpha/domain'
-import type { RetryDecider } from '@alpha/plugin'
+import type { RetryDecider, RunFailure } from '@alpha/plugin'
 
 /** A record off the agent's pipe, as it arrives: shaped by the agent, not by this file. */
 export interface RpcLikeEvent {
@@ -71,9 +71,9 @@ const reportedUsage = (event: RpcLikeEvent): UsageTotals => usageTotals(recordOf
  * The failure a raw `agent_end` carries, when its last message is an assistant one that erred:
  * pi has no failure event of its own. The reading itself is `@alpha/agent`'s (`failureOf`), so the
  * translator and the retry policy are asking about one answer and not two — this is only the
- * event-shaped way in.
+ * event-shaped way in. The failure may be empty, which is a run that failed and said nothing.
  */
-export function failedMessageOf(event: RpcLikeEvent): Undef<string> {
+export function failureOfRun(event: RpcLikeEvent): Undef<RunFailure> {
   if (event.type !== 'agent_end' || !Array.isArray(event.messages)) return undefined
   return failureOf(event.messages.at(-1))
 }
@@ -122,13 +122,20 @@ export class AgentEventTranslator {
    */
   private endRun(event: RpcLikeEvent): RuntimeEvent[] {
     if (!this.runOpen) return []
-    const failed = failedMessageOf(event)
-    if (failed !== undefined && this.retry?.shouldRetry({ failed, aborted: false }) === true) return []
+    const failure = failureOfRun(event)
+    if (failure !== undefined && this.retry?.shouldRetry({ failed: failure, aborted: false }) === true) return []
     this.runOpen = false
     this.openMessageId = undefined
-    return failed === undefined
-      ? [{ conversationId: this.conversationId, type: 'turn_finished' }]
-      : [{ conversationId: this.conversationId, type: 'run_failed', message: failed }]
+    if (failure === undefined) return [{ conversationId: this.conversationId, type: 'turn_finished' }]
+    // What it said goes out when it said anything: a failure with nothing to say carries no words,
+    // and the window says it in the language it is in (ADR-0010).
+    return [
+      {
+        conversationId: this.conversationId,
+        type: 'run_failed',
+        ...(failure.message === undefined ? {} : { message: failure.message }),
+      },
+    ]
   }
 
   /** `agent_settled` follows `agent_end`: whichever comes first closes the run, the other is quiet. */

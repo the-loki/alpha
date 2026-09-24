@@ -25,10 +25,19 @@ export interface ToolVerdict {
 /** What a `beforeToolCall` hook is: the answer for one call, in order with the other hooks. */
 export type BeforeToolCallHook = (call: PluginToolCall) => Promise<Undef<ToolVerdict>>
 
+/**
+ * A run that failed. Its `message` is what it said about it, kept as it was said, when it said
+ * anything: whether a run failed and what it said are two answers, and a provider that erred
+ * without a sentence is a failed run that said nothing rather than a run that did not fail.
+ */
+export interface RunFailure {
+  message?: string
+}
+
 /** How the run that just ended turned out. */
 export interface AfterRunOutcome {
   /** The failure the run ended with, when it failed; an abort is not a failure. */
-  failed: Undef<string>
+  failed: Undef<RunFailure>
   aborted: boolean
 }
 

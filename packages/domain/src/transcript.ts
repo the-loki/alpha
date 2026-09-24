@@ -245,14 +245,19 @@ function assistantWith(tool: ChatBlockTool): ChatMessage {
   return { id: `tool-${tool.callId}`, role: 'assistant', blocks: [tool], createdAt: tool.startedAt, status: 'complete' }
 }
 
-/** A failure keeps whatever was streamed: the half-written answer is evidence, not debris. With
- * nothing streamed, the failure is itself the message — a run that produced nothing still says
- * what went wrong. */
-function failRun(state: TranscriptState, message: string): TranscriptState {
+/**
+ * A failure keeps whatever was streamed: the half-written answer is evidence, not debris. With
+ * nothing streamed, the failure is itself the message. What it says is what the failure said, when
+ * it said anything: a run that failed quietly is a failed row with no sentence on it, and the one
+ * drawn then is the window's own (ADR-0010).
+ */
+function failRun(state: TranscriptState, message: Undef<string>): TranscriptState {
   const streamed = state.streaming
   const failed: ChatMessage = {
     ...(streamed ?? { id: `failure-${state.messages.length}`, role: 'assistant', blocks: [], createdAt: Date.now() }),
     status: 'failed',
+    // A failure that said nothing leaves no sentence on the row: what is drawn then is the
+    // window's own, which is the one that can be in the language the window is in.
     error: message,
   }
   return {

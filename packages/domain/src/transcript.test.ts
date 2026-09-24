@@ -141,6 +141,18 @@ describe('[domain] reduceTranscript', () => {
     expect(state.messages[0].status).toBe('failed')
   })
 
+  it('records a failure that said nothing as a row with no sentence of its own', () => {
+    const state = reduce([event({ type: 'turn_started' }), event({ type: 'run_failed' })])
+
+    expect(state.status).toBe('failed')
+    expect(state.messages).toHaveLength(1)
+    expect(state.messages[0]).toMatchObject({ role: 'assistant', status: 'failed' })
+    // What the row says then is the window's own sentence, in the language the window is in
+    // (ADR-0010). A sentence invented here would arrive in English whatever language that is.
+    expect(state.messages[0].error).toBeUndefined()
+    expect(state.error).toBeUndefined()
+  })
+
   it('records a failure as its own message when nothing was streamed', () => {
     const state = reduce([
       event({ type: 'turn_started' }),

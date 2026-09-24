@@ -1,6 +1,6 @@
 import type { RuntimeEvent, UsageTotals } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
-import { AgentEventTranslator, failedMessageOf, type RpcLikeEvent } from './agent-events.ts'
+import { AgentEventTranslator, failureOfRun, type RpcLikeEvent } from './agent-events.ts'
 
 const usage = (input: number, output: number): Record<string, unknown> => ({
   input,
@@ -188,13 +188,28 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
     expect(events[1]).toMatchObject({ type: 'run_failed', message: 'the provider hung up' })
   })
 
+  it('says a run failed even when it had nothing to say, and then carries no words at all', () => {
+    const events = translate([
+      { type: 'agent_start' },
+      { type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'error', errorMessage: '' }] },
+    ])
+
+    expect(kinds(events)).toEqual(['turn_started', 'run_failed'])
+    // Nothing to quote is nothing to say: the sentence for this case is the window's, in the
+    // language the window is in (ADR-0010), so no words travel with the event at all.
+    expect(events[1]).toStrictEqual({ conversationId: 'c1', type: 'run_failed' })
+  })
+
   it('reads the failure off an agent_end alone, and only when its last message erred', () => {
     // The one decoder: the translator says `run_failed` with it, and the retry policy is asked
     // about exactly what it read.
     const failed = { role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' }
-    expect(failedMessageOf({ type: 'agent_end', messages: [failed] })).toBe('the provider hung up')
-    expect(failedMessageOf({ type: 'agent_end', messages: [] })).toBeUndefined()
-    expect(failedMessageOf({ type: 'message_end', message: failed })).toBeUndefined()
+    expect(failureOfRun({ type: 'agent_end', messages: [failed] })).toEqual({ message: 'the provider hung up' })
+    // It failed and said nothing, which is a failure all the same: the words for that case are the
+    // window's, so what comes back here is an empty failure rather than no failure.
+    expect(failureOfRun({ type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'error' }] })).toEqual({})
+    expect(failureOfRun({ type: 'agent_end', messages: [] })).toBeUndefined()
+    expect(failureOfRun({ type: 'message_end', message: failed })).toBeUndefined()
   })
 
   it('keeps the run open while the retry policy is going to try again', () => {

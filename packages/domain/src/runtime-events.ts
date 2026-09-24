@@ -230,4 +230,9 @@ export type RuntimeEvent =
   | { conversationId: string; type: 'history_compacted'; summary: string; replaced?: number; at: number }
   /** The conversation's path changed under it: an answer was replaced, so the list is replaced too. */
   | { conversationId: string; type: 'transcript_replaced'; messages: ChatMessage[] }
-  | { conversationId: string; type: 'run_failed'; message: string }
+  /**
+   * What the failure said, when it said anything: a provider's own words, quoted as they came. A
+   * run that failed without a sentence is a failure all the same, and carries nothing here — the
+   * window has the sentence for that in its own language (ADR-0010).
+   */
+  | { conversationId: string; type: 'run_failed'; message?: string }

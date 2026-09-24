@@ -20,7 +20,7 @@ const lastAssistantOf = (messages: AgentMessage[]): AssistantMessage | undefined
 const observing = (name: string, seen: string[]): AlphaPlugin => ({
   name,
   afterRun: async (outcome) => {
-    seen.push(`${name}:${outcome.failed ?? 'clean'}${outcome.aborted ? ':aborted' : ''}`)
+    seen.push(`${name}:${outcome.failed?.message ?? 'clean'}${outcome.aborted ? ':aborted' : ''}`)
     return undefined
   },
 })
@@ -56,7 +56,7 @@ describe('driving the afterRun hooks', () => {
     await driven
     expect(drives).toBe(2)
     expect(outcomes).toEqual([
-      { failed: 'transient boom', aborted: false },
+      { failed: { message: 'transient boom' }, aborted: false },
       { failed: undefined, aborted: false },
     ])
     expect(seen).toEqual(['observer:transient boom', 'observer:clean'])

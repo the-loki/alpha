@@ -141,7 +141,7 @@ function StatusNote(props: { message: ChatMessage }) {
       </Show>
       <Show when={props.message.status === 'failed'}>
         <p class={`mt-2 ${NOTICE} border-danger font-mono text-code text-danger`}>
-          <span class="min-w-0 wrap-anywhere">{props.message.error ?? t('message.failed')}</span>
+          <span class="min-w-0 wrap-anywhere">{props.message.error || t('message.failed')}</span>
         </p>
       </Show>
     </>

@@ -4,7 +4,7 @@ import type { AfterRunHook, AfterRunOutcome, BeforeToolCallHook } from './faces.
 
 const call = { toolCallId: 'call-1', toolName: 'bash', args: { command: 'ls' } }
 
-const FAILURE: AfterRunOutcome = { failed: 'the provider hung up', aborted: false }
+const FAILURE: AfterRunOutcome = { failed: { message: 'the provider hung up' }, aborted: false }
 const ABORT: AfterRunOutcome = { failed: undefined, aborted: true }
 
 describe('[plugin] the beforeToolCall chain', () => {

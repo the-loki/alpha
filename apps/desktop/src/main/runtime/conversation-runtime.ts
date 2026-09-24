@@ -14,7 +14,7 @@
  */
 
 import type { AlphaPlugin } from '@alpha/agent'
-import { historyOf, RUN_FAILED, runAfterRunHooks } from '@alpha/agent'
+import { historyOf, runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
   type Attachment,
@@ -211,8 +211,10 @@ export class ConversationRuntime {
       await this.inFlight
       await runAfterRunHooks(agent, this.plugins)
     } catch (error) {
-      // A throw with nothing to say is the same failure as a message with nothing to say.
-      this.failed(error instanceof Error ? error.message : RUN_FAILED)
+      // A throw's own words are quoted as they came, and a throw with nothing to say is the same
+      // failure as a message with nothing to say: the sentence for that case is the window's, in
+      // the language the window is in (ADR-0010), so nothing is invented here for it.
+      this.failed(error instanceof Error && error.message !== '' ? error.message : undefined)
     } finally {
       // The run is over, however it went: the next prompt starts a run of its own.
       this.driving = undefined
@@ -269,7 +271,12 @@ export class ConversationRuntime {
     return { role: 'user', content: [{ type: 'text', text }], timestamp: Date.now() }
   }
 
-  private failed(message: string): void {
-    this.emit({ conversationId: this.conversationId, type: 'run_failed', message })
+  /** A failure this file reports itself, with the words it has: a refusal says why it refused. */
+  private failed(message: Undef<string>): void {
+    this.emit({
+      conversationId: this.conversationId,
+      type: 'run_failed',
+      ...(message === undefined ? {} : { message }),
+    })
   }
 }

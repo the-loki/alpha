@@ -25,7 +25,7 @@ function lastAssistant(messages: AgentMessage[]): Undef<AssistantMessage> {
 
 /**
  * How the finished run turned out, read off the message that ended it: an abort is not a failure,
- * and the failure is whatever that message carries — the same sentence the window is given, since
+ * and the failure is whatever that message carries — the same reading the window is given, since
  * `failureOf` is the one reader of it. pi's own `state.errorMessage` is not asked: it holds a
  * sentence only when there was one, which is exactly how a silent failure came to be neither
  * retried nor reported.

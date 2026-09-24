@@ -226,11 +226,11 @@ describe('[runtime] the policies an opening assembles', () => {
   })
 
   // A provider that fails without a sentence of its own is still a failed run, and both ends of it
-  // have to read the same thing: the window's `run_failed` carries "The run failed." when there is
-  // nothing else to say, and the retry policy is asked about exactly that. Read the failure twice —
-  // once off pi's event, once off the agent's own field, which holds a sentence only when there is
-  // one — and a run comes to be neither retried nor reported: the composer waits for a turn that is
-  // already over.
+  // have to read the same thing: the window's `run_failed` says the run failed — the words for it
+  // are the window's, in its own language — and the retry policy is asked about exactly that
+  // reading. Read the failure twice — once off pi's event, once off the agent's own field, which
+  // holds a sentence only when there is one — and a run comes to be neither retried nor reported:
+  // the composer waits for a turn that is already over.
   it('a failure with nothing to say of its own is retried, and ends the turn', async () => {
     const { runtime, events } = await opened({
       drives: [() => failing(''), () => textStream('recovered')],
@@ -248,6 +248,23 @@ describe('[runtime] the policies an opening assembles', () => {
       .join('')
     expect(said).toContain('recovered')
     expect(kinds).not.toContain('run_failed')
+  })
+
+  // The other end of the same failure: with no retry waiting, a run that failed without a sentence
+  // is reported as a failure and nothing more. What is drawn for it then is the window's own
+  // sentence, in the language the window is in, so the event must not carry words of its own.
+  it('reports a failure with nothing to say as a failure, and says nothing with it', async () => {
+    const { runtime, events } = await opened({
+      drives: [() => failing(''), () => failing(''), () => failing('')],
+      retryDelays: [0, 0],
+    })
+
+    await runAndSettle(runtime, 'fix the parser')
+
+    expect(events.find((event) => event.type === 'run_failed')).toStrictEqual({
+      conversationId: 'c1',
+      type: 'run_failed',
+    })
   })
 })
 

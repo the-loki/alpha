@@ -197,6 +197,9 @@ export const EN = {
   'message.editNote':
     'Replacing drops the messages after this one. Forking copies them to a new conversation and leaves this one alone.',
   'message.stopped': 'Stopped — what arrived before the stop is kept',
+  // A run that failed without saying anything: the sentence is the interface's, so it is here and
+  // in the window's language. What a failure did say is the provider's own words, quoted as they
+  // came (ADR-0010), and travels with the event instead.
   'message.failed': 'The turn failed.',
   'message.thinking': 'Thinking',
   'message.compacted': 'History summarised here',

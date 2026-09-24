@@ -9,14 +9,14 @@ import { createRetryPlugin } from './retry-plugin.ts'
  * where an agent exists.
  */
 
-const FAILURE: AfterRunOutcome = { failed: 'the provider hung up', aborted: false }
+const FAILURE: AfterRunOutcome = { failed: { message: 'the provider hung up' }, aborted: false }
 const CLEAN: AfterRunOutcome = { failed: undefined, aborted: false }
 
 describe('[retry] the decision', () => {
   it('a failure with attempts to spend retries; an abort and a clean run never do', () => {
     const plugin = createRetryPlugin({ delays: [0, 0] })
     expect(plugin.shouldRetry(FAILURE)).toBe(true)
-    expect(plugin.shouldRetry({ failed: 'stopped by the person', aborted: true })).toBe(false)
+    expect(plugin.shouldRetry({ failed: { message: 'stopped by the person' }, aborted: true })).toBe(false)
     expect(plugin.shouldRetry(CLEAN)).toBe(false)
   })
 
