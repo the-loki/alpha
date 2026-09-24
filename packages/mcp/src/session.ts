@@ -33,6 +33,8 @@ export interface McpFrame {
 /** How a frame reports what it carried, and that it can carry no more. */
 export interface FrameHandlers {
   message: (text: string, originatingRequestId?: number) => void
+  /** One request-scoped HTTP response ended; other requests can still use the session. */
+  finished: (originatingRequestId: number) => void
   closed: (why: string) => void
 }
 
@@ -87,6 +89,12 @@ function handlersOf(
         return
       }
       deliver(answer, waiting, settled)
+    },
+    finished: (id) => {
+      const entry = waiting.get(id)
+      if (entry === undefined) return
+      entry.stop('the MCP HTTP response ended before its result')
+      settled(id)
     },
     closed: end,
   }

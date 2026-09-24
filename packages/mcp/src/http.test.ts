@@ -164,6 +164,21 @@ beforeAll(async () => {
         setTimeout(() => response.end(`event: message\ndata: ${answer}\n\n`), 50)
         return
       }
+      if (
+        request.url === '/drop-one' &&
+        message.method === 'tools/call' &&
+        (message.params?.arguments as { mode?: string } | undefined)?.mode === 'drop'
+      ) {
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        response.end(': the stream ended before the result\n\n')
+        return
+      }
+      if (request.url === '/multiline' && message.method === 'tools/call') {
+        const middle = answer.indexOf(',"result"') + 1
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        response.end(`event: message\r\ndata: ${answer.slice(0, middle)}\r\ndata: ${answer.slice(middle)}\r\n\r\n`)
+        return
+      }
       if (request.url === '/stream') {
         response.writeHead(200, { 'content-type': 'text/event-stream' })
         response.end(`event: message\ndata: ${answer}\n\n`)
@@ -335,6 +350,37 @@ describe('an MCP server over HTTP', () => {
     const result = await servers.call('streamed', 'reach', {})
     expect(result.content).toEqual([{ type: 'text', text: 'reached reach' }])
     await servers.close()
+  })
+
+  it('rejects only the request whose HTTP stream ended without its result', async () => {
+    const servers = await connectMcpServers([{ name: 'remote', url: `${origin}/drop-one` }])
+    try {
+      const [broken, healthy] = await Promise.allSettled([
+        servers.call('remote', 'reach', { mode: 'drop' }, AbortSignal.timeout(500)),
+        servers.call('remote', 'reach', { mode: 'keep' }),
+      ])
+      expect(broken).toMatchObject({
+        status: 'rejected',
+        reason: { message: 'the MCP HTTP response ended before its result' },
+      })
+      expect(healthy).toMatchObject({
+        status: 'fulfilled',
+        value: { content: [{ type: 'text', text: 'reached reach' }] },
+      })
+      expect((await servers.call('remote', 'reach', {})).content).toEqual([{ type: 'text', text: 'reached reach' }])
+    } finally {
+      await servers.close()
+    }
+  })
+
+  it('assembles a JSON-RPC result from multiple SSE data lines', async () => {
+    const servers = await connectMcpServers([{ name: 'remote', url: `${origin}/multiline` }])
+    try {
+      const result = await servers.call('remote', 'reach', {}, AbortSignal.timeout(500))
+      expect(result.content).toEqual([{ type: 'text', text: 'reached reach' }])
+    } finally {
+      await servers.close()
+    }
   })
 
   it('leaves out a server that answers with a failure', async () => {

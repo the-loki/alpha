@@ -16,24 +16,47 @@ export interface HttpServer {
   headers?: Record<string, string>
 }
 
-/** The events of a streamed answer: one JSON-RPC message per `data:` line, until the stream ends. */
+/** The events of a streamed answer: all `data:` fields of an SSE event form one JSON-RPC message. */
 async function readStream(response: Response, handlers: FrameHandlers, originId?: number): Promise<void> {
   const body = response.body
   if (body === null) return
   const reader = body.getReader()
   const decoder = new TextDecoder()
-  let pending = ''
+  let line = ''
+  let afterCarriageReturn = false
+  let data: string[] = []
+  const endLine = (): void => {
+    if (line === '') {
+      if (data.length > 0) handlers.message(data.join('\n'), originId)
+      data = []
+    } else if (line === 'data') {
+      data.push('')
+    } else if (line.startsWith('data:')) {
+      const value = line.slice('data:'.length)
+      data.push(value.startsWith(' ') ? value.slice(1) : value)
+    }
+    line = ''
+  }
+  const readText = (text: string): void => {
+    for (const character of text) {
+      if (afterCarriageReturn) {
+        afterCarriageReturn = false
+        if (character === '\n') continue
+      }
+      if (character === '\r' || character === '\n') {
+        endLine()
+        afterCarriageReturn = character === '\r'
+      } else {
+        line += character
+      }
+    }
+  }
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
-    pending += decoder.decode(value, { stream: true })
-    const lines = pending.split('\n')
-    pending = lines.pop() ?? ''
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (trimmed.startsWith('data:')) handlers.message(trimmed.slice('data:'.length).trim(), originId)
-    }
+    readText(decoder.decode(value, { stream: true }))
   }
+  readText(decoder.decode())
 }
 
 function requestHeaders(server: HttpServer, version: string, sessionId: Undef<string>): Headers {
@@ -68,9 +91,12 @@ export function httpFrame(server: HttpServer, handlers: FrameHandlers, version: 
         const assigned = response.headers.get('Mcp-Session-Id')
         if (sessionId === undefined && assigned !== null && assigned !== '') sessionId = assigned
         const answered = response.headers.get('content-type') ?? ''
-        if (answered.includes('text/event-stream')) return await readStream(response, handlers, originId)
-        const body = await response.text()
-        if (body.trim() !== '') handlers.message(body, originId)
+        if (answered.includes('text/event-stream')) await readStream(response, handlers, originId)
+        else {
+          const body = await response.text()
+          if (body.trim() !== '') handlers.message(body, originId)
+        }
+        if (originId !== undefined) handlers.finished(originId)
       } finally {
         pending.delete(controller)
         signal?.removeEventListener('abort', abort)
