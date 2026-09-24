@@ -34,7 +34,7 @@ async function launch(options: { replies?: unknown[] } = {}) {
         // believed (ADR-0008), so seeding one would not survive the launch anyway.
         status: 'idle',
         permissionLevel: 'ask',
-        model: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
+        model: { providerId: 'scripted', modelId: 'scripted-model' },
         thinkingLevel: 'medium',
       },
     ],
