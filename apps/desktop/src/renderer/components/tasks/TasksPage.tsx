@@ -3,6 +3,7 @@ import {
   formatUntil,
   nextRunAt,
   type PermissionLevel,
+  runningNow,
   type ScheduledTask,
   type TaskRun,
   type TaskSchedule,
@@ -50,6 +51,7 @@ const runKey = (run: TaskRun) =>
 function TaskRow(props: { task: ScheduledTask; onOpen: () => void }) {
   const t = useText()
   const next = () => nextRunAt(props.task.schedule, new Date(props.task.createdAt), props.task.lastRunAt)
+  const active = () => runningNow(props.task, tasks.runs)
 
   return (
     <li class="relative flex items-center gap-3 rounded-lg border border-line bg-surface-0 px-4 py-3">
@@ -71,8 +73,13 @@ function TaskRow(props: { task: ScheduledTask; onOpen: () => void }) {
           {props.task.enabled ? t('tasks.nextRun', { when: formatUntil(next(), Date.now()) }) : t('tasks.stopped')}
         </span>
       </div>
-      <button type="button" onClick={() => void taskActions.runNow(props.task.id)} class={`relative ${TEXT_ACTION}`}>
-        {t('tasks.runNow')}
+      <button
+        type="button"
+        disabled={active()}
+        onClick={() => void taskActions.runNow(props.task.id)}
+        class={`relative min-w-20 disabled:cursor-not-allowed disabled:opacity-40 ${TEXT_ACTION}`}
+      >
+        {t(active() ? 'tasks.runRunning' : 'tasks.runNow')}
       </button>
     </li>
   )

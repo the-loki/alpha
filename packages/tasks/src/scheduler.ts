@@ -8,7 +8,7 @@
  * recorded, because two runs touch the same folder and the second was written for the state the
  * first is in the middle of changing.
  */
-import { nextRunAt, runDue, type ScheduledTask, type TaskRun, type Undef } from '@alpha/domain'
+import { nextRunAt, runDue, runningNow, type ScheduledTask, type TaskRun, type Undef } from '@alpha/domain'
 import type { TaskStore } from './store.ts'
 
 export interface RunOutcome {
@@ -82,27 +82,26 @@ export class Scheduler {
 
   private schedule(delay: number): void {
     if (this.timer !== undefined) clearTimeout(this.timer)
-    this.timer = setTimeout(() => void this.tick(), delay)
+    this.timer = setTimeout(() => {
+      void this.tick().catch((error: unknown) => {
+        console.error('Scheduled task tick failed', error)
+        if (this.active) this.schedule(CATCH_UP_DELAY_MS)
+      })
+    }, delay)
   }
 
   private async runOne(task: ScheduledTask, due: number): Promise<void> {
     const catchUp = this.missedBy(task, due)
+    if (runningNow(task, this.ports.tasks.runs(task.id))) {
+      this.skip(task, due)
+      return
+    }
     if (!this.ports.workspaceExists(task.workspacePath)) {
-      this.ports.runs({
-        taskId: task.id,
-        conversationId: '',
-        startedAt: due,
-        outcome: 'skipped',
-        note: 'missingFolder',
-        refusals: 0,
-      })
-      this.ports.tasks.markRan(task.id, due)
-      this.ports.changed()
+      this.skip(task, due, 'missingFolder')
       return
     }
 
     this.running = true
-    this.ports.tasks.markRan(task.id, due)
     const row: TaskRun = {
       taskId: task.id,
       conversationId: '',
@@ -111,9 +110,10 @@ export class Scheduler {
       refusals: 0,
       catchUp,
     }
-    this.ports.runs(row)
-    this.ports.changed()
     try {
+      this.ports.tasks.markRan(task.id, due)
+      this.ports.runs(row)
+      this.ports.changed()
       let conversationId = ''
       let outcome: RunOutcome
       try {
@@ -134,10 +134,28 @@ export class Scheduler {
         refusals: outcome.refusals,
         catchUp,
       })
+      const latest = this.ports.tasks.find(task.id)
+      if (latest?.enabled === true) {
+        const missed = runDue(latest.schedule, new Date(latest.createdAt), this.ports.now(), latest.lastRunAt)
+        if (missed !== undefined) this.skip(latest, missed)
+      }
     } finally {
       this.running = false
       this.ports.changed()
     }
+  }
+
+  private skip(task: ScheduledTask, due: number, note?: string): void {
+    this.ports.tasks.markRan(task.id, due)
+    this.ports.runs({
+      taskId: task.id,
+      conversationId: '',
+      startedAt: due,
+      outcome: 'skipped',
+      refusals: 0,
+      ...(note === undefined ? {} : { note }),
+    })
+    this.ports.changed()
   }
 
   /**

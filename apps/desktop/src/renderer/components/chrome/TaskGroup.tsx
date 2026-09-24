@@ -1,8 +1,8 @@
-import { formatAge, newTaskRun, type RunVerdict, type TaskNode } from '@alpha/domain'
+import { formatAge, newTaskRun, type RunVerdict, runningNow, type TaskNode } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
-import { taskActions } from '../../stores/tasks.ts'
+import { taskActions, tasks } from '../../stores/tasks.ts'
 import { RAIL_ROW, RAIL_STEP, TEXT_ACTION } from '../controls.ts'
 import { ClockIcon } from '../icons.tsx'
 import { ConversationRow } from './ConversationRow.tsx'
@@ -21,6 +21,7 @@ export function TaskGroup(props: { node: TaskNode }) {
   const navigate = useNavigate()
   const [open, setOpen] = createSignal(false)
   const [all, setAll] = createSignal(false)
+  const active = () => runningNow(props.node.task, tasks.runs)
   const verdict = () => newTaskRun(props.node.lastRun)
   const shown = () => (all() ? props.node.runs : props.node.runs.slice(0, SHOWN_RUNS))
   const hidden = () => props.node.runs.length - shown().length
@@ -94,11 +95,16 @@ export function TaskGroup(props: { node: TaskNode }) {
           </Show>
           <button
             type="button"
+            disabled={active()}
             onClick={() => void taskActions.runNow(props.node.task.id)}
-            aria-label={t('sidebar.runNow', { name: props.node.task.name })}
-            class={`py-1 ${TEXT_ACTION}`}
+            aria-label={
+              active()
+                ? `${props.node.task.name}: ${t('tasks.runRunning')}`
+                : t('sidebar.runNow', { name: props.node.task.name })
+            }
+            class={`min-w-16 py-1 disabled:cursor-not-allowed disabled:opacity-40 ${TEXT_ACTION}`}
           >
-            {t('tasks.runNow')}
+            {t(active() ? 'tasks.runRunning' : 'tasks.runNow')}
           </button>
         </div>
       </Show>

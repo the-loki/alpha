@@ -83,6 +83,25 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await reopened.app.close()
 })
 
+test('a running task disables both run controls until its turn finishes', async () => {
+  const { app, window } = await launchWorkbench({
+    level: 'full-access',
+    replies: ['Done.'],
+    slow: { tokenSize: 1, tokensPerSecond: 1 },
+  })
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await makeTask(window, 'Slow check', 'inspect the folder')
+  const rail = window.getByRole('complementary')
+
+  await window.getByRole('main').getByRole('button', { name: 'Run now' }).click()
+
+  await expect(window.getByRole('main').getByRole('button', { name: 'Running' })).toBeDisabled()
+  await rail.getByRole('button', { name: 'Expand the tasks in Slow check' }).click()
+  await expect(rail.getByRole('button', { name: 'Slow check: Running' })).toBeDisabled()
+  await expect(window.getByRole('main').getByRole('button', { name: 'Run now' })).toBeEnabled({ timeout: 20_000 })
+  await app.close()
+})
+
 test('a run whose turn never started is a failed run rather than a finished one', async () => {
   // No provider at all, so the turn cannot start. A task is asked by hand, which goes straight to
   // the manager — past the composer's own gate, which will not send without a model at all — so this

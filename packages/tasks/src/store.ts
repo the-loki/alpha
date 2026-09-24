@@ -78,14 +78,28 @@ export class TaskStore {
   }
 
   /**
-   * Adds a run row, keeping each task's newest: the conversations are the long history. A task has at most
-   * one row for the run that is going, which the run replacing it — with the conversation it turned
-   * out to be, and then with how it ended — takes with it.
+   * Adds a run row, keeping each task's newest: the conversations are the long history. Updates
+   * replace only their own running row, so a skipped occurrence can sit beside a live run. The
+   * active row takes one of the history slots even when later occurrences have been skipped.
    */
   public record(run: TaskRun): void {
-    const kept = this.file.runs.filter((existing) => existing.taskId !== run.taskId || existing.outcome !== 'running')
+    const kept = this.file.runs.filter(
+      (existing) =>
+        existing.taskId !== run.taskId ||
+        existing.outcome !== 'running' ||
+        run.outcome === 'skipped' ||
+        existing.startedAt !== run.startedAt,
+    )
+    const hasRunning =
+      run.outcome === 'running' ||
+      kept.some((existing) => existing.taskId === run.taskId && existing.outcome === 'running')
     let own = 0
-    const runs = [run, ...kept].filter((entry) => entry.taskId !== run.taskId || ++own <= RUNS_KEPT)
+    const runs = [run, ...kept]
+      .sort((left, right) => right.startedAt - left.startedAt)
+      .filter(
+        (entry) =>
+          entry.taskId !== run.taskId || entry.outcome === 'running' || ++own <= RUNS_KEPT - (hasRunning ? 1 : 0),
+      )
     this.file = { ...this.file, runs }
     this.flush()
   }

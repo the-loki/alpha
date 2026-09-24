@@ -8,6 +8,7 @@ import {
   DEFAULT_SCHEDULE,
   isValidSchedule,
   type PermissionLevel,
+  runningNow,
   type ScheduledTask,
   type TaskRun,
   type TaskSchedule,
@@ -100,6 +101,7 @@ export class TaskService {
   public async runNow(id: string): Promise<TasksSnapshot> {
     const task = this.ports.tasks.find(id)
     if (task === undefined) throw new Error(`No task ${id}`)
+    if (runningNow(task, this.ports.tasks.runs(id))) return this.snapshot()
     // A run started by hand is written down the same way the clock's runs are: one row, started
     // and then ended, so a task's history does not depend on who started it.
     const row: TaskRun = {

@@ -6,6 +6,38 @@ import { TaskService } from './service.ts'
 import { TaskStore } from './store.ts'
 
 describe('[tasks] the task service', () => {
+  it('starts only one conversation for two manual requests on the same task', async () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-task-overlap-'))
+    let finish: (succeeded: boolean) => void = () => undefined
+    const gate = new Promise<boolean>((resolve) => {
+      finish = resolve
+    })
+    const create = vi.fn(async () => 'run-1')
+    const service = new TaskService({
+      tasks: new TaskStore(dataDirectory),
+      create,
+      rename: () => undefined,
+      setLevel: () => undefined,
+      runUnattended: async () => ({ refusals: 0, succeeded: true }),
+      runAttended: async () => gate,
+      workspaceExists: () => true,
+      changed: () => undefined,
+      now: () => new Date(),
+    })
+    try {
+      const saved = service.save({ name: 'Check', prompt: 'Inspect this', workspacePath: '/tmp/work' })
+      const first = service.runNow(saved.tasks[0].id)
+      const second = service.runNow(saved.tasks[0].id)
+      finish(true)
+      await Promise.all([first, second])
+
+      expect(create).toHaveBeenCalledTimes(1)
+      expect(service.snapshot().runs).toMatchObject([{ outcome: 'ok' }])
+    } finally {
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
   it('records a scheduled turn as failed when it finishes unsuccessfully', async () => {
     vi.useFakeTimers()
     const at = (hour: number, minute = 0) => new Date(2026, 8, 18, hour, minute).getTime()

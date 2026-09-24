@@ -86,6 +86,30 @@ describe('[tasks] where the tasks live', () => {
     expect(store.runs('a')[0]).toMatchObject({ outcome: 'ok', refusals: 2, endedAt: 20 })
   })
 
+  it('keeps an active run beside a later skipped occurrence, then finishes only that run', () => {
+    const { store, dataDirectory } = freshStore()
+    store.save(task('a'))
+    store.record({ taskId: 'a', conversationId: 'c1', startedAt: 10, outcome: 'running', refusals: 0 })
+    store.record({ taskId: 'a', conversationId: '', startedAt: 20, outcome: 'skipped', refusals: 0 })
+
+    expect(store.runs('a').map((run) => run.outcome)).toEqual(['skipped', 'running'])
+
+    store.record({ taskId: 'a', conversationId: 'c1', startedAt: 10, endedAt: 30, outcome: 'ok', refusals: 0 })
+    expect(store.runs('a').map((run) => run.outcome)).toEqual(['skipped', 'ok'])
+    expect(new TaskStore(dataDirectory).runs('a').map((run) => run.outcome)).toEqual(['skipped', 'ok'])
+  })
+
+  it('keeps the active row when many later occurrences have been skipped', () => {
+    const { store } = freshStore()
+    store.save(task('a'))
+    store.record({ taskId: 'a', conversationId: 'c1', startedAt: 1, outcome: 'running', refusals: 0 })
+    for (let at = 2; at <= 22; at += 1) {
+      store.record({ taskId: 'a', conversationId: '', startedAt: at, outcome: 'skipped', refusals: 0 })
+    }
+    expect(store.runs('a')).toHaveLength(20)
+    expect(store.runs('a').some((row) => row.outcome === 'running')).toBe(true)
+  })
+
   it('marks an interrupted run as failed when the workbench restarts', () => {
     const { store, dataDirectory } = freshStore()
     store.save(task('a'))

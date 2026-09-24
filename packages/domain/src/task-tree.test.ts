@@ -85,6 +85,7 @@ describe('[domain] a folder and the tasks in it', () => {
   it('names the two things a folded task says: how many were refused, and how it ended', () => {
     expect(newTaskRun(run('a', 'c1', 10, { refusals: 3 }))).toEqual({ key: 'tasks.runRefusals', count: 3 })
     expect(newTaskRun(run('a', 'c1', 10, { outcome: 'failed' }))).toEqual({ key: 'tasks.runFailed' })
+    expect(newTaskRun(run('a', 'c1', 10, { outcome: 'failed', refusals: 3 }))).toEqual({ key: 'tasks.runFailed' })
     expect(newTaskRun(run('a', 'c1', 10, { outcome: 'skipped' }))).toEqual({ key: 'tasks.runSkipped' })
     expect(newTaskRun(run('a', 'c1', 10, { outcome: 'running' }))).toEqual({ key: 'tasks.runRunning' })
     expect(newTaskRun(run('a', 'c1', 10))).toEqual({ key: 'tasks.runOk' })

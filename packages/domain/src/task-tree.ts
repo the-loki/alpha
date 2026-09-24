@@ -25,15 +25,15 @@ export function lastRunOf(runs: TaskRun[]): Undef<TaskRun> {
 export type RunVerdict = { key: TextKey; count?: number }
 
 /**
- * What a folded task says in one phrase: how many steps nobody was there to approve, when there
- * were any, and otherwise how the run ended. A task that has never run says nothing.
+ * What a folded task says in one phrase: a failed, skipped or running state takes precedence over
+ * gate refusals; for a successful run, the refusal count explains work it could not do.
  */
 export function newTaskRun(run: Undef<TaskRun>): Undef<RunVerdict> {
   if (run === undefined) return undefined
-  if (run.refusals > 0) return { key: 'tasks.runRefusals', count: run.refusals }
   if (run.outcome === 'failed') return { key: 'tasks.runFailed' }
   if (run.outcome === 'skipped') return { key: 'tasks.runSkipped' }
   if (run.outcome === 'running') return { key: 'tasks.runRunning' }
+  if (run.refusals > 0) return { key: 'tasks.runRefusals', count: run.refusals }
   return { key: 'tasks.runOk' }
 }
 

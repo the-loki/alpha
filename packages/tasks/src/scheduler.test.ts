@@ -1,7 +1,10 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { ScheduledTask, TaskRun } from '@alpha/domain'
 import { describe, expect, it, vi } from 'vitest'
 import { Scheduler, type SchedulerPorts } from './scheduler.ts'
-import type { TaskStore } from './store.ts'
+import { TaskStore } from './store.ts'
 
 const task = (id: string, overrides: Partial<ScheduledTask> = {}): ScheduledTask => ({
   id,
@@ -20,6 +23,7 @@ const fakeStore = (tasks: ScheduledTask[]) =>
   ({
     list: () => tasks.map((entry) => ({ ...entry })),
     find: (id: string) => tasks.find((entry) => entry.id === id),
+    runs: () => [],
     markRan: (id: string, at: number) => {
       const found = tasks.find((entry) => entry.id === id)
       if (found !== undefined) found.lastRunAt = at
@@ -48,6 +52,59 @@ const harness = (tasks: ScheduledTask[], run: SchedulerPorts['run'], nowMs: numb
 }
 
 describe('[tasks] the clock', () => {
+  it('skips a due occurrence while that task has a manual run in flight', async () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-clock-overlap-'))
+    const store = new TaskStore(dataDirectory)
+    store.save(task('a', { createdAt: 0, schedule: { kind: 'every', minutes: 5 } }))
+    store.record({ taskId: 'a', conversationId: 'manual', startedAt: 5 * 60_000, outcome: 'running', refusals: 0 })
+    const run = vi.fn(async () => ({ conversationId: 'scheduled', refusals: 0, outcome: 'ok' as const }))
+    const scheduler = new Scheduler({
+      tasks: store,
+      workspaceExists: () => true,
+      run,
+      runs: (row) => store.record(row),
+      changed: () => undefined,
+      now: () => new Date(10 * 60_000),
+    })
+    try {
+      await scheduler.tick()
+      expect(run).not.toHaveBeenCalled()
+      expect(store.runs('a').map((row) => row.outcome)).toEqual(['skipped', 'running'])
+      expect(store.find('a')?.lastRunAt).toBe(10 * 60_000)
+    } finally {
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
+  it('skips the next occurrence when a scheduled run lasts beyond it', async () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-clock-long-'))
+    const store = new TaskStore(dataDirectory)
+    store.save(task('a', { createdAt: 0, schedule: { kind: 'every', minutes: 5 } }))
+    let now = 5 * 60_000
+    const run = vi.fn(async () => {
+      now = 11 * 60_000
+      return { conversationId: 'scheduled', refusals: 0, outcome: 'ok' as const }
+    })
+    const scheduler = new Scheduler({
+      tasks: store,
+      workspaceExists: () => true,
+      run,
+      runs: (row) => store.record(row),
+      changed: () => undefined,
+      now: () => new Date(now),
+    })
+    try {
+      await scheduler.tick()
+      expect(run).toHaveBeenCalledTimes(1)
+      expect(store.runs('a').map((row) => row.outcome)).toEqual(['skipped', 'ok'])
+      expect(store.find('a')?.lastRunAt).toBe(now)
+      await scheduler.tick()
+      expect(run).toHaveBeenCalledTimes(1)
+    } finally {
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
   it('records a thrown run as failed and continues to the next due task', async () => {
     const tasks = [task('a', { createdAt: 0 }), task('b', { createdAt: 0 })]
     const run = vi.fn(async (candidate: ScheduledTask, started: (conversationId: string) => void) => {
@@ -176,6 +233,41 @@ describe('[tasks] the clock', () => {
 })
 
 describe('[tasks] the timer', () => {
+  it('reports a bookkeeping failure and wakes again when the store recovers', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(5 * 60_000)
+    const tasks = [task('a', { createdAt: 0, schedule: { kind: 'every', minutes: 5 } })]
+    const store = fakeStore(tasks)
+    const markRan = store.markRan.bind(store)
+    let fails = 1
+    store.markRan = (id, at) => {
+      if (fails-- > 0) throw new Error('disk unavailable')
+      markRan(id, at)
+    }
+    const run = vi.fn(async () => ({ conversationId: 'c', refusals: 0, outcome: 'ok' as const }))
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const scheduler = new Scheduler({
+      tasks: store,
+      workspaceExists: () => true,
+      run,
+      runs: () => undefined,
+      changed: () => undefined,
+      now: () => new Date(Date.now()),
+    })
+    try {
+      scheduler.start()
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(reported).toHaveBeenCalledWith('Scheduled task tick failed', expect.any(Error))
+      expect(run).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(run).toHaveBeenCalledTimes(1)
+    } finally {
+      scheduler.stop()
+      reported.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
   it('starts no further task after the clock is stopped during a run', async () => {
     const tasks = [task('a', { createdAt: 0 }), task('b', { createdAt: 0 })]
     let finish: (() => void) | undefined
