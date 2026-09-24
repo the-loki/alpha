@@ -27,19 +27,15 @@ import {
   type RuntimeEvent,
   recordOf,
   type ToolDetails,
-  type ToolStatus,
   type Undef,
   type UsageTotals,
   usageTotals,
   userBlocksOf,
 } from '@alpha/domain'
 import type { RetryDecider, RunFailure } from '@alpha/plugin'
+import type { AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 
-/** A record off the agent's pipe, as it arrives: shaped by the agent, not by this file. */
-export interface RpcLikeEvent {
-  type: string
-  [field: string]: unknown
-}
+type TranslationEvent = AgentEvent | { type: 'agent_settled' }
 
 const textOfPart = (part: unknown): string => {
   const block = recordOf(part)
@@ -64,8 +60,9 @@ function difference(now: UsageTotals, before: UsageTotals): UsageTotals {
 
 const isNothing = (usage: UsageTotals): boolean => usage.totalTokens === 0 && usage.cost === 0
 
-/** Where pi's cumulative numbers ride: on the message being streamed (and on the run's own report). */
-const reportedUsage = (event: RpcLikeEvent): UsageTotals => usageTotals(recordOf(event.message).usage ?? event.usage)
+/** Where pi's cumulative numbers ride: on the assistant message being streamed. */
+const reportedUsage = (message: AgentMessage): UsageTotals =>
+  usageTotals(message.role === 'assistant' ? message.usage : undefined)
 
 /**
  * The failure a raw `agent_end` carries, when its last message is an assistant one that erred:
@@ -73,8 +70,8 @@ const reportedUsage = (event: RpcLikeEvent): UsageTotals => usageTotals(recordOf
  * translator and the retry policy are asking about one answer and not two — this is only the
  * event-shaped way in. The failure may be empty, which is a run that failed and said nothing.
  */
-export function failureOfRun(event: RpcLikeEvent): Undef<RunFailure> {
-  if (event.type !== 'agent_end' || !Array.isArray(event.messages)) return undefined
+export function failureOfRun(event: AgentEvent): Undef<RunFailure> {
+  if (event.type !== 'agent_end') return undefined
   return failureOf(event.messages.at(-1))
 }
 
@@ -90,7 +87,7 @@ export class AgentEventTranslator {
     this.retry = retry
   }
 
-  public translate(event: RpcLikeEvent): RuntimeEvent[] {
+  public translate(event: TranslationEvent): RuntimeEvent[] {
     if (event.type === 'agent_start') return this.startRun()
     if (event.type === 'agent_end') return this.endRun(event)
     if (event.type === 'agent_settled') return this.settle()
@@ -100,7 +97,6 @@ export class AgentEventTranslator {
     if (event.type === 'tool_execution_start') return [this.toolStarted(event)]
     if (event.type === 'tool_execution_update') return [this.toolOutput(event)]
     if (event.type === 'tool_execution_end') return [this.toolFinished(event)]
-    if (event.type === 'compaction_end') return this.compacted(event)
     return []
   }
 
@@ -120,7 +116,7 @@ export class AgentEventTranslator {
    * asking about one answer; `aborted` is false here because a message that failed is not the
    * aborted one, which reads as no failure at all and never reaches this question.
    */
-  private endRun(event: RpcLikeEvent): RuntimeEvent[] {
+  private endRun(event: Extract<AgentEvent, { type: 'agent_end' }>): RuntimeEvent[] {
     if (!this.runOpen) return []
     const failure = failureOfRun(event)
     if (failure !== undefined && this.retry?.shouldRetry({ failed: failure, aborted: false }) === true) return []
@@ -145,8 +141,8 @@ export class AgentEventTranslator {
     return [{ conversationId: this.conversationId, type: 'turn_finished' }]
   }
 
-  private startMessage(event: RpcLikeEvent): RuntimeEvent[] {
-    const message = recordOf(event.message)
+  private startMessage(event: Extract<AgentEvent, { type: 'message_start' }>): RuntimeEvent[] {
+    const message = event.message
     // The person's message is a message of the run like any other, and pi says so when the run
     // takes it: the prompt's own at the start, a steering message at a turn boundary mid-run.
     // Nothing else is emitted at that moment, so this is also the only answer to "when did the
@@ -164,30 +160,29 @@ export class AgentEventTranslator {
     return [opened]
   }
 
-  private update(event: RpcLikeEvent): RuntimeEvent[] {
+  private update(event: Extract<AgentEvent, { type: 'message_update' }>): RuntimeEvent[] {
     const events: RuntimeEvent[] = []
-    const delta = recordOf(event.assistantMessageEvent)
+    const delta = event.assistantMessageEvent
     const at = Date.now()
-    const text = typeof delta.delta === 'string' ? delta.delta : ''
-    if (this.openMessageId !== undefined && delta.type === 'text_delta' && text !== '') {
+    if (this.openMessageId !== undefined && delta.type === 'text_delta' && delta.delta !== '') {
       events.push({
         conversationId: this.conversationId,
         type: 'assistant_text_delta',
         messageId: this.openMessageId,
-        delta: text,
+        delta: delta.delta,
         at,
       })
     }
-    if (this.openMessageId !== undefined && delta.type === 'thinking_delta' && text !== '') {
+    if (this.openMessageId !== undefined && delta.type === 'thinking_delta' && delta.delta !== '') {
       events.push({
         conversationId: this.conversationId,
         type: 'assistant_thinking_delta',
         messageId: this.openMessageId,
-        delta: text,
+        delta: delta.delta,
         at,
       })
     }
-    const reported = reportedUsage(event)
+    const reported = reportedUsage(event.message)
     const added = difference(reported, this.usage)
     this.usage = reported
     if (!isNothing(added)) {
@@ -196,8 +191,8 @@ export class AgentEventTranslator {
     return events
   }
 
-  private endMessage(event: RpcLikeEvent): RuntimeEvent[] {
-    const message = recordOf(event.message)
+  private endMessage(event: Extract<AgentEvent, { type: 'message_end' }>): RuntimeEvent[] {
+    const message = event.message
     if (message.role !== 'assistant' || this.openMessageId === undefined) return []
     const finished: RuntimeEvent = {
       conversationId: this.conversationId,
@@ -206,7 +201,7 @@ export class AgentEventTranslator {
       interrupted: message.stopReason === 'aborted',
     }
     this.openMessageId = undefined
-    const reported = reportedUsage(event)
+    const reported = reportedUsage(event.message)
     const added = difference(reported, this.usage)
     this.usage = reported
     return isNothing(added)
@@ -219,7 +214,7 @@ export class AgentEventTranslator {
    * what the window draws on the left. Its id is this file's, not the session's: the session's
    * entry is written from the message's end, this from its start, and nothing correlates the two.
    */
-  private userSaid(message: Record<string, unknown>): RuntimeEvent {
+  private userSaid(message: Extract<AgentMessage, { role: 'user' }>): RuntimeEvent {
     return {
       conversationId: this.conversationId,
       type: 'user_message',
@@ -233,47 +228,38 @@ export class AgentEventTranslator {
     }
   }
 
-  private toolStarted(event: RpcLikeEvent): RuntimeEvent {
-    const callId = String(event.toolCallId ?? '')
+  private toolStarted(event: Extract<AgentEvent, { type: 'tool_execution_start' }>): RuntimeEvent {
     return {
       conversationId: this.conversationId,
       type: 'tool_started',
-      callId,
-      name: String(event.toolName ?? ''),
+      callId: event.toolCallId,
+      name: event.toolName,
       args: event.args,
       startedAt: Date.now(),
     }
   }
 
-  private toolOutput(event: RpcLikeEvent): RuntimeEvent {
+  private toolOutput(event: Extract<AgentEvent, { type: 'tool_execution_update' }>): RuntimeEvent {
     return {
       conversationId: this.conversationId,
       type: 'tool_output',
-      callId: String(event.toolCallId ?? ''),
+      callId: event.toolCallId,
       // pi accumulates the partial result rather than streaming a delta, and the row replaces
       // what it shows, so the two agree without bookkeeping here.
       output: textOfResult(event.partialResult),
     }
   }
 
-  private toolFinished(event: RpcLikeEvent): RuntimeEvent {
+  private toolFinished(event: Extract<AgentEvent, { type: 'tool_execution_end' }>): RuntimeEvent {
     const details = recordOf(event.result).details
     return {
       conversationId: this.conversationId,
       type: 'tool_finished',
-      callId: String(event.toolCallId ?? ''),
-      status: (event.isError === true ? 'failed' : 'ok') as ToolStatus,
+      callId: event.toolCallId,
+      status: event.isError ? 'failed' : 'ok',
       output: textOfResult(event.result),
       ...(details === undefined ? {} : { details: details as ToolDetails }),
       endedAt: Date.now(),
     }
-  }
-
-  /** A compaction is a structural change: the summary stands in for what came before it. */
-  private compacted(event: RpcLikeEvent): RuntimeEvent[] {
-    const result = recordOf(event.result)
-    const summary = typeof result.summary === 'string' ? result.summary : ''
-    if (summary === '') return []
-    return [{ conversationId: this.conversationId, type: 'history_compacted', summary, at: Date.now() }]
   }
 }

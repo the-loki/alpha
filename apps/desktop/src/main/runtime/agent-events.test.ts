@@ -1,8 +1,10 @@
 import type { RuntimeEvent, UsageTotals } from '@alpha/domain'
-import { describe, expect, it } from 'vitest'
-import { AgentEventTranslator, failureOfRun, type RpcLikeEvent } from './agent-events.ts'
+import type { AgentEvent } from '@earendil-works/pi-agent-core'
+import type { AssistantMessage, Usage, UserMessage } from '@earendil-works/pi-ai'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import { AgentEventTranslator, failureOfRun } from './agent-events.ts'
 
-const usage = (input: number, output: number): Record<string, unknown> => ({
+const usage = (input: number, output: number): Usage => ({
   input,
   output,
   cacheRead: 0,
@@ -11,55 +13,85 @@ const usage = (input: number, output: number): Record<string, unknown> => ({
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: input / 1000 },
 })
 
-const translate = (events: RpcLikeEvent[], translator = new AgentEventTranslator('c1')): RuntimeEvent[] =>
+const assistant = (
+  stopReason: AssistantMessage['stopReason'] = 'stop',
+  overrides: Partial<AssistantMessage> = {},
+): AssistantMessage => ({
+  role: 'assistant',
+  content: [],
+  api: 'openai-completions',
+  provider: 'p',
+  model: 'm',
+  usage: usage(0, 0),
+  stopReason,
+  timestamp: 7,
+  ...overrides,
+})
+
+const user = (text: string): UserMessage => ({
+  role: 'user',
+  content: [{ type: 'text', text }],
+  timestamp: 7,
+})
+
+const messageUpdate = (kind: 'text_delta' | 'thinking_delta', delta: string, totals = usage(0, 0)): AgentEvent => {
+  const message = assistant('pending', { usage: totals })
+  return {
+    type: 'message_update',
+    message,
+    assistantMessageEvent:
+      kind === 'text_delta'
+        ? { type: 'text_delta', contentIndex: 0, delta, partial: message }
+        : { type: 'thinking_delta', contentIndex: 0, delta, partial: message },
+  }
+}
+
+type TranslationEvent = AgentEvent | { type: 'agent_settled' }
+
+const translate = (events: TranslationEvent[], translator = new AgentEventTranslator('c1')): RuntimeEvent[] =>
   events.flatMap((event) => translator.translate(event))
 
 const kinds = (events: RuntimeEvent[]): string[] => events.map((event) => event.type)
 
 describe("[runtime] the agent's events, in the workbench's terms", () => {
-  it('makes a run one turn, whatever pi calls its own turns', () => {
+  it("accepts only embedded-agent events and Alpha's settle signal", () => {
+    expectTypeOf<Parameters<AgentEventTranslator['translate']>[0]>().toEqualTypeOf<TranslationEvent>()
+  })
+
+  it('makes a run one turn, however many model calls it contains', () => {
     const events = translate([
       { type: 'agent_start' },
       { type: 'turn_start' },
-      { type: 'turn_end' },
-      { type: 'agent_end' },
+      { type: 'turn_end', message: assistant(), toolResults: [] },
+      { type: 'agent_end', messages: [assistant()] },
       { type: 'agent_settled' },
     ])
 
-    // pi's turn is one model call; Alpha's is the run: the composer follows the run.
     expect(kinds(events)).toEqual(['turn_started', 'turn_finished'])
   })
 
-  it('says a user message when the run takes it, which a steered one arrives as', () => {
+  it('shows a user message when the agent takes it', () => {
     const events = translate([
       { type: 'agent_start' },
-      { type: 'turn_start' },
-      {
-        type: 'message_start',
-        message: { role: 'user', content: [{ type: 'text', text: 'actually, this instead' }], timestamp: 7 },
-      },
-      { type: 'message_end', message: { role: 'user' } },
-      { type: 'message_start', message: { role: 'assistant' } },
+      { type: 'message_start', message: user('actually, this instead') },
+      { type: 'message_end', message: user('actually, this instead') },
+      { type: 'message_start', message: assistant('pending') },
     ])
 
-    // pi records the person's message as a message like any other, and it is the only signal that
-    // says when the lane took a steering message: nothing else is emitted at that moment.
     expect(kinds(events)).toEqual(['turn_started', 'user_message', 'assistant_message_started'])
-    const said = events[1]
-    expect(said?.type === 'user_message' ? said.message.blocks : []).toEqual([
-      { kind: 'text', text: 'actually, this instead' },
-    ])
-    expect(said?.type === 'user_message' ? said.message.createdAt : 0).toBe(7)
-    expect(said?.type === 'user_message' ? said.message.role : '').toBe('user')
+    expect(events[1]).toMatchObject({
+      type: 'user_message',
+      message: { role: 'user', blocks: [{ kind: 'text', text: 'actually, this instead' }], createdAt: 7 },
+    })
   })
 
-  it('opens and closes a message around its deltas, text and thinking alike', () => {
+  it('opens and closes an assistant message around text and thinking deltas', () => {
     const events = translate([
-      { type: 'message_start', message: { role: 'assistant' } },
-      { type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'Hel' } },
-      { type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'lo' } },
-      { type: 'message_update', assistantMessageEvent: { type: 'thinking_delta', delta: 'hmm' } },
-      { type: 'message_end', message: { role: 'assistant', stopReason: 'stop' } },
+      { type: 'message_start', message: assistant('pending') },
+      messageUpdate('text_delta', 'Hel'),
+      messageUpdate('text_delta', 'lo'),
+      messageUpdate('thinking_delta', 'hmm'),
+      { type: 'message_end', message: assistant() },
     ])
 
     expect(kinds(events)).toEqual([
@@ -69,51 +101,50 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
       'assistant_thinking_delta',
       'assistant_message_finished',
     ])
-    const deltas = events.filter((event) => event.type === 'assistant_text_delta')
-    expect(deltas.map((event) => (event.type === 'assistant_text_delta' ? event.delta : ''))).toEqual(['Hel', 'lo'])
+    expect(events.filter((event) => event.type === 'assistant_text_delta').map((event) => event.delta)).toEqual([
+      'Hel',
+      'lo',
+    ])
   })
 
-  it('marks the message interrupted when the run was stopped', () => {
+  it('marks an aborted assistant message interrupted', () => {
     const translator = new AgentEventTranslator('c1')
-    translate([{ type: 'message_start', message: { role: 'assistant' } }], translator)
-    const events = translate(
-      [{ type: 'message_end', message: { role: 'assistant', stopReason: 'aborted' } }],
-      translator,
-    )
-
-    expect(events).toEqual([
+    translate([{ type: 'message_start', message: assistant('pending') }], translator)
+    expect(translate([{ type: 'message_end', message: assistant('aborted') }], translator)).toEqual([
       { conversationId: 'c1', type: 'assistant_message_finished', messageId: expect.any(String), interrupted: true },
     ])
   })
 
-  it('reports usage as what it added, because pi reports it cumulatively', () => {
-    // The window's total is a sum of what it is told: sending the cumulative figure again would
-    // count the same tokens twice. pi reports it on the message it is streaming.
+  it('reports only the usage added by each cumulative report', () => {
     const translator = new AgentEventTranslator('c1')
-    const streamed = (totals: Record<string, unknown>): RpcLikeEvent => ({
-      type: 'message_update',
-      message: { role: 'assistant', usage: totals },
-      assistantMessageEvent: { type: 'text_delta', delta: 'x' },
-    })
-    const first = translate([streamed(usage(100, 10))], translator)
-    const second = translate([streamed(usage(150, 40))], translator)
-    const third = translate([streamed(usage(150, 40))], translator)
+    translate([{ type: 'message_start', message: assistant('pending') }], translator)
+    const totals = (events: RuntimeEvent[]): UsageTotals => {
+      const event = events.find((item) => item.type === 'usage_recorded')
+      if (event?.type !== 'usage_recorded') throw new Error('missing usage report')
+      return event.usage
+    }
+    const first = translate([messageUpdate('text_delta', 'x', usage(100, 10))], translator)
+    const second = translate([messageUpdate('text_delta', 'y', usage(150, 40))], translator)
+    const duplicate = translate([messageUpdate('text_delta', 'z', usage(150, 40))], translator)
+    const ended = translate(
+      [{ type: 'message_end', message: assistant('stop', { usage: usage(170, 50) }) }],
+      translator,
+    )
 
-    const totals = (events: RuntimeEvent[]): UsageTotals =>
-      (events.find((event) => event.type === 'usage_recorded') as { usage: UsageTotals }).usage
     expect(totals(first)).toMatchObject({ input: 100, output: 10, totalTokens: 110 })
     expect(totals(second)).toMatchObject({ input: 50, output: 30, totalTokens: 80 })
-    // Nothing new is nothing to say.
-    expect(third.filter((event) => event.type === 'usage_recorded')).toEqual([])
+    expect(duplicate.filter((event) => event.type === 'usage_recorded')).toEqual([])
+    expect(totals(ended)).toMatchObject({ input: 20, output: 10, totalTokens: 30 })
   })
 
-  it('turns a tool call into the row the ledger draws, with its output as it arrives', () => {
+  it('shows a tool call, its output, and its final status', () => {
     const events = translate([
       { type: 'tool_execution_start', toolCallId: 'call_1', toolName: 'bash', args: { command: 'ls' } },
       {
         type: 'tool_execution_update',
         toolCallId: 'call_1',
         toolName: 'bash',
+        args: { command: 'ls' },
         partialResult: { content: [{ type: 'text', text: 'half' }] },
       },
       {
@@ -126,133 +157,53 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
     ])
 
     expect(kinds(events)).toEqual(['tool_started', 'tool_output', 'tool_finished'])
-    expect(events[1]).toMatchObject({ type: 'tool_output', callId: 'call_1', output: 'half' })
-    expect(events[2]).toMatchObject({ type: 'tool_finished', callId: 'call_1', status: 'ok', output: 'done' })
+    expect(events[0]).toMatchObject({ type: 'tool_started', callId: 'call_1', name: 'bash' })
+    expect(events[1]).toMatchObject({ type: 'tool_output', output: 'half' })
+    expect(events[2]).toMatchObject({ type: 'tool_finished', status: 'ok', output: 'done' })
+    expect(
+      translate([{ type: 'tool_execution_end', toolCallId: 'call_2', toolName: 'bash', result: {}, isError: true }]),
+    ).toMatchObject([{ type: 'tool_finished', status: 'failed' }])
   })
 
-  it('says a failed tool call failed', () => {
-    const events = translate([
-      { type: 'tool_execution_start', toolCallId: 'call_9', toolName: 'bash', args: { command: 'rm -rf /' } },
-      { type: 'tool_execution_end', toolCallId: 'call_9', toolName: 'bash', result: {}, isError: true },
-    ])
-
-    // How the call got past the gate is not this module's business: the agent announces a call
-    // before Alpha has decided, so the decision arrives as its own event (runtime/tool_decided).
-    expect(events[0]).toEqual({
-      conversationId: 'c1',
-      type: 'tool_started',
-      callId: 'call_9',
-      name: 'bash',
-      args: { command: 'rm -rf /' },
-      startedAt: expect.any(Number),
-    })
-    expect(events[1]).toMatchObject({ type: 'tool_finished', status: 'failed' })
+  it('ignores the model-call boundary events that the window does not draw', () => {
+    expect(translate([{ type: 'turn_start' }, { type: 'turn_end', message: assistant(), toolResults: [] }])).toEqual([])
   })
 
-  it('says what a compaction stood in for, as far as pi reports it', () => {
-    const events = translate([
-      {
-        type: 'compaction_end',
-        reason: 'threshold',
-        result: { summary: 'Earlier turns were about naming things.', tokensBefore: 150000 },
-        aborted: false,
-      },
-    ])
-
-    expect(events[0]).toMatchObject({ type: 'history_compacted', summary: 'Earlier turns were about naming things.' })
-  })
-
-  it('ignores the events that are about nothing the window draws', () => {
-    const events = translate([
-      { type: 'text_start' },
-      { type: 'compaction_start', reason: 'threshold' },
-      { type: 'auto_retry_start' },
-      { type: 'bash_execution_update', delta: 'x' },
-      { type: 'extension_ui_request', method: 'confirm' },
-    ])
-
-    expect(events).toEqual([])
-  })
-
-  it('says a run failed when the message that ended it says so', () => {
-    // pi has no failure event: the run ends with an assistant message that failed.
-    const events = translate([
-      { type: 'agent_start' },
-      {
-        type: 'agent_end',
-        messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' }],
-      },
-    ])
-
-    expect(kinds(events)).toEqual(['turn_started', 'run_failed'])
-    expect(events[1]).toMatchObject({ type: 'run_failed', message: 'the provider hung up' })
-  })
-
-  it('says a run failed even when it had nothing to say, and then carries no words at all', () => {
-    const events = translate([
-      { type: 'agent_start' },
-      { type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'error', errorMessage: '' }] },
-    ])
-
-    expect(kinds(events)).toEqual(['turn_started', 'run_failed'])
-    // Nothing to quote is nothing to say: the sentence for this case is the window's, in the
-    // language the window is in (ADR-0010), so no words travel with the event at all.
-    expect(events[1]).toStrictEqual({ conversationId: 'c1', type: 'run_failed' })
-  })
-
-  it('reads the failure off an agent_end alone, and only when its last message erred', () => {
-    // The one decoder: the translator says `run_failed` with it, and the retry policy is asked
-    // about exactly what it read.
-    const failed = { role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' }
+  it('reports a final failure, including one with no message', () => {
+    const failed = assistant('error', { errorMessage: 'the provider hung up' })
     expect(failureOfRun({ type: 'agent_end', messages: [failed] })).toEqual({
       message: 'the provider hung up',
       retryable: false,
     })
-    // It failed and said nothing, which is a failure all the same: the words for that case are the
-    // window's, so what comes back here is an empty failure rather than no failure.
-    expect(failureOfRun({ type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'error' }] })).toEqual({})
+    expect(kinds(translate([{ type: 'agent_start' }, { type: 'agent_end', messages: [failed] }]))).toEqual([
+      'turn_started',
+      'run_failed',
+    ])
+    expect(translate([{ type: 'agent_start' }, { type: 'agent_end', messages: [assistant('error')] }])[1]).toEqual({
+      conversationId: 'c1',
+      type: 'run_failed',
+    })
     expect(failureOfRun({ type: 'agent_end', messages: [] })).toBeUndefined()
     expect(failureOfRun({ type: 'message_end', message: failed })).toBeUndefined()
   })
 
-  it('keeps the run open while the retry policy is going to try again', () => {
-    const events = translate(
+  it('keeps the turn open while retrying and closes it when the retry budget is spent', () => {
+    const failure = assistant('error', { errorMessage: 'overloaded' })
+    const retrying = translate(
       [
         { type: 'agent_start' },
-        {
-          type: 'agent_end',
-          messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'overloaded' }],
-        },
+        { type: 'agent_end', messages: [failure] },
         { type: 'agent_start' },
-        { type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'stop' }] },
+        { type: 'agent_end', messages: [assistant()] },
       ],
       new AgentEventTranslator('c1', { shouldRetry: () => true }),
     )
+    expect(kinds(retrying)).toEqual(['turn_started', 'turn_finished'])
 
-    expect(kinds(events)).toEqual(['turn_started', 'turn_finished'])
-  })
-
-  it('closes the run as the failure when the retry policy has had enough', () => {
-    const events = translate(
-      [
-        { type: 'agent_start' },
-        {
-          type: 'agent_end',
-          messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'overloaded' }],
-        },
-      ],
+    const exhausted = translate(
+      [{ type: 'agent_start' }, { type: 'agent_end', messages: [failure] }],
       new AgentEventTranslator('c1', { shouldRetry: () => false }),
     )
-
-    expect(kinds(events)).toEqual(['turn_started', 'run_failed'])
-  })
-
-  it('does not call an ordinary answer with no error field a failure', () => {
-    const events = translate([
-      { type: 'agent_start' },
-      { type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'stop' }] },
-    ])
-
-    expect(kinds(events)).toEqual(['turn_started', 'turn_finished'])
+    expect(kinds(exhausted)).toEqual(['turn_started', 'run_failed'])
   })
 })

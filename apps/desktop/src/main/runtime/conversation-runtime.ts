@@ -304,7 +304,8 @@ export class ConversationRuntime {
   /** Every agent event: persisted as it arrived, then translated for the window. */
   private onEvent(event: AgentEvent): void {
     this.persist(event)
-    const ending = event.type === 'agent_end' && this.runAbort?.signal.aborted ? { type: 'agent_settled' } : event
+    const ending =
+      event.type === 'agent_end' && this.runAbort?.signal.aborted ? ({ type: 'agent_settled' } as const) : event
     for (const translated of this.translator.translate(ending)) {
       if (
         event.type === 'message_end' &&
