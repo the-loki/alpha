@@ -6,7 +6,7 @@
  */
 
 import type { AlphaPlugin } from '@alpha/agent'
-import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
+import { aModel, errorStream, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
 import type { SubagentDefinition } from '@alpha/subagents'
 import { SUBAGENTS } from '@alpha/subagents'
 import { describe, expect, it } from 'vitest'
@@ -38,6 +38,7 @@ const portsOf = (drives: Array<() => ReturnType<typeof textStream>>, over: Parti
     plugins: callerPlugins,
     models: scriptedModels(drives),
     model: () => aModel(),
+    onUsage: () => undefined,
     systemPrompt: async (subagent) => {
       prompts.push(subagent.name)
       return `the workspace prompt\n\n${subagent.prompt}`
@@ -80,13 +81,15 @@ describe('[subagents] the plugin face', () => {
 
   it('runs the subagent on the caller’s own plugins and answers with what it said', async () => {
     const drives = [() => toolUseStream('read', { text: 'notes.txt' }), () => textStream('the parser is named pi')]
-    const { ports, prompts } = portsOf(drives)
+    const spent: number[] = []
+    const { ports, prompts } = portsOf(drives, { onUsage: (usage) => spent.push(usage.totalTokens) })
 
     const result = await taskOf(ports).execute('call-2', { agent: 'explore', prompt: 'find the parser' })
 
     expect(prompts).toEqual(['explore'])
     expect(result?.content).toEqual([{ type: 'text', text: 'the parser is named pi' }])
     expect(asked).toEqual(['read'])
+    expect(spent).toEqual([4])
   })
 
   it('gives the child the tools its definition lists, the blocks the caller is under, and no more', () => {
@@ -108,6 +111,24 @@ describe('[subagents] the plugin face', () => {
     )
   })
 
+  it('keeps the usage of a stopped child after its first model call', async () => {
+    const stop = new AbortController()
+    const spent: number[] = []
+    const drives = [
+      () => toolUseStream('read', { text: 'notes.txt' }),
+      () => {
+        stop.abort()
+        return errorStream('stopped', 'aborted')
+      },
+    ]
+    const { ports } = portsOf(drives, { onUsage: (usage) => spent.push(usage.totalTokens) })
+
+    await expect(
+      taskOf(ports).execute('call-stopped', { agent: 'explore', prompt: 'go' }, stop.signal),
+    ).rejects.toThrow()
+    expect(spent).toEqual([4])
+  })
+
   it('accepts a complete answer on the last allowed turn', async () => {
     const short: SubagentDefinition = { ...named('explore'), maxTurns: 1 }
     const { ports } = portsOf([() => textStream('completed answer')], { registry: [short] })
@@ -119,11 +140,28 @@ describe('[subagents] the plugin face', () => {
   it('a subagent that spends its turns fails with what it had, saying why', async () => {
     const short: SubagentDefinition = { ...named('explore'), maxTurns: 1 }
     const drives = [() => toolUseStream('read', { text: 'notes.txt' }), () => textStream('never asked')]
-    const { ports } = portsOf(drives, { registry: [short] })
+    const spent: number[] = []
+    const { ports } = portsOf(drives, {
+      registry: [short],
+      onUsage: (usage) => spent.push(usage.totalTokens),
+    })
 
     await expect(taskOf(ports).execute('call-4', { agent: 'explore', prompt: 'go' })).rejects.toThrow(
       /It ran out of the 1 turns it was given/,
     )
+    expect(spent).toEqual([2])
+  })
+
+  it('reports the model usage even when the child fails', async () => {
+    const spent: number[] = []
+    const { ports } = portsOf([() => errorStream('provider failed', 'error')], {
+      onUsage: (usage) => spent.push(usage.totalTokens),
+    })
+
+    await expect(taskOf(ports).execute('call-failed', { agent: 'explore', prompt: 'go' })).rejects.toThrow(
+      'provider failed',
+    )
+    expect(spent).toEqual([2])
   })
 
   it('a conversation with no model cannot run a subagent, and says so', async () => {

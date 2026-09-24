@@ -166,7 +166,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
 
     case 'run_failed':
       // A failure that said nothing is the same failure whether the nothing is absent or empty.
-      return failRun(state, event.message ? { said: event.message } : undefined)
+      return closeTurn(failRun(state, event.message ? { said: event.message } : undefined))
 
     case 'turn_refused':
       return failRun(state, { refusal: event.refusal })

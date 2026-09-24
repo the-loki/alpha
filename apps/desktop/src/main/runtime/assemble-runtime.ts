@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs'
 import type { AlphaPlugin } from '@alpha/agent'
 import { assembleAgentWithHost, createPluginHost, historyOf, type PluginHost } from '@alpha/agent'
-import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
+import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef, UsageTotals } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import {
   createCompactionPlugin,
@@ -121,6 +121,7 @@ function pluginsFor(
   models: Models,
   agent: () => Undef<Agent>,
   announce: (callId: string, record: ApprovalRecord) => void,
+  reportUsage: (usage: UsageTotals) => void,
 ): AssembledPlugins {
   const shared: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
   if (options.mcp !== undefined) {
@@ -154,6 +155,7 @@ function pluginsFor(
     model: () => agent()?.state.model,
     systemPrompt: async (subagent) =>
       `${await systemPromptFor(session.workspacePath, readTextFile)}\n\n${subagent.prompt}`,
+    onUsage: reportUsage,
   })
   return { plugins: [...shared, compaction, retry, subagents], compact: () => compaction.compact(), retry }
 }
@@ -200,6 +202,7 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
     models,
     () => agent,
     (callId, approval) => runtime?.decided(callId, approval),
+    (usage) => runtime?.recordSubagentUsage(usage),
   )
   const host = createPluginHost(policies.plugins)
   const assembled = model === undefined ? undefined : await assembleFor(options, session, models, model, host)

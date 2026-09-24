@@ -35,6 +35,15 @@ describe('[domain] addUsage', () => {
 })
 
 describe('[domain] usageTotals', () => {
+  it('reads the flat cost in Alpha usage records', () => {
+    expect(usageTotals({ input: 2, output: 1, totalTokens: 3, cost: 0.03 })).toMatchObject({
+      input: 2,
+      output: 1,
+      totalTokens: 3,
+      cost: 0.03,
+    })
+  })
+
   it('reads a provider payload field by field', () => {
     expect(
       usageTotals({ input: 12, output: 3, cacheRead: 1, cacheWrite: 2, totalTokens: 18, cost: { total: 0.004 } }),

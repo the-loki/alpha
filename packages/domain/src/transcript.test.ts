@@ -523,6 +523,19 @@ describe('[domain] the approval gate', () => {
 })
 
 describe('[domain] usage', () => {
+  it('keeps the spending of a failed turn in the visible total', () => {
+    const spent = { input: 900, output: 100, cacheRead: 0, cacheWrite: 0, totalTokens: 1000, cost: 0.01 }
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'usage_recorded', usage: spent }),
+      event({ type: 'run_failed', message: 'provider failed' }),
+    ])
+
+    expect(state.status).toBe('failed')
+    expect(state.turns).toEqual([{ usage: spent }])
+    expect(totalUsage(state)).toEqual(spent)
+  })
+
   it('counts history and the next turn once each', () => {
     // What a relaunch is: a conversation that already spent something opens again, and the turn
     // that follows must not carry the history into its own row.

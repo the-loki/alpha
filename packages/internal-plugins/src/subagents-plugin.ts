@@ -11,12 +11,12 @@
  * conversation. The block half is not optional: a capability that may stop a call must stop it for a
  * subagent too, and taking the whole chain is what makes that automatic rather than remembered.
  *
- * Its transcript is the child's own and is dropped with it: nothing of the subagent's work is
- * written to a session, so what remains in the window is one row — the task, and the answer.
+ * Its transcript is the child's own and is dropped with it: only aggregate usage is written to
+ * the parent session, so what remains in the window is one row — the task, and the answer.
  */
 
 import { type AlphaPlugin, assembleAgent } from '@alpha/agent'
-import type { Undef } from '@alpha/domain'
+import { addUsage, EMPTY_USAGE, type Undef, type UsageTotals, usageTotals } from '@alpha/domain'
 import {
   allowsTool,
   delegatingTo,
@@ -41,6 +41,8 @@ export interface SubagentsPluginPorts {
   model: () => Undef<Model<Api>>
   /** The prompt the child starts from: the workspace's own, then the subagent's own instruction. */
   systemPrompt: (subagent: SubagentDefinition) => Promise<string>
+  /** What the child's model calls spent, whether or not the tool answered successfully. */
+  onUsage: (usage: UsageTotals) => void
 }
 
 /** A plugin that carries one face: what the base needs to hang it on the agent. */
@@ -129,6 +131,11 @@ async function runSubagent(
     await child.prompt(task)
   } finally {
     signal?.removeEventListener('abort', stop)
+    const usage = child.state.messages.reduce(
+      (total, message) => (message.role === 'assistant' ? addUsage(total, usageTotals(message.usage)) : total),
+      EMPTY_USAGE,
+    )
+    ports.onUsage(usage)
   }
 
   const said = answerOf(child.state.messages)

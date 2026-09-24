@@ -2,8 +2,9 @@
 
 The agent can hand one task to a **subagent** — a second agent it runs for the length of that call —
 through a `task` tool. The subagent is assembled from the caller's own plugins, given one
-instruction, and answers with one message; nothing else about it crosses. Two are shipped, and the
-registry that names them is `@alpha/subagents`, policy with no agent in it.
+instruction, and answers with one message. Its model usage counts in the caller's conversation;
+its messages stay private. Two are shipped, and the registry that names them is
+`@alpha/subagents`, policy with no agent in it.
 
 ## Context
 
@@ -43,9 +44,12 @@ none lists `task`: a subagent cannot hand work to a subagent. That is a property
 check in the face, and `allowsTool` is where it is stated.
 
 **One row, and a memory-only transcript.** The subagent's messages are its own and are dropped with
-it: nothing is written to a session, nothing appears in the parent's transcript but the `task` row —
-the instruction and the answer. What the window therefore hears is a decision about a call it has no
-row for: the gate's port is the parent conversation's, so a subagent's approval card and its
+it: none appears in the parent's transcript, which shows only the `task` row, its instruction and
+answer. The child's model usage is the exception: one `subagent_usage` entry on the parent's active
+session path records its tokens and cost, even when the tool fails or is stopped. The runtime also
+emits `usage_recorded`, so the live total and reopened total agree. What the window therefore hears
+about a subagent's own call is a decision it has no row for: the gate's port is the parent
+conversation's, so a subagent's approval card and its
 `tool_decided` both arrive for the parent. The card is right (it is the person's call to allow, and
 it says what would run); the decision finds no row, and the reducer already ignores a call it cannot
 place. The ledger beside the parent's session keeps the record either way, because a real call was
@@ -53,11 +57,10 @@ really decided.
 
 ## Consequences
 
-- A subagent's tokens are **not** in the parent conversation's totals. The totals are summed from the
-  parent's own assistant messages, and the child's are neither persisted nor a row; folding them in
-  would mean carrying a tool result's usage into the session entry and the transcript's accounting,
-  which is a change of shape rather than a line — and this ticket does not make it. What the
-  delegation cost is visible today as the work not in the conversation, which is the reason for it.
+- A subagent's tokens and cost count in the parent conversation's totals, while its messages remain
+  private. The usage entry stays on the session's active path through compaction and is excluded
+  when an earlier branch is chosen. A failed parent turn closes its spending row just as a successful
+  turn does, so the total does not change merely because the conversation was reopened.
 - A subagent's turns are not on screen. The person sees the task, its approval, and the answer, and
   nothing of the reading in between: the same trade as the context it does not spend. A window that
   wanted to show it would need the child's transcript kept, which is a decision with a lifetime — where

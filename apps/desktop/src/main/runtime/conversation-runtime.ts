@@ -26,6 +26,7 @@ import {
   type ThinkingLevel,
   type TurnRefusal,
   type Undef,
+  type UsageTotals,
 } from '@alpha/domain'
 import type { RetryDecider } from '@alpha/plugin'
 import { type NewEntry, type SessionStore, tipPath, type WorkspaceChangeLog } from '@alpha/sessions'
@@ -166,6 +167,13 @@ export class ConversationRuntime {
    */
   public decided(callId: string, approval: ApprovalRecord): void {
     this.emit({ conversationId: this.conversationId, type: 'tool_decided', callId, approval })
+  }
+
+  /** The child's messages stay private; its model usage belongs to this conversation's bill. */
+  public recordSubagentUsage(usage: UsageTotals): void {
+    if (usage.totalTokens === 0 && usage.cost === 0) return
+    this.append({ type: 'subagent_usage', usage })
+    this.emit({ conversationId: this.conversationId, type: 'usage_recorded', usage })
   }
 
   /**

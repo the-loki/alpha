@@ -5,8 +5,8 @@
  * The entry shapes are the ones the RPC era already parsed — messages, compactions and branch
  * summaries in an `id`/`parentId` tree, the tip naming the path a transcript is — so the read side
  * (`tipPath`, `entriesToMessages`) is carried over unchanged, and a session the old agent wrote is
- * read in place by the same parser: only the header line differs, and the header is skipped. What
- * changed is ownership: the writer is Alpha's, and no agent is asked for its own file.
+ * read in place by the same parser. Alpha also writes retry and delegated-usage entries on that
+ * path. What changed is ownership: the writer is Alpha's, and no agent is asked for its own file.
  */
 
 import { randomBytes } from 'node:crypto'
@@ -117,11 +117,11 @@ function standInFor(path: AgentEntry[], entry: AgentEntry): AgentEntry {
   return { ...entry, replaced: path.slice(0, kept).filter((one) => one.type === 'message').length }
 }
 
-/** What the session has spent: assistant messages plus discarded attempts carried by retry markers. */
+/** What the active session path spent: its assistant calls, retries, and delegated calls. */
 export function usageOf(entries: AgentEntry[]): UsageTotals {
   return entries.reduce((total, entry) => {
     const reportedUsage =
-      entry.type === 'retry'
+      entry.type === 'retry' || entry.type === 'subagent_usage'
         ? entry.usage
         : entry.type === 'message' && entry.message?.role === 'assistant'
           ? recordOf(entry.message).usage

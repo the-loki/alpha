@@ -95,6 +95,25 @@ describe('reading a session file', () => {
 })
 
 describe('what a session has spent', () => {
+  it('keeps delegated usage and cost on the active path, excluding a later abandoned branch', () => {
+    const store = new SessionStore(aRoot())
+    store.append({
+      sessionId: 'one',
+      workspacePath: WORKSPACE,
+      entry: { type: 'subagent_usage', usage: { input: 2, output: 1, totalTokens: 3, cost: 0.03 } },
+    })
+    const later = store.append({
+      sessionId: 'one',
+      workspacePath: WORKSPACE,
+      entry: { type: 'subagent_usage', usage: { input: 3, output: 2, totalTokens: 5, cost: 0.05 } },
+    })
+
+    expect(store.usage('one', WORKSPACE)).toMatchObject({ input: 5, output: 3, totalTokens: 8, cost: 0.08 })
+    const forked = store.fork('one', WORKSPACE, later.id)
+    if (forked === undefined) throw new Error('the session did not fork')
+    expect(store.usage(forked, WORKSPACE)).toMatchObject({ input: 2, output: 1, totalTokens: 3, cost: 0.03 })
+  })
+
   it('adds up the usage on the path, and nothing off it', () => {
     const { entries } = parseSession(PI_SESSION)
     expect(usageOf(tipPath(entries, 'aaaa0002'))).toMatchObject({ input: 10, output: 2, totalTokens: 12, cost: 0.5 })

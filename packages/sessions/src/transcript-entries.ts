@@ -26,7 +26,7 @@ export interface AgentEntry {
   parentId?: Null<string>
   timestamp: number | string
   message?: AgentEntryMessage
-  /** Actual spending from a discarded attempt, carried by its retry marker. */
+  /** Actual spending from a retry marker or a delegated model call. */
   usage?: unknown
   summary?: string
   /** How many messages a compaction stood in for, worked out from the path it sits on. */

@@ -13,8 +13,18 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type AlphaPlugin, assembleAgent, historyOf } from '@alpha/agent'
-import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
-import type { ApprovalAsk, ApprovalRecord, PermissionLevel, PermissionRule, RuntimeEvent, Undef } from '@alpha/domain'
+import { aModel, errorStream, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
+import {
+  type ApprovalAsk,
+  type ApprovalRecord,
+  emptyTranscript,
+  type PermissionLevel,
+  type PermissionRule,
+  type RuntimeEvent,
+  reduceTranscript,
+  totalUsage,
+  type Undef,
+} from '@alpha/domain'
 import type { ApprovalAnswer, PermissionPorts } from '@alpha/gate'
 import { createGatePlugin, createSubagentsPlugin, createWorkspaceToolsPlugin } from '@alpha/internal-plugins'
 import { DecisionLog, SessionStore, tipPath } from '@alpha/sessions'
@@ -66,6 +76,7 @@ const gated = (drives: Array<() => ReturnType<typeof textStream>>, level: Permis
       models,
       model: () => aModel(),
       systemPrompt: async (subagent) => `you are scripted\n\n${subagent.prompt}`,
+      onUsage: (usage) => runtime?.recordSubagentUsage(usage),
     }),
   )
   const history = store.entries('c1', workspace)
@@ -108,6 +119,43 @@ const recordsOf = (events: RuntimeEvent[]): ApprovalRecord[] =>
   events.flatMap((event) => (event.type === 'tool_decided' ? [event.approval] : []))
 
 describe('[runtime] a subagent inside a conversation', () => {
+  it('counts delegated model calls in the parent live total and session', async () => {
+    const f = gated(
+      [
+        () => toolUseStream('task', { agent: 'explore', prompt: 'find the parser' }),
+        () => textStream('The parser is named pi.'),
+        () => textStream('Done.'),
+      ],
+      'full-access',
+    )
+
+    await f.runtime.prompt('delegate it')
+    expect(await f.runtime.settle()).toBe(true)
+    const live = f.events.reduce(reduceTranscript, emptyTranscript('c1'))
+    expect(totalUsage(live).totalTokens).toBe(6)
+    expect(f.store.usage('c1', f.workspace).totalTokens).toBe(6)
+    await f.runtime.close()
+  })
+
+  it('keeps both parent and child usage when their model calls fail', async () => {
+    const f = gated(
+      [
+        () => toolUseStream('task', { agent: 'explore', prompt: 'find the parser' }),
+        () => errorStream('child failed', 'error'),
+        () => errorStream('parent failed', 'error'),
+      ],
+      'full-access',
+    )
+
+    await f.runtime.prompt('delegate it')
+    expect(await f.runtime.settle()).toBe(false)
+    const live = f.events.reduce(reduceTranscript, emptyTranscript('c1'))
+    expect(live.status).toBe('failed')
+    expect(totalUsage(live).totalTokens).toBe(6)
+    expect(f.store.usage('c1', f.workspace).totalTokens).toBe(6)
+    await f.runtime.close()
+  })
+
   it('runs the subagent on the caller’s plugins, so the gate asks about the subagent’s own call', async () => {
     const f = gated([
       () => toolUseStream('task', { agent: 'builder', prompt: 'run the build' }),

@@ -45,20 +45,20 @@ export function addUsage(left: UsageTotals, right: UsageTotals): UsageTotals {
 const amountOf = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
 
 /**
- * A provider's usage payload in the workbench's terms. One reading for both ends of the runtime —
- * the event translator's totals and the session reader's totals — so the header's sum and the turn
- * rows under it are the same arithmetic rather than two that agree today.
+ * A provider's usage payload or Alpha's own totals in the workbench's terms. One reading for both
+ * ends of the runtime — the event translator's totals and the session reader's totals — so the
+ * header's sum and the turn rows under it are the same arithmetic rather than two that agree today.
  */
 export function usageTotals(usage: unknown): UsageTotals {
   const numbers = recordOf(usage)
-  const cost = recordOf(numbers.cost)
+  const cost = numbers.cost
   return {
     input: amountOf(numbers.input),
     output: amountOf(numbers.output),
     cacheRead: amountOf(numbers.cacheRead),
     cacheWrite: amountOf(numbers.cacheWrite),
     totalTokens: amountOf(numbers.totalTokens),
-    cost: amountOf(cost.total),
+    cost: amountOf(typeof cost === 'number' ? cost : recordOf(cost).total),
   }
 }
 
