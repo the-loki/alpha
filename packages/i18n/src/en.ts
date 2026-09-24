@@ -20,6 +20,7 @@ export const EN = {
   'tasks.folder': 'Folder',
   'tasks.level': 'Permission level',
   'tasks.schedule': 'Schedule',
+  'tasks.invalidInterval': 'Use at least {count} whole minutes.',
   'tasks.everyMinutes': 'Every {count} minutes',
   'tasks.dailyAt': 'Every day at {time}',
   'tasks.nextRun': 'Next run {when}',

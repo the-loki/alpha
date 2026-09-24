@@ -1,5 +1,6 @@
 import {
   DEFAULT_SCHEDULE,
+  isValidSchedule,
   levelKey,
   MINIMUM_INTERVAL_MINUTES,
   PERMISSION_LEVELS,
@@ -32,6 +33,7 @@ const RESTING = 'border-line text-muted hover:bg-surface-1'
 function ScheduleFields(props: { schedule: TaskSchedule; onChange: (schedule: TaskSchedule) => void }) {
   const t = useText()
   const each = () => props.schedule.kind === 'every'
+  const invalid = () => !isValidSchedule(props.schedule)
   return (
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex gap-2">
@@ -62,6 +64,8 @@ function ScheduleFields(props: { schedule: TaskSchedule; onChange: (schedule: Ta
             min={MINIMUM_INTERVAL_MINUTES}
             value={props.schedule.minutes}
             aria-label={t('tasks.minutes')}
+            aria-invalid={invalid()}
+            aria-describedby={invalid() ? 'task-interval-error' : undefined}
             onInput={(event) => {
               const minutes = Number(event.currentTarget.value)
               props.onChange({ kind: 'every', minutes: Number.isFinite(minutes) ? minutes : MINIMUM_INTERVAL_MINUTES })
@@ -86,6 +90,11 @@ function ScheduleFields(props: { schedule: TaskSchedule; onChange: (schedule: Ta
           />
         </label>
       )}
+      <Show when={each() && invalid()}>
+        <p id="task-interval-error" role="alert" class="basis-full font-text text-name text-warning">
+          {t('tasks.invalidInterval', { count: MINIMUM_INTERVAL_MINUTES })}
+        </p>
+      </Show>
     </div>
   )
 }
@@ -129,7 +138,10 @@ export function TaskForm(props: {
   const folders = () => shell.recents
   const schedule = () => props.form.schedule ?? DEFAULT_SCHEDULE
   const ready = () =>
-    (props.form.name ?? '').trim() !== '' && (props.form.prompt ?? '').trim() !== '' && props.form.workspacePath !== ''
+    (props.form.name ?? '').trim() !== '' &&
+    (props.form.prompt ?? '').trim() !== '' &&
+    props.form.workspacePath !== '' &&
+    isValidSchedule(schedule())
 
   // Three groups, separated by the rules the rest of the workbench separates with: what the task asks,
   // where and at what level it runs, and when. Five fields of the same size in one block read as

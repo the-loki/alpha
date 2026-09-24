@@ -6,6 +6,39 @@ import { TaskService } from './service.ts'
 import { TaskStore } from './store.ts'
 
 describe('[tasks] the task service', () => {
+  it('rejects an invalid interval on create and edit without changing the saved task', () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-task-schedule-'))
+    const tasks = new TaskStore(dataDirectory)
+    const changed = vi.fn()
+    const service = new TaskService({
+      tasks,
+      create: async () => 'run-1',
+      rename: () => undefined,
+      setLevel: () => undefined,
+      runUnattended: async () => ({ refusals: 0, succeeded: true }),
+      runAttended: async () => true,
+      workspaceExists: () => true,
+      changed,
+      now: () => new Date(),
+    })
+    try {
+      const details = { name: 'Check', prompt: 'Inspect this', workspacePath: '/tmp/work' }
+      expect(() => service.save({ ...details, schedule: { kind: 'every', minutes: 0 } })).toThrow(
+        'Invalid task schedule',
+      )
+      expect(tasks.list()).toEqual([])
+
+      const saved = service.save({ ...details, schedule: { kind: 'every', minutes: 30 } }).tasks[0]
+      expect(() => service.save({ id: saved.id, schedule: { kind: 'every', minutes: 0 } })).toThrow(
+        'Invalid task schedule',
+      )
+      expect(tasks.find(saved.id)?.schedule).toEqual({ kind: 'every', minutes: 30 })
+      expect(changed).toHaveBeenCalledTimes(1)
+    } finally {
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
   it('starts only one conversation for two manual requests on the same task', async () => {
     const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-task-overlap-'))
     let finish: (succeeded: boolean) => void = () => undefined

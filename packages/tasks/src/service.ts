@@ -67,9 +67,8 @@ export class TaskService {
    */
   public save(input: Partial<ScheduledTask>): TasksSnapshot {
     const existing = input.id === undefined ? undefined : this.ports.tasks.find(input.id)
-    const schedule: TaskSchedule = isValidSchedule(input.schedule)
-      ? input.schedule
-      : (existing?.schedule ?? DEFAULT_SCHEDULE)
+    const schedule: TaskSchedule = input.schedule ?? existing?.schedule ?? DEFAULT_SCHEDULE
+    if (!isValidSchedule(schedule)) throw new Error('Invalid task schedule')
     const task: ScheduledTask = {
       id: existing?.id ?? crypto.randomUUID(),
       name: (input.name ?? existing?.name ?? '').trim(),

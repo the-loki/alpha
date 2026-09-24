@@ -18,6 +18,7 @@ export const ZH = {
   'tasks.folder': '目录',
   'tasks.level': '权限级别',
   'tasks.schedule': '计划',
+  'tasks.invalidInterval': '至少输入 {count} 个整数分钟。',
   'tasks.everyMinutes': '每 {count} 分钟',
   'tasks.dailyAt': '每天 {time}',
   'tasks.nextRun': '下次运行：{when}',

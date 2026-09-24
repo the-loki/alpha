@@ -83,6 +83,28 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await reopened.app.close()
 })
 
+test('an invalid interval cannot be saved as a daily task', async () => {
+  const { app, window, dataDirectory } = await launch()
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await window.getByRole('button', { name: 'New task', exact: true }).click()
+  await form(window).getByLabel('Name').fill('Interval check')
+  await form(window).getByLabel('What to ask').fill('inspect the folder')
+  await form(window).getByRole('button', { name: 'Interval' }).click()
+
+  const minutes = form(window).getByRole('spinbutton', { name: 'Minutes' })
+  await minutes.fill('0')
+  await expect(minutes).toHaveAttribute('aria-invalid', 'true')
+  await expect(form(window).getByText('Use at least 5 whole minutes.')).toBeVisible()
+  await expect(form(window).getByRole('button', { name: 'Save task' })).toBeDisabled()
+
+  await minutes.fill('5')
+  await expect(form(window).getByText('Use at least 5 whole minutes.')).toHaveCount(0)
+  await form(window).getByRole('button', { name: 'Save task' }).click()
+  const stored = JSON.parse(readFileSync(join(dataDirectory, 'tasks.json'), 'utf-8'))
+  expect(stored.tasks[0].schedule).toEqual({ kind: 'every', minutes: 5 })
+  await app.close()
+})
+
 test('a running task disables both run controls until its turn finishes', async () => {
   const { app, window } = await launchWorkbench({
     level: 'full-access',
