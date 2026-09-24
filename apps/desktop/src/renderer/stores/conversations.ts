@@ -22,6 +22,7 @@ export interface ConversationsState {
   listed: boolean
   activeId: string
   transcript: TranscriptState
+  openFailure?: string
   /** Bumped when a card is answered, so the composer can take the focus back. */
   composerFocus: number
 }
@@ -37,6 +38,8 @@ const [conversations, setConversations] = createStore<ConversationsState>({
   transcript: emptyTranscript(''),
   composerFocus: 0,
 })
+
+let selectionVersion = 0
 
 export { conversations }
 
@@ -68,18 +71,29 @@ export const conversationActions = {
   // Forgetting the open conversation is what makes the next message a new one: without it the
   // pane kept the old transcript and the composer went on talking to the old conversation.
   startNew: (): void => {
-    setConversations({ activeId: '', transcript: emptyTranscript('') })
+    selectionVersion += 1
+    setConversations({ activeId: '', transcript: emptyTranscript(''), openFailure: undefined })
   },
 
   create: async (workspacePath: string): Promise<string> => {
+    const version = ++selectionVersion
     const opened = await bridge().createConversation(workspacePath)
-    setConversations(openedState(opened))
+    if (version === selectionVersion) setConversations(openedState(opened))
+    else setConversations('list', listWithUpdated(conversations.list, opened.conversation))
     return opened.conversation.id
   },
 
   open: async (id: string): Promise<void> => {
-    const opened = await bridge().openConversation(id)
-    setConversations({ ...openedState(opened), activeId: id })
+    const version = ++selectionVersion
+    setConversations({ activeId: id, transcript: emptyTranscript(id), openFailure: undefined })
+    try {
+      const opened = await bridge().openConversation(id)
+      if (version === selectionVersion)
+        setConversations({ ...openedState(opened), activeId: id, openFailure: undefined })
+    } catch (error) {
+      if (version === selectionVersion)
+        setConversations('openFailure', error instanceof Error ? error.message : String(error))
+    }
   },
 
   send: async (text: string): Promise<void> => {
@@ -92,18 +106,25 @@ export const conversationActions = {
 
   sendOrCreate: async (workspacePath: string, text: string, attachments?: Attachment[]): Promise<string> => {
     let id = conversations.activeId
+    let version = selectionVersion
     try {
-      id = id === '' ? await conversationActions.create(workspacePath) : id
+      if (id === '') {
+        const creating = conversationActions.create(workspacePath)
+        version = selectionVersion
+        id = await creating
+      }
       await bridge().sendPrompt(id, text, attachments)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      setConversations('transcript', (transcript) =>
-        reduceTranscript(transcript, {
-          conversationId: transcript.conversationId,
-          type: 'run_failed',
-          message,
-        }),
-      )
+      if (version === selectionVersion && id === conversations.activeId) {
+        setConversations('transcript', (transcript) =>
+          reduceTranscript(transcript, {
+            conversationId: transcript.conversationId,
+            type: 'run_failed',
+            message,
+          }),
+        )
+      }
     }
     return id
   },
@@ -158,7 +179,10 @@ export const conversationActions = {
   editMessage: async (userMessageIndex: number, text: string, effect: EditEffect): Promise<void> => {
     const id = conversations.activeId
     if (id === '') return
-    setConversations(openedState(await bridge().editMessage(id, userMessageIndex, text, effect)))
+    const version = selectionVersion
+    const opened = await bridge().editMessage(id, userMessageIndex, text, effect)
+    if (version === selectionVersion && conversations.activeId === id) setConversations(openedState(opened))
+    else setConversations('list', listWithUpdated(conversations.list, opened.conversation))
   },
 
   rename: async (id: string, title: string): Promise<void> => {

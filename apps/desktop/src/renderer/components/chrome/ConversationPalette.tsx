@@ -2,7 +2,7 @@ import type { ConversationSummary, Undef } from '@alpha/domain'
 import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { SCROLLS } from '../../lib/ledger.ts'
-import { conversationActions, conversations } from '../../stores/conversations.ts'
+import { conversations } from '../../stores/conversations.ts'
 import { foldActions } from '../../stores/fold.ts'
 import { useText } from '../../stores/shell.ts'
 import { MENU_ROW_CURRENT } from '../controls.ts'
@@ -46,7 +46,7 @@ export function ConversationPalette(props: { open: boolean; onClose: () => void 
   const go = (conversation: Undef<ConversationSummary>) => {
     if (conversation === undefined) return
     props.onClose()
-    void conversationActions.open(conversation.id).then(() => navigate(`/c/${conversation.id}`))
+    navigate(`/c/${conversation.id}`)
   }
 
   return (

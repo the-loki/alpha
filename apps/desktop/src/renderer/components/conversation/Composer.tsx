@@ -194,6 +194,7 @@ function useComposerIntents(field: () => Undef<HTMLTextAreaElement>, setValue: (
  */
 export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const [value, setValue] = createSignal('')
+  const [sending, setSending] = createSignal(false)
   const [attached, setAttached] = createSignal<Attachment[]>([])
   const [refused, setRefused] = createSignal<Undef<TurnedAway>>(undefined)
   const model = runningModel()
@@ -219,7 +220,7 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const words = () => value().trim() !== ''
   // A picture is a message on its own: "look at this" is often the whole thing being said.
   const writable = () => hasWorkspace() && model.chosen() !== undefined && (words() || attached().length > 0)
-  const canSend = () => writable() && !running()
+  const canSend = () => writable() && !running() && !sending()
   // Steering and queueing carry words: a picture waits in the composer for a turn of its own.
   const canRedirect = () => writable() && running() && words()
 
@@ -235,13 +236,18 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const send = async () => {
     const folder = composerFolder()
     if (!canSend() || folder === undefined) return
+    setSending(true)
     const message = value()
     const picked = attached()
     setValue('')
     setAttached([])
     setRefused(undefined)
-    const id = await conversationActions.sendOrCreate(folder.path, message, picked)
-    navigate(`/c/${id}`)
+    try {
+      const id = await conversationActions.sendOrCreate(folder.path, message, picked)
+      if (id !== '' && conversations.activeId === id) navigate(`/c/${id}`)
+    } finally {
+      setSending(false)
+    }
   }
 
   const removeAt = (index: number) => setAttached((current) => current.filter((_unused, at) => at !== index))
@@ -256,7 +262,7 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   return (
     // The writing card on the page's own edge: its top edge is the rule that lights while a turn
     // is being written — the accent is what "happening now" means (C5.2).
-    <div class="w-full" data-column="composer">
+    <div class="w-full" data-column="composer" aria-busy={sending()}>
       <QueueStrip />
       <div
         class={`rounded-lg border-x border-b border-line bg-surface-1 border-t-2 ${props.streaming === true ? 'border-t-accent' : 'border-t-line'}`}

@@ -116,6 +116,113 @@ test('a browser on the machine opens the workbench and runs a turn', async () =>
   }
 })
 
+test('switching conversations hides the old composer while the next transcript opens', async () => {
+  const port = await freePort()
+  const { app, window, url } = await launchServing(port)
+  const browser = await chromium.launch()
+
+  try {
+    await ask(window, 'the first topic')
+    await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 20_000 })
+    await window.getByRole('button', { name: /New conversation/ }).click()
+    await ask(window, 'the second topic')
+    await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 20_000 })
+
+    const page = await openInBrowser(browser, url, TOKEN)
+    await page
+      .getByRole('complementary')
+      .getByRole('button', { name: /^the first topic/ })
+      .click()
+    await expect(page.getByRole('main').getByRole('heading', { name: 'the first topic' })).toBeVisible()
+
+    let release!: () => void
+    let entered!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const requested = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let delayNextOpen = true
+    await page.route('**/api/invoke', async (route) => {
+      if (delayNextOpen && route.request().postDataJSON()?.channel === IPC.openConversation) {
+        delayNextOpen = false
+        entered()
+        await held
+      }
+      await route.continue()
+    })
+
+    const previousUrl = page.url()
+    await page.keyboard.press('ControlOrMeta+k')
+    await page
+      .getByRole('dialog', { name: 'Switch conversation' })
+      .getByRole('option', { name: /^the second topic/ })
+      .click()
+    await requested
+    try {
+      expect(page.url()).not.toBe(previousUrl)
+      await expect(page.getByRole('main').getByRole('status')).toHaveText('Opening conversation…')
+      await expect(page.getByRole('main').getByRole('button', { name: 'Send' })).toHaveCount(0)
+    } finally {
+      release()
+    }
+    await expect(page.getByRole('main').getByRole('heading', { name: 'the second topic' })).toBeVisible()
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
+test('a delayed new conversation does not pull the browser away from a later choice', async () => {
+  const port = await freePort()
+  const { app, window, url } = await launchServing(port)
+  const browser = await chromium.launch()
+
+  try {
+    await ask(window, 'the existing topic')
+    await expect(window.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 20_000 })
+    const page = await openInBrowser(browser, url, TOKEN)
+    const existing = page.getByRole('complementary').getByRole('button', { name: /^the existing topic/ })
+    await expect(existing).toBeVisible()
+    await page.getByRole('button', { name: /New conversation/ }).click()
+    await expect(page).toHaveURL(/#\/$/)
+
+    let release!: () => void
+    let entered!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const requested = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    await page.route('**/api/invoke', async (route) => {
+      if (route.request().postDataJSON()?.channel === IPC.createConversation) {
+        entered()
+        await held
+      }
+      await route.continue()
+    })
+
+    await page.getByRole('textbox', { name: 'Message the agent' }).fill('created in background')
+    await page.getByRole('button', { name: 'Send' }).click()
+    await requested
+    await page.getByRole('textbox', { name: 'Message the agent' }).fill('a second draft')
+    await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled()
+    await existing.click()
+    await expect(page.getByRole('main').getByRole('heading', { name: 'the existing topic' })).toBeVisible()
+    const chosenUrl = page.url()
+    release()
+
+    await expect(page.getByRole('complementary').getByRole('button', { name: /^created in background/ })).toBeVisible()
+    expect(page.url()).toBe(chosenUrl)
+    await expect(page.getByRole('main').getByRole('heading', { name: 'the existing topic' })).toBeVisible()
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
 test('a browser unlocks into the whole workbench, sidebar included', async () => {
   const port = await freePort()
   const { app, window, url } = await launchServing(port)
