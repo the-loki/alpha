@@ -115,10 +115,11 @@ async function runSubagent(
     model,
     plugins: subagentPluginsOf(ports.plugins(), definition),
     systemPrompt: await ports.systemPrompt(definition),
-    shouldStopAfterTurn: () => {
+    shouldStopAfterTurn: ({ message, toolResults }) => {
       turns += 1
-      spent = !withinBudget(definition, turns)
-      return spent
+      if (withinBudget(definition, turns)) return false
+      spent = toolResults.length > 0 || message.stopReason === 'length'
+      return true
     },
   })
   const stop = (): void => child.abort()

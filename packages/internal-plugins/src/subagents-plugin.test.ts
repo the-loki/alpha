@@ -108,6 +108,14 @@ describe('[subagents] the plugin face', () => {
     )
   })
 
+  it('accepts a complete answer on the last allowed turn', async () => {
+    const short: SubagentDefinition = { ...named('explore'), maxTurns: 1 }
+    const { ports } = portsOf([() => textStream('completed answer')], { registry: [short] })
+
+    const result = await taskOf(ports).execute('call-final', { agent: 'explore', prompt: 'go' })
+    expect(result?.content).toEqual([{ type: 'text', text: 'completed answer' }])
+  })
+
   it('a subagent that spends its turns fails with what it had, saying why', async () => {
     const short: SubagentDefinition = { ...named('explore'), maxTurns: 1 }
     const drives = [() => toolUseStream('read', { text: 'notes.txt' }), () => textStream('never asked')]

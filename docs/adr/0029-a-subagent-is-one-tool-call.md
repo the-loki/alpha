@@ -35,7 +35,8 @@ conversation's attempts), and a subagent is not that conversation.
 passed through `assembleAgent` — is what ends a run that would keep going: the registry's `maxTurns`
 is the number of turns before the child must answer. A child that is stopped with half an answer
 fails the tool call with what it had and why, rather than pretending the delegation succeeded; the
-model reads both, and so does the row.
+model reads both, and so does the row. A complete answer on the final allowed turn succeeds; only
+an unfinished tool step or truncated answer at the limit is reported as spent.
 
 **No recursion, by the shape of the registry.** A definition lists tools out of the caller's own, and
 none lists `task`: a subagent cannot hand work to a subagent. That is a property of the policy, not a
