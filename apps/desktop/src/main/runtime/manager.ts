@@ -10,16 +10,15 @@
 
 import type { EditEffect, ModelStatus, OpenedConversation } from '@alpha/contract'
 import { ConversationBookkeeper, DEFAULT_TITLE, QueueRunner } from '@alpha/conversations'
-import {
-  type Attachment,
-  type ConversationSummary,
-  type PermissionLevel,
-  type PermissionRule,
-  type RuntimeEvent,
-  servesModel,
-  type ThinkingLevel,
-  type TurnRefusal,
-  type Undef,
+import type {
+  Attachment,
+  ConversationSummary,
+  PermissionLevel,
+  PermissionRule,
+  RuntimeEvent,
+  ThinkingLevel,
+  TurnRefusal,
+  Undef,
 } from '@alpha/domain'
 import {
   type ApprovalAnswer,
@@ -42,6 +41,7 @@ import {
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import { openManagedRuntime, type RuntimeManagerOptions, RuntimeRefresh } from './managed-runtime.ts'
+import { RuntimeMcp } from './mcp-requests.ts'
 import { createOpenedConversation, openedConversation } from './opened-conversation.ts'
 import { askOrRefuse } from './unattended.ts'
 
@@ -54,6 +54,7 @@ export class RuntimeManager {
   private readonly approvals: ApprovalBroker
   private readonly decisions: DecisionLog
   private readonly changes: WorkspaceChangeLog
+  public readonly mcpRequests: RuntimeMcp
   /**
    * Everything read back out of a conversation, addressed by its id: the transcript, what it has
    * spent, the user's own messages. It is the door a caller that only reads takes (a markdown
@@ -72,6 +73,12 @@ export class RuntimeManager {
     this.approvals = new ApprovalBroker({ emit: options.emit })
     this.decisions = new DecisionLog(options.dataDirectory)
     this.changes = new WorkspaceChangeLog(options.dataDirectory)
+    this.mcpRequests = new RuntimeMcp({
+      dataDirectory: options.dataDirectory,
+      emit: options.emit,
+      refuseUnattended: (id) => this.unattended.refuse(id) !== undefined,
+      canRoute: (id) => this.books.find(id) !== undefined && this.opened.has(id),
+    })
     this.reads = new ConversationReads({
       conversation: (id) => this.requireConversation(id),
       store: this.sessions,
@@ -123,7 +130,7 @@ export class RuntimeManager {
       if (conversation.title !== DEFAULT_TITLE) this.books.markNamed(id)
     }
 
-    return openedConversation(conversation, this.reads, this.changes)
+    return openedConversation(conversation, this.reads, this.changes, this.mcpRequests)
   }
 
   /**
@@ -235,7 +242,7 @@ export class RuntimeManager {
   }
 
   public async editMessage(id: string, index: number, text: string, effect: EditEffect): Promise<OpenedConversation> {
-    const opened = await editMessage(this.editPorts(), id, index, text, effect)
+    const opened = await editMessage(this.editPorts(id), id, index, text, effect)
     this.options.store.rememberConversation(opened.conversation.id)
     return opened
   }
@@ -276,6 +283,7 @@ export class RuntimeManager {
     this.sessions.remove(sessionIdOf(conversation), conversation.workspacePath)
     this.decisions.forget(id)
     this.changes.forget(id)
+    this.mcpRequests.forget(id)
     this.queue.forget(id)
     this.books.forget(id)
     if (this.options.store.read().lastConversationId === id) this.options.store.rememberConversation('')
@@ -285,7 +293,7 @@ export class RuntimeManager {
   /** A markdown file beside the workspace, with everything the conversation said and did. */
   public async exportMarkdown(id: string): Promise<{ path: string }> {
     const conversation = this.requireConversation(id)
-    return writeSessionMarkdown(conversation, this.reads.transcript(id))
+    return writeSessionMarkdown(conversation, this.reads.transcript(id), this.mcpRequests.records(id))
   }
 
   /** The runtime's events: what the list makes of them, and what they do to what waits. */
@@ -294,7 +302,7 @@ export class RuntimeManager {
     this.queue.observe(event)
   }
 
-  private editPorts(): EditingPorts {
+  private editPorts(sourceId?: string): EditingPorts {
     return {
       conversation: (id) => this.requireConversation(id),
       runtime: (id) => this.openFor(id),
@@ -302,6 +310,8 @@ export class RuntimeManager {
       register: (conversation) => {
         this.books.upsert(conversation)
         this.books.markNamed(conversation.id)
+        if (sourceId !== undefined)
+          this.mcpRequests.fork(sourceId, conversation.id, this.reads.transcript(conversation.id))
       },
       openConversation: (id) => this.open(id),
       agent: this.options.agent,
@@ -324,26 +334,12 @@ export class RuntimeManager {
 
   /** Switching the model is asked for and reported back as an event, like every other change. */
   public async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
-    const conversation = this.requireConversation(id)
-    // A model nobody serves is a refusal rather than a mistake by whoever asked: the window is told
-    // which case it was, in its own language (#199), and the conversation keeps the model it had.
-    if (!servesModel(this.options.providers.index(), { providerId, modelId })) {
-      this.observe({
-        conversationId: id,
-        type: 'turn_refused',
-        refusal: { kind: 'model-not-served', providerId, modelId },
-      })
-      return conversation
-    }
-    const runtime = this.opened.get(id)
-    if (
-      runtime !== undefined &&
-      this.runtimeRefresh.isCurrent(runtime, this.options.providers.index()) &&
-      !(await runtime.setModel(providerId, modelId))
-    ) {
-      return conversation
-    }
-    return this.books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
+    return this.runtimeRefresh.chooseModel(this.requireConversation(id), providerId, modelId, {
+      providers: this.options.providers,
+      opened: this.opened.get(id),
+      refused: (refusal) => this.observe({ conversationId: id, type: 'turn_refused', refusal }),
+      update: (model) => this.books.update(id, { model, updatedAt: Date.now() }),
+    })
   }
 
   public async setThinkingLevel(id: string, level: ThinkingLevel): Promise<ConversationSummary> {

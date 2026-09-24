@@ -9,6 +9,7 @@ interface ReplyFrame {
 export interface McpCallContext {
   conversationId: string
   toolCallId: string
+  toolName?: string
 }
 
 export interface McpServerRequest {

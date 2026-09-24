@@ -11,6 +11,7 @@ import {
   type EditEffect,
   IPC,
   type LaunchState,
+  type McpElicitationAnswerInput,
   type McpSnapshotMessage,
   type NetworkPatch,
   type NetworkState,
@@ -115,6 +116,8 @@ const bridge: AlphaBridge = {
   revokePermissionRule: (ruleId: string) =>
     ipcRenderer.invoke(IPC.revokePermissionRule, ruleId) as Promise<PermissionRule[]>,
   answerApproval: (answer: ApprovalAnswerInput) => ipcRenderer.invoke(IPC.answerApproval, answer) as Promise<void>,
+  answerMcpElicitation: (answer: McpElicitationAnswerInput) =>
+    ipcRenderer.invoke(IPC.answerMcpElicitation, answer) as Promise<void>,
   listTasks: () => ipcRenderer.invoke(IPC.listTasks) as Promise<TasksSnapshot>,
   saveTask: (input: Partial<ScheduledTask>) => ipcRenderer.invoke(IPC.saveTask, input) as Promise<TasksSnapshot>,
   deleteTask: (id: string) => ipcRenderer.invoke(IPC.deleteTask, id) as Promise<TasksSnapshot>,

@@ -81,7 +81,11 @@ function asAgentTool(ports: McpPluginPorts, tool: McpTool): AgentTool<TSchema, u
     // A server may not be able to answer two calls at once, and one of these is a call to a server.
     executionMode: 'sequential',
     execute: async (toolCallId, params, signal) => {
-      const context = { conversationId: ports.conversationId, toolCallId }
+      const context = {
+        conversationId: ports.conversationId,
+        toolCallId,
+        toolName: mcpToolName(tool.server, tool.name),
+      }
       const result: McpCallResult = await ports.servers.call(
         tool.server,
         tool.name,

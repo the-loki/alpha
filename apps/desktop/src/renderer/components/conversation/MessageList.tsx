@@ -2,6 +2,7 @@ import { type TranscriptState, visibleMessages } from '@alpha/domain'
 import { createMemo, Index } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
+import { ElicitationCard } from './ElicitationCard.tsx'
 import { MessageView } from './MessageView.tsx'
 
 /** Which user message this is, counting from the top, which is how an edit names its target. */
@@ -44,6 +45,13 @@ export function MessageList(props: { transcript: TranscriptState }) {
         {(request) => (
           <div class="mt-4">
             <ApprovalCard request={request()} />
+          </div>
+        )}
+      </Index>
+      <Index each={props.transcript.mcpPending}>
+        {(request) => (
+          <div class="mt-4">
+            <ElicitationCard request={request()} />
           </div>
         )}
       </Index>

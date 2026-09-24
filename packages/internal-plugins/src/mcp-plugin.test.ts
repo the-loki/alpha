@@ -69,7 +69,7 @@ describe('[mcp] the plugin face', () => {
         tool: 'read_file',
         args: { path: 'notes.txt' },
         signal: undefined,
-        context: { conversationId: 'conversation-1', toolCallId: 'call-1' },
+        context: { conversationId: 'conversation-1', toolCallId: 'call-1', toolName: 'mcp__files__read_file' },
       },
     ])
     expect(result?.content).toEqual([{ type: 'text', text: 'the file' }])

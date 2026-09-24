@@ -1,5 +1,5 @@
 import { type Undef, visibleMessages } from '@alpha/domain'
-import { createEffect, createMemo, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, Match, Show, Switch } from 'solid-js'
 import { BESIDE_SCROLLS, COLUMN, SCROLLS } from '../../lib/ledger.ts'
 import { conversations } from '../../stores/conversations.ts'
 import { composerFolderOf, shell } from '../../stores/shell.ts'
@@ -7,6 +7,7 @@ import { DocHead } from '../chrome/DocHead.tsx'
 import { Composer } from './Composer.tsx'
 import { ConversationTabs, type ConversationView } from './ConversationTabs.tsx'
 import { EmptyState } from './EmptyState.tsx'
+import { McpActivityView } from './McpActivityView.tsx'
 import { MessageList } from './MessageList.tsx'
 import { WorkspaceChangesView } from './WorkspaceChangesView.tsx'
 
@@ -21,11 +22,17 @@ export function ConversationPage() {
   const composerFolder = () => composerFolderOf(shell)
   const hasSummary = () => conversations.transcript.summary !== undefined
   const hasMessages = () =>
-    conversations.transcript.messages.length > 0 || conversations.transcript.streaming !== undefined
+    conversations.transcript.messages.length > 0 ||
+    conversations.transcript.streaming !== undefined ||
+    conversations.transcript.mcpPending.length > 0
 
   createEffect(() => {
     conversations.activeId
     setView('conversation')
+  })
+
+  createEffect(() => {
+    if (conversations.transcript.mcpPending.length > 0) setView('conversation')
   })
 
   let scroller: Undef<HTMLDivElement>
@@ -33,7 +40,10 @@ export function ConversationPage() {
   // The two things that make the transcript longer, watched so the scroll can follow them: what has
   // been said, and the blocks of the answer still arriving.
   const rows = createMemo(
-    () => visibleMessages(conversations.transcript).length + conversations.transcript.approvals.length,
+    () =>
+      visibleMessages(conversations.transcript).length +
+      conversations.transcript.approvals.length +
+      conversations.transcript.mcpPending.length,
   )
   const streamed = createMemo(() => conversations.transcript.streaming?.blocks.length ?? 0)
 
@@ -51,7 +61,11 @@ export function ConversationPage() {
     <div class="flex h-full flex-col">
       <Show when={hasSummary()}>
         <DocHead />
-        <ConversationTabs view={view} onViewChange={setView} />
+        <ConversationTabs
+          view={view}
+          onViewChange={setView}
+          hasMcp={conversations.transcript.mcpExchanges.length > 0}
+        />
       </Show>
 
       {/* The body: one scroll, the wheel's room always reserved. Sideways is never the answer: a
@@ -69,18 +83,23 @@ export function ConversationPage() {
         data-region="transcript"
       >
         <div class={`flex min-h-full flex-col pt-6 pb-2 ${COLUMN}`} data-column="conversation">
-          <Show
-            when={view() === 'conversation'}
-            fallback={<WorkspaceChangesView changeSets={conversations.transcript.workspaceChanges} />}
-          >
-            <Show when={hasSummary()} fallback={<EmptyState />}>
-              <div role="tabpanel" id="conversation-view" aria-labelledby="conversation-view-tab">
-                <Show when={hasMessages()} fallback={<EmptyState />}>
-                  <MessageList transcript={conversations.transcript} />
-                </Show>
-              </div>
-            </Show>
-          </Show>
+          <Switch>
+            <Match when={view() === 'conversation'}>
+              <Show when={hasSummary()} fallback={<EmptyState />}>
+                <div role="tabpanel" id="conversation-view" aria-labelledby="conversation-view-tab">
+                  <Show when={hasMessages()} fallback={<EmptyState />}>
+                    <MessageList transcript={conversations.transcript} />
+                  </Show>
+                </div>
+              </Show>
+            </Match>
+            <Match when={view() === 'changes'}>
+              <WorkspaceChangesView changeSets={conversations.transcript.workspaceChanges} />
+            </Match>
+            <Match when={view() === 'mcp'}>
+              <McpActivityView exchanges={conversations.transcript.mcpExchanges} />
+            </Match>
+          </Switch>
         </div>
       </div>
 
@@ -90,7 +109,7 @@ export function ConversationPage() {
           lands on the exact edge the rows end on (C5.4). A folder's title page carries its own box
           in the welcome instead — but with no folder at all the box stays here, saying a folder
           comes first. */}
-      <Show when={view() === 'changes' || hasMessages() || composerFolder() === undefined}>
+      <Show when={view() !== 'conversation' || hasMessages() || composerFolder() === undefined}>
         <div class={`w-full shrink-0 pb-4 ${BESIDE_SCROLLS}`} data-column="conversation">
           <Composer streaming={streaming()} />
         </div>

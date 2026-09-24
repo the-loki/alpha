@@ -50,6 +50,12 @@ async function until(condition: () => boolean): Promise<void> {
 }
 
 describe('an MCP server over stdio', () => {
+  it('declares elicitation before accepting a server that requires the capability', async () => {
+    const servers = await connectMcpServers([scripted([], { SCRIPTED_MCP_ELICITATION: '1' })])
+    expect(servers.tools().map((tool) => tool.name)).toContain('reverse_answered')
+    await servers.close()
+  })
+
   it('routes one attributable server request to the parent tool call', async () => {
     const asked: McpServerRequest[] = []
     const servers = await connectMcpServers([scripted()], {

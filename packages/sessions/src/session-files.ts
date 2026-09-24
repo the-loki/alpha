@@ -13,6 +13,7 @@ import {
   type ConversationSummary,
   exportFileName,
   exportMarkdown,
+  type McpExchange,
   type TurnRefusal,
   type Undef,
 } from '@alpha/domain'
@@ -40,8 +41,29 @@ export function forkSession(ports: AgentPorts, conversation: ConversationSummary
 }
 
 /** Writes the conversation beside its workspace, and answers with where it went. */
-export function writeSessionMarkdown(conversation: ConversationSummary, messages: ChatMessage[]): { path: string } {
+export function writeSessionMarkdown(
+  conversation: ConversationSummary,
+  messages: ChatMessage[],
+  exchanges: McpExchange[] = [],
+): { path: string } {
   const path = join(conversation.workspacePath, exportFileName(conversation.title))
-  writeFileSync(path, exportMarkdown(conversation, messages), 'utf-8')
+  const audit =
+    exchanges.length === 0
+      ? ''
+      : [
+          '## MCP requests',
+          '',
+          ...exchanges.flatMap((record) => [
+            `### ${record.server} · ${record.method} · ${record.outcome}`,
+            '',
+            `Parent tool: ${record.toolName} (${record.toolCallId})`,
+            `Requested: ${new Date(record.requestedAt).toISOString()}`,
+            `Settled: ${record.settledAt === undefined ? 'pending' : new Date(record.settledAt).toISOString()}`,
+            `Message: ${record.requestText}`,
+            ...(record.content === undefined ? [] : [`Content: ${JSON.stringify(record.content)}`]),
+            '',
+          ]),
+        ].join('\n')
+  writeFileSync(path, `${exportMarkdown(conversation, messages)}${audit}`, 'utf-8')
   return { path }
 }

@@ -4,7 +4,7 @@
  * every argument is checked here rather than trusted where it is used.
  */
 
-import type { AppearancePatch, ApprovalAnswerInput, NetworkPatch } from '@alpha/contract'
+import type { AppearancePatch, ApprovalAnswerInput, McpElicitationAnswerInput, NetworkPatch } from '@alpha/contract'
 import {
   type Attachment,
   byteLengthOf,
@@ -16,6 +16,7 @@ import {
   isRuleScope,
   isTheme,
   MAX_ATTACHMENT_BYTES,
+  type McpElicitationContent,
   type PermissionLevel,
   type Undef,
 } from '@alpha/domain'
@@ -73,6 +74,39 @@ export function readApprovalAnswer(input: unknown): ApprovalAnswerInput {
     scope: isRuleScope(record.scope) ? record.scope : undefined,
     reason: typeof record.reason === 'string' ? record.reason : undefined,
   }
+}
+
+export function readMcpElicitationAnswer(input: unknown): McpElicitationAnswerInput {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    throw new Error('an MCP form answer is required')
+  }
+  const record = input as Record<string, unknown>
+  const conversationId = requireString(record.conversationId, 'conversationId')
+  const requestId = requireString(record.requestId, 'requestId')
+  if (record.action === 'decline' || record.action === 'cancel') {
+    return { conversationId, requestId, action: record.action }
+  }
+  if (record.action !== 'accept') throw new Error('action must be accept, decline or cancel')
+  const content = record.content
+  if (typeof content !== 'object' || content === null || Array.isArray(content)) {
+    throw new Error('content must be a flat object')
+  }
+  const entries = Object.entries(content)
+  if (
+    entries.length > 24 ||
+    entries.some(
+      ([name, value]) =>
+        name.length > 100 ||
+        !(
+          typeof value === 'boolean' ||
+          (typeof value === 'number' && Number.isFinite(value)) ||
+          (typeof value === 'string' && value.length <= 10_000)
+        ),
+    )
+  ) {
+    throw new Error('content must contain only primitive form fields')
+  }
+  return { conversationId, requestId, action: 'accept', content: Object.fromEntries(entries) as McpElicitationContent }
 }
 
 export function requireString(value: unknown, field: string): string {

@@ -653,3 +653,48 @@ describe('[domain] compaction', () => {
     expect(state.messages.at(-1)?.blocks).toEqual([{ kind: 'compaction', summary: 'Summarised.', replaced: undefined }])
   })
 })
+
+describe('[domain] MCP requests in a conversation', () => {
+  const request = {
+    requestId: 'req-1',
+    server: 'files',
+    toolCallId: 'tool-1',
+    toolName: 'mcp__files__lookup',
+    requestedAt: 10,
+    form: { message: 'Name?', fields: [{ name: 'name', title: 'Name', type: 'string' as const, required: true }] },
+  }
+  const pending = {
+    id: 'req-1',
+    server: 'files',
+    method: 'elicitation/create' as const,
+    toolCallId: 'tool-1',
+    toolName: 'mcp__files__lookup',
+    requestText: 'Name?',
+    requestedAt: 10,
+    outcome: 'pending' as const,
+  }
+
+  it('shows a live form and keeps its settled audit after the card leaves', () => {
+    const opened = openingTranscript(CONVERSATION, summary, [], EMPTY_USAGE, [], [], [request])
+    expect(opened.mcpPending).toEqual([request])
+    const state = reduce([
+      event({ type: 'mcp_elicitation_requested', request }),
+      event({ type: 'mcp_exchange_recorded', exchange: pending }),
+      event({
+        type: 'mcp_exchange_recorded',
+        exchange: { ...pending, outcome: 'accepted', content: { name: 'Ada' }, settledAt: 20 },
+      }),
+    ])
+    expect(state.mcpPending).toEqual([])
+    expect(state.mcpExchanges).toEqual([{ ...pending, outcome: 'accepted', content: { name: 'Ada' }, settledAt: 20 }])
+  })
+
+  it('does not put another conversation’s form in the open conversation', () => {
+    const state = reduceTranscript(emptyTranscript(CONVERSATION), {
+      conversationId: 'other',
+      type: 'mcp_elicitation_requested',
+      request,
+    })
+    expect(state.mcpPending).toEqual([])
+  })
+})

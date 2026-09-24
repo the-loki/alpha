@@ -223,7 +223,11 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   // Steering and queueing carry words: a picture waits in the composer for a turn of its own.
   const canRedirect = () => writable() && running() && words()
 
-  useEscapeToStop(conversationActions.stop, running, () => conversations.transcript.approvals.length > 0)
+  useEscapeToStop(
+    conversationActions.stop,
+    running,
+    () => conversations.transcript.approvals.length > 0 || conversations.transcript.mcpPending.length > 0,
+  )
 
   const send = async () => {
     const folder = composerFolder()

@@ -15,7 +15,7 @@
 
 import type { McpReached, McpSnapshotMessage } from '@alpha/contract'
 import { type McpServerDefinition, readMcpServer, type Undef } from '@alpha/domain'
-import { connectMcpServers, type McpServers, readMcpServers, writeMcpServers } from '@alpha/mcp'
+import { connectMcpServers, type McpRequestHandler, type McpServers, readMcpServers, writeMcpServers } from '@alpha/mcp'
 
 export class McpService {
   private readonly dataDirectory: string
@@ -28,10 +28,14 @@ export class McpService {
 
   public constructor(
     dataDirectory: string,
-    options: { connect?: (definitions: McpServerDefinition[]) => Promise<McpServers> } = {},
+    options: {
+      connect?: (definitions: McpServerDefinition[]) => Promise<McpServers>
+      onRequest?: McpRequestHandler
+    } = {},
   ) {
     this.dataDirectory = dataDirectory
-    this.connect = options.connect ?? connectMcpServers
+    this.connect =
+      options.connect ?? ((definitions) => connectMcpServers(definitions, { onRequest: options.onRequest }))
     this.definitions = readMcpServers(dataDirectory)
   }
 

@@ -51,6 +51,14 @@ const TOOLS: ScriptedTool[] = [
   },
 ]
 
+if (process.env.SCRIPTED_MCP_ELICITATION !== undefined) {
+  TOOLS.push({
+    name: 'reverse_answered',
+    description: 'Asks a form question before answering.',
+    inputSchema: { type: 'object', properties: {} },
+  })
+}
+
 /** The tool `grow` adds, so a list that was read before it can be seen to be stale. */
 const GROWN: ScriptedTool = {
   name: 'grown',
@@ -88,6 +96,19 @@ function cancelled(id: unknown): void {
   if (marker !== undefined) writeFileSync(marker, `cancelled ${String(id)}`, 'utf-8')
 }
 
+function askName(id: unknown): void {
+  reverseWaiting.add(String(id))
+  write({
+    jsonrpc: '2.0',
+    id,
+    method: 'elicitation/create',
+    params: {
+      message: 'Name?',
+      requestedSchema: { type: 'object', properties: { name: { type: 'string', title: 'Name' } }, required: ['name'] },
+    },
+  })
+}
+
 function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
   const name = String(params.name ?? '')
   const args = params.arguments
@@ -99,8 +120,7 @@ function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
     return undefined
   }
   if (name === 'reverse_answered') {
-    reverseWaiting.add(String(id))
-    write({ jsonrpc: '2.0', id, method: 'elicitation/create', params: { message: 'Name?' } })
+    askName(id)
     return undefined
   }
   if (name === 'reverse_cancelled') {
@@ -146,6 +166,12 @@ function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
 
 function answerOf(id: unknown, method: string, params: Record<string, unknown>): Undef<object> {
   if (method === 'initialize') {
+    if (process.env.SCRIPTED_MCP_ELICITATION !== undefined) {
+      const capabilities = params.capabilities as Undef<Record<string, unknown>>
+      if (capabilities?.elicitation === undefined) {
+        return { jsonrpc: '2.0', id, error: { code: -32000, message: 'elicitation capability required' } }
+      }
+    }
     const result = {
       protocolVersion: '2025-06-18',
       capabilities: { tools: {} },

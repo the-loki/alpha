@@ -108,7 +108,7 @@ async function handshake(session: McpSession): Promise<void> {
   const result = recordOf(
     await session.request('initialize', {
       protocolVersion: PROTOCOL_VERSION,
-      capabilities: {},
+      capabilities: { elicitation: {} },
       clientInfo: { name: 'Alpha', version: '0.1.0' },
     }),
   )

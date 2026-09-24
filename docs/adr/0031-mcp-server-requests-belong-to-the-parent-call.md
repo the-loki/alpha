@@ -22,9 +22,9 @@ client call. Stopping the parent call, losing the connection, or receiving a ser
 aborts the inbound request without sending a late answer. An HTTP answer to a server request is a
 new POST carrying the protocol version and any session ID assigned at initialization.
 
-The initialized client still declares neither `sampling` nor `elicitation`. A handler and a
-capability declaration become available only with their complete user interaction, refusal,
-audit, and usage paths (#216, #217). An unsupported request receives `Method not found`.
+The initialized client declares `elicitation` after the attended form, refusal, and audit path is
+complete (#216). It still does not declare `sampling`; that capability needs its own consent,
+review, refusal, audit, and usage path (#217). An unsupported request receives `Method not found`.
 
 ## Consequences
 

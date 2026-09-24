@@ -8,6 +8,8 @@
  * two hundred small objects, not two hundred copies of the conversation.
  */
 import type { Undef } from './maybe.ts'
+import type { McpElicitationRequest, McpExchange } from './mcp-requests.ts'
+import { reduceMcpEvent } from './mcp-transcript.ts'
 import type {
   ApprovalRequest,
   ChatBlock,
@@ -35,6 +37,9 @@ export interface TranscriptState {
   messages: ChatMessage[]
   /** Final workspace observations, newest run first; kept beside, not inside, the transcript. */
   workspaceChanges: WorkspaceChangeSet[]
+  /** Server requests that remain unanswered in this process, and their durable audit. */
+  mcpPending: McpElicitationRequest[]
+  mcpExchanges: McpExchange[]
   streaming?: ChatMessage
   /** Calls waiting on the user, oldest first. */
   approvals: ApprovalRequest[]
@@ -57,6 +62,8 @@ export function emptyTranscript(conversationId: string): TranscriptState {
     conversationId,
     messages: [],
     workspaceChanges: [],
+    mcpPending: [],
+    mcpExchanges: [],
     approvals: [],
     queued: [],
     queuedPaused: false,
@@ -78,12 +85,16 @@ export function openingTranscript(
   messages: ChatMessage[],
   usage: UsageTotals,
   workspaceChanges: WorkspaceChangeSet[] = [],
+  mcpExchanges: McpExchange[] = [],
+  mcpPending: McpElicitationRequest[] = [],
 ): TranscriptState {
   return {
     ...emptyTranscript(conversationId),
     summary: conversation,
     messages,
     workspaceChanges,
+    mcpExchanges,
+    mcpPending,
     turns: usage.totalTokens === 0 ? [] : [{ usage, earlier: true }],
   }
 }
@@ -106,13 +117,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
 
   switch (event.type) {
     case 'conversation_opened':
-      return openingTranscript(
-        state.conversationId,
-        event.conversation,
-        event.messages,
-        event.usage,
-        event.workspaceChanges,
-      )
+      return openFromEvent(state, event)
 
     case 'conversation_updated':
       return { ...state, summary: event.conversation }
@@ -149,7 +154,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return discardAssistantMessage(state, event.messageId)
 
     case 'turn_finished':
-      return closeTurn({ ...state, status: 'idle', approvals: [] })
+      return closeTurn({ ...state, status: 'idle', approvals: [], mcpPending: [] })
 
     case 'run_failed':
       // A failure that said nothing is the same failure whether the nothing is absent or empty.
@@ -161,6 +166,21 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
     default:
       return reduceGateEvent(state, event)
   }
+}
+
+function openFromEvent(
+  state: TranscriptState,
+  event: Extract<RuntimeEvent, { type: 'conversation_opened' }>,
+): TranscriptState {
+  return openingTranscript(
+    state.conversationId,
+    event.conversation,
+    event.messages,
+    event.usage,
+    event.workspaceChanges,
+    event.mcpExchanges,
+    event.mcpPending,
+  )
 }
 
 function startStreaming(state: TranscriptState, messageId: string, createdAt: number): TranscriptState {
@@ -183,6 +203,10 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
   switch (event.type) {
     case 'workspace_changes_recorded':
       return { ...state, workspaceChanges: [event.changeSet, ...state.workspaceChanges].slice(0, 20) }
+
+    case 'mcp_elicitation_requested':
+    case 'mcp_exchange_recorded':
+      return reduceMcpEvent(state, event)
 
     case 'tool_started':
       return appendToolCall(state, event)
@@ -296,6 +320,7 @@ function failRun(state: TranscriptState, failure: Undef<ChatMessageFailure>): Tr
     messages: [...state.messages, failed],
     streaming: undefined,
     approvals: [],
+    mcpPending: [],
     status: 'failed',
   }
 }

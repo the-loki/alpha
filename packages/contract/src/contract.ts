@@ -9,6 +9,9 @@ import type {
   ChatMessage,
   ConversationModel,
   ConversationSummary,
+  McpElicitationAnswer,
+  McpElicitationRequest,
+  McpExchange,
   McpServerDefinition,
   NetworkBind,
   PermissionLevel,
@@ -98,6 +101,7 @@ export const IPC = {
   permissionRules: 'alpha:permission-rules',
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
+  answerMcpElicitation: 'alpha:answer-mcp-elicitation',
   permissionRulesChanged: 'alpha:permission-rules-changed',
   tasksChanged: 'alpha:tasks-changed',
   networkState: 'alpha:network-state',
@@ -159,6 +163,8 @@ export interface OpenedConversation {
   conversation: ConversationSummary
   messages: ChatMessage[]
   workspaceChanges: WorkspaceChangeSet[]
+  mcpExchanges: McpExchange[]
+  mcpPending: McpElicitationRequest[]
   /** What this conversation has spent, so a window opening it shows the same totals as before. */
   usage: UsageTotals
 }
@@ -220,6 +226,11 @@ export interface ApprovalAnswerInput {
   decision: 'once' | 'always' | 'deny'
   scope?: RuleScope
   reason?: string
+}
+
+export type McpElicitationAnswerInput = McpElicitationAnswer & {
+  conversationId: string
+  requestId: string
 }
 
 /** The surface the preload puts on `window.alpha`, and the only way the renderer acts. */
@@ -303,6 +314,7 @@ export interface AlphaBridge {
   revokePermissionRule(ruleId: string): Promise<PermissionRule[]>
   /** The one thing the renderer says about a card: the answer, and its scope when it is remembered. */
   answerApproval(answer: ApprovalAnswerInput): Promise<void>
+  answerMcpElicitation(answer: McpElicitationAnswerInput): Promise<void>
   onPermissionRules(listener: (rules: PermissionRule[]) => void): () => void
   /** A task was added, edited or ran: the window redraws from what it is handed. */
   onTasks(listener: (snapshot: TasksSnapshot) => void): () => void

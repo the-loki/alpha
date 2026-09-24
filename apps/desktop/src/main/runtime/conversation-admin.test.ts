@@ -10,7 +10,7 @@ import {
   type TurnRefusal,
   textOfBlocks,
 } from '@alpha/domain'
-import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
+import type { McpCallResult, McpContent, McpServerRequest, McpServers, McpTool } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { WorkspaceChangeLog } from '@alpha/sessions'
 import { StateStore } from '@alpha/state'
@@ -105,6 +105,50 @@ const freshManager = (options: FixtureOptions = {}) => {
   })
   return { manager, providers, store, workspace, dataDirectory, events }
 }
+
+describe('[runtime] MCP elicitation readback', () => {
+  it('answers a live form and keeps its audit through reopen, export and delete', async () => {
+    const { manager, workspace, dataDirectory, events } = freshManager()
+    const conversation = (await manager.create(workspace)).conversation
+    const request: McpServerRequest = {
+      server: 'files',
+      method: 'elicitation/create',
+      params: {
+        message: 'Name?',
+        requestedSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+      },
+      context: { conversationId: conversation.id, toolCallId: 'tool-1', toolName: 'mcp__files__lookup' },
+      signal: new AbortController().signal,
+    }
+    const response = manager.mcpRequests.handle(request)
+    await waitedFor(events, 'mcp_elicitation_requested')
+    const opened = await manager.open(conversation.id)
+    expect(opened.mcpPending).toHaveLength(1)
+    expect(opened.mcpExchanges[0]?.outcome).toBe('pending')
+
+    manager.mcpRequests.answer(conversation.id, opened.mcpPending[0]?.requestId ?? '', {
+      action: 'accept',
+      content: { name: 'Ada' },
+    })
+    await expect(response).resolves.toEqual({ action: 'accept', content: { name: 'Ada' } })
+    const reopened = await manager.open(conversation.id)
+    expect(reopened.mcpPending).toEqual([])
+    expect(reopened.mcpExchanges[0]).toMatchObject({
+      server: 'files',
+      method: 'elicitation/create',
+      toolCallId: 'tool-1',
+      outcome: 'accepted',
+      content: { name: 'Ada' },
+    })
+    const exported = await manager.exportMarkdown(conversation.id)
+    expect(readFileSync(exported.path, 'utf-8')).toContain('MCP requests')
+    expect(readFileSync(exported.path, 'utf-8')).toContain('Ada')
+
+    await manager.remove(conversation.id)
+    expect(existsSync(join(dataDirectory, 'mcp-exchanges', `${conversation.id}.json`))).toBe(false)
+    await manager.closeAll()
+  })
+})
 
 /** One script per open: the n-th turn hears the n-th reply, and one past the end hears the last again. */
 function scriptOf(options: FixtureOptions): Array<() => AssistantMessageEventStream> {

@@ -7,6 +7,7 @@
 export * from './conversation-reads.ts'
 export * from './decisions.ts'
 export * from './legacy-sessions.ts'
+export * from './mcp-exchanges.ts'
 export * from './session-files.ts'
 export * from './sessions.ts'
 export * from './transcript-entries.ts'

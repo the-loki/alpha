@@ -53,9 +53,8 @@ app.whenReady().then(async () => {
   // The MCP servers this workbench run holds: the connection starts now and is awaited when a
   // conversation is opened, so nothing waits on it at boot and every conversation reaches it (C2.8).
   // The settings page edits the same service, so a server added there is reached without a restart.
-  const mcp = new McpService(dataDirectory)
-  void mcp.servers()
-  const runtime = new RuntimeManager({
+  const mcp: McpService = new McpService(dataDirectory, { onRequest: (request) => runtime.mcpRequests.handle(request) })
+  const runtime: RuntimeManager = new RuntimeManager({
     dataDirectory,
     mcp: () => mcp.servers(),
     sessionsRoot,
@@ -65,6 +64,7 @@ app.whenReady().then(async () => {
     emit: (event) => broadcast.send('runtimeEvent', event),
     emitRules: (rules) => broadcast.send('permissionRulesChanged', rules),
   })
+  void mcp.servers()
 
   // The clock the workbench keeps: tasks live in their own file, and one timer watches for them.
   const tasks = new TaskService({

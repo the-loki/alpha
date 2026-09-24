@@ -8,6 +8,7 @@
  * up in the list.
  */
 
+import type { McpElicitationRequest, McpExchange } from './mcp-requests.ts'
 import type { PermissionLevel, RuleScope } from './permission.ts'
 import type { ThinkingLevel } from './thinking.ts'
 import type { ToolRisk } from './tools.ts'
@@ -203,6 +204,8 @@ export type RuntimeEvent =
       /** What it had already spent, so a reopened conversation shows the same totals as before. */
       usage: UsageTotals
       workspaceChanges: WorkspaceChangeSet[]
+      mcpExchanges?: McpExchange[]
+      mcpPending?: McpElicitationRequest[]
     }
   | { conversationId: string; type: 'conversation_updated'; conversation: ConversationSummary }
   | { conversationId: string; type: 'turn_started' }
@@ -256,6 +259,8 @@ export type RuntimeEvent =
   | { conversationId: string; type: 'queue_updated'; queued: QueuedMessage[]; paused: boolean }
   | { conversationId: string; type: 'usage_recorded'; usage: UsageTotals }
   | { conversationId: string; type: 'workspace_changes_recorded'; changeSet: WorkspaceChangeSet }
+  | { conversationId: string; type: 'mcp_elicitation_requested'; request: McpElicitationRequest }
+  | { conversationId: string; type: 'mcp_exchange_recorded'; exchange: McpExchange }
   | { conversationId: string; type: 'history_compacted'; summary: string; replaced?: number; at: number }
   /** The conversation's path changed under it: an answer was replaced, so the list is replaced too. */
   | { conversationId: string; type: 'transcript_replaced'; messages: ChatMessage[] }

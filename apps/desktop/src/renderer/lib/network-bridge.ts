@@ -14,6 +14,7 @@ import {
   type EditEffect,
   IPC,
   type LaunchState,
+  type McpElicitationAnswerInput,
   type McpSnapshotMessage,
   type NetworkPatch,
   type NetworkState,
@@ -244,6 +245,12 @@ const taskCalls = {
   onTasks: (listener: (snapshot: TasksSnapshot) => void) => listen('tasksChanged', listener),
 }
 
+const decisionCalls = {
+  answerApproval: (answer: ApprovalAnswerInput) => invoke('answerApproval', [answer]) as Promise<void>,
+  answerMcpElicitation: (answer: McpElicitationAnswerInput) =>
+    invoke('answerMcpElicitation', [answer]) as Promise<void>,
+}
+
 export function networkBridge(): AlphaBridge {
   return {
     launchState: () => invoke('launchState', []) as Promise<LaunchState>,
@@ -300,7 +307,7 @@ export function networkBridge(): AlphaBridge {
     exportConversation: (id: string) => invoke('exportConversation', [id]) as Promise<{ path: string }>,
     permissionRules: () => invoke('permissionRules', []) as Promise<PermissionRule[]>,
     revokePermissionRule: (ruleId: string) => invoke('revokePermissionRule', [ruleId]) as Promise<PermissionRule[]>,
-    answerApproval: (answer: ApprovalAnswerInput) => invoke('answerApproval', [answer]) as Promise<void>,
+    ...decisionCalls,
     ...taskCalls,
     onPermissionRules: (listener: (rules: PermissionRule[]) => void) => listen('permissionRulesChanged', listener),
   }

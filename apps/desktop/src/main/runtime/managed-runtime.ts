@@ -1,4 +1,12 @@
-import type { ConversationSummary, ModelIndex, PermissionRule, RuntimeEvent } from '@alpha/domain'
+import {
+  type ConversationModel,
+  type ConversationSummary,
+  type ModelIndex,
+  type PermissionRule,
+  type RuntimeEvent,
+  servesModel,
+  type TurnRefusal,
+} from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import type { McpServers } from '@alpha/mcp'
 import type { ProviderStore } from '@alpha/providers'
@@ -66,6 +74,31 @@ export class RuntimeRefresh {
 
   public isCurrent(runtime: ConversationRuntime, index: ModelIndex): boolean {
     return this.atLaunch.get(runtime) === index
+  }
+
+  /** A model choice changes the running agent only when it still has the current provider catalog. */
+  public async chooseModel(
+    conversation: ConversationSummary,
+    providerId: string,
+    modelId: string,
+    ports: {
+      providers: ProviderStore
+      opened?: ConversationRuntime
+      refused: (refusal: TurnRefusal) => void
+      update: (model: ConversationModel) => ConversationSummary
+    },
+  ): Promise<ConversationSummary> {
+    if (!servesModel(ports.providers.index(), { providerId, modelId })) {
+      ports.refused({ kind: 'model-not-served', providerId, modelId })
+      return conversation
+    }
+    if (
+      ports.opened !== undefined &&
+      this.isCurrent(ports.opened, ports.providers.index()) &&
+      !(await ports.opened.setModel(providerId, modelId))
+    )
+      return conversation
+    return ports.update({ providerId, modelId })
   }
 
   public async forPrompt(
