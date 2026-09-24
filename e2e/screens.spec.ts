@@ -106,7 +106,13 @@ test('every settings panel draws under its own title', async () => {
   const { app, window } = await launch()
   await window.getByRole('link', { name: 'Settings' }).click()
 
-  for (const tab of ['Providers', 'Permissions', 'Appearance', 'Browser access']) {
+  // The walk reads the menu the product draws, and the count says how many rows it owes: the last
+  // copy of this list had a row fewer than the menu had (MCP servers was never opened), and a walk
+  // over whatever the menu happens to show would pass just the same with a panel gone.
+  const rows = window.getByRole('navigation', { name: 'Settings sections' }).getByRole('listitem')
+  const listed = await rows.allTextContents()
+  expect(listed).toHaveLength(5)
+  for (const tab of listed) {
     await window.getByRole('link', { name: tab, exact: true }).click()
     await expect(window.getByRole('main').getByRole('heading', { level: 1, name: tab })).toBeVisible()
     await picture(window, `settings-${tab.toLowerCase().replace(' ', '-')}`)
@@ -124,10 +130,12 @@ test('the tasks page and every settings panel draw in the dark palette too', asy
   await window.getByRole('link', { name: 'Settings' }).click()
   await window.getByRole('link', { name: 'Appearance', exact: true }).click()
   await window.getByRole('button', { name: 'Dark' }).click()
-  await window.getByRole('link', { name: 'Providers', exact: true }).click()
-  await picture(window, 'dark-settings-providers')
 
-  for (const tab of ['Providers', 'Permissions', 'Browser access']) {
+  // Off the menu, for the reason the walk above reads it: this list had gone a row short as well.
+  const rows = window.getByRole('navigation', { name: 'Settings sections' }).getByRole('listitem')
+  const listed = await rows.allTextContents()
+  expect(listed).toHaveLength(5)
+  for (const tab of listed) {
     await window.getByRole('link', { name: tab, exact: true }).click()
     await expect(window.getByRole('main').getByRole('heading', { level: 1, name: tab })).toBeVisible()
     await picture(window, `dark-settings-${tab.toLowerCase().replace(' ', '-')}`)

@@ -15,74 +15,130 @@ import { foldActions, narrow } from '../stores/fold.ts'
 import { useText } from '../stores/shell.ts'
 
 /**
+ * Everything the places that mention a panel need to know about it. The id's type is `string` and
+ * not the union of the ids on purpose: that union is read off the records below, and a type cannot
+ * be named before the array it is derived from exists.
+ */
+interface PanelSpec {
+  /** What its address says, and what the page is on. */
+  id: string
+  /** The heading the menu stands it under. */
+  heading: TextKey
+  /** What the menu calls it, and what the page is titled. */
+  label: TextKey
+  /** What the page says it is about, said once above its sections. */
+  note: TextKey
+  /** The mark beside its name in the menu. */
+  icon: () => JSX.Element
+  /** What it draws. */
+  render: () => JSX.Element
+}
+
+/** The permission panel is two sections: the ladder itself, and the rules a person has remembered. */
+const PermissionsPanel = (): JSX.Element => (
+  <>
+    <PermissionSection />
+    <RememberedRules />
+  </>
+)
+
+/**
  * Settings is a menu, not a scroll: one panel at a time, and each panel has an address of its own
  * so a link to "the browser access page" means something.
+ *
+ * One list holds the panels, in the order the menu lists them, and everything else is drawn from
+ * it: the ids the page is addressed by, the headings the menu groups them under, the page's own
+ * title, the sentence under it, and the panel itself. That replaces six structures that had to
+ * agree by hand — and two of the ways they could disagree were silent: a panel named in the ids but
+ * left out of the menu was openable by its address alone, with no row anywhere that reached it, and
+ * one missing from the panel switch drew the providers panel under its own title. Neither is
+ * sayable here: these records are the ids, and a panel that is not one of them is not a page.
  */
-const SETTING_TABS = ['providers', 'mcp', 'permissions', 'appearance', 'browser-access'] as const
+const SETTING_PANELS = [
+  {
+    id: 'providers',
+    heading: 'settings.groupAgent',
+    label: 'settings.tabProviders',
+    note: 'settings.providersNote',
+    // Providers is the connection the workbench runs over — the closest thing to an engine panel,
+    // which is why it shares its icon with nothing else here. It stands first because it is what a
+    // person comes here to change.
+    icon: () => <SlidersIcon />,
+    render: () => <ProvidersSection />,
+  },
+  {
+    id: 'mcp',
+    heading: 'settings.groupAgent',
+    label: 'settings.tabMcp',
+    note: 'settings.mcpNote',
+    icon: () => <ServerIcon />,
+    render: () => <McpSection />,
+  },
+  {
+    id: 'permissions',
+    heading: 'settings.groupAgent',
+    label: 'settings.tabPermissions',
+    note: 'settings.permissionsNote',
+    icon: () => <ShieldIcon />,
+    render: () => <PermissionsPanel />,
+  },
+  {
+    id: 'appearance',
+    heading: 'settings.groupApp',
+    label: 'settings.tabAppearance',
+    note: 'settings.appearanceNote',
+    icon: () => <PaletteIcon />,
+    render: () => <AppearanceSection />,
+  },
+  {
+    id: 'browser-access',
+    heading: 'settings.groupApp',
+    label: 'settings.tabBrowserAccess',
+    note: 'settings.browserAccessNote',
+    icon: () => <GlobeIcon />,
+    render: () => <BrowserAccessSection />,
+  },
+] as const satisfies readonly PanelSpec[]
 
-type SettingTab = (typeof SETTING_TABS)[number]
+type SettingTab = (typeof SETTING_PANELS)[number]['id']
 
-const TAB_LABELS: Record<SettingTab, TextKey> = {
-  providers: 'settings.tabProviders',
-  mcp: 'settings.tabMcp',
-  permissions: 'settings.tabPermissions',
-  appearance: 'settings.tabAppearance',
-  'browser-access': 'settings.tabBrowserAccess',
+/**
+ * The menu's headings with the panels under each, folded out of the list above: the records that
+ * name a heading stand next to each other, so one pass keeping the last heading is the whole fold —
+ * what the menu shows is the list's own order. Two records naming the same heading apart from each
+ * other would draw that heading twice; the list is read in order for that reason.
+ */
+function menuByGroup(): { heading: TextKey; panels: PanelSpec[] }[] {
+  const groups: { heading: TextKey; panels: PanelSpec[] }[] = []
+  for (const panel of SETTING_PANELS) {
+    const last = groups.at(-1)
+    if (last !== undefined && last.heading === panel.heading) last.panels.push(panel)
+    else groups.push({ heading: panel.heading, panels: [panel] })
+  }
+  return groups
 }
 
-const TAB_ICONS: Record<SettingTab, () => JSX.Element> = {
-  // Providers is the connection the workbench runs over — the closest thing to an engine panel,
-  // which is why it shares its icon with nothing else here.
-  providers: () => <SlidersIcon />,
-  mcp: () => <ServerIcon />,
-  permissions: () => <ShieldIcon />,
-  appearance: () => <PaletteIcon />,
-  'browser-access': () => <GlobeIcon />,
-}
-
-/** The menu, grouped the way the reference groups it: what the agent may do, then how it looks. */
-const TAB_GROUPS: { label: TextKey; tabs: SettingTab[] }[] = [
-  { label: 'settings.groupAgent', tabs: ['providers', 'mcp', 'permissions'] },
-  { label: 'settings.groupApp', tabs: ['appearance', 'browser-access'] },
-]
-
-/** What each panel is about, said once at the top of it rather than inferred from its controls. */
-const TAB_NOTES: Record<SettingTab, TextKey> = {
-  providers: 'settings.providersNote',
-  mcp: 'settings.mcpNote',
-  permissions: 'settings.permissionsNote',
-  appearance: 'settings.appearanceNote',
-  'browser-access': 'settings.browserAccessNote',
-}
+/** The menu's groups, worked out once: the list above is the order, and this is that order folded. */
+const TAB_GROUPS = menuByGroup()
 
 function isSettingTab(value: unknown): value is SettingTab {
-  return typeof value === 'string' && (SETTING_TABS as readonly string[]).includes(value)
+  return typeof value === 'string' && SETTING_PANELS.some((panel) => panel.id === value)
 }
 
-/** What a panel holds. Providers is first because it is what a person comes here to change. */
-function panelOf(tab: SettingTab): JSX.Element {
-  switch (tab) {
-    case 'mcp':
-      return <McpSection />
-    case 'permissions':
-      return (
-        <>
-          <PermissionSection />
-          <RememberedRules />
-        </>
-      )
-    case 'appearance':
-      return <AppearanceSection />
-    case 'browser-access':
-      return <BrowserAccessSection />
-    default:
-      return <ProvidersSection />
-  }
+/**
+ * The panel an address names. Every id a page can be on is one of the records above, so this cannot
+ * come up empty — and it says so out loud rather than drawing a panel nobody asked for, which is
+ * what a `switch` with a default did.
+ */
+function panelOf(tab: SettingTab): PanelSpec {
+  const panel = SETTING_PANELS.find((candidate) => candidate.id === tab)
+  if (panel === undefined) throw new Error(`no settings panel is named ${tab}`)
+  return panel
 }
 
 /**
  * The tab the page is on. It is a value by the time a screen reads it — the URL keeps whatever was
- * typed, and what the page draws is always one of the four.
+ * typed, and what the page draws is always one of the panels.
  */
 function useSettingTab(): () => SettingTab {
   const [search] = useSearchParams()
@@ -92,6 +148,7 @@ function useSettingTab(): () => SettingTab {
 export function Settings() {
   const t = useText()
   const tab = useSettingTab()
+  const panel = () => panelOf(tab())
 
   return (
     <div class="flex h-full min-h-0 flex-col">
@@ -108,7 +165,7 @@ export function Settings() {
             <RailToggle menu />
           </span>
         </Show>
-        <h1 class={`min-w-0 flex-1 truncate ${PAGE_TITLE} text-foreground`}>{t(TAB_LABELS[tab()])}</h1>
+        <h1 class={`min-w-0 flex-1 truncate ${PAGE_TITLE} text-foreground`}>{t(panel().label)}</h1>
         {/* What acts on the window is not one of the panel's concerns: at the corner itself. */}
         <span class="no-drag -mr-8 flex shrink-0 items-center">
           <WindowControls />
@@ -124,9 +181,9 @@ export function Settings() {
           stands on (C5.3, C5.4). */}
       <div class={`min-h-0 flex-1 py-6 ${PAGE} ${SCROLLS}`}>
         <div class={FORM_COLUMN} data-column="form">
-          <p class="max-w-measure font-text text-body text-muted">{t(TAB_NOTES[tab()])}</p>
+          <p class="max-w-measure font-text text-body text-muted">{t(panel().note)}</p>
           <div class={`mt-5 ${PANEL_GROUPS}`} data-groups="panel">
-            {panelOf(tab())}
+            {panel().render()}
           </div>
         </div>
       </div>
@@ -160,30 +217,30 @@ export function SettingsNav() {
       <For each={TAB_GROUPS}>
         {(group) => (
           <section class="mt-5 pt-2">
-            <h3 class={`px-2 pb-1 ${GROUP_LABEL}`}>{t(group.label)}</h3>
+            <h3 class={`px-2 pb-1 ${GROUP_LABEL}`}>{t(group.heading)}</h3>
             <ul>
-              <For each={group.tabs}>
-                {(candidate) => (
+              <For each={group.panels}>
+                {(panel) => (
                   <li>
                     <a
-                      href={`#/settings?tab=${candidate}`}
+                      href={`#/settings?tab=${panel.id}`}
                       // Picking a panel is what leaves the menu on a phone; the row that asks for
                       // settings does not fold it, because the menu is that same column (C5.4).
                       onClick={foldActions.foldAway}
-                      aria-current={candidate === tab() ? 'page' : undefined}
+                      aria-current={panel.id === tab() ? 'page' : undefined}
                       // The panel you are on carries the accent's margin tick, the same mark the
                       // rail puts on the conversation you are in (C5.5).
                       class={`relative flex items-center py-1.5 transition-colors ${RAIL_ROW} ${
-                        candidate === tab()
+                        panel.id === tab()
                           ? `${ROW_LIVE} text-foreground`
                           : 'text-muted hover:bg-surface-2 hover:text-foreground'
                       }`}
                     >
-                      <Show when={candidate === tab()}>
+                      <Show when={panel.id === tab()}>
                         <span class={LIVE_SPINE} aria-hidden="true" />
                       </Show>
-                      {TAB_ICONS[candidate]()}
-                      <span class="min-w-0 flex-1 truncate font-text text-name">{t(TAB_LABELS[candidate])}</span>
+                      {panel.icon()}
+                      <span class="min-w-0 flex-1 truncate font-text text-name">{t(panel.label)}</span>
                     </a>
                   </li>
                 )}
