@@ -69,10 +69,13 @@ describe('[conversations] the queue of messages waiting to be sent', () => {
 })
 
 describe('[conversations] the runner that moves the queue', () => {
-  const harness = (send: (conversationId: string, text: string) => Promise<void>) => {
+  const harness = (
+    send: (conversationId: string, text: string) => Promise<void>,
+    status: 'idle' | 'running' | 'waiting' = 'idle',
+  ) => {
     const events: RuntimeEvent[] = []
     const ports: QueuePorts = {
-      statusOf: () => 'idle',
+      statusOf: () => status,
       send,
       emit: (event) => events.push(event),
     }
@@ -80,6 +83,33 @@ describe('[conversations] the runner that moves the queue', () => {
   }
   const lastQueueUpdate = (events: RuntimeEvent[]): RuntimeEvent | undefined =>
     events.filter((event) => event.type === 'queue_updated').at(-1)
+  /** What the window is showing: the texts of the rows in the last event, oldest first. */
+  const textsOf = (events: RuntimeEvent[]): string[] => {
+    const last = lastQueueUpdate(events)
+    return last?.type === 'queue_updated' ? last.queued.map((row) => row.text) : []
+  }
+
+  it('lists every steer the turn was sent, oldest first, and lets them all go with the turn', async () => {
+    const { events, runner } = harness(async () => undefined, 'running')
+    await runner.add('c1', 'waiting its turn')
+
+    runner.steerSent('c1', 'one')
+    runner.steerSent('c1', 'two')
+    // Both are on their way into the turn and neither is answered yet: the second steer writing
+    // over the first is the strip losing a message the person really sent.
+    expect(textsOf(events)).toEqual(['one', 'two', 'waiting its turn'])
+    const steered = lastQueueUpdate(events)
+    expect(steered?.type === 'queue_updated' ? steered.queued.map((row) => row.kind) : []).toEqual([
+      'steer',
+      'steer',
+      'queued',
+    ])
+
+    // The turn ended — it finished, failed, or was stopped — and nothing is held for a turn that
+    // is over. What waits for the turn after it was never the steers' business.
+    runner.steerCleared('c1')
+    expect(textsOf(events)).toEqual(['waiting its turn'])
+  })
 
   it('hands the head to the send port and empties itself', async () => {
     const sent: string[] = []

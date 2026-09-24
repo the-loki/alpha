@@ -8,11 +8,9 @@ own, every superseded decision pointing at what replaced it.
 
 ## In force
 
-Two entries below are superseded *in part*: [0001](0001-agent-runtime-in-main-process.md) and
-[0004](0004-transcripts-as-jsonl-entries.md) each carry a `Superseded in part` section naming what
-[ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md) retired and what still
-binds. They sit here rather than under Superseded because the half that remains is what the code
-does today.
+Several entries below are superseded *in part*: each carries a `Superseded in part` section naming
+what was retired and what still binds. They sit here rather than under Superseded because the half
+that remains is what the code does today.
 
 | # | Decision |
 | --- | --- |

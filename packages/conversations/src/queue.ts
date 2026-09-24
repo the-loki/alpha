@@ -88,12 +88,17 @@ export interface QueuePorts {
 }
 
 /**
- * The queue of messages waiting for a turn of their own, and the two things the runtime says that
- * move it: a turn that finished sends the next one, and a turn that failed stops it (ADR-0011).
- * The manager owns one of these; nothing else needs to know how a queue is spelled.
+ * What waits, of both kinds (ADR-0011): the messages waiting for a turn of their own, and the ones
+ * steered into the turn that is running. Both are the workbench's — the lane is told, it does not
+ * keep the book — and this is the one place the window is told, `queue_updated` per change.
+ *
+ * The two things the runtime's events move: a turn that finished sends the next message, and a
+ * turn that failed stops the queue. The manager owns one of these; nothing else needs to know how
+ * a queue is spelled.
  */
 export class QueueRunner {
   private readonly queue = new PendingQueue()
+  /** What each running turn was steered with, oldest first, until that turn is over. */
   private readonly steers = new Map<string, QueuedMessage[]>()
   private readonly ports: QueuePorts
 
@@ -113,7 +118,10 @@ export class QueueRunner {
     this.emit(conversationId)
   }
 
-  /** Answers whether the id was the workbench's; the lane's own queue holds the steers. */
+  /**
+   * Answers whether the message was one waiting for a turn of its own: those are taken back here.
+   * A steer has to be dropped by the lane as well, so that half is the manager's.
+   */
   public cancel(conversationId: string, entryId: string): boolean {
     const mine = this.queue.remove(conversationId, entryId)
     if (mine) this.emit(conversationId)
@@ -133,9 +141,23 @@ export class QueueRunner {
     this.emit(conversationId)
   }
 
-  /** What the lane is still holding for the running turn, which the window shows beside ours. */
-  public rememberSteers(conversationId: string, steers: QueuedMessage[]): void {
-    this.steers.set(conversationId, steers)
+  /**
+   * A message sent into the turn that is running. It is listed for as long as that turn lasts: the
+   * lane drains one steering message per turn boundary and writes it into the conversation, but it
+   * says nothing when it does — pi's agent has no event for it — so the honest thing the window can
+   * be told is that this turn was steered with it, until the turn is over.
+   */
+  public steerSent(conversationId: string, text: string): void {
+    const steers = this.steers.get(conversationId) ?? []
+    this.steers.set(conversationId, [...steers, { entryId: crypto.randomUUID(), text, kind: 'steer' }])
+    this.emit(conversationId)
+  }
+
+  /** A turn that is over holds nothing, whatever became of the messages it was steered with. */
+  public steerCleared(conversationId: string): void {
+    const steers = this.steers.get(conversationId)
+    if (steers === undefined || steers.length === 0) return
+    this.steers.delete(conversationId)
     this.emit(conversationId)
   }
 
@@ -167,9 +189,9 @@ export class QueueRunner {
   }
 
   /**
-   * Everything waiting in one conversation, in the order it will be sent: what the runtime is
-   * holding for this turn, then what the workbench is holding for the next one. One event, so the
-   * window never has to know which side a row came from.
+   * Everything waiting in one conversation, in the order it will be sent: what the running turn was
+   * steered with, then what waits for the turn after it. One event, so the window never has to know
+   * which side a row came from.
    */
   private emit(conversationId: string): void {
     const queued: QueuedMessage[] = [

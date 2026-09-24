@@ -74,8 +74,6 @@ export class ConversationRuntime {
    * run's last half (the plugins' afterRun loop) has finished.
    */
   private driving: Undef<Promise<void>>
-  /** The message announced as held for the running turn, until the agent takes it into the run. */
-  private held: Undef<string>
 
   public constructor(options: ConversationRuntimeOptions) {
     this.conversationId = options.conversationId
@@ -125,8 +123,6 @@ export class ConversationRuntime {
   /** A message for the run in flight: it arrives now, and changes what the agent does next. */
   public async steer(text: string): Promise<void> {
     this.agent?.steer(this.userMessage(text))
-    this.held = text
-    this.emit(this.queued(text))
   }
 
   /**
@@ -136,7 +132,6 @@ export class ConversationRuntime {
    */
   public async cancelQueued(): Promise<void> {
     this.agent?.clearAllQueues()
-    this.emit({ conversationId: this.conversationId, type: 'queue_updated', queued: [], paused: false })
   }
 
   /** Stops the run in flight: the agent keeps the message it was writing, marked interrupted. */
@@ -258,7 +253,7 @@ export class ConversationRuntime {
   /** Every agent event: persisted as it arrived, then translated for the window. */
   private onEvent(event: AgentEvent): void {
     this.persist(event)
-    for (const translated of this.translator.translate(event)) this.note(translated)
+    for (const translated of this.translator.translate(event)) this.emit(translated)
   }
 
   /** What the run produced, written to the session the moment it exists — the store is the record. */
@@ -297,46 +292,6 @@ export class ConversationRuntime {
 
   private userMessage(text: string): AgentMessage {
     return { role: 'user', content: [{ type: 'text', text }], timestamp: Date.now() }
-  }
-
-  private queued(text: string): RuntimeEvent {
-    return {
-      conversationId: this.conversationId,
-      type: 'queue_updated',
-      queued: [{ entryId: crypto.randomUUID(), text, kind: 'steer' }],
-      paused: false,
-    }
-  }
-
-  private note(event: RuntimeEvent): void {
-    if (event.type === 'user_message') this.steerTaken()
-    if (event.type === 'turn_finished' || event.type === 'run_failed') this.endRun()
-    this.emit(event)
-  }
-
-  /**
-   * The run is over, however it went. Nothing is held for a turn that is over, so a steer that
-   * never reached the conversation stops being announced as held.
-   */
-  private endRun(): void {
-    if (this.held !== undefined) {
-      this.held = undefined
-      this.emit({ conversationId: this.conversationId, type: 'queue_updated', queued: [], paused: false })
-    }
-  }
-
-  /**
-   * A held message is held only until the agent puts it in the conversation it is running. Whether
-   * that has happened is the agent's own knowledge — its lane reports what it still holds — so the
-   * moment the lane has drained while a steer of ours is out, it is being answered, not held, and
-   * the strip that shows what waits says so. The words are not matched against anything: the agent
-   * decides, and the window believes it.
-   */
-  private steerTaken(): void {
-    if (this.held === undefined) return
-    if (this.agent?.hasQueuedMessages() === true) return
-    this.held = undefined
-    this.emit({ conversationId: this.conversationId, type: 'queue_updated', queued: [], paused: false })
   }
 
   private failed(message: string): void {

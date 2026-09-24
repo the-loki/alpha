@@ -179,8 +179,14 @@ export class RuntimeManager {
     await (await this.openFor(id)).prompt(text, attachments)
   }
 
+  /**
+   * A message for the turn in flight. It is the workbench that remembers it as waiting: the lane
+   * takes what it was steered with into the conversation, one message per turn boundary, and the
+   * queue is Alpha's own book of what waits (ADR-0011).
+   */
   public async steer(id: string, text: string): Promise<void> {
     await (await this.openFor(id)).steer(text)
+    this.queue.steerSent(id, text)
   }
 
   /**
@@ -212,6 +218,7 @@ export class RuntimeManager {
   public async cancelQueued(id: string, entryId: string): Promise<void> {
     if (this.queue.cancel(id, entryId)) return
     await (await this.openFor(id)).cancelQueued()
+    this.queue.steerCleared(id)
   }
 
   /** Starting a stopped queue again: pressing Stop, or a failed turn, is what stopped it. */
@@ -287,17 +294,12 @@ export class RuntimeManager {
   }
 
   /**
-   * The runtime's events, and the two moments the queue changes because of them: a turn that
-   * finished sends the next message, and a turn that failed stops the queue.
+   * The runtime's events, and the moments the queue changes because of them. A turn that ended
+   * holds nothing, and it either sends what follows it or stops the queue when it failed.
    */
   private observe(event: RuntimeEvent): void {
-    if (event.type === 'queue_updated') {
-      this.books.observe(event)
-      this.queue.rememberSteers(event.conversationId, event.queued)
-      return
-    }
-
     this.books.observe(event)
+    if (event.type === 'turn_finished' || event.type === 'run_failed') this.queue.steerCleared(event.conversationId)
     if (event.type === 'run_failed') this.queue.stop(event.conversationId)
     if (event.type === 'turn_finished') void this.queue.flush(event.conversationId)
   }

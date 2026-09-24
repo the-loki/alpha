@@ -500,6 +500,68 @@ describe('[runtime] the gate on the full path', () => {
   })
 })
 
+/**
+ * What the window is told is waiting: the messages a running turn was steered with, then the ones
+ * waiting for the turn after it (ADR-0011). One change is one event — the strip draws what the last
+ * one said, so a second event saying the same thing is the strip redrawing itself for nothing.
+ */
+describe('[runtime] what waits for the running turn, and for the one after it', () => {
+  const waitingOf = (events: RuntimeEvent[]): string[] => {
+    const last = events.filter((event) => event.type === 'queue_updated').at(-1)
+    return last?.type === 'queue_updated' ? last.queued.map((row) => row.text) : []
+  }
+
+  it('holds every steer the lane has not taken yet, and lets them go with the turn', async () => {
+    const { manager, workspace, events } = freshManager({
+      slowReply: { text: 'An answer that took a while.', afterMs: 200 },
+    })
+    const created = await manager.create(workspace)
+    const id = created.conversation.id
+
+    void manager.prompt(id, 'a long task')
+    await waitedFor(events, 'assistant_message_started')
+    await manager.steer(id, 'one more thing')
+
+    // One change, one event: the window is told what is waiting once, not once for every module
+    // that knows about it.
+    expect(events.filter((event) => event.type === 'queue_updated')).toHaveLength(1)
+    expect(waitingOf(events)).toEqual(['one more thing'])
+
+    // The lane is holding the first one still — it drains one message per turn boundary — so the
+    // second is really waiting too, and the first must not vanish from the strip.
+    await manager.steer(id, 'and this')
+    expect(waitingOf(events)).toEqual(['one more thing', 'and this'])
+
+    await waitedFor(events, 'turn_finished')
+    // Whatever became of them, nothing is held for a turn that is over.
+    expect(waitingOf(events)).toEqual([])
+    await manager.closeAll()
+  })
+
+  // Cancel is a steer's one action — it cannot be edited, because it belongs to the turn already —
+  // and the lane is emptied of what it still holds, so the strip stops listing it. The failed-turn
+  // half of the same rule is the queue's own test: both endings clear the same list, and proving
+  // the failed one here would cost the fixture's whole retry budget for the same two lines.
+  it('cancelling a steer drops it from what is waiting', async () => {
+    const { manager, workspace, events } = freshManager({
+      slowReply: { text: 'An answer that took a while.', afterMs: 200 },
+    })
+    const created = await manager.create(workspace)
+    const id = created.conversation.id
+
+    void manager.prompt(id, 'a long task')
+    await waitedFor(events, 'assistant_message_started')
+    await manager.steer(id, 'one more thing')
+    const listed = events.filter((event) => event.type === 'queue_updated').at(-1)
+    const entryId = listed?.type === 'queue_updated' ? listed.queued[0]?.entryId : undefined
+    if (entryId === undefined) throw new Error('the steer was never listed as waiting')
+
+    await manager.cancelQueued(id, entryId)
+    expect(waitingOf(events)).toEqual([])
+    await manager.closeAll()
+  })
+})
+
 const freshManagerAt = (
   dataDirectory: string,
   options: FixtureOptions = {},

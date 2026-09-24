@@ -5,6 +5,26 @@ texts in the main process, per conversation, sent one at a time as each turn end
 own queue keeps only *steering* — the messages that are meant to land inside the turn already
 running. Two words, two mechanisms, and the reason is that only one of them can be edited.
 
+## Superseded in part
+
+Three details of the mechanism have moved on; the decision itself is what stands.
+
+The steered half is **a workbench list** now, not the translation layer's. The translator's branch
+that turned a `queue_update` event into steer rows was fed by nothing — Alpha assembles pi's
+`Agent`, and that event belongs to the harness lane, which Alpha does not use — so what a running
+turn was steered with is kept beside the queued messages, in `QueueRunner`, which is the one place
+`queue_updated` is emitted from.
+
+The lane's drain mode defaults to **`one-at-a-time`**, not `all` as the Context below says: Alpha
+sets no `steeringMode`, and pi's `PendingMessageQueue` defaults to one. A run therefore takes one
+steered message per turn boundary, and a second steer sent before the first is taken is really
+still waiting — which is why the strip lists both.
+
+The **"too late" answer was never built**. The contract's only cancel is
+`cancelQueued(conversationId, entryId)`, which answers nothing: Cancel asks the lane to drop what it
+still holds, and the row goes when the turn is over. A steer is listed for as long as the turn that
+was steered with it lasts.
+
 ## Context
 
 The runtime underneath (pi's lane) already has a queue: `steer()` puts a message into the running

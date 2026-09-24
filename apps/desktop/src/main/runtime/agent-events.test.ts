@@ -126,19 +126,6 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
     expect(events[1]).toMatchObject({ type: 'tool_finished', status: 'failed' })
   })
 
-  it('passes the steering queue through as steered messages, and nothing else', () => {
-    const events = translate([{ type: 'queue_update', steering: ['actually, stop'], followUp: ['then summarize'] }])
-
-    expect(events).toEqual([
-      {
-        conversationId: 'c1',
-        type: 'queue_updated',
-        queued: [{ entryId: expect.any(String), text: 'actually, stop', kind: 'steer' }],
-        paused: false,
-      },
-    ])
-  })
-
   it('says what a compaction stood in for, as far as pi reports it', () => {
     const events = translate([
       {

@@ -306,7 +306,7 @@ describe('[runtime] the session the store owns', () => {
 })
 
 describe('[runtime] steering a running turn', () => {
-  it('a steer arrives in the run, and the window is told what is queued', async () => {
+  it('a steer arrives in the run, and the run takes it', async () => {
     const { runtime, events, agent } = openRuntime({
       drives: [slowStream('working...', 200), () => textStream('ok, steered')],
     })
@@ -317,8 +317,6 @@ describe('[runtime] steering a running turn', () => {
     await runtime.settle()
     await runtime.close()
 
-    const queued = rowOf(events, 'queue_updated')
-    expect(queued[0]).toMatchObject({ queued: [{ text: 'actually, this instead', kind: 'steer' }] })
     // The agent consumed it: the run took a second drive and the steer is in its transcript.
     // pi's turns are model calls, Alpha's is the whole run, so it is still one turn that ended.
     expect(agent?.state.messages.some((message) => JSON.stringify(message).includes('actually, this instead'))).toBe(
@@ -327,33 +325,13 @@ describe('[runtime] steering a running turn', () => {
     expect(rowOf(events, 'turn_finished')).toHaveLength(1)
   })
 
-  it('what the agent took into the run is announced as held no longer', async () => {
-    const { runtime, events } = openRuntime({
-      drives: [slowStream('working...', 200), () => textStream('ok, steered')],
-    })
-
-    await runtime.prompt('start')
-    await waitedFor(events, 'assistant_message_started')
-    await runtime.steer('actually, this instead')
-    await runtime.settle()
-    await runtime.close()
-
-    const queued = rowOf(events, 'queue_updated')
-    expect(queued[0]).toMatchObject({ queued: [{ text: 'actually, this instead', kind: 'steer' }] })
-    // The moment the steer is in the conversation it is not being held any more — the strip the
-    // window draws from says so, and says nothing more for the rest of the turn.
-    expect(queued).toHaveLength(2)
-    expect(queued[1]).toMatchObject({ queued: [] })
-  })
-
   it('cancelQueued empties what the agent is holding', async () => {
-    const { runtime, events, agent } = openRuntime({})
+    const { runtime, agent } = openRuntime({})
 
     await runtime.steer('one')
     expect(agent?.hasQueuedMessages()).toBe(true)
     await runtime.cancelQueued()
     expect(agent?.hasQueuedMessages()).toBe(false)
-    expect(rowOf(events, 'queue_updated').at(-1)).toMatchObject({ queued: [] })
   })
 })
 

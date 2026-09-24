@@ -105,7 +105,6 @@ export class AgentEventTranslator {
     if (event.type === 'tool_execution_start') return [this.toolStarted(event)]
     if (event.type === 'tool_execution_update') return [this.toolOutput(event)]
     if (event.type === 'tool_execution_end') return [this.toolFinished(event)]
-    if (event.type === 'queue_update') return [this.queue(event)]
     if (event.type === 'compaction_end') return this.compacted(event)
     return []
   }
@@ -262,13 +261,6 @@ export class AgentEventTranslator {
       ...(details === undefined ? {} : { details: details as ToolDetails }),
       endedAt: Date.now(),
     }
-  }
-
-  private queue(event: RpcLikeEvent): RuntimeEvent {
-    const steered = listOf(event.steering).flatMap((text) =>
-      typeof text === 'string' ? [{ entryId: crypto.randomUUID(), text, kind: 'steer' as const }] : [],
-    )
-    return { conversationId: this.conversationId, type: 'queue_updated', queued: steered, paused: false }
   }
 
   /** A compaction is a structural change: the summary stands in for what came before it. */
