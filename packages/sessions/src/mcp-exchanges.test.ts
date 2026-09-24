@@ -37,15 +37,42 @@ describe('[sessions] MCP request audit', () => {
   it('copies only earlier tool calls to a fork and deletes a removed conversation', () => {
     const data = mkdtempSync(join(tmpdir(), 'alpha-mcp-exchanges-'))
     const log = new McpExchangeLog(data)
-    log.start('source', pending('one', 'kept'))
+    log.start('source', { ...pending('one', 'kept'), method: 'sampling/createMessage' })
+    log.update('source', 'one', {
+      submittedText: 'Edited prompt',
+      model: { providerId: 'p', modelId: 'm' },
+      usage: { input: 12, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 17, cost: 0 },
+    })
     log.finish('source', 'one', 'declined', 150)
     log.start('source', pending('two', 'discarded'))
     log.finish('source', 'two', 'cancelled', 160)
 
     log.fork('source', 'branch', new Set(['kept']))
     expect(log.list('branch').map((record) => record.id)).toEqual(['one'])
+    expect(log.list('branch')[0]).toMatchObject({
+      method: 'sampling/createMessage',
+      submittedText: 'Edited prompt',
+      usage: { totalTokens: 17 },
+    })
     log.forget('source')
     expect(log.list('source')).toEqual([])
     expect(log.list('branch')).toHaveLength(1)
+  })
+
+  it('persists actual sampling use even when its generated text is declined', () => {
+    const data = mkdtempSync(join(tmpdir(), 'alpha-mcp-exchanges-'))
+    const log = new McpExchangeLog(data)
+    log.start('first', { ...pending('sample'), method: 'sampling/createMessage' })
+    log.update('first', 'sample', {
+      submittedText: 'Edited prompt',
+      model: { providerId: 'p', modelId: 'm' },
+      usage: { input: 12, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 17, cost: 0 },
+    })
+    log.finish('first', 'sample', 'declined', 200)
+    expect(new McpExchangeLog(data).list('first')[0]).toMatchObject({
+      outcome: 'declined',
+      submittedText: 'Edited prompt',
+      usage: { totalTokens: 17 },
+    })
   })
 })

@@ -36,6 +36,7 @@ import {
   readAttachments,
   readDefaultModel,
   readMcpElicitationAnswer,
+  readMcpSamplingAnswer,
   readNetworkPatch,
   requireLevel,
   requireString,
@@ -301,6 +302,11 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   answerMcpElicitation: ({ runtime }, args) => {
     const answer = readMcpElicitationAnswer(args[0])
     runtime.mcpRequests.answer(answer.conversationId, answer.requestId, answer)
+  },
+
+  answerMcpSampling: ({ runtime }, args) => {
+    const answer = readMcpSamplingAnswer(args[0])
+    return runtime.mcpRequests.answerSampling(answer.conversationId, answer.requestId, answer)
   },
 }
 

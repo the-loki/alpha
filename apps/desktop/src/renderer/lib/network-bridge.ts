@@ -15,6 +15,7 @@ import {
   IPC,
   type LaunchState,
   type McpElicitationAnswerInput,
+  type McpSamplingAnswerInput,
   type McpSnapshotMessage,
   type NetworkPatch,
   type NetworkState,
@@ -249,6 +250,7 @@ const decisionCalls = {
   answerApproval: (answer: ApprovalAnswerInput) => invoke('answerApproval', [answer]) as Promise<void>,
   answerMcpElicitation: (answer: McpElicitationAnswerInput) =>
     invoke('answerMcpElicitation', [answer]) as Promise<void>,
+  answerMcpSampling: (answer: McpSamplingAnswerInput) => invoke('answerMcpSampling', [answer]) as Promise<void>,
 }
 
 export function networkBridge(): AlphaBridge {

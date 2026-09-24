@@ -12,6 +12,8 @@ import type {
   McpElicitationAnswer,
   McpElicitationRequest,
   McpExchange,
+  McpSamplingAnswer,
+  McpSamplingRequest,
   McpServerDefinition,
   NetworkBind,
   PermissionLevel,
@@ -102,6 +104,7 @@ export const IPC = {
   revokePermissionRule: 'alpha:revoke-permission-rule',
   answerApproval: 'alpha:answer-approval',
   answerMcpElicitation: 'alpha:answer-mcp-elicitation',
+  answerMcpSampling: 'alpha:answer-mcp-sampling',
   permissionRulesChanged: 'alpha:permission-rules-changed',
   tasksChanged: 'alpha:tasks-changed',
   networkState: 'alpha:network-state',
@@ -165,6 +168,7 @@ export interface OpenedConversation {
   workspaceChanges: WorkspaceChangeSet[]
   mcpExchanges: McpExchange[]
   mcpPending: McpElicitationRequest[]
+  mcpSamplingPending: McpSamplingRequest[]
   /** What this conversation has spent, so a window opening it shows the same totals as before. */
   usage: UsageTotals
 }
@@ -229,6 +233,11 @@ export interface ApprovalAnswerInput {
 }
 
 export type McpElicitationAnswerInput = McpElicitationAnswer & {
+  conversationId: string
+  requestId: string
+}
+
+export type McpSamplingAnswerInput = McpSamplingAnswer & {
   conversationId: string
   requestId: string
 }
@@ -315,6 +324,7 @@ export interface AlphaBridge {
   /** The one thing the renderer says about a card: the answer, and its scope when it is remembered. */
   answerApproval(answer: ApprovalAnswerInput): Promise<void>
   answerMcpElicitation(answer: McpElicitationAnswerInput): Promise<void>
+  answerMcpSampling(answer: McpSamplingAnswerInput): Promise<void>
   onPermissionRules(listener: (rules: PermissionRule[]) => void): () => void
   /** A task was added, edited or ran: the window redraws from what it is handed. */
   onTasks(listener: (snapshot: TasksSnapshot) => void): () => void

@@ -61,6 +61,14 @@ export function writeSessionMarkdown(
             `Settled: ${record.settledAt === undefined ? 'pending' : new Date(record.settledAt).toISOString()}`,
             `Message: ${record.requestText}`,
             ...(record.content === undefined ? [] : [`Content: ${JSON.stringify(record.content)}`]),
+            ...(record.model === undefined ? [] : [`Model: ${record.model.providerId} / ${record.model.modelId}`]),
+            ...(record.submittedText === undefined ? [] : [`Prompt sent: ${record.submittedText}`]),
+            ...(record.responseText === undefined ? [] : [`Response shared: ${record.responseText}`]),
+            ...(record.usage === undefined
+              ? []
+              : [
+                  `Usage: ${record.usage.totalTokens} tokens (${record.usage.input} input, ${record.usage.output} output), cost ${record.usage.cost}`,
+                ]),
             '',
           ]),
         ].join('\n')

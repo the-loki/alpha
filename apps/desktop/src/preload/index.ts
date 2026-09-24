@@ -12,6 +12,7 @@ import {
   IPC,
   type LaunchState,
   type McpElicitationAnswerInput,
+  type McpSamplingAnswerInput,
   type McpSnapshotMessage,
   type NetworkPatch,
   type NetworkState,
@@ -118,6 +119,8 @@ const bridge: AlphaBridge = {
   answerApproval: (answer: ApprovalAnswerInput) => ipcRenderer.invoke(IPC.answerApproval, answer) as Promise<void>,
   answerMcpElicitation: (answer: McpElicitationAnswerInput) =>
     ipcRenderer.invoke(IPC.answerMcpElicitation, answer) as Promise<void>,
+  answerMcpSampling: (answer: McpSamplingAnswerInput) =>
+    ipcRenderer.invoke(IPC.answerMcpSampling, answer) as Promise<void>,
   listTasks: () => ipcRenderer.invoke(IPC.listTasks) as Promise<TasksSnapshot>,
   saveTask: (input: Partial<ScheduledTask>) => ipcRenderer.invoke(IPC.saveTask, input) as Promise<TasksSnapshot>,
   deleteTask: (id: string) => ipcRenderer.invoke(IPC.deleteTask, id) as Promise<TasksSnapshot>,

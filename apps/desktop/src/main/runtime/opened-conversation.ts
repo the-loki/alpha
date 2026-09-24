@@ -6,6 +6,7 @@ import {
   EMPTY_USAGE,
   type McpElicitationRequest,
   type McpExchange,
+  type McpSamplingRequest,
 } from '@alpha/domain'
 import { defaultModel } from '@alpha/providers'
 import type { ConversationReads, WorkspaceChangeLog } from '@alpha/sessions'
@@ -28,12 +29,21 @@ export async function createOpenedConversation(
   await launch(conversation)
   books.upsert(conversation)
   options.store.rememberConversation(conversation.id)
-  return { conversation, messages: [], usage: EMPTY_USAGE, workspaceChanges: [], mcpExchanges: [], mcpPending: [] }
+  return {
+    conversation,
+    messages: [],
+    usage: EMPTY_USAGE,
+    workspaceChanges: [],
+    mcpExchanges: [],
+    mcpPending: [],
+    mcpSamplingPending: [],
+  }
 }
 
 export interface McpConversationReads {
   records(id: string): McpExchange[]
   pending(id: string): McpElicitationRequest[]
+  samplingPending(id: string): McpSamplingRequest[]
 }
 
 /** The one complete snapshot handed to a reopened window or browser conversation. */
@@ -50,5 +60,6 @@ export function openedConversation(
     workspaceChanges: changes.list(conversation.id),
     mcpExchanges: mcp.records(conversation.id),
     mcpPending: mcp.pending(conversation.id),
+    mcpSamplingPending: mcp.samplingPending(conversation.id),
   }
 }

@@ -149,6 +149,83 @@ test('a narrow browser can cancel a real server form with Escape', async () => {
   }
 })
 
+test('reviews and shares a real server sampling request in the desktop conversation', async () => {
+  const { app, window } = await launchWorkbench({
+    level: 'full-access',
+    replies: [
+      { tool: { name: 'mcp__scripted__sample_answered', args: {} } },
+      'Generated model answer',
+      'The server received the answer.',
+    ],
+    mcp: [scriptedMcp('scripted', { env: { SCRIPTED_MCP_SAMPLING: '1' } })],
+  })
+  try {
+    await ask(window, 'ask the server to sample')
+    const request = window.getByRole('group', { name: 'Model request' })
+    await expect(request).toBeVisible()
+    await expect(request.getByText('scripted via mcp__scripted__sample_answered')).toBeVisible()
+    await expect(request.getByText('Scripted / Scripted model')).toBeVisible()
+    await expect(request.getByText('Up to 32 output tokens')).toBeVisible()
+    const form = request.getByRole('form', { name: 'Model request' })
+    await form.getByRole('textbox', { name: 'User message' }).fill('Edited for the server')
+    await form.getByRole('button', { name: 'Generate' }).click()
+
+    const review = request.getByRole('region', { name: 'Review response' })
+    await expect(review.getByText('Generated model answer')).toBeVisible()
+    await expect(review.getByText(/tokens used/)).toBeVisible()
+    await review.getByRole('button', { name: 'Share with server' }).click()
+    await expect(request).toHaveCount(0)
+    await expect(window.getByText('The server received the answer.')).toBeVisible()
+    await window.getByRole('tab', { name: 'MCP requests' }).click()
+    const audit = window.locator('[data-mcp-outcome="accepted"]')
+    await expect(audit.getByText('Edited for the server')).toBeVisible()
+    await expect(audit.getByText('Generated model answer')).toBeVisible()
+    await expect(audit.getByText(/tokens used/)).toBeVisible()
+  } finally {
+    await app.close()
+  }
+})
+
+test('discards a sampled answer in the narrow browser without sharing it', async () => {
+  const port = await freePort()
+  const token = 'sampling-browser-token'
+  const { app } = await launchWorkbench({
+    level: 'full-access',
+    network: { port, token },
+    replies: [
+      { tool: { name: 'mcp__scripted__sample_answered', args: {} } },
+      'Private model answer',
+      'The server continued without the answer.',
+    ],
+    mcp: [scriptedMcp('scripted', { env: { SCRIPTED_MCP_SAMPLING: '1' } })],
+  })
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 375, height: 812 } })
+    await page.goto(`http://127.0.0.1:${port}`)
+    await page.getByLabel('Access token').fill(token)
+    await page.getByRole('button', { name: 'Open the workbench' }).click()
+    await ask(page, 'ask the server to sample')
+    const request = page.getByRole('group', { name: 'Model request' })
+    await expect(request).toBeVisible()
+    await request.getByRole('button', { name: 'Generate' }).click()
+    const review = request.getByRole('region', { name: 'Review response' })
+    await expect(review.getByText('Private model answer')).toBeVisible()
+    await review.getByRole('button', { name: 'Discard response' }).click()
+    await expect(request).toHaveCount(0)
+    await expect(page.getByText('The server continued without the answer.')).toBeVisible()
+    await page.getByRole('tab', { name: 'MCP requests' }).click()
+    const audit = page.locator('[data-mcp-outcome="declined"]')
+    await expect(audit.getByText('Server prompt').first()).toBeVisible()
+    await expect(audit.getByText(/tokens used/)).toBeVisible()
+    await expect(audit.getByText('Private model answer')).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
 test('says a server is being reached while it is, and why it was not when that ends', async () => {
   // The fixture keeps reading and never answers when it is muted, so this server is only ever a
   // server nobody has an outcome for yet — the state the panel has to show without lying about it.

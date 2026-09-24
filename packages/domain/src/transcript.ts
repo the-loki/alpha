@@ -8,7 +8,7 @@
  * two hundred small objects, not two hundred copies of the conversation.
  */
 import type { Undef } from './maybe.ts'
-import type { McpElicitationRequest, McpExchange } from './mcp-requests.ts'
+import type { McpElicitationRequest, McpExchange, McpSamplingRequest } from './mcp-requests.ts'
 import { reduceMcpEvent } from './mcp-transcript.ts'
 import type {
   ApprovalRequest,
@@ -39,6 +39,7 @@ export interface TranscriptState {
   workspaceChanges: WorkspaceChangeSet[]
   /** Server requests that remain unanswered in this process, and their durable audit. */
   mcpPending: McpElicitationRequest[]
+  mcpSamplingPending: McpSamplingRequest[]
   mcpExchanges: McpExchange[]
   streaming?: ChatMessage
   /** Calls waiting on the user, oldest first. */
@@ -63,6 +64,7 @@ export function emptyTranscript(conversationId: string): TranscriptState {
     messages: [],
     workspaceChanges: [],
     mcpPending: [],
+    mcpSamplingPending: [],
     mcpExchanges: [],
     approvals: [],
     queued: [],
@@ -87,6 +89,7 @@ export function openingTranscript(
   workspaceChanges: WorkspaceChangeSet[] = [],
   mcpExchanges: McpExchange[] = [],
   mcpPending: McpElicitationRequest[] = [],
+  mcpSamplingPending: McpSamplingRequest[] = [],
 ): TranscriptState {
   return {
     ...emptyTranscript(conversationId),
@@ -95,13 +98,18 @@ export function openingTranscript(
     workspaceChanges,
     mcpExchanges,
     mcpPending,
+    mcpSamplingPending,
     turns: usage.totalTokens === 0 ? [] : [{ usage, earlier: true }],
   }
 }
 
-/** The total is the sum of the rows, so the two can never drift apart. */
+/** The visible total includes agent turns and separate MCP sampling model calls. */
 export function totalUsage(state: TranscriptState): UsageTotals {
-  return state.turns.reduce((sum, turn) => addUsage(sum, turn.usage), EMPTY_USAGE)
+  const turns = state.turns.reduce((sum, turn) => addUsage(sum, turn.usage), EMPTY_USAGE)
+  return state.mcpExchanges.reduce(
+    (sum, record) => (record.usage === undefined ? sum : addUsage(sum, record.usage)),
+    turns,
+  )
 }
 
 export function streamingMessage(state: TranscriptState): Undef<ChatMessage> {
@@ -154,7 +162,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return discardAssistantMessage(state, event.messageId)
 
     case 'turn_finished':
-      return closeTurn({ ...state, status: 'idle', approvals: [], mcpPending: [] })
+      return closeTurn({ ...state, status: 'idle', approvals: [], mcpPending: [], mcpSamplingPending: [] })
 
     case 'run_failed':
       // A failure that said nothing is the same failure whether the nothing is absent or empty.
@@ -180,6 +188,7 @@ function openFromEvent(
     event.workspaceChanges,
     event.mcpExchanges,
     event.mcpPending,
+    event.mcpSamplingPending,
   )
 }
 
@@ -205,6 +214,7 @@ function reduceGateEvent(state: TranscriptState, event: RuntimeEvent): Transcrip
       return { ...state, workspaceChanges: [event.changeSet, ...state.workspaceChanges].slice(0, 20) }
 
     case 'mcp_elicitation_requested':
+    case 'mcp_sampling_requested':
     case 'mcp_exchange_recorded':
       return reduceMcpEvent(state, event)
 
@@ -321,6 +331,7 @@ function failRun(state: TranscriptState, failure: Undef<ChatMessageFailure>): Tr
     streaming: undefined,
     approvals: [],
     mcpPending: [],
+    mcpSamplingPending: [],
     status: 'failed',
   }
 }

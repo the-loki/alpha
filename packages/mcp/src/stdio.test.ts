@@ -50,6 +50,52 @@ async function until(condition: () => boolean): Promise<void> {
 }
 
 describe('an MCP server over stdio', () => {
+  it('declares sampling and returns an approved response to the originating tool call', async () => {
+    const asked: McpServerRequest[] = []
+    const servers = await connectMcpServers([scripted([], { SCRIPTED_MCP_SAMPLING: '1' })], {
+      onRequest: async (request) => {
+        asked.push(request)
+        return {
+          role: 'assistant',
+          content: { type: 'text', text: 'Reviewed answer' },
+          model: 'scripted-model',
+          stopReason: 'endTurn',
+        }
+      },
+    })
+    try {
+      const result = await servers.call('scripted', 'sample_answered', {}, undefined, {
+        conversationId: 'conversation-1',
+        toolCallId: 'call-1',
+        toolName: 'mcp__scripted__sample_answered',
+      })
+      expect(asked).toMatchObject([
+        {
+          server: 'scripted',
+          method: 'sampling/createMessage',
+          params: {
+            messages: [{ role: 'user', content: { type: 'text', text: 'Server prompt' } }],
+            maxTokens: 32,
+          },
+          context: { conversationId: 'conversation-1', toolCallId: 'call-1' },
+        },
+      ])
+      expect(result.content).toEqual([
+        {
+          type: 'text',
+          text: JSON.stringify({
+            role: 'assistant',
+            content: { type: 'text', text: 'Reviewed answer' },
+            model: 'scripted-model',
+            stopReason: 'endTurn',
+          }),
+        },
+      ])
+    } finally {
+      await servers.close()
+    }
+  })
+
   it('declares elicitation before accepting a server that requires the capability', async () => {
     const servers = await connectMcpServers([scripted([], { SCRIPTED_MCP_ELICITATION: '1' })])
     expect(servers.tools().map((tool) => tool.name)).toContain('reverse_answered')

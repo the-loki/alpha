@@ -5,6 +5,7 @@ import {
   type ConversationSummary,
   emptyTranscript,
   type McpElicitationAnswer,
+  type McpSamplingAnswer,
   openingTranscript,
   type PermissionLevel,
   type RuntimeEvent,
@@ -55,6 +56,7 @@ const openedState = (opened: OpenedConversation) => ({
     opened.workspaceChanges,
     opened.mcpExchanges,
     opened.mcpPending,
+    opened.mcpSamplingPending,
   ),
 })
 
@@ -196,6 +198,13 @@ export const conversationActions = {
     const id = conversations.activeId
     if (id === '') return
     await bridge().answerMcpElicitation({ ...answer, conversationId: id })
+    setConversations('composerFocus', conversations.composerFocus + 1)
+  },
+
+  answerMcpSampling: async (answer: McpSamplingAnswer & { requestId: string }): Promise<void> => {
+    const id = conversations.activeId
+    if (id === '') return
+    await bridge().answerMcpSampling({ ...answer, conversationId: id })
     setConversations('composerFocus', conversations.composerFocus + 1)
   },
 

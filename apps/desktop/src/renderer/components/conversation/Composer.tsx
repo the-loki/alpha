@@ -226,7 +226,10 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   useEscapeToStop(
     conversationActions.stop,
     running,
-    () => conversations.transcript.approvals.length > 0 || conversations.transcript.mcpPending.length > 0,
+    () =>
+      conversations.transcript.approvals.length > 0 ||
+      conversations.transcript.mcpPending.length > 0 ||
+      conversations.transcript.mcpSamplingPending.length > 0,
   )
 
   const send = async () => {

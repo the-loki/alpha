@@ -57,7 +57,10 @@ beforeAll(async () => {
         version: request.headers['mcp-protocol-version'] as string | undefined,
         body,
       })
-      if ((request.url === '/session' || request.url === '/reverse-answered') && message.method !== 'initialize') {
+      if (
+        (request.url === '/session' || request.url === '/reverse-answered' || request.url === '/sample-answered') &&
+        message.method !== 'initialize'
+      ) {
         if (
           request.headers['mcp-session-id'] !== 'alpha-test-session' ||
           request.headers['mcp-protocol-version'] !== '2025-06-18'
@@ -76,7 +79,7 @@ beforeAll(async () => {
         return
       }
       if (message.method === undefined) {
-        if (request.url === '/reverse-answered') {
+        if (request.url === '/reverse-answered' || request.url === '/sample-answered') {
           reverseReplies.get(message.id)?.(message as Record<string, unknown>)
           reverseReplies.delete(message.id)
         }
@@ -90,6 +93,28 @@ beforeAll(async () => {
           id: message.id,
           method: 'elicitation/create',
           params: { message: 'Name?' },
+        })
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        response.write(`event: message\ndata: ${reverse}\n\n`)
+        reverseReplies.set(message.id, (reply) => {
+          const result = JSON.stringify({
+            jsonrpc: '2.0',
+            id: message.id,
+            result: { content: [{ type: 'text', text: JSON.stringify(reply.result ?? reply.error) }] },
+          })
+          response.end(`event: message\ndata: ${result}\n\n`)
+        })
+        return
+      }
+      if (request.url === '/sample-answered' && message.method === 'tools/call') {
+        const reverse = JSON.stringify({
+          jsonrpc: '2.0',
+          id: message.id,
+          method: 'sampling/createMessage',
+          params: {
+            messages: [{ role: 'user', content: { type: 'text', text: 'Server prompt' } }],
+            maxTokens: 32,
+          },
         })
         response.writeHead(200, { 'content-type': 'text/event-stream' })
         response.write(`event: message\ndata: ${reverse}\n\n`)
@@ -146,7 +171,8 @@ beforeAll(async () => {
       }
       response.writeHead(200, {
         'content-type': 'application/json',
-        ...((request.url === '/session' || request.url === '/reverse-answered') && message.method === 'initialize'
+        ...((request.url === '/session' || request.url === '/reverse-answered' || request.url === '/sample-answered') &&
+        message.method === 'initialize'
           ? { 'Mcp-Session-Id': 'alpha-test-session' }
           : {}),
       })
@@ -163,6 +189,41 @@ afterAll(async () => {
 })
 
 describe('an MCP server over HTTP', () => {
+  it('returns a sampling response through a separate HTTP POST for the parent tool call', async () => {
+    const asked: McpServerRequest[] = []
+    const servers = await connectMcpServers([{ name: 'remote', url: `${origin}/sample-answered` }], {
+      onRequest: async (request) => {
+        asked.push(request)
+        return { role: 'assistant', content: { type: 'text', text: 'Reviewed answer' }, model: 'm' }
+      },
+    })
+    try {
+      const result = await servers.call('remote', 'reach', {}, undefined, {
+        conversationId: 'conversation-1',
+        toolCallId: 'call-1',
+      })
+      expect(asked).toMatchObject([
+        {
+          server: 'remote',
+          method: 'sampling/createMessage',
+          params: { messages: [{ role: 'user', content: { type: 'text', text: 'Server prompt' } }], maxTokens: 32 },
+          context: { conversationId: 'conversation-1', toolCallId: 'call-1' },
+        },
+      ])
+      expect(result.content).toEqual([
+        {
+          type: 'text',
+          text: JSON.stringify({ role: 'assistant', content: { type: 'text', text: 'Reviewed answer' }, model: 'm' }),
+        },
+      ])
+      expect(seen.some((request) => request.body.includes('Reviewed answer') && request.method === undefined)).toBe(
+        true,
+      )
+    } finally {
+      await servers.close()
+    }
+  })
+
   it('aborts an unanswered server request when the HTTP stream cancels it', async () => {
     const asked: McpServerRequest[] = []
     const servers = await connectMcpServers([{ name: 'remote', url: `${origin}/reverse-cancelled` }], {

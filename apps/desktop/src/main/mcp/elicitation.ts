@@ -100,12 +100,6 @@ export class McpElicitationBroker {
     )
   }
 
-  public records(conversationId: string): McpExchange[] {
-    const activeIds = new Set(this.pending(conversationId).map((request) => request.requestId))
-    this.ports.log.recover(conversationId, activeIds, Date.now())
-    return this.ports.log.list(conversationId)
-  }
-
   private finish(requestId: string, answer: McpElicitationAnswer): void {
     const entry = this.waiting.get(requestId)
     if (entry === undefined) return

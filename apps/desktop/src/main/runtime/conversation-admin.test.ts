@@ -150,6 +150,54 @@ describe('[runtime] MCP elicitation readback', () => {
   })
 })
 
+describe('[runtime] MCP sampling readback', () => {
+  it('keeps the model decision and usage through reopen and export, then deletes it', async () => {
+    const { manager, workspace, dataDirectory, events } = freshManager({
+      drives: [() => textStream('Generated answer')],
+    })
+    const conversation = (await manager.create(workspace)).conversation
+    const request: McpServerRequest = {
+      server: 'files',
+      method: 'sampling/createMessage',
+      params: {
+        messages: [{ role: 'user', content: { type: 'text', text: 'Original prompt' } }],
+        maxTokens: 40,
+      },
+      context: { conversationId: conversation.id, toolCallId: 'tool-1', toolName: 'mcp__files__lookup' },
+      signal: new AbortController().signal,
+    }
+    const response = manager.mcpRequests.handle(request)
+    await waitedFor(events, 'mcp_sampling_requested')
+    const opened = await manager.open(conversation.id)
+    expect(opened.mcpSamplingPending).toMatchObject([{ stage: 'consent', model: { providerId: 'p', modelId: 'm' } }])
+    const id = opened.mcpSamplingPending[0]?.requestId ?? ''
+    await manager.mcpRequests.answerSampling(conversation.id, id, { action: 'generate', messages: ['Edited prompt'] })
+    expect((await manager.open(conversation.id)).mcpSamplingPending).toMatchObject([{ stage: 'review' }])
+    await manager.mcpRequests.answerSampling(conversation.id, id, { action: 'share' })
+    await expect(response).resolves.toMatchObject({ content: { text: 'Generated answer' }, model: 'm' })
+
+    const reopened = await manager.open(conversation.id)
+    expect(reopened.mcpSamplingPending).toEqual([])
+    expect(reopened.mcpExchanges).toMatchObject([
+      {
+        outcome: 'accepted',
+        submittedText: 'Edited prompt',
+        responseText: 'Generated answer',
+        usage: { totalTokens: expect.any(Number) },
+      },
+    ])
+    const exported = await manager.exportMarkdown(conversation.id)
+    const markdown = readFileSync(exported.path, 'utf-8')
+    expect(markdown).toContain('Prompt sent: Edited prompt')
+    expect(markdown).toContain('Response shared: Generated answer')
+    expect(markdown).toContain('Usage:')
+
+    await manager.remove(conversation.id)
+    expect(existsSync(join(dataDirectory, 'mcp-exchanges', `${conversation.id}.json`))).toBe(false)
+    await manager.closeAll()
+  })
+})
+
 /** One script per open: the n-th turn hears the n-th reply, and one past the end hears the last again. */
 function scriptOf(options: FixtureOptions): Array<() => AssistantMessageEventStream> {
   const replies = options.replies ?? ['Noted.']

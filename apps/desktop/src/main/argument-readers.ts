@@ -4,7 +4,13 @@
  * every argument is checked here rather than trusted where it is used.
  */
 
-import type { AppearancePatch, ApprovalAnswerInput, McpElicitationAnswerInput, NetworkPatch } from '@alpha/contract'
+import type {
+  AppearancePatch,
+  ApprovalAnswerInput,
+  McpElicitationAnswerInput,
+  McpSamplingAnswerInput,
+  NetworkPatch,
+} from '@alpha/contract'
 import {
   type Attachment,
   byteLengthOf,
@@ -107,6 +113,44 @@ export function readMcpElicitationAnswer(input: unknown): McpElicitationAnswerIn
     throw new Error('content must contain only primitive form fields')
   }
   return { conversationId, requestId, action: 'accept', content: Object.fromEntries(entries) as McpElicitationContent }
+}
+
+export function readMcpSamplingAnswer(input: unknown): McpSamplingAnswerInput {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    throw new Error('an MCP sampling answer is required')
+  }
+  const record = input as Record<string, unknown>
+  const conversationId = requireString(record.conversationId, 'conversationId')
+  const requestId = requireString(record.requestId, 'requestId')
+  const action = record.action
+  if (action === 'share' || action === 'decline' || action === 'cancel') {
+    if (record.messages !== undefined || record.systemPrompt !== undefined) throw new Error('unexpected prompt edits')
+    return { conversationId, requestId, action }
+  }
+  if (action !== 'generate') throw new Error('action must be generate, share, decline or cancel')
+  const messages = record.messages
+  if (
+    !Array.isArray(messages) ||
+    messages.length === 0 ||
+    messages.length > 20 ||
+    messages.some((text) => typeof text !== 'string' || text.trim() === '' || text.length > 10_000) ||
+    messages.reduce((sum: number, text: string) => sum + text.length, 0) > 32_000
+  ) {
+    throw new Error('messages must be bounded text')
+  }
+  if (
+    record.systemPrompt !== undefined &&
+    (typeof record.systemPrompt !== 'string' || record.systemPrompt.length > 4_000)
+  ) {
+    throw new Error('systemPrompt must be bounded text')
+  }
+  return {
+    conversationId,
+    requestId,
+    action,
+    messages: messages as string[],
+    ...(record.systemPrompt === undefined ? {} : { systemPrompt: record.systemPrompt as string }),
+  }
 }
 
 export function requireString(value: unknown, field: string): string {

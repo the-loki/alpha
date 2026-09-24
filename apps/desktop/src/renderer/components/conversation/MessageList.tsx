@@ -4,6 +4,7 @@ import { useText } from '../../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { ElicitationCard } from './ElicitationCard.tsx'
 import { MessageView } from './MessageView.tsx'
+import { SamplingCard } from './SamplingCard.tsx'
 
 /** Which user message this is, counting from the top, which is how an edit names its target. */
 const userIndex = (messages: { role: string }[], index: number): number =>
@@ -52,6 +53,13 @@ export function MessageList(props: { transcript: TranscriptState }) {
         {(request) => (
           <div class="mt-4">
             <ElicitationCard request={request()} />
+          </div>
+        )}
+      </Index>
+      <Index each={props.transcript.mcpSamplingPending}>
+        {(request) => (
+          <div class="mt-4">
+            <SamplingCard request={request()} />
           </div>
         )}
       </Index>

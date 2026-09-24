@@ -22,9 +22,14 @@ client call. Stopping the parent call, losing the connection, or receiving a ser
 aborts the inbound request without sending a late answer. An HTTP answer to a server request is a
 new POST carrying the protocol version and any session ID assigned at initialization.
 
-The initialized client declares `elicitation` after the attended form, refusal, and audit path is
-complete (#216). It still does not declare `sampling`; that capability needs its own consent,
-review, refusal, audit, and usage path (#217). An unsupported request receives `Method not found`.
+The initialized client declares `elicitation` and `sampling` after their attended paths are
+complete (#216, #217). Sampling requires consent for each request, even at full-access permission
+level. The person may edit the server's text prompt, then review the model's text before sharing it.
+The model call uses the conversation's configured model but receives only those explicit messages:
+it adds no private conversation history, even when the server requests context. Audio and other
+unsupported content are refused. A stopped parent call cancels the request; the audit records the
+decision and actual model usage, including when the person discards a generated answer. An
+unsupported request receives `Method not found`.
 
 ## Consequences
 

@@ -19,6 +19,19 @@ const ExchangeSchema = Type.Object({
   outcome: OutcomeSchema,
   settledAt: Type.Optional(Type.Number()),
   content: Type.Optional(Type.Record(Type.String(), Type.Union([Type.String(), Type.Number(), Type.Boolean()]))),
+  submittedText: Type.Optional(Type.String()),
+  responseText: Type.Optional(Type.String()),
+  model: Type.Optional(Type.Object({ providerId: Type.String(), modelId: Type.String() })),
+  usage: Type.Optional(
+    Type.Object({
+      input: Type.Number(),
+      output: Type.Number(),
+      cacheRead: Type.Number(),
+      cacheWrite: Type.Number(),
+      totalTokens: Type.Number(),
+      cost: Type.Number(),
+    }),
+  ),
 })
 const FileSchema = Type.Object({ version: Type.Literal(1), records: Type.Array(ExchangeSchema) })
 const KEEP = 200
@@ -33,6 +46,21 @@ export class McpExchangeLog {
 
   public start(conversationId: string, record: McpExchange): void {
     this.write(conversationId, [record, ...this.list(conversationId)].slice(0, KEEP))
+  }
+
+  public update(
+    conversationId: string,
+    id: string,
+    patch: Partial<Pick<McpExchange, 'submittedText' | 'responseText' | 'model' | 'usage'>>,
+  ): Undef<McpExchange> {
+    let updated: Undef<McpExchange>
+    const records = this.list(conversationId).map((record) => {
+      if (record.id !== id || record.outcome !== 'pending') return record
+      updated = { ...record, ...patch }
+      return updated
+    })
+    if (updated !== undefined) this.write(conversationId, records)
+    return updated
   }
 
   public finish(

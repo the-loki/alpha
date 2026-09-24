@@ -24,7 +24,8 @@ export function ConversationPage() {
   const hasMessages = () =>
     conversations.transcript.messages.length > 0 ||
     conversations.transcript.streaming !== undefined ||
-    conversations.transcript.mcpPending.length > 0
+    conversations.transcript.mcpPending.length > 0 ||
+    conversations.transcript.mcpSamplingPending.length > 0
 
   createEffect(() => {
     conversations.activeId
@@ -32,7 +33,8 @@ export function ConversationPage() {
   })
 
   createEffect(() => {
-    if (conversations.transcript.mcpPending.length > 0) setView('conversation')
+    if (conversations.transcript.mcpPending.length > 0 || conversations.transcript.mcpSamplingPending.length > 0)
+      setView('conversation')
   })
 
   let scroller: Undef<HTMLDivElement>
@@ -43,15 +45,20 @@ export function ConversationPage() {
     () =>
       visibleMessages(conversations.transcript).length +
       conversations.transcript.approvals.length +
-      conversations.transcript.mcpPending.length,
+      conversations.transcript.mcpPending.length +
+      conversations.transcript.mcpSamplingPending.length,
   )
   const streamed = createMemo(() => conversations.transcript.streaming?.blocks.length ?? 0)
+  const samplingStage = createMemo(() =>
+    conversations.transcript.mcpSamplingPending.map((request) => request.stage).join(','),
+  )
 
   // It sticks to the bottom while the reader is already there, and stops the moment they scroll up:
   // reading back through a long answer should not be yanked away by the next delta.
   createEffect(() => {
     const said = rows()
     const arriving = streamed()
+    samplingStage()
     const element = scroller
     if (element === undefined || !atBottom || (said === 0 && arriving === 0)) return
     element.scrollTop = element.scrollHeight

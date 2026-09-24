@@ -38,6 +38,7 @@ import {
   WorkspaceChangeLog,
   writeSessionMarkdown,
 } from '@alpha/sessions'
+import { samplingModelFor } from '../mcp/sampling-model.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
 import { openManagedRuntime, type RuntimeManagerOptions, RuntimeRefresh } from './managed-runtime.ts'
@@ -78,6 +79,7 @@ export class RuntimeManager {
       emit: options.emit,
       refuseUnattended: (id) => this.unattended.refuse(id) !== undefined,
       canRoute: (id) => this.books.find(id) !== undefined && this.opened.has(id),
+      modelFor: (id) => samplingModelFor(this.books.find(id), options),
     })
     this.reads = new ConversationReads({
       conversation: (id) => this.requireConversation(id),

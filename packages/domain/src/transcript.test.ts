@@ -697,4 +697,36 @@ describe('[domain] MCP requests in a conversation', () => {
     })
     expect(state.mcpPending).toEqual([])
   })
+
+  it('replaces each sampling stage and counts use even when sharing is declined', () => {
+    const sample = {
+      requestId: 'sample-1',
+      server: 'files',
+      toolCallId: 'call-2',
+      toolName: 'mcp__files__query',
+      requestedAt: 20,
+      stage: 'consent' as const,
+      prompt: {
+        messages: [{ role: 'user' as const, text: 'Question?' }],
+        maxTokens: 100,
+        requestedContext: false,
+        hints: [],
+      },
+      model: { providerId: 'p', modelId: 'm', name: 'Model M', maxTokens: 100 },
+    }
+    const usage = { input: 11, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 16, cost: 0 }
+    const record = { ...pending, id: 'sample-1', method: 'sampling/createMessage' as const, usage }
+    const state = reduce([
+      event({ type: 'mcp_sampling_requested', request: sample }),
+      event({
+        type: 'mcp_sampling_requested',
+        request: { ...sample, stage: 'review', generated: { text: 'Answer', usage, stopReason: 'stop' } },
+      }),
+      event({ type: 'mcp_exchange_recorded', exchange: record }),
+      event({ type: 'mcp_exchange_recorded', exchange: { ...record, outcome: 'declined' } }),
+    ])
+    expect(state.mcpSamplingPending).toEqual([])
+    expect(state.mcpExchanges).toHaveLength(1)
+    expect(totalUsage(state).totalTokens).toBe(16)
+  })
 })

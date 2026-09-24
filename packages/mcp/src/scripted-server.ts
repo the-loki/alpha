@@ -58,6 +58,13 @@ if (process.env.SCRIPTED_MCP_ELICITATION !== undefined) {
     inputSchema: { type: 'object', properties: {} },
   })
 }
+if (process.env.SCRIPTED_MCP_SAMPLING !== undefined) {
+  TOOLS.push({
+    name: 'sample_answered',
+    description: 'Asks the client to sample a message before answering.',
+    inputSchema: { type: 'object', properties: {} },
+  })
+}
 
 /** The tool `grow` adds, so a list that was read before it can be seen to be stale. */
 const GROWN: ScriptedTool = {
@@ -109,6 +116,19 @@ function askName(id: unknown): void {
   })
 }
 
+function askSample(id: unknown): void {
+  reverseWaiting.add(String(id))
+  write({
+    jsonrpc: '2.0',
+    id,
+    method: 'sampling/createMessage',
+    params: {
+      messages: [{ role: 'user', content: { type: 'text', text: 'Server prompt' } }],
+      maxTokens: 32,
+    },
+  })
+}
+
 function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
   const name = String(params.name ?? '')
   const args = params.arguments
@@ -121,6 +141,10 @@ function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
   }
   if (name === 'reverse_answered') {
     askName(id)
+    return undefined
+  }
+  if (name === 'sample_answered') {
+    askSample(id)
     return undefined
   }
   if (name === 'reverse_cancelled') {
@@ -170,6 +194,12 @@ function answerOf(id: unknown, method: string, params: Record<string, unknown>):
       const capabilities = params.capabilities as Undef<Record<string, unknown>>
       if (capabilities?.elicitation === undefined) {
         return { jsonrpc: '2.0', id, error: { code: -32000, message: 'elicitation capability required' } }
+      }
+    }
+    if (process.env.SCRIPTED_MCP_SAMPLING !== undefined) {
+      const capabilities = params.capabilities as Undef<Record<string, unknown>>
+      if (capabilities?.sampling === undefined) {
+        return { jsonrpc: '2.0', id, error: { code: -32000, message: 'sampling capability required' } }
       }
     }
     const result = {

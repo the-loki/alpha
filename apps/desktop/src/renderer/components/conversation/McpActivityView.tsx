@@ -1,4 +1,4 @@
-import type { McpExchange, McpExchangeOutcome } from '@alpha/domain'
+import { formatCost, formatTokens, type McpExchange, type McpExchangeOutcome } from '@alpha/domain'
 import type { TextKey } from '@alpha/i18n'
 import { For, Show } from 'solid-js'
 import { languageOf, shell, useText } from '../../stores/shell.ts'
@@ -40,6 +40,41 @@ function ExchangeRow(props: { exchange: McpExchange }) {
             {JSON.stringify(props.exchange.content, undefined, 2)}
           </pre>
         </div>
+      </Show>
+      <Show when={props.exchange.model}>
+        {(model) => (
+          <p class="mt-2 break-words font-mono text-label text-muted">
+            {model().providerId} / {model().modelId}
+          </p>
+        )}
+      </Show>
+      <Show when={props.exchange.submittedText}>
+        <div class="mt-3">
+          <p class="mb-1 font-mono text-label text-muted">{t('mcp.samplingSubmitted')}</p>
+          <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-words font-text text-body text-foreground">
+            {props.exchange.submittedText}
+          </pre>
+        </div>
+      </Show>
+      <Show when={props.exchange.responseText}>
+        <div class="mt-3">
+          <p class="mb-1 font-mono text-label text-muted">{t('mcp.samplingShared')}</p>
+          <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-words font-text text-body text-foreground">
+            {props.exchange.responseText}
+          </pre>
+        </div>
+      </Show>
+      <Show when={props.exchange.usage}>
+        {(usage) => (
+          <p class="mt-2 font-mono text-label text-faint">
+            {t('mcp.samplingUsage', { tokens: formatTokens(usage().totalTokens) })}
+            <Show when={formatCost(usage().cost)}>
+              {' '}
+              {' · '}
+              {formatCost(usage().cost)}
+            </Show>
+          </p>
+        )}
       </Show>
     </li>
   )
