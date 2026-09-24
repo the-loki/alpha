@@ -159,8 +159,11 @@ export const DESIGN_RULES = [
     /*
      * Copy is found three ways, because it hides three ways: an attribute (aria-label, placeholder,
      * title), a JSX text node on one line, and a paragraph wrapped over several. Prose inside a
-     * comment is prose about the code and is skipped; a line with a brace, a quote or an operator
-     * in it is code that happens to have words in it.
+     * comment is prose about the code and is skipped; a line with a brace, a quote, a bracket or an
+     * operator in it is code that happens to have words in it.
+     * The last of the three reads a line's punctuation, so it reads no further than that: a wrapped
+     * sentence that keeps a bracket is code to this rule, and the attribute and the text node are
+     * what catch copy that does that. Copy with a bracket in it belongs in the dictionary anyway.
      */
     check({ path, text }) {
       if (!path.startsWith('apps/desktop/src/renderer/')) return []
@@ -169,8 +172,7 @@ export const DESIGN_RULES = [
       const lines = text.split('\n')
       const attribute = /\b(?:aria-label|placeholder|title)="([^"]*\s[^"]*)"/g
       const singleLine = />\s*([A-Za-z][^<>{}()=;,\n]*?)\s*</g
-      const codeCharacters = /[<>{}()=;'"`\\|&*]/
-      const proseCharacters = /[<>{}()=;'"`\\|&*]/
+      const codeCharacters = /[<>{}()[\]=;'"`\\|&*]/
       let inComment = false
 
       lines.forEach((line, index) => {
@@ -198,7 +200,7 @@ export const DESIGN_RULES = [
         if (codeCharacters.test(trimmed)) return
         const words = trimmed.split(/\s+/).filter((word) => /[A-Za-z]/.test(word))
         const long = words.filter((word) => word.replace(/[^A-Za-z]/g, '').length >= 3)
-        if (words.length >= 4 && long.length >= 2 && !proseCharacters.test(trimmed.replace(/[—-]/g, ''))) {
+        if (words.length >= 4 && long.length >= 2) {
           found.push({
             line: index + 1,
             message: 'a sentence in a component; take it from the dictionary',

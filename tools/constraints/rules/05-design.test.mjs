@@ -236,6 +236,17 @@ describe('05-design:copy-has-a-key', () => {
     expect(insideAComment).toEqual([])
   })
 
+  it('allows a line of TypeScript whose only punctuation is a bracket', () => {
+    const clause = violationsFor(
+      rule,
+      file(
+        'apps/desktop/src/renderer/a.tsx',
+        ['const PANELS = [', '  first,', '] as const satisfies readonly Panel[]'].join('\n'),
+      ),
+    )
+    expect(clause).toEqual([])
+  })
+
   it('reads the renderer only', () => {
     expect(violationsFor(rule, file('apps/desktop/src/main/a.tsx', '<p aria-label="Access token" />'))).toEqual([])
   })
