@@ -102,6 +102,21 @@ async function handle(
   // The path only: nothing here reads a query string, and a token would not be in one if it did.
   const pathname = (request.url ?? '/').split('?')[0]
 
+  if (pathname === '/api/session' || pathname === '/api/invoke') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'POST is required' })
+      return
+    }
+    if (request.headers.origin !== undefined && request.headers.origin !== `http://${request.headers.host}`) {
+      sendJson(response, 403, { error: 'the request origin is not this workbench' })
+      return
+    }
+    if (request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json') {
+      sendJson(response, 415, { error: 'JSON is required' })
+      return
+    }
+  }
+
   if (pathname === '/api/session') {
     await answerSession(gate, request, response)
     return

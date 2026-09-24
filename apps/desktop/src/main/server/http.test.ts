@@ -192,6 +192,33 @@ describe('[main] the workbench server', () => {
     expect(state).toMatchObject({ permissionLevel: 'ask' })
   })
 
+  it('refuses a cookie-backed invoke from another origin or a simple form content type', async () => {
+    const { url } = await start()
+    const cookie = await unlock(url, 'a-token-that-is-long-enough-to-be-one')
+    const body = JSON.stringify({ channel: IPC.launchState, args: [] })
+
+    const foreign = await fetch(`${url}/api/invoke`, {
+      method: 'POST',
+      headers: { cookie, origin: 'http://127.0.0.1:45678', 'content-type': 'text/plain' },
+      body,
+    })
+    expect(foreign.status).toBe(403)
+
+    const simple = await fetch(`${url}/api/invoke`, {
+      method: 'POST',
+      headers: { cookie, origin: url, 'content-type': 'text/plain' },
+      body,
+    })
+    expect(simple.status).toBe(415)
+
+    const own = await fetch(`${url}/api/invoke`, {
+      method: 'POST',
+      headers: { cookie, origin: url, 'content-type': 'application/json; charset=utf-8' },
+      body,
+    })
+    expect(own.status).toBe(200)
+  })
+
   it('takes the token as a bearer header too, which is how a script uses it', async () => {
     const { url } = await start()
     const response = await fetch(`${url}/api/invoke`, {

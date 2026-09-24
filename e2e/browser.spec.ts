@@ -1,8 +1,10 @@
 import { existsSync, writeFileSync } from 'node:fs'
+import { createServer as createHttpServer } from 'node:http'
 import { createServer } from 'node:net'
 import { networkInterfaces } from 'node:os'
 import { join } from 'node:path'
 import { type Browser, chromium, expect, test } from '@playwright/test'
+import { IPC } from '../packages/contract/src/contract'
 import { ask, launchWorkbench } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
@@ -255,6 +257,50 @@ test('a wrong token does not open anything', async () => {
     await page.screenshot({ path: join(SHOT_DIR, 'browser-locked.png') })
   } finally {
     await browser.close()
+    await app.close()
+  }
+})
+
+test('another local origin cannot use an unlocked browser to change permission level', async () => {
+  const port = await freePort()
+  const { app, url } = await launchServing(port, { level: 'ask' })
+  const foreign = createHttpServer((_request, response) => response.end('<html>Other local app</html>'))
+  await new Promise<void>((resolve) => foreign.listen(0, '127.0.0.1', () => resolve()))
+  const address = foreign.address()
+  const foreignPort = typeof address === 'object' && address !== null ? address.port : 0
+  const browser = await chromium.launch()
+
+  try {
+    const trusted = await openInBrowser(browser, url, TOKEN)
+    await expect(trusted.getByRole('main')).toBeVisible()
+    await trusted.goto(`http://127.0.0.1:${foreignPort}`)
+    await trusted.evaluate(
+      async ({ target, channel }) => {
+        await fetch(`${target}/api/invoke`, {
+          method: 'POST',
+          mode: 'no-cors',
+          credentials: 'include',
+          headers: { 'content-type': 'text/plain' },
+          body: JSON.stringify({ channel, args: ['full-access'] }),
+        })
+      },
+      { target: url, channel: IPC.setPermissionLevel },
+    )
+
+    await trusted.goto(url)
+    const level = await trusted.evaluate(async (channel) => {
+      const response = await fetch('/api/invoke', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ channel, args: [] }),
+      })
+      const body = (await response.json()) as { value: { permissionLevel: string } }
+      return body.value.permissionLevel
+    }, IPC.launchState)
+    expect(level).toBe('ask')
+  } finally {
+    await browser.close()
+    await new Promise<void>((resolve) => foreign.close(() => resolve()))
     await app.close()
   }
 })
