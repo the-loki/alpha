@@ -41,9 +41,9 @@ there either, because there is no window of ours to move.
 
 ## First run
 
-1. **Open a workspace.** The folder the agent works in. Everything it reads, writes and runs is
-   inside it; Alpha does not sandbox, it gates (see below). The choice is remembered, and the
-   folder's name is what groups your conversations in the sidebar.
+1. **Open a workspace.** Relative tool paths and commands start in this folder. Alpha gates tool
+   calls but does not confine reads, writes or commands to the folder (see below). The choice is
+   remembered, and the folder's name groups your conversations in the sidebar.
 2. **Add a provider.** Settings → *Add a provider*: pick one of the three wire protocols it speaks,
    paste its base URL, then add the models it serves underneath it. Nothing is bundled and no key
    ships with the workbench.
@@ -140,7 +140,10 @@ packages/tasks          the scheduled tasks: the file, the clock, the service
 packages/providers      the connections, the key vault, and the model a conversation runs on
 packages/agent          the agent base: the plugin contract bound to pi, the assembly, the afterRun driver
 packages/gate           the permission machinery: the ladder, the approvals broker, the refusal
-packages/internal-plugins  Alpha's own plugins, one file each: gate, auto-retry, tools, compaction
+packages/mcp            the MCP client: server settings, transports, requests, and tools
+packages/subagents      the policy for delegated task calls and their limits
+packages/internal-plugins  Alpha's own plugins, one file each: gate, auto-retry, workspace tools,
+                           compaction, MCP, subagents
 e2e                     Playwright specs that launch the built app
 tools/constraints       the checker that keeps the constraints honest, one module per document that has machine-checkable rules
 tools/design            the tests that read the palette and the type scale out of the stylesheet
