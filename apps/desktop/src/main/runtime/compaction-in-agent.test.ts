@@ -121,6 +121,13 @@ describe('compacting on the threshold', () => {
     // The kept tail stays in the live agent, after the summary that replaced the rest.
     expect(setup.agent.state.messages.map((message) => message.role)).toEqual(['system', 'user', 'assistant'])
     expect(JSON.stringify(setup.agent.state.messages.at(-1))).toContain('Hello there.')
+    const reopened = alignedHistoryOf(path)
+    const content = (message: (typeof reopened.messages)[number]) => ({
+      role: message.role,
+      content: 'content' in message ? message.content : undefined,
+    })
+    expect(reopened.messages.map(content)).toEqual(setup.agent.state.messages.slice(1).map(content))
+    expect(reopened.entryIds).toEqual([undefined, keptId])
   })
 
   it('under the threshold nothing happens: no announcement, no entry', async () => {

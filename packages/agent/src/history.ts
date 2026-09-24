@@ -1,9 +1,9 @@
 /**
  * The history an agent starts with, built from the session's entries. The entries on the tip path
  * are pi-ai messages already — the store wrote them as the run produced them — so a message entry
- * crosses verbatim, and a compaction is the one structural change: it stands in for everything
- * before it, which becomes a single user message carrying the summary, with the entries after it
- * kept as they were. That is coding-agent's buildContext, simplified to the two shapes Alpha
+ * crosses verbatim, and a compaction is the one structural change: it stands in for messages before
+ * the first entry it kept, which becomes a single user message carrying the summary; the named tail
+ * and later entries stay as they were. That is coding-agent's buildContext, simplified to the two shapes Alpha
  * writes.
  *
  * The fold is also where the entry ids stay aligned with the messages: the compaction plugin asks
@@ -30,6 +30,12 @@ export function alignedHistoryOf(entries: AgentEntry[]): AlignedHistory {
   const entryIds: Undef<string>[] = []
   for (const entry of entries) {
     if (isSummary(entry)) {
+      const keptAt =
+        entry.type === 'compaction' && entry.firstKeptEntryId !== undefined
+          ? entryIds.indexOf(entry.firstKeptEntryId)
+          : -1
+      const keptMessages = keptAt < 0 ? [] : messages.slice(keptAt)
+      const keptIds = keptAt < 0 ? [] : entryIds.slice(keptAt)
       const carried: AgentMessage = {
         role: 'user',
         content: [{ type: 'text', text: entry.summary ?? '' }],
@@ -37,8 +43,8 @@ export function alignedHistoryOf(entries: AgentEntry[]): AlignedHistory {
       }
       messages.length = 0
       entryIds.length = 0
-      messages.push(carried)
-      entryIds.push(undefined)
+      messages.push(carried, ...keptMessages)
+      entryIds.push(undefined, ...keptIds)
       continue
     }
     if (entry.type === 'message' && entry.message !== undefined) {

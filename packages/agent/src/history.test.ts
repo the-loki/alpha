@@ -68,4 +68,24 @@ describe('the entries each message came from', () => {
     expect(history.entryIds).toEqual([undefined, 'e4'])
     expect(JSON.stringify(history.messages[0])).toContain('They discussed naming.')
   })
+
+  it('the latest compaction keeps its named tail across earlier summaries', () => {
+    const history = alignedHistoryOf([
+      message('e1', 'user', 'old question'),
+      message('e2', 'assistant', 'first kept answer'),
+      { type: 'compaction', id: 'c1', parentId: 'e2', timestamp: 1, summary: 'first summary', firstKeptEntryId: 'e2' },
+      message('e3', 'user', 'new question'),
+      message('e4', 'assistant', 'new answer'),
+      { type: 'compaction', id: 'c2', parentId: 'e4', timestamp: 1, summary: 'second summary', firstKeptEntryId: 'e3' },
+      message('e5', 'user', 'latest question'),
+    ])
+
+    expect(history.messages.map((entry) => ('content' in entry ? entry.content[0] : undefined))).toEqual([
+      { type: 'text', text: 'second summary' },
+      { type: 'text', text: 'new question' },
+      { type: 'text', text: 'new answer' },
+      { type: 'text', text: 'latest question' },
+    ])
+    expect(history.entryIds).toEqual([undefined, 'e3', 'e4', 'e5'])
+  })
 })
