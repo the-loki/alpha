@@ -6,7 +6,8 @@
  * agent's own format (`{"type":"session","version":3,…}` followed by entries), and refuses the old
  * one outright. So a conversation that exists only as an old file is copied into a session the
  * agent can open — the copy is written under the conversation's own id, and the old file is left
- * exactly as it was: nothing is migrated by rewriting what the person has.
+ * exactly as it was: nothing is migrated by rewriting what the person has. The copy is made once
+ * in the workspace's session directory, so new turns append to the copy and reopen finds them.
  *
  * This module is a door, not a store: it goes one way, it is only needed while old files exist, and
  * nothing else in Alpha reads or writes a session file.
@@ -25,6 +26,7 @@ interface LegacyEntry {
   type: string
   message?: unknown
   summary?: string
+  firstKeptEntryId?: string
 }
 
 /** Whether a file is one of the previous Alpha's: its first line is a header of another shape. */
@@ -67,6 +69,7 @@ export function importLegacySession(text: string): Undef<string> {
     timestamp: stamp(entry.timestamp),
     ...(entry.message === undefined ? {} : { message: entry.message }),
     ...(entry.summary === undefined ? {} : { summary: entry.summary }),
+    ...(entry.firstKeptEntryId === undefined ? {} : { firstKeptEntryId: entry.firstKeptEntryId }),
   }))
   return `${[agent, ...kept].map((one) => JSON.stringify(one)).join('\n')}\n`
 }
@@ -101,24 +104,22 @@ const stamp = (value: unknown): string => {
 }
 
 /**
- * Makes sure the session directory holds a file the agent can open for this conversation. An old
- * file with the conversation's id is copied under the same id, which is what the agent looks for by
- * name; a conversation that already has an agent-written session is left alone.
+ * Makes sure the workspace's session directory holds a file the agent can open for this
+ * conversation. An old file with the conversation's id is copied under the same id only while no
+ * new-format file exists; subsequent opens continue writing to that copy.
  */
 export function importLegacySessionIn(directory: string, conversationId: string): void {
   if (!existsSync(directory)) return
-  const files = readdirSync(directory).filter((name) => name.endsWith(`_${conversationId}.jsonl`))
+  const files = readdirSync(directory)
+    .filter((name) => name.endsWith(`_${conversationId}.jsonl`))
+    .sort()
   if (files.length === 0) return
-  for (const name of files) {
-    const path = join(directory, name)
-    const text = readFileSync(path, 'utf-8')
-    if (!isLegacySession(text)) continue
-    const imported = importLegacySession(text)
-    if (imported === undefined) continue
-    // A new name, a new file: the one the person already has is not touched.
-    writeFileSync(
-      join(directory, `${new Date().toISOString().replace(/[:.]/g, '-')}_${conversationId}.jsonl`),
-      imported,
-    )
-  }
+  const existing = files.map((name) => ({ name, text: readFileSync(join(directory, name), 'utf-8') }))
+  if (existing.some((file) => !isLegacySession(file.text))) return
+  const latest = existing.at(-1)
+  if (latest === undefined) return
+  const imported = importLegacySession(latest.text)
+  if (imported === undefined) return
+  // A new name, a new file: the person's original is never opened for append.
+  writeFileSync(join(directory, `${new Date().toISOString().replace(/[:.]/g, '-')}_${conversationId}.jsonl`), imported)
 }

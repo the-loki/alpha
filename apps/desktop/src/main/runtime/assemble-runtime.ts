@@ -181,7 +181,7 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
   // A conversation of the previous Alpha's is imported one way before its directory is read, so
   // the store finds it under the conversation's own id (the same call the spawn path used to make).
   if (session.id === conversation.id) {
-    importLegacySessionIn(sessionDirectoryFor(options.sessionsRoot, conversation.id), conversation.id)
+    importLegacySessionIn(sessionDirectoryFor(options.sessionsRoot, conversation.workspacePath), conversation.id)
   }
   const models = modelRuntime(options)
   const model = await modelForConversation(options, models)

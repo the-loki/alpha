@@ -44,7 +44,8 @@ not: the choice was whether Alpha parsed it, or asked the agent to read it.
 - A session an older Alpha wrote is in a format this reader refuses, so it is **copied** into one
   the reader opens, under the conversation's own id, and the old file is left untouched
   (`packages/sessions/src/legacy-sessions.ts`). Nothing is migrated by rewriting. The import runs
-  when a conversation is opened.
+  once in the workspace's session directory before a conversation is opened; later opens continue
+  the imported file instead of copying the old one again.
 - Moving a branch tip is a fork: the session is copied up to an entry and the conversation carries
   on in the copy, whose id it records. Regenerate and edit are both that
   (`runtime/editing.ts`).

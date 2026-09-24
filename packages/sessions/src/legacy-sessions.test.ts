@@ -44,6 +44,7 @@ const legacyFile = (id: string): string =>
       timestamp: 1_700_000_000_003,
       type: 'compaction',
       summary: 'Earlier turns were about naming things.',
+      firstKeptEntryId: 'e2',
     }),
   ].join('\n')}\n`
 
@@ -90,6 +91,7 @@ describe('[sessions] a conversation the previous Alpha wrote', () => {
         parentId: 'e2',
         timestamp: new Date(1_700_000_000_003).toISOString(),
         summary: 'Earlier turns were about naming things.',
+        firstKeptEntryId: 'e2',
       },
     ])
   })
