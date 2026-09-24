@@ -1,6 +1,11 @@
 {
   "name": "@alpha/desktop",
   "version": "0.1.0",
+  "description": "A local-first desktop workbench with its agent embedded",
+  "author": "the-loki",
+  "homepage": "https://github.com/the-loki/alpha",
+  "license": "MIT",
+  "desktopName": "Alpha",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",

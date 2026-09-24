@@ -15,11 +15,14 @@ files:
   - '!**/*.map'
 
 extraMetadata:
+  name: alpha
   main: out/main/index.js
 
 # One command produces each platform's installer; each must be run on (or for) its own platform,
 # which is a property of electron-builder rather than a choice here.
 linux:
+  executableName: alpha
+  syncDesktopName: true
   target:
     - AppImage
     - deb
