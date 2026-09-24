@@ -90,7 +90,7 @@ describe('[renderer] conversation selection', () => {
     const sending = conversationActions.sendOrCreate('/workspace', 'work on this')
     await conversationActions.open('chosen')
     pending.resolve(opened('created'))
-    expect(await sending).toBe('created')
+    expect(await sending).toEqual({ id: 'created', accepted: true, current: false })
 
     expect(sendPrompt).toHaveBeenCalledWith('created', 'work on this', undefined)
     expect(conversations.activeId).toBe('chosen')
@@ -143,6 +143,22 @@ describe('[renderer] conversation selection', () => {
     await sending
 
     expect(conversations.transcript.conversationId).toBe('chosen')
+    expect(conversations.transcript.status).toBe('idle')
+  })
+
+  it('does not record an unsent message as a failed turn', async () => {
+    vi.mocked(bridge).mockReturnValue({
+      openConversation: vi.fn(async () => opened('existing')),
+      sendPrompt: vi.fn(async () => {
+        throw new Error('Transport refused the message')
+      }),
+    } as unknown as AlphaBridge)
+
+    await conversationActions.open('existing')
+    const result = await conversationActions.sendOrCreate('/workspace', 'unsent')
+
+    expect(result).toMatchObject({ id: 'existing', accepted: false, error: 'Transport refused the message' })
+    expect(conversations.transcript.messages.map((message) => message.id)).toEqual(['message-existing'])
     expect(conversations.transcript.status).toBe('idle')
   })
 })

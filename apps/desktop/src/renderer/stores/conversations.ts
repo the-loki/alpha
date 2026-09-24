@@ -12,6 +12,7 @@ import {
   reduceTranscript,
   type ThinkingLevel,
   type TranscriptState,
+  type Undef,
 } from '@alpha/domain'
 import { createStore } from 'solid-js/store'
 import { bridge } from '../lib/bridge.ts'
@@ -23,6 +24,7 @@ export interface ConversationsState {
   activeId: string
   transcript: TranscriptState
   openFailure?: string
+  draft: { text: string; attachments: Attachment[]; problem?: string }
   /** Bumped when a card is answered, so the composer can take the focus back. */
   composerFocus: number
 }
@@ -36,6 +38,7 @@ const [conversations, setConversations] = createStore<ConversationsState>({
   listed: false,
   activeId: '',
   transcript: emptyTranscript(''),
+  draft: { text: '', attachments: [] },
   composerFocus: 0,
 })
 
@@ -72,7 +75,12 @@ export const conversationActions = {
   // pane kept the old transcript and the composer went on talking to the old conversation.
   startNew: (): void => {
     selectionVersion += 1
-    setConversations({ activeId: '', transcript: emptyTranscript(''), openFailure: undefined })
+    setConversations({
+      activeId: '',
+      transcript: emptyTranscript(''),
+      draft: { text: '', attachments: [] },
+      openFailure: undefined,
+    })
   },
 
   create: async (workspacePath: string): Promise<string> => {
@@ -85,7 +93,12 @@ export const conversationActions = {
 
   open: async (id: string): Promise<void> => {
     const version = ++selectionVersion
-    setConversations({ activeId: id, transcript: emptyTranscript(id), openFailure: undefined })
+    setConversations({
+      activeId: id,
+      transcript: emptyTranscript(id),
+      ...(conversations.activeId === id ? {} : { draft: { text: '', attachments: [] } }),
+      openFailure: undefined,
+    })
     try {
       const opened = await bridge().openConversation(id)
       if (version === selectionVersion)
@@ -104,7 +117,17 @@ export const conversationActions = {
     await bridge().sendPrompt(id, text)
   },
 
-  sendOrCreate: async (workspacePath: string, text: string, attachments?: Attachment[]): Promise<string> => {
+  setDraftText: (text: string): void => setConversations('draft', { ...conversations.draft, text, problem: undefined }),
+
+  setDraftAttachments: (attachments: Attachment[]): void => setConversations('draft', 'attachments', attachments),
+
+  setDraftProblem: (problem: Undef<string>): void => setConversations('draft', 'problem', problem),
+
+  sendOrCreate: async (
+    workspacePath: string,
+    text: string,
+    attachments?: Attachment[],
+  ): Promise<{ id: string; accepted: boolean; current: boolean; error?: string }> => {
     let id = conversations.activeId
     let version = selectionVersion
     try {
@@ -113,20 +136,26 @@ export const conversationActions = {
         version = selectionVersion
         id = await creating
       }
-      await bridge().sendPrompt(id, text, attachments)
+      // Store proxies cannot cross Electron's structured-clone boundary.
+      const refusal = await bridge().sendPrompt(
+        id,
+        text,
+        attachments?.map((attachment) => ({ ...attachment })),
+      )
+      return {
+        id,
+        accepted: refusal === undefined,
+        current: version === selectionVersion && id === conversations.activeId,
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      if (version === selectionVersion && id === conversations.activeId) {
-        setConversations('transcript', (transcript) =>
-          reduceTranscript(transcript, {
-            conversationId: transcript.conversationId,
-            type: 'run_failed',
-            message,
-          }),
-        )
+      return {
+        id,
+        accepted: false,
+        current: version === selectionVersion && id === conversations.activeId,
+        error: message,
       }
     }
-    return id
   },
 
   // Changing a conversation is asked for here and reported back as an event, like every other
@@ -200,7 +229,7 @@ export const conversationActions = {
   remove: async (id: string): Promise<void> => {
     setConversations('list', await bridge().deleteConversation(id))
     if (conversations.activeId === id) {
-      setConversations({ activeId: '', transcript: emptyTranscript('') })
+      setConversations({ activeId: '', transcript: emptyTranscript(''), draft: { text: '', attachments: [] } })
     }
   },
 

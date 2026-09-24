@@ -4,7 +4,7 @@ import { batch, createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { conversationActions, conversations } from '../../stores/conversations.ts'
 import { runningModel } from '../../stores/next-message.ts'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
-import { OUTLINED_ACTION, WARNING_ACTION } from '../controls.ts'
+import { NOTICE, OUTLINED_ACTION, WARNING_ACTION } from '../controls.ts'
 import { ArrowUpIcon } from '../icons.tsx'
 import { AttachButton, AttachmentNote, PendingAttachments, type TurnedAway } from './Attachments.tsx'
 import { FolderLine } from './FolderLine.tsx'
@@ -186,6 +186,23 @@ function useComposerIntents(field: () => Undef<HTMLTextAreaElement>, setValue: (
   })
 }
 
+const decisionPending = () =>
+  conversations.transcript.approvals.length > 0 ||
+  conversations.transcript.mcpPending.length > 0 ||
+  conversations.transcript.mcpSamplingPending.length > 0
+
+function ComposerProblem() {
+  return (
+    <Show when={conversations.draft.problem}>
+      {(problem) => (
+        <p role="alert" class={`mt-2 ${NOTICE} text-warning`}>
+          {problem()}
+        </p>
+      )}
+    </Show>
+  )
+}
+
 /**
  * The composer sends. It is the writing card docked at the foot of the page (C5.4): a rounded
  * card on the page's own edges, its top edge the one rule in the window that lights while a turn
@@ -193,22 +210,19 @@ function useComposerIntents(field: () => Undef<HTMLTextAreaElement>, setValue: (
  * once — and the one line that can appear under the foot is a refusal no control could have made.
  */
 export function Composer(props: { streaming?: boolean; folder?: boolean }) {
-  const [value, setValue] = createSignal('')
+  const value = () => conversations.draft.text
+  const setValue = conversationActions.setDraftText
   const [sending, setSending] = createSignal(false)
-  const [attached, setAttached] = createSignal<Attachment[]>([])
+  const attached = () => conversations.draft.attachments
+  const setAttached = conversationActions.setDraftAttachments
   const [refused, setRefused] = createSignal<Undef<TurnedAway>>(undefined)
   const model = runningModel()
   const composerFolder = () => composerFolderOf(shell)
   const t = useText()
   const navigate = useNavigate()
   let field: Undef<HTMLTextAreaElement>
-
   useComposerIntents(() => field, setValue)
 
-  // A picture is held only for as long as the model that would run on it can take one. Switching
-  // to a model that cannot — or opening a conversation that runs on one — drops what is attached
-  // and says why, rather than failing at the boundary with the picture already in the message
-  // (ADR-0018). With no provider list to read, the main process has the last word.
   createEffect(() => {
     if (model.takesPictures() || attached().length === 0) return
     setAttached([])
@@ -218,59 +232,60 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const hasWorkspace = () => composerFolder() !== undefined
   const running = () => conversations.transcript.status === 'running'
   const words = () => value().trim() !== ''
-  // A picture is a message on its own: "look at this" is often the whole thing being said.
   const writable = () => hasWorkspace() && model.chosen() !== undefined && (words() || attached().length > 0)
   const canSend = () => writable() && !running() && !sending()
-  // Steering and queueing carry words: a picture waits in the composer for a turn of its own.
-  const canRedirect = () => writable() && running() && words()
+  const canRedirect = () => writable() && running() && words() && !sending()
 
-  useEscapeToStop(
-    conversationActions.stop,
-    running,
-    () =>
-      conversations.transcript.approvals.length > 0 ||
-      conversations.transcript.mcpPending.length > 0 ||
-      conversations.transcript.mcpSamplingPending.length > 0,
-  )
+  useEscapeToStop(conversationActions.stop, running, decisionPending)
 
   const send = async () => {
     const folder = composerFolder()
     if (!canSend() || folder === undefined) return
     setSending(true)
+    conversationActions.setDraftProblem(undefined)
     const message = value()
     const picked = attached()
-    setValue('')
-    setAttached([])
-    setRefused(undefined)
     try {
-      const id = await conversationActions.sendOrCreate(folder.path, message, picked)
-      if (id !== '' && conversations.activeId === id) navigate(`/c/${id}`)
+      const result = await conversationActions.sendOrCreate(folder.path, message, picked)
+      if (!result.current) return
+      if (result.accepted) {
+        if (value() === message) setValue('')
+        if (attached() === picked) setAttached([])
+        setRefused(undefined)
+      }
+      if (result.error !== undefined) conversationActions.setDraftProblem(result.error)
+      if (result.id !== '' && conversations.activeId === result.id) navigate(`/c/${result.id}`)
     } finally {
       setSending(false)
     }
   }
 
-  const removeAt = (index: number) => setAttached((current) => current.filter((_unused, at) => at !== index))
+  const removeAt = (index: number) => setAttached(attached().filter((_unused, at) => at !== index))
 
   const redirect = async (how: 'steer' | 'queue') => {
     if (!canRedirect()) return
+    const id = conversations.activeId
     const message = value()
-    setValue('')
-    await (how === 'steer' ? conversationActions.steer(message) : conversationActions.queueMessage(message))
+    setSending(true)
+    conversationActions.setDraftProblem(undefined)
+    try {
+      await (how === 'steer' ? conversationActions.steer(message) : conversationActions.queueMessage(message))
+      if (conversations.activeId === id && value() === message) setValue('')
+    } catch (error) {
+      if (conversations.activeId === id)
+        conversationActions.setDraftProblem(error instanceof Error ? error.message : String(error))
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
-    // The writing card on the page's own edge: its top edge is the rule that lights while a turn
-    // is being written — the accent is what "happening now" means (C5.2).
     <div class="w-full" data-column="composer" aria-busy={sending()}>
       <QueueStrip />
       <div
         class={`rounded-lg border-x border-b border-line bg-surface-1 border-t-2 ${props.streaming === true ? 'border-t-accent' : 'border-t-line'}`}
       >
         <div class="px-3 pt-2 pb-2">
-          {/* Which work this conversation is being started in, and the control that changes it: the
-              welcome page is where that choice is being made (C5.4). Only a new conversation shows
-              it — an open one was started in a folder and stays there. */}
           <Show when={props.folder === true}>
             <FolderLine />
           </Show>
@@ -301,14 +316,14 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
             onStop={() => void conversationActions.stop()}
             onRedirect={(how) => void redirect(how)}
             onPicked={(picked, anyRefused) => {
-              // Together: the effect that drops what the model cannot take must see both writes.
               batch(() => {
-                setAttached((current) => [...current, ...picked])
+                setAttached([...attached(), ...picked])
                 setRefused(anyRefused)
               })
             }}
           />
           <AttachmentNote refused={refused()} model={model.name()} />
+          <ComposerProblem />
         </div>
       </div>
     </div>

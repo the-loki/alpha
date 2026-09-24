@@ -31,11 +31,20 @@ async function freePort(): Promise<number> {
  * The app with browser access already on, which is what Settings would have written. The desktop
  * window opens too: the point of the test is that a browser is a second client, not a replacement.
  */
-async function launchServing(port: number, options: { token?: string; level?: string; replies?: unknown[] } = {}) {
+async function launchServing(
+  port: number,
+  options: {
+    token?: string
+    level?: string
+    replies?: unknown[]
+    slow?: { tokenSize: number; tokensPerSecond: number }
+  } = {},
+) {
   const launch = await launchWorkbench({
     level: options.level ?? 'full-access',
     network: { port, token: options.token ?? TOKEN },
     replies: options.replies ?? [REPLY],
+    ...(options.slow === undefined ? {} : { slow: options.slow }),
     // The suite hands a picture across the wire, so the connection serves a model that takes one,
     // and the provider it dials is the scripted endpoint this launch started.
     providerOptions: { images: true },
@@ -110,6 +119,110 @@ test('a browser on the machine opens the workbench and runs a turn', async () =>
     const desktop = await app.firstWindow()
     await desktop.getByRole('button', { name: /^rename the parser module (idle|working)$/ }).click()
     await expect(desktop.getByRole('main').getByText(REPLY)).toBeVisible({ timeout: 20_000 })
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
+test('a browser keeps a new message when creation or its first send is refused', async () => {
+  const port = await freePort()
+  const { app, url } = await launchServing(port)
+  const browser = await chromium.launch()
+
+  try {
+    const page = await openInBrowser(browser, url, TOKEN)
+    await page.route('**/api/invoke', async (route) => {
+      const request = route.request().postDataJSON() as { channel?: string }
+      if (request.channel === IPC.createConversation) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'The conversation could not be created.' }),
+        })
+      } else await route.continue()
+    })
+
+    const composer = page.getByRole('textbox', { name: 'Message the agent' }).first()
+    await composer.fill('Keep this unsent work')
+    await composer.press('Enter')
+    await expect(composer).toHaveValue('Keep this unsent work')
+    await expect(page.getByRole('textbox', { name: 'Message the agent' })).toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled()
+
+    await page.unroute('**/api/invoke')
+    await page.route('**/api/invoke', async (route) => {
+      const request = route.request().postDataJSON() as { channel?: string }
+      if (request.channel === IPC.sendPrompt) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'The message could not be sent.' }),
+        })
+      } else await route.continue()
+    })
+    await composer.press('Enter')
+    await expect(page.getByText('The message could not be sent.').first()).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Message the agent' })).toHaveValue('Keep this unsent work')
+
+    await page.unroute('**/api/invoke')
+    await page.getByRole('textbox', { name: 'Message the agent' }).press('Enter')
+    await expect(page.getByRole('main').getByText(REPLY)).toBeVisible()
+    await page.route('**/api/invoke', async (route) => {
+      const request = route.request().postDataJSON() as { channel?: string }
+      if (request.channel === IPC.sendPrompt) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'The existing conversation could not send this message.' }),
+        })
+      } else await route.continue()
+    })
+    const existingComposer = page.getByRole('textbox', { name: 'Message the agent' })
+    await existingComposer.fill('Keep this follow-up')
+    await existingComposer.press('Enter')
+    await expect(page.getByText('The existing conversation could not send this message.').first()).toBeVisible()
+    await expect(existingComposer).toHaveValue('Keep this follow-up')
+  } finally {
+    await browser.close()
+    await app.close()
+  }
+})
+
+test('a browser keeps Queue and Steer messages when their requests are refused', async () => {
+  test.setTimeout(45_000)
+  const port = await freePort()
+  const { app, url } = await launchServing(port, {
+    replies: ['A long answer that keeps arriving. '.repeat(80)],
+    slow: { tokenSize: 4, tokensPerSecond: 5 },
+  })
+  const browser = await chromium.launch()
+
+  try {
+    const page = await openInBrowser(browser, url, TOKEN)
+    await ask(page, 'start a long answer')
+    await expect(page.getByRole('button', { name: 'Steer' })).toBeVisible()
+    await page.route('**/api/invoke', async (route) => {
+      const request = route.request().postDataJSON() as { channel?: string }
+      if (request.channel === IPC.queueMessage || request.channel === IPC.steer) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: `${request.channel} was refused` }),
+        })
+      } else await route.continue()
+    })
+
+    const composer = page.getByRole('textbox', { name: 'Message the agent' })
+    await composer.fill('queue this next')
+    await page.getByRole('button', { name: 'Queue', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText(`${IPC.queueMessage} was refused`)
+    await expect(composer).toHaveValue('queue this next')
+
+    await composer.fill('steer this turn')
+    await page.getByRole('button', { name: 'Steer' }).click()
+    await expect(page.getByRole('alert')).toContainText(`${IPC.steer} was refused`)
+    await expect(composer).toHaveValue('steer this turn')
   } finally {
     await browser.close()
     await app.close()

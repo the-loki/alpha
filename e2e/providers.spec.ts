@@ -82,6 +82,19 @@ test('a fresh workbench can send its first turn after configuring a model', asyn
   await app.close()
 })
 
+test('a refused first turn keeps its message after the conversation opens', async () => {
+  const { app, window } = await launchWorkbench({ providerOptions: { key: '' } })
+  const composer = window.getByRole('textbox', { name: 'Message the agent' })
+  await composer.fill('Keep this until a key is configured')
+  await composer.press('Enter')
+
+  await expect(window.getByText('Alpha has no key for scripted. Add one under Settings, Providers.')).toBeVisible()
+  await expect(window.getByRole('textbox', { name: 'Message the agent' })).toHaveValue(
+    'Keep this until a key is configured',
+  )
+  await app.close()
+})
+
 test('configured model rates appear in the conversation total and survive reopening', async () => {
   const scripted = await startScriptedProvider({ script: JSON.stringify(['A priced answer.']) })
   const { app, window, directory, workspace } = await launch()
