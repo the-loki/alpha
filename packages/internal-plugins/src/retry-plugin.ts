@@ -12,6 +12,7 @@
  * Nothing here names pi: the face is `@alpha/plugin`'s, so auto-retry is a library's business like
  * the policy it wraps (C2.8), and `main` keeps only the registration.
  */
+import { setTimeout as sleep } from 'node:timers/promises'
 import type { AfterRunHook, RetryDecider } from '@alpha/plugin'
 
 /** How the plugin waits: one delay per retry, in order. coding-agent's two retries. */
@@ -27,21 +28,27 @@ export interface RetryPlugin extends RetryDecider {
 
 const DEFAULT_DELAYS = [2000, 8000]
 
-const sleep = (milliseconds: number): Promise<void> => new Promise((done) => setTimeout(done, milliseconds))
-
 export function createRetryPlugin(ports: RetryPluginPorts = {}): RetryPlugin {
   const delays = ports.delays ?? DEFAULT_DELAYS
   let attempts = 0
   const plugin: RetryPlugin = {
     name: 'auto-retry',
     shouldRetry: (outcome) => outcome.aborted === false && outcome.failed !== undefined && attempts < delays.length,
-    afterRun: async (outcome) => {
+    afterRun: async (outcome, signal) => {
       if (!plugin.shouldRetry(outcome)) {
         // The run is over and took no retry: whatever failures came before it are paid for.
         attempts = 0
         return undefined
       }
-      await sleep(delays[attempts] ?? 0)
+      try {
+        await sleep(delays[attempts] ?? 0, undefined, signal === undefined ? undefined : { signal })
+      } catch (error) {
+        if (!signal?.aborted) throw error
+      }
+      if (signal?.aborted) {
+        attempts = 0
+        return undefined
+      }
       attempts += 1
       return { retry: true }
     },

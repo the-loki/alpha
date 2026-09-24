@@ -52,7 +52,7 @@ export interface AfterRunVerdict {
  * — which is what lets the policy live in a library while the driver stays in `main`. A run the
  * person stopped is shown to every hook, but no hook's answer to it becomes a retry.
  */
-export type AfterRunHook = (outcome: AfterRunOutcome) => Promise<Undef<AfterRunVerdict>>
+export type AfterRunHook = (outcome: AfterRunOutcome, signal?: AbortSignal) => Promise<Undef<AfterRunVerdict>>
 
 /**
  * The retry policy's pure decision — a failure, no abort, attempts to spend — consulted wherever a

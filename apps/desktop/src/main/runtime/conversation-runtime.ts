@@ -69,6 +69,7 @@ export class ConversationRuntime {
   private sessionId: string
   private readonly workspacePath: string
   private inFlight: Undef<Promise<void>>
+  private runAbort: Undef<AbortController>
   private lastRunSucceeded = false
   private captureActive = false
   private lastFailedEntryId: Undef<string>
@@ -117,6 +118,7 @@ export class ConversationRuntime {
     this.lastRunSucceeded = false
     this.lastFailedEntryId = undefined
     this.lastFailedMessageId = undefined
+    this.runAbort = new AbortController()
     const images = imagesOf(attachments) ?? []
     this.beginWorkspaceReview()
     try {
@@ -144,6 +146,7 @@ export class ConversationRuntime {
 
   /** Stops the run in flight: the agent keeps the message it was writing, marked interrupted. */
   public async abort(): Promise<void> {
+    this.runAbort?.abort()
     this.agent?.abort()
   }
 
@@ -230,7 +233,7 @@ export class ConversationRuntime {
    */
   public async close(): Promise<void> {
     if (this.driving !== undefined) {
-      this.agent?.abort()
+      await this.abort()
       await this.settle()
     }
     this.unsubscribe?.()
@@ -241,18 +244,23 @@ export class ConversationRuntime {
   private async drive(): Promise<void> {
     const agent = this.agent
     if (agent === undefined) return
+    const signal = this.runAbort?.signal
     try {
       await this.inFlight
-      const outcome = await runAfterRunHooks(agent, this.plugins, () => this.branchPastFailedAttempt())
+      const outcome = await runAfterRunHooks(agent, this.plugins, () => this.branchPastFailedAttempt(), signal)
       this.lastRunSucceeded = outcome.failed === undefined && !outcome.aborted
     } catch (error) {
       // A throw's own words are quoted as they came, and a throw with nothing to say is the same
       // failure as a message with nothing to say: the sentence for that case is the window's, in
       // the language the window is in (ADR-0010), so nothing is invented here for it.
-      this.failed(error instanceof Error && error.message !== '' ? error.message : undefined)
+      if (!signal?.aborted) this.failed(error instanceof Error && error.message !== '' ? error.message : undefined)
     } finally {
+      if (signal?.aborted) {
+        for (const event of this.translator.translate({ type: 'agent_settled' })) this.emit(event)
+      }
       this.finishWorkspaceReview()
       // The run is over, however it went: the next prompt starts a run of its own.
+      this.runAbort = undefined
       this.driving = undefined
     }
   }
@@ -282,7 +290,8 @@ export class ConversationRuntime {
   /** Every agent event: persisted as it arrived, then translated for the window. */
   private onEvent(event: AgentEvent): void {
     this.persist(event)
-    for (const translated of this.translator.translate(event)) {
+    const ending = event.type === 'agent_end' && this.runAbort?.signal.aborted ? { type: 'agent_settled' } : event
+    for (const translated of this.translator.translate(ending)) {
       if (
         event.type === 'message_end' &&
         recordOf(event.message).stopReason === 'error' &&

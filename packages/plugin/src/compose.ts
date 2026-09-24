@@ -25,10 +25,10 @@ export function chainToolVerdicts(hooks: readonly BeforeToolCallHook[]): BeforeT
 }
 
 export function chainAfterRunVerdicts(hooks: readonly AfterRunHook[]): AfterRunHook {
-  return async (outcome): Promise<Undef<AfterRunVerdict>> => {
+  return async (outcome, signal): Promise<Undef<AfterRunVerdict>> => {
     let retry = false
     for (const hook of hooks) {
-      const verdict = await hook(outcome)
+      const verdict = await hook(outcome, signal)
       if (verdict?.retry === true) retry = true
     }
     // A run the person stopped is not a run to drive again, however loudly a hook asks.

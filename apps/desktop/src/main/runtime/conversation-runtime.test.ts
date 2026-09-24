@@ -5,7 +5,7 @@ import type { AlphaPlugin } from '@alpha/agent'
 import { assembleAgent, historyOf } from '@alpha/agent'
 import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
 import { emptyTranscript, type RuntimeEvent, reduceTranscript, totalUsage, type Undef } from '@alpha/domain'
-import { createRetryPlugin, type RetryPlugin } from '@alpha/internal-plugins'
+import { createRetryPlugin, createWorkspaceToolsPlugin, type RetryPlugin } from '@alpha/internal-plugins'
 import { SessionStore, sessionDirectoryFor, tipPath, WorkspaceChangeLog } from '@alpha/sessions'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
@@ -424,6 +424,74 @@ describe('[runtime] stopping a run', () => {
 
     expect(typesOf(events)).toContain('turn_finished')
     // A second drive would have found the script dry and failed the run all over again.
+    expect(typesOf(events)).not.toContain('run_failed')
+  })
+
+  it('Stop during retry backoff prevents another model request and ends the turn', async () => {
+    const retry = createRetryPlugin({ delays: [300] })
+    const originalAfterRun = retry.afterRun
+    let backoffBegan!: () => void
+    const inBackoff = new Promise<void>((resolve) => {
+      backoffBegan = resolve
+    })
+    retry.afterRun = async (outcome, signal) => {
+      backoffBegan()
+      return originalAfterRun(outcome, signal)
+    }
+    let drives = 0
+    const { runtime, events } = openRuntime({
+      retry,
+      drives: [
+        () => {
+          drives += 1
+          return failingStream('temporary provider failure', 'error')
+        },
+        () => {
+          drives += 1
+          return textStream('should not be requested')
+        },
+      ],
+    })
+
+    await runtime.prompt('try once')
+    await inBackoff
+    await runtime.abort()
+    expect(await runtime.settle()).toBe(false)
+    expect(drives).toBe(1)
+    expect(typesOf(events)).toContain('turn_finished')
+    expect(runtime.isRunning()).toBe(false)
+    await runtime.close()
+  })
+
+  it('closing a conversation ends its running bash process', async () => {
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-workspace-'))
+    const tools = createWorkspaceToolsPlugin({ workspacePath: workspace }).tools()
+    const { runtime, events } = openRuntime({
+      workspace,
+      tools,
+      drives: [
+        () =>
+          toolUseStream('bash', {
+            command: 'node -e "console.log(\'started\'); setTimeout(() => {}, 3000)"',
+          }),
+      ],
+    })
+
+    await runtime.prompt('run a command')
+    for (
+      let attempt = 0;
+      attempt < 300 && !events.some((event) => event.type === 'tool_output' && event.output.includes('started'));
+      attempt += 1
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    expect(events.some((event) => event.type === 'tool_output' && event.output.includes('started'))).toBe(true)
+    const closingAt = Date.now()
+    await runtime.close()
+
+    expect(Date.now() - closingAt).toBeLessThan(1500)
+    expect(runtime.isRunning()).toBe(false)
+    expect(typesOf(events)).toContain('turn_finished')
     expect(typesOf(events)).not.toContain('run_failed')
   })
 })

@@ -48,6 +48,28 @@ describe('[runtime] the workspace tools plugin', () => {
     expect(JSON.stringify(result.content)).toContain('alpha-embedded')
   })
 
+  it('stops a running bash process when the agent aborts its tool call', async () => {
+    const bash = toolOf(toolsOf(aWorkspace()), 'bash')
+    const stop = new AbortController()
+    let started!: () => void
+    const outputStarted = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const running = bash.execute(
+      'call-2',
+      { command: 'node -e "console.log(\'started\'); setTimeout(() => {}, 1500)"' },
+      stop.signal,
+      (update) => {
+        if (JSON.stringify(update.content).includes('started')) started()
+      },
+    )
+
+    await outputStarted
+    stop.abort()
+
+    await expect(running).rejects.toThrow('Command aborted')
+  })
+
   it('the write and edit tools change a file in the conversation workspace', async () => {
     const workspace = aWorkspace()
     writeFileSync(join(workspace, 'draft.txt'), 'one line\n')

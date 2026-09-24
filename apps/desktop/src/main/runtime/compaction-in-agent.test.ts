@@ -8,7 +8,7 @@ import { createCompactionPlugin } from '@alpha/internal-plugins'
 import { SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent } from '@earendil-works/pi-agent-core'
 import type { AssistantMessageEventStream } from '@earendil-works/pi-ai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ConversationRuntime } from './conversation-runtime.ts'
 
 /** coding-agent's compaction policy (ADR-0025) on Alpha's base: after a run, when the context
@@ -61,7 +61,7 @@ const fixture = (options: FixtureOptions) => {
     compact: () => plugin.compact(),
     emit: (event) => events.push(event),
   })
-  return { runtime, agent, plugin, store, workspace, announcements, events }
+  return { runtime, agent, plugin, store, workspace, announcements, events, models }
 }
 
 const ranTurn = async (setup: ReturnType<typeof fixture>, text: string): Promise<void> => {
@@ -150,6 +150,40 @@ describe('compacting on the threshold', () => {
     expect(setup.announcements).toEqual([])
     expect(setup.store.entries('c1', setup.workspace).entries).toHaveLength(2)
     expect(pathOf(setup).at(-1)?.message).toMatchObject({ role: 'assistant', stopReason: 'aborted' })
+  })
+
+  it('Stop cancels a summary request before it rewrites or stores the conversation', async () => {
+    const setup = fixture({ drives: [() => textStream('Hello there.')], model: tinyWindowModel })
+    const response = await textStream('summary').result()
+    let summaryBegan!: () => void
+    const summarizing = new Promise<void>((resolve) => {
+      summaryBegan = resolve
+    })
+    const complete = vi.spyOn(setup.models, 'completeSimple').mockImplementation(async (_model, _context, options) => {
+      summaryBegan()
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, 300)
+        options?.signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer)
+            resolve()
+          },
+          { once: true },
+        )
+      })
+      return options?.signal?.aborted ? { ...response, stopReason: 'aborted' } : response
+    })
+
+    await setup.runtime.prompt('fix the parser')
+    await summarizing
+    await setup.runtime.abort()
+    expect(await setup.runtime.settle()).toBe(false)
+    expect(complete.mock.calls[0]?.[2]?.signal?.aborted).toBe(true)
+    expect(setup.announcements).toEqual([])
+    expect(pathOf(setup).some((entry) => entry.type === 'compaction')).toBe(false)
+    expect(setup.events.some((event) => event.type === 'turn_finished')).toBe(true)
+    await setup.runtime.close()
   })
 })
 

@@ -20,7 +20,7 @@ import type { AfterRunHook } from '@alpha/plugin'
 import { type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentMessage, CompactionSettings } from '@earendil-works/pi-agent-core'
 import { DEFAULT_COMPACTION_SETTINGS, generateSummaryWithUsage } from '@earendil-works/pi-agent-core'
-import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context'
+import { BACKGROUND_CONTEXT, withAbortSignal } from '@earendil-works/pi-agent-core/harness/context'
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
 import { compactionDue, keptCountOf } from './compaction-policy.ts'
 
@@ -52,9 +52,9 @@ export function createCompactionPlugin(ports: CompactionPluginPorts): Compaction
   const settings = ports.settings ?? DEFAULT_COMPACTION_SETTINGS
   return {
     name: 'compaction',
-    afterRun: async (outcome) => {
+    afterRun: async (outcome, signal) => {
       if (outcome.aborted || outcome.failed !== undefined) return undefined
-      await compactNow(ports, settings, false)
+      await compactNow(ports, settings, false, signal)
       return undefined
     },
     compact: () => compactNow(ports, settings, true),
@@ -68,6 +68,7 @@ function summarizeWith(
   agent: Agent,
   model: Model<Api>,
   summarized: AgentMessage[],
+  signal?: AbortSignal,
 ) {
   return generateSummaryWithUsage(
     summarized,
@@ -79,7 +80,7 @@ function summarizeWith(
     agent.state.thinkingLevel,
     undefined,
     undefined,
-    BACKGROUND_CONTEXT,
+    signal === undefined ? BACKGROUND_CONTEXT : withAbortSignal(signal, BACKGROUND_CONTEXT),
   )
 }
 
@@ -114,7 +115,9 @@ async function compactNow(
   ports: CompactionPluginPorts,
   settings: CompactionSettings,
   force: boolean,
+  signal?: AbortSignal,
 ): Promise<boolean> {
+  if (signal?.aborted) return false
   const agent = ports.agent()
   const model = ports.model()
   if (agent === undefined || model === undefined) return false
@@ -123,8 +126,8 @@ async function compactNow(
   const kept = keptCountOf(body, settings.keepRecentTokens)
   const summarized = body.slice(0, body.length - kept)
   if (summarized.length === 0) return false
-  const summary = await summarizeWith(ports, settings, agent, model, summarized)
-  if (!summary.ok) return false
+  const summary = await summarizeWith(ports, settings, agent, model, summarized, signal)
+  if (!summary.ok || signal?.aborted) return false
   const firstKept = rewriteAgent(ports, agent, summary.value.text, body.slice(body.length - kept))
   ports.store.compact({
     sessionId: ports.sessionId(),

@@ -86,6 +86,46 @@ describe('driving the afterRun hooks', () => {
     expect(outcomes).toEqual([{ failed: undefined, aborted: true }])
   })
 
+  it('does not continue after Stop even if a delayed hook still asks for a retry', async () => {
+    let drives = 0
+    const models = scriptedModels([
+      () => {
+        drives += 1
+        return errorStream('temporary failure', 'error')
+      },
+      () => {
+        drives += 1
+        return textStream('too late')
+      },
+    ])
+    let enter!: () => void
+    let release!: () => void
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve
+    })
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const delayed: AlphaPlugin = {
+      name: 'delayed-retry',
+      afterRun: async () => {
+        enter()
+        await held
+        return { retry: true }
+      },
+    }
+    const agent = assembleAgent({ models, model: aModel(), plugins: [delayed], systemPrompt: 's' })
+    const stop = new AbortController()
+    await agent.prompt('hello')
+    const driving = runAfterRunHooks(agent, [delayed], undefined, stop.signal)
+    await entered
+    stop.abort()
+    release()
+
+    expect(await driving).toEqual({ failed: undefined, aborted: true })
+    expect(drives).toBe(1)
+  })
+
   it('hooks are asked in assembly order and a clean run asks for no retry', async () => {
     const models = scriptedModels([() => textStream('fine')])
     const seen: string[] = []

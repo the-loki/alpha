@@ -57,11 +57,14 @@ export async function runAfterRunHooks(
   agent: Agent,
   plugins: AlphaPlugin[],
   onRetry?: () => void,
+  signal?: AbortSignal,
 ): Promise<AfterRunOutcome> {
   await agent.waitForIdle()
   for (;;) {
+    if (signal?.aborted) return { failed: undefined, aborted: true }
     const outcome = outcomeOf(agent)
-    const verdict = await chainAfterRunVerdicts(hooksOf(plugins))(outcome)
+    const verdict = await chainAfterRunVerdicts(hooksOf(plugins))(outcome, signal)
+    if (signal?.aborted) return { failed: undefined, aborted: true }
     if (verdict?.retry !== true) return outcome
     onRetry?.()
     dropFailedTurn(agent)

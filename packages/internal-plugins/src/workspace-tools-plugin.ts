@@ -6,8 +6,8 @@
  *
  * The tools are harness-shaped; the adapter hands the assembled Agent the shape it takes, which is
  * the same tool with one difference in the `execute` arguments: the agent's abort signal sits where
- * the harness tool takes its context, so the adapter drops the signal (the loop carries cancellation
- * through the chord context) and fills the rest itself.
+ * the harness tool takes its context, so the adapter puts the signal into that context and fills
+ * the rest itself.
  *
  * The plugin is a face and nothing else: `tools()` hands the base the four, and `main` registers
  * it. This package naming pi is the point rather than an accident — a tool *is* an `AgentTool`, so
@@ -24,7 +24,7 @@ import {
   createWriteTool,
   type ExecutionToolContext,
 } from '@earendil-works/pi-agent-core'
-import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context'
+import { BACKGROUND_CONTEXT, withAbortSignal } from '@earendil-works/pi-agent-core/harness/context'
 import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/node'
 import type { TSchema } from 'typebox'
 
@@ -67,8 +67,15 @@ function asAgentTool<TParameters extends TSchema, TDetails>(
 ): AgentTool<TParameters, TDetails> {
   return {
     ...tool,
-    execute: (toolCallId, params, _signal, onUpdate) =>
-      tool.execute(toolCallId, params, onUpdate ?? (() => {}), toolContext, NO_INVOCATION, BACKGROUND_CONTEXT),
+    execute: (toolCallId, params, signal, onUpdate) =>
+      tool.execute(
+        toolCallId,
+        params,
+        onUpdate ?? (() => {}),
+        toolContext,
+        NO_INVOCATION,
+        signal === undefined ? BACKGROUND_CONTEXT : withAbortSignal(signal, BACKGROUND_CONTEXT),
+      ),
   }
 }
 
