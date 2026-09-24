@@ -50,8 +50,13 @@ const runKey = (run: TaskRun) =>
 /** One task in the list: what it is, when it next runs, and the two things you do to it. */
 function TaskRow(props: { task: ScheduledTask; onOpen: () => void }) {
   const t = useText()
+  const navigate = useNavigate()
   const next = () => nextRunAt(props.task.schedule, new Date(props.task.createdAt), props.task.lastRunAt)
   const active = () => runningNow(props.task, tasks.runs)
+  const runNow = async () => {
+    const conversationId = await taskActions.runNow(props.task.id)
+    if (conversationId !== undefined) navigate(`/c/${conversationId}`)
+  }
 
   return (
     <li class="relative flex items-center gap-3 rounded-lg border border-line bg-surface-0 px-4 py-3">
@@ -76,7 +81,7 @@ function TaskRow(props: { task: ScheduledTask; onOpen: () => void }) {
       <button
         type="button"
         disabled={active()}
-        onClick={() => void taskActions.runNow(props.task.id)}
+        onClick={() => void runNow()}
         class={`relative min-w-20 disabled:cursor-not-allowed disabled:opacity-40 ${TEXT_ACTION}`}
       >
         {t(active() ? 'tasks.runRunning' : 'tasks.runNow')}

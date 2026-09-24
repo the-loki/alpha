@@ -48,8 +48,11 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
 
   await window.getByRole('button', { name: 'Run now' }).click()
 
-  // A run is a conversation titled with the task's name, and the history says how it went. Scoped:
-  // the rail says the same word in the task's folded row.
+  // An attended run opens its conversation immediately. The task page still keeps its history.
+  await expect(window.getByRole('heading', { level: 1, name: 'Nightly check' })).toBeVisible()
+  await expect(window.getByRole('main').getByText('The nightly check found nothing.')).toBeVisible()
+  await window.getByRole('button', { name: 'Tasks', exact: true }).click()
+  await window.getByRole('main').getByRole('button', { name: 'Nightly check' }).first().click()
   await expect(
     window
       .getByRole('main')
@@ -83,6 +86,39 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await reopened.app.close()
 })
 
+test('a manual task run opens its conversation so its approval can be answered', async () => {
+  const { app, window, workspace } = await launchWorkbench({
+    level: 'ask',
+    replies: [
+      { tool: { name: 'write', args: { path: 'task-note.txt', content: 'approved' } } },
+      'The note is written.',
+    ],
+  })
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await makeTask(window, 'Approval check', 'write the task note')
+  await window.getByRole('main').getByRole('button', { name: 'Run now' }).click()
+
+  await expect(window.getByRole('heading', { level: 1, name: 'Approval check' })).toBeVisible()
+  await expect(window.getByRole('region', { name: 'Waiting for your decision' })).toBeVisible({ timeout: 20_000 })
+  await window.getByRole('button', { name: 'Allow once' }).click()
+  await expect(window.getByRole('main').getByText('The note is written.')).toBeVisible()
+  expect(readFileSync(join(workspace, 'task-note.txt'), 'utf-8')).toBe('approved')
+  await app.close()
+})
+
+test('the sidebar run control opens the conversation it started', async () => {
+  const { app, window } = await launch()
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await makeTask(window, 'Sidebar check', 'inspect the folder')
+  const rail = window.getByRole('complementary')
+  await rail.getByRole('button', { name: 'Expand the tasks in Sidebar check' }).click()
+  await rail.getByRole('button', { name: 'Run Sidebar check now' }).click()
+
+  await expect(window.getByRole('heading', { level: 1, name: 'Sidebar check' })).toBeVisible()
+  await expect(window.getByRole('main').getByText('The nightly check found nothing.')).toBeVisible()
+  await app.close()
+})
+
 test('an invalid interval cannot be saved as a daily task', async () => {
   const { app, window, dataDirectory } = await launch()
   await window.getByRole('button', { name: 'Tasks' }).click()
@@ -108,8 +144,8 @@ test('an invalid interval cannot be saved as a daily task', async () => {
 test('a running task disables both run controls until its turn finishes', async () => {
   const { app, window } = await launchWorkbench({
     level: 'full-access',
-    replies: ['Done.'],
-    slow: { tokenSize: 1, tokensPerSecond: 1 },
+    replies: ['Finished after a short wait.'],
+    slow: { tokenSize: 1, tokensPerSecond: 2 },
   })
   await window.getByRole('button', { name: 'Tasks' }).click()
   await makeTask(window, 'Slow check', 'inspect the folder')
@@ -117,6 +153,8 @@ test('a running task disables both run controls until its turn finishes', async 
 
   await window.getByRole('main').getByRole('button', { name: 'Run now' }).click()
 
+  await expect(window.getByRole('heading', { level: 1, name: 'Slow check' })).toBeVisible()
+  await window.getByRole('button', { name: 'Tasks', exact: true }).click()
   await expect(window.getByRole('main').getByRole('button', { name: 'Running' })).toBeDisabled()
   await rail.getByRole('button', { name: 'Expand the tasks in Slow check' }).click()
   await expect(rail.getByRole('button', { name: 'Slow check: Running' })).toBeDisabled()
@@ -135,6 +173,8 @@ test('a run whose turn never started is a failed run rather than a finished one'
   await makeTask(window, 'Unrunnable check', 'look at the repository')
   await window.getByRole('button', { name: 'Run now' }).click()
 
+  await expect(window.getByRole('heading', { level: 1, name: 'Unrunnable check' })).toBeVisible()
+  await window.getByRole('button', { name: 'Tasks', exact: true }).click()
   await window.getByRole('main').getByRole('button', { name: 'Unrunnable check' }).first().click()
   await expect(
     window

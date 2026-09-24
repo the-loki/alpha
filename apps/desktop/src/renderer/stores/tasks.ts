@@ -11,11 +11,13 @@ export interface TasksState {
 
 /** Every task the workbench knows, and the runs they remember. */
 const [tasks, setTasks] = createStore<TasksState>({ tasks: [], runs: [], listed: false })
+const starting = new Set<(snapshot: TasksSnapshot) => void>()
 
 export { tasks }
 
 const apply = (snapshot: TasksSnapshot): void => {
   setTasks({ tasks: snapshot.tasks, runs: snapshot.runs, listed: true })
+  for (const notify of starting) notify(snapshot)
 }
 
 export const taskActions = {
@@ -30,8 +32,33 @@ export const taskActions = {
     apply(await bridge().deleteTask(id))
   },
 
-  runNow: async (id: string): Promise<void> => {
-    apply(await bridge().runTaskNow(id))
+  runNow: (id: string): Promise<Undef<string>> => {
+    const known = new Set(runsOf(id).map((run) => run.conversationId))
+    return new Promise((resolve, reject) => {
+      const finish = (conversationId: Undef<string>): void => {
+        starting.delete(onChange)
+        resolve(conversationId)
+      }
+      const onChange = (snapshot: TasksSnapshot): void => {
+        const run = snapshot.runs.find(
+          (entry) => entry.taskId === id && entry.conversationId !== '' && !known.has(entry.conversationId),
+        )
+        if (run !== undefined) finish(run.conversationId)
+      }
+      starting.add(onChange)
+      void bridge()
+        .runTaskNow(id)
+        .then(
+          (snapshot) => {
+            apply(snapshot)
+            finish(undefined)
+          },
+          (error: unknown) => {
+            starting.delete(onChange)
+            reject(error)
+          },
+        )
+    })
   },
 }
 

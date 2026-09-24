@@ -66,4 +66,5 @@ shows the level beside the task so it stays visible.
 - The refusal reason is agent-facing prose (ADR-0010), not a translated label: the model reads it.
 - `ApprovalBroker` gains no timer. Attended runs keep waiting indefinitely, which remains the
   intended behaviour and the reason no timeout was added anywhere.
-- A future "run now, I'm watching" button does not need a new rule: it starts an attended run.
+- "Run now" starts an attended run and opens its conversation as soon as it exists, so a card that
+  asks for approval is visible to the person who started it.

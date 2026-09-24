@@ -25,6 +25,10 @@ export function TaskGroup(props: { node: TaskNode }) {
   const verdict = () => newTaskRun(props.node.lastRun)
   const shown = () => (all() ? props.node.runs : props.node.runs.slice(0, SHOWN_RUNS))
   const hidden = () => props.node.runs.length - shown().length
+  const runNow = async () => {
+    const conversationId = await taskActions.runNow(props.node.task.id)
+    if (conversationId !== undefined) navigate(`/c/${conversationId}`)
+  }
   // The word at the end of the row, in the colour the transcript uses for the same fact: danger
   // for what failed, accent for a run in flight, warning for what waits, faint for no word at
   // all (C5.2).
@@ -96,7 +100,7 @@ export function TaskGroup(props: { node: TaskNode }) {
           <button
             type="button"
             disabled={active()}
-            onClick={() => void taskActions.runNow(props.node.task.id)}
+            onClick={() => void runNow()}
             aria-label={
               active()
                 ? `${props.node.task.name}: ${t('tasks.runRunning')}`
