@@ -19,11 +19,20 @@ import {
 export class TaskStore {
   private readonly path: string
   private file: TaskFile
-  private recorded: TaskRun[] = []
 
   public constructor(dataDirectory: string) {
     this.path = join(dataDirectory, 'tasks.json')
     this.file = this.read()
+    if (this.file.runs.some((run) => run.outcome === 'running')) {
+      const endedAt = Date.now()
+      this.file = {
+        ...this.file,
+        runs: this.file.runs.map((run) =>
+          run.outcome === 'running' ? { ...run, outcome: 'failed', endedAt: Math.max(endedAt, run.startedAt) } : run,
+        ),
+      }
+      this.flush()
+    }
   }
 
   public list(): ScheduledTask[] {
@@ -44,14 +53,17 @@ export class TaskStore {
     const tasks = known
       ? this.file.tasks.map((entry) => (entry.id === task.id ? task : entry))
       : [...this.file.tasks, task]
-    this.file = { version: 1, tasks }
+    this.file = { ...this.file, tasks }
     this.flush()
     return { ...task }
   }
 
   public remove(id: string): void {
-    this.file = { version: 1, tasks: this.file.tasks.filter((entry) => entry.id !== id) }
-    this.recorded = this.recorded.filter((run) => run.taskId !== id)
+    this.file = {
+      ...this.file,
+      tasks: this.file.tasks.filter((entry) => entry.id !== id),
+      runs: this.file.runs.filter((run) => run.taskId !== id),
+    }
     this.flush()
   }
 
@@ -62,17 +74,20 @@ export class TaskStore {
   }
 
   public runs(taskId: string): TaskRun[] {
-    return this.recorded.filter((run) => run.taskId === taskId).map((run) => ({ ...run }))
+    return this.file.runs.filter((run) => run.taskId === taskId).map((run) => ({ ...run }))
   }
 
   /**
-   * Adds a run row, keeping the newest: the conversations are the long history. A task has at most
+   * Adds a run row, keeping each task's newest: the conversations are the long history. A task has at most
    * one row for the run that is going, which the run replacing it — with the conversation it turned
    * out to be, and then with how it ended — takes with it.
    */
   public record(run: TaskRun): void {
-    const kept = this.recorded.filter((existing) => existing.taskId !== run.taskId || existing.outcome !== 'running')
-    this.recorded = [run, ...kept].slice(0, RUNS_KEPT)
+    const kept = this.file.runs.filter((existing) => existing.taskId !== run.taskId || existing.outcome !== 'running')
+    let own = 0
+    const runs = [run, ...kept].filter((entry) => entry.taskId !== run.taskId || ++own <= RUNS_KEPT)
+    this.file = { ...this.file, runs }
+    this.flush()
   }
 
   private flush(): void {
@@ -83,13 +98,32 @@ export class TaskStore {
     try {
       const parsed: unknown = JSON.parse(readFileSync(this.path, 'utf-8'))
       const tasks = (parsed as { tasks?: unknown }).tasks
+      const runs = (parsed as { runs?: unknown }).runs
       if ((parsed as { version?: unknown }).version !== 1 || !Array.isArray(tasks)) return emptyTaskFile()
       // Read one by one: a task whose schedule is nonsense costs the user that task, not the list.
-      return { version: 1, tasks: tasks.filter(isTask) }
+      return { version: 1, tasks: tasks.filter(isTask), runs: Array.isArray(runs) ? runs.filter(isRun) : [] }
     } catch {
       return emptyTaskFile()
     }
   }
+}
+
+function isRun(value: unknown): value is TaskRun {
+  if (typeof value !== 'object' || value === null) return false
+  const run = value as Partial<TaskRun>
+  return (
+    typeof run.taskId === 'string' &&
+    typeof run.conversationId === 'string' &&
+    typeof run.startedAt === 'number' &&
+    Number.isFinite(run.startedAt) &&
+    (run.endedAt === undefined || (typeof run.endedAt === 'number' && Number.isFinite(run.endedAt))) &&
+    (run.outcome === 'running' || run.outcome === 'ok' || run.outcome === 'failed' || run.outcome === 'skipped') &&
+    typeof run.refusals === 'number' &&
+    Number.isInteger(run.refusals) &&
+    run.refusals >= 0 &&
+    (run.note === undefined || typeof run.note === 'string') &&
+    (run.catchUp === undefined || typeof run.catchUp === 'boolean')
+  )
 }
 
 function isTask(value: unknown): value is ScheduledTask {

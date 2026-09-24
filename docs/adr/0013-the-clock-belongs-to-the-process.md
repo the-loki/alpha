@@ -69,7 +69,9 @@ wanted a quiet week is a bad trade.
   task out. A run started by hand is attended — the person is right there — so
   [ADR-0012](0012-nothing-is-asked-when-nobody-is-watching.md)'s auto-denial does not apply to it.
 - Tasks are the main process's own record, in one file beside the conversation index, written
-  whole. There is no cross-process scheduling, no lock file and no coordination with another
-  instance, which is consistent with how the rest of the workbench stores things.
+  whole. That file keeps each task's latest twenty run rows; a row left running by the prior
+  process is marked failed when the file is reopened. There is no cross-process scheduling, no
+  lock file and no coordination with another instance, which is consistent with how the rest of
+  the workbench stores things.
 - The cost is stated where it is paid: a task whose time passed while the app was closed runs late,
   and a task whose times passed while it was closed runs once, not as many times as it was missed.

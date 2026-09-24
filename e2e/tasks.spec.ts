@@ -33,7 +33,7 @@ async function makeTask(window: Page, name: string, prompt: string) {
 }
 
 test('a task is made, runs on demand, and leaves a conversation behind', async () => {
-  const { app, window } = await launch()
+  const { app, window, dataDirectory } = await launch()
 
   await window.getByRole('button', { name: 'Tasks' }).click()
   await expect(window.getByRole('heading', { name: 'Tasks' })).toBeVisible()
@@ -70,6 +70,17 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await window.screenshot({ path: join(SHOT_DIR, 'tasks-rail.png') })
 
   await app.close()
+
+  const reopened = await launchWorkbench({ provider: false, dataDirectory })
+  await reopened.window.getByRole('button', { name: 'Tasks', exact: true }).click()
+  await reopened.window.getByRole('main').getByRole('button', { name: 'Nightly check' }).first().click()
+  await expect(
+    reopened.window
+      .getByRole('main')
+      .getByText(/Finished/)
+      .first(),
+  ).toBeVisible()
+  await reopened.app.close()
 })
 
 test('a run whose turn never started is a failed run rather than a finished one', async () => {

@@ -49,10 +49,11 @@ export const RUNS_KEPT = 20
 export interface TaskFile {
   version: 1
   tasks: ScheduledTask[]
+  runs: TaskRun[]
 }
 
 export function emptyTaskFile(): TaskFile {
-  return { version: 1, tasks: [] }
+  return { version: 1, tasks: [], runs: [] }
 }
 
 /** The newest run that is still going, if one is: what keeps two runs of a task from overlapping. */
