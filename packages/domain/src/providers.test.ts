@@ -200,15 +200,10 @@ describe('[domain] modelIn', () => {
     })
   })
 
-  it('falls back to the effective default when the choice is gone', () => {
-    expect(modelIn(served, { providerId: 'local-llama', modelId: 'deleted' })).toEqual({
-      providerId: 'local-llama',
-      modelId: 'local-7b',
-    })
-    expect(modelIn(served, { providerId: 'gone', modelId: 'local-7b' })).toEqual({
-      providerId: 'local-llama',
-      modelId: 'local-7b',
-    })
+  it('does not substitute another model when a conversation’s choice is gone', () => {
+    expect(modelIn(served, { providerId: 'local-llama', modelId: 'deleted' })).toBeUndefined()
+    expect(modelIn(served, { providerId: 'gone', modelId: 'local-7b' })).toBeUndefined()
+    expect(modelIn(served, undefined)).toBeUndefined()
   })
 
   it('answers with nothing when a conversation has no model and no provider serves anything', () => {

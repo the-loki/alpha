@@ -240,16 +240,9 @@ export function effectiveModelOf(index: ModelIndex): Undef<ConversationModel> {
   return defaultModelOf(index) ?? firstModelOf(index)
 }
 
-/**
- * What a conversation will actually run on: the model it chose while a provider still serves it,
- * and the effective default otherwise — a provider that was deleted, or a model that was renamed,
- * must not leave a conversation looking like it has nothing to run on. The main process reaches the
- * same conclusion from its own registry (`modelFor`); this is the window's copy of the rule, and it
- * exists because the window is the thing that has to name the model it is showing.
- */
+/** The exact model a conversation chose, only while its provider still serves it. */
 export function modelIn(index: ModelIndex, chosen: Undef<ConversationModel>): Undef<ConversationModel> {
-  if (chosen !== undefined && servesModel(index, chosen)) return chosen
-  return effectiveModelOf(index)
+  return chosen !== undefined && servesModel(index, chosen) ? chosen : undefined
 }
 
 /**

@@ -18,11 +18,7 @@ import {
 } from '@alpha/domain'
 import type { ProviderStore } from './store.ts'
 
-/**
- * Which model a conversation runs on: the one it chose, when that provider still serves it, and
- * the configured default otherwise — a provider that was deleted must not leave a conversation
- * unusable.
- */
+/** The conversation's chosen model, only when its provider still serves that exact model. */
 export function modelFor(store: ProviderStore, conversation: { model?: ConversationModel }): Undef<ConversationModel> {
   return modelIn(store.index(), conversation.model)
 }
@@ -53,8 +49,15 @@ export function startProblem(input: {
   /** How many pictures are attached to the message about to be sent. */
   pictures: number
 }): Undef<TurnRefusal> {
-  const chosen = modelIn(input.index, input.model)
-  if (chosen === undefined) return { kind: 'no-model' }
+  const requested = input.model
+  if (requested === undefined) return { kind: 'no-model' }
+  if (!input.index.providers.some((provider) => provider.id === requested.providerId)) {
+    return { kind: 'no-provider', providerId: requested.providerId }
+  }
+  const chosen = modelIn(input.index, requested)
+  if (chosen === undefined) {
+    return { kind: 'model-not-served', providerId: requested.providerId, modelId: requested.modelId }
+  }
   const problem = input.keyProblem(chosen.providerId)
   if (problem !== undefined) return problem
   const definition = definitionOf(input.index, chosen)

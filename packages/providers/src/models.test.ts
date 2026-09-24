@@ -32,8 +32,24 @@ describe('[providers] startProblem', () => {
     })
   })
 
-  it('starts a model-less conversation on the default, when there is one', () => {
-    expect(startProblem({ index, keyProblem: noKeyProblem, pictures: 0 })).toBeUndefined()
+  it('names the missing part of an existing conversation’s model choice', () => {
+    expect(startProblem({ index, keyProblem: noKeyProblem, pictures: 0 })).toEqual({ kind: 'no-model' })
+    expect(
+      startProblem({
+        index,
+        keyProblem: noKeyProblem,
+        model: { providerId: 'local', modelId: 'removed' },
+        pictures: 0,
+      }),
+    ).toEqual({ kind: 'model-not-served', providerId: 'local', modelId: 'removed' })
+    expect(
+      startProblem({
+        index,
+        keyProblem: noKeyProblem,
+        model: { providerId: 'removed', modelId: 'a-model' },
+        pictures: 0,
+      }),
+    ).toEqual({ kind: 'no-provider', providerId: 'removed' })
   })
 
   it('passes the key refusal through, named for the person rather than the vault', () => {

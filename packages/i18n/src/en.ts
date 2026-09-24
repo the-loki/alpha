@@ -177,7 +177,7 @@ export const EN = {
   'model.chipTitleDefault': 'New conversations start on {model}. Click to change it.',
   'model.menuLabel': 'The model this runs on',
   'model.none': 'No model',
-  'model.noneHint': 'Add a provider and its models in Settings, then choose one here.',
+  'model.noneHint': 'Choose a model here, or add one in Settings.',
   'message.copy': 'Copy',
   'message.copied': 'Copied',
   'message.copyFailed': 'Copy failed',
@@ -256,7 +256,7 @@ export const EN = {
   // A turn that never started, by which of Alpha's own refusals it was stopped: main answers the
   // case and the sentences are here, in the window's language, because main is not the thing with
   // a language (ADR-0010). Provider words never appear in these: they are quoted elsewhere.
-  'refusal.noModel': 'No model is configured for this conversation. Choose one under Settings, Models.',
+  'refusal.noModel': 'No model is configured for this conversation. Choose one in the composer or add one in Settings.',
   'refusal.modelNotServed': 'Alpha has no model {model} on {provider} to run this conversation on.',
   'refusal.noProvider': 'Alpha has no provider called {provider}.',
   'refusal.keyUnreadable': 'Alpha could not read the key for {provider}. Enter it again under Settings, Providers.',

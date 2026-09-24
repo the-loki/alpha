@@ -175,7 +175,7 @@ export const ZH = {
   'model.chipTitleDefault': '新会话默认使用 {model}。点击更换。',
   'model.menuLabel': '使用的模型',
   'model.none': '没有模型',
-  'model.noneHint': '先在设置里添加供应商和它的模型，然后在这里选一个。',
+  'model.noneHint': '在这里选一个模型；如果还没有，请先到设置里添加。',
   'message.copy': '复制',
   'message.copied': '已复制',
   'message.copyFailed': '复制失败',
@@ -251,7 +251,7 @@ export const ZH = {
   'message.failed': '这一轮失败了。',
   // 压根没开始的轮次，以及拦住它的那种拒绝：主进程只回答「是哪种」，句子在这里，用界面的语言
   // （ADR-0010）。这些句子里没有 provider 的话——那些话在别处照原样引用。
-  'refusal.noModel': '这个对话还没有模型。请在"设置 → 模型"里选一个。',
+  'refusal.noModel': '这个会话还没有模型。请在输入框旁选择一个，或先到设置里添加。',
   'refusal.modelNotServed': 'Alpha 在 {provider} 上没有 {model} 这个模型，跑不起来。',
   'refusal.noProvider': 'Alpha 里没有叫 {provider} 的供应商。',
   'refusal.keyUnreadable': 'Alpha 读不出 {provider} 的密钥。请在"设置 → 供应商"里重新填入。',

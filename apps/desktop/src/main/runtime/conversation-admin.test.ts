@@ -389,19 +389,24 @@ describe('[runtime] what a conversation runs on', () => {
     await manager.closeAll()
   })
 
-  it('runs a conversation opened before the first model was configured', async () => {
-    const { manager, providers, workspace, events } = freshManager({ noProviders: true })
+  it('runs a model-less conversation only after the person chooses a newly configured model', async () => {
+    const { manager, workspace, dataDirectory } = freshManager({ noProviders: true })
     const created = await manager.create(workspace)
     const id = created.conversation.id
     await expect(manager.prompt(id, 'before setup')).resolves.toEqual({ kind: 'no-model' })
-
-    providers.save(providerDefinition(false))
-    const refusalsBefore = events.filter((event) => event.type === 'turn_refused').length
-    await tell(manager, events, id, 'after setup')
-
-    expect(events.filter((event) => event.type === 'turn_refused')).toHaveLength(refusalsBefore)
-    expect(texts(manager.reads.transcript(id))).toEqual(['after setup', 'Noted.'])
     await manager.closeAll()
+
+    const resumed = configuredManager(dataDirectory)
+    await resumed.manager.open(id)
+    await expect(resumed.manager.prompt(id, 'still no choice')).resolves.toEqual({ kind: 'no-model' })
+    const selected = await resumed.manager.setConversationModel(id, 'local', 'local-7b')
+    expect(selected.model).toEqual({ providerId: 'local', modelId: 'local-7b' })
+    const refusalsBefore = resumed.events.filter((event) => event.type === 'turn_refused').length
+    await tell(resumed.manager, resumed.events, id, 'after setup')
+
+    expect(resumed.events.filter((event) => event.type === 'turn_refused')).toHaveLength(refusalsBefore)
+    expect(texts(resumed.manager.reads.transcript(id))).toEqual(['after setup', 'Noted.'])
+    await resumed.manager.closeAll()
   })
 
   it('finishes an active turn before refreshing the provider configuration for the next one', async () => {
@@ -443,6 +448,30 @@ describe('[runtime] what a conversation runs on', () => {
 
     expect(events.filter((event) => event.type === 'turn_refused')).toEqual([])
     expect(texts(manager.reads.transcript(id))).toEqual(['first turn', 'Noted.', 'second turn', 'Noted.'])
+    await manager.closeAll()
+  })
+
+  it('refuses a turn when its chosen model was removed after creation', async () => {
+    const { manager, providers, workspace, events } = freshManager()
+    const created = await manager.create(workspace)
+    providers.saveModels('p', [
+      {
+        id: 'replacement',
+        name: 'Replacement',
+        contextWindow: 32_000,
+        maxTokens: 4_096,
+        reasoning: false,
+        images: false,
+      },
+    ])
+
+    await expect(manager.prompt(created.conversation.id, 'stay on the chosen model')).resolves.toEqual({
+      kind: 'model-not-served',
+      providerId: 'p',
+      modelId: 'm',
+    })
+    expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
+    expect((await manager.open(created.conversation.id)).conversation.model).toEqual({ providerId: 'p', modelId: 'm' })
     await manager.closeAll()
   })
 

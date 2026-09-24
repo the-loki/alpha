@@ -88,16 +88,18 @@ export class RuntimeRefresh {
       update: (model: ConversationModel) => ConversationSummary
     },
   ): Promise<ConversationSummary> {
-    if (!servesModel(ports.providers.index(), { providerId, modelId })) {
+    const index = ports.providers.index()
+    if (!servesModel(index, { providerId, modelId })) {
       ports.refused({ kind: 'model-not-served', providerId, modelId })
       return conversation
     }
-    if (
-      ports.opened !== undefined &&
-      this.isCurrent(ports.opened, ports.providers.index()) &&
-      !(await ports.opened.setModel(providerId, modelId))
-    )
-      return conversation
+    if (ports.opened !== undefined && this.isCurrent(ports.opened, index)) {
+      if (conversation.model === undefined || !servesModel(index, conversation.model)) {
+        this.atLaunch.delete(ports.opened)
+      } else if (!(await ports.opened.setModel(providerId, modelId))) {
+        return conversation
+      }
+    }
     return ports.update({ providerId, modelId })
   }
 

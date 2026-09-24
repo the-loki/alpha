@@ -9,6 +9,7 @@
 import {
   type ConversationModel,
   definitionOf,
+  effectiveModelOf,
   modelIn,
   type PermissionLevel,
   type ProviderModelDefinition,
@@ -41,17 +42,18 @@ export interface RunningModel {
 }
 
 /**
- * The model the next message runs on: with a conversation open it is that conversation's own,
- * falling back to the default when it no longer resolves, and with none open it is what a new
- * conversation would start on. One rule with three readers — the composer's chip, the composer's
- * paperclip, and anything that has to name the model — so they cannot disagree about it.
+ * The model the next message runs on: with a conversation open it is that conversation's own;
+ * with none open it is what a new conversation would start on. One rule with three readers — the
+ * composer's chip, the composer's paperclip, and anything that has to name the model — so they
+ * cannot disagree about it.
  *
  * Every answer is a getter: it reads the stores where it is asked for, so a chip that names the
  * model follows a change to it without anything having to subscribe.
  */
 export function runningModel(): RunningModel {
   const chosen = (): Undef<ConversationModel> => conversations.transcript.summary?.model
-  const resolved = () => modelIn(providers.snapshot, chosen())
+  const resolved = () =>
+    inConversation() ? modelIn(providers.snapshot, chosen()) : effectiveModelOf(providers.snapshot)
   const definition = () => definitionOf(providers.snapshot, resolved())
   return {
     chosen: resolved,
