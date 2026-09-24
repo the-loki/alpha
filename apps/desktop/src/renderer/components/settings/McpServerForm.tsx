@@ -4,7 +4,7 @@ import { mcp, mcpActions } from '../../stores/mcp.ts'
 import { useText } from '../../stores/shell.ts'
 import { GROUP_LABEL, NOTICE, PRIMARY_ACTION } from '../controls.ts'
 import { FIELD } from './Fields.tsx'
-import { McpPairsNote, McpServerFields } from './McpServerFields.tsx'
+import { McpServerFields } from './McpServerFields.tsx'
 
 /** The empty draft, as a fresh form shows it: a command to run, and nothing typed in it yet. */
 const emptyDraft = (): McpDraft => ({ name: '', kind: 'command', target: '', args: '', pairs: '' })
@@ -51,7 +51,6 @@ export function McpServerForm() {
       <p class="mt-1 max-w-measure font-text text-name leading-relaxed text-faint">{t('settings.mcpNameNote')}</p>
 
       <McpServerFields draft={draft()} onChange={setDraft} />
-      <McpPairsNote />
 
       <Show when={taken() || error() !== ''}>
         {/* A notice is a line: the danger bar of a failure down its left edge and a surface-1 fill

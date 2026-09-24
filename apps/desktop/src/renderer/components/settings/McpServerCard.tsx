@@ -5,7 +5,7 @@ import { draftOf, inputOf, type McpDraft } from '../../lib/mcp-draft.ts'
 import { mcpActions } from '../../stores/mcp.ts'
 import { useText } from '../../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, NOTICE, OUTLINED_ACTION, PRIMARY_ACTION } from '../controls.ts'
-import { McpPairsNote, McpServerFields } from './McpServerFields.tsx'
+import { McpServerFields } from './McpServerFields.tsx'
 
 /** How it went, in the panel's own words: what it offers, that it is being reached, or that it is not. */
 function Reached(props: { server: McpServerView }) {
@@ -78,7 +78,6 @@ export function McpServerCard(props: { server: McpServerView }) {
       </Show>
 
       <McpServerFields draft={current()} onChange={setDraft} />
-      <McpPairsNote />
 
       <div class="mt-3 flex items-center justify-end gap-3 border-t border-line pt-3">
         <Show when={error() !== ''}>

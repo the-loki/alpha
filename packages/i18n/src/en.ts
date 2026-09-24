@@ -316,7 +316,7 @@ export const EN = {
   // rather than in a file, and what the page cannot show — whether the server is there — it says.
   'settings.tabMcp': 'MCP servers',
   'settings.mcpNote':
-    'Servers the agent reaches for tools. A server is a command this machine runs, or an endpoint Alpha posts to; what it offers becomes the agent’s tools, and every one of those goes through the permission gate like any other.',
+    'Servers the agent reaches for tools. A server is a command this machine runs, or an endpoint Alpha posts to; what it offers becomes the agent’s tools, and every one of those goes through the permission gate like any other. What a server is reached with — its environment, or its headers — is stored in plain text in mcp.json, which is where this page writes them.',
   'settings.mcpEmpty': 'No MCP servers yet. Add the one you want the agent to reach.',
   'settings.addMcpServer': 'Add an MCP server',
   'settings.mcpToolsOne': '1 tool',
@@ -342,8 +342,6 @@ export const EN = {
   'settings.mcpUrlPlaceholder': 'the endpoint address',
   'settings.mcpHeaders': 'Headers',
   'settings.mcpPairsPlaceholder': 'NAME=value, one per line',
-  'settings.mcpPairsNote':
-    'These are stored in plain text in mcp.json, which is where this page writes them. An endpoint that needs a token takes it as a header.',
   'settings.mcpSave': 'Save',
   'settings.theme': 'Theme',
   'settings.themeNote':

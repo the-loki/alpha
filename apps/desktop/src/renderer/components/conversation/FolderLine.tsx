@@ -41,7 +41,7 @@ export function FolderLine() {
   return (
     <Show when={current()}>
       {(folder) => (
-        <div ref={container} class="relative mb-1.5 w-fit max-w-full no-drag">
+        <div ref={container} class="relative mb-1.5 flex no-drag">
           <button
             type="button"
             aria-haspopup="menu"

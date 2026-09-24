@@ -308,7 +308,7 @@ export const ZH = {
   // ——服务器在不在——它会说出来。
   'settings.tabMcp': 'MCP 服务器',
   'settings.mcpNote':
-    'agent 用来获取额外工具的服务器。一台服务器是本机要跑的命令，或 Alpha 要访问的端点；它提供的工具会变成 agent 的工具，每一个都和别的工具一样走权限闸门。',
+    'agent 用来获取额外工具的服务器。一台服务器是本机要跑的命令，或 Alpha 要访问的端点；它提供的工具会变成 agent 的工具，每一个都和别的工具一样走权限闸门。连接它用的环境变量与请求头以明文存在 mcp.json 里，这一页就是它的写入方。',
   'settings.mcpEmpty': '还没有 MCP 服务器。把你希望 agent 能用上的那台加进来。',
   'settings.addMcpServer': '添加 MCP 服务器',
   'settings.mcpToolsOne': '1 个工具',
@@ -334,7 +334,6 @@ export const ZH = {
   'settings.mcpUrlPlaceholder': '端点的地址',
   'settings.mcpHeaders': '请求头',
   'settings.mcpPairsPlaceholder': 'NAME=value，一行一个',
-  'settings.mcpPairsNote': '这些以明文存在 mcp.json 里，这一页就是它的写入方。需要令牌的端点，令牌走请求头。',
   'settings.mcpSave': '保存',
   'settings.theme': '主题',
   'settings.themeNote': '默认浅色。深色是单独调校的一套配色，跟随系统则自动切换。',

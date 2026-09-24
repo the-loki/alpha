@@ -5,11 +5,13 @@ import { FIELD_FRAME, GROUP_LABEL } from '../controls.ts'
 import { FIELD } from './Fields.tsx'
 
 /**
- * A box for more than one line — the arguments, and the environment or headers. Its height is its
- * own, because a field's height is what one line needs, and this is the one control on the panel
- * that is not `CONTROL_HEIGHT` (C5.4).
+ * A box for more than one line — the arguments, and the environment or headers. It grows with what
+ * is in it (`field-sizing-content`, the same way the writing box in a conversation does) up to a
+ * ceiling, because a list of paths in a two-row box is a scrollbar drawn through the middle of one:
+ * a server's arguments are as long as its command needs, and a box that cuts them is a box that
+ * cannot be read from.
  */
-const AREA = `w-full resize-y px-2 py-1.5 font-mono text-code ${FIELD_FRAME}`
+const AREA = `field-sizing-content max-h-40 min-h-8 w-full resize-none overflow-y-auto px-2 py-1.5 font-mono text-code ${FIELD_FRAME}`
 
 function Area(props: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
   return (
@@ -17,7 +19,7 @@ function Area(props: { label: string; value: string; placeholder: string; onChan
       <span class={`mb-1 block ${GROUP_LABEL}`}>{props.label}</span>
       <textarea
         aria-label={props.label}
-        rows={2}
+        rows={1}
         value={props.value}
         placeholder={props.placeholder}
         onInput={(event) => props.onChange(event.target.value)}
@@ -58,7 +60,9 @@ export function McpServerFields(props: { draft: McpDraft; onChange: (next: McpDr
   const command = () => props.draft.kind === 'command'
 
   return (
-    <div class="mt-3 grid grid-cols-2 gap-3">
+    // One field per row, as the providers panel asks for a connection: what a server is reached by is
+    // a path, a url or a list, and two columns of those are two boxes of clamped mono text.
+    <div class="mt-3 flex flex-col gap-2.5">
       <KindField kind={props.draft.kind} onChange={(kind) => edit({ kind })} />
       <label class="block">
         <span class={`mb-1 block ${GROUP_LABEL}`}>{t(command() ? 'settings.mcpCommand' : 'settings.mcpUrl')}</span>
@@ -71,7 +75,7 @@ export function McpServerFields(props: { draft: McpDraft; onChange: (next: McpDr
         />
       </label>
       {/* One of the two belongs to each kind: a url has no arguments, and a command has no headers.
-          They stand in the same place so switching the kind does not move the row. */}
+          They stand in the same place, so switching the kind does not move the field under the hand. */}
       <Show when={command()}>
         <Area
           label={t('settings.mcpArgs')}
@@ -88,10 +92,4 @@ export function McpServerFields(props: { draft: McpDraft; onChange: (next: McpDr
       />
     </div>
   )
-}
-
-/** What these boxes hold when they hold more than one thing, said once behind both of them. */
-export function McpPairsNote() {
-  const t = useText()
-  return <p class="mt-2 max-w-measure font-text text-name leading-relaxed text-faint">{t('settings.mcpPairsNote')}</p>
 }
