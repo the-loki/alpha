@@ -545,6 +545,23 @@ describe('[runtime] consecutive workspace reviews', () => {
 })
 
 describe('[runtime] a transient failure the retry policy takes', () => {
+  it('a post-run failure replaces a pending success with one failure', async () => {
+    const retry = createRetryPlugin({ delays: [0] })
+    retry.afterRun = async () => {
+      throw new Error('post-run failed')
+    }
+    const { runtime, events } = openRuntime({ retry, drives: [() => textStream('answer')] })
+
+    await runtime.prompt('work')
+    expect(await runtime.settle()).toBe(false)
+    expect(rowOf(events, 'turn_finished')).toHaveLength(0)
+    expect(rowOf(events, 'run_failed')).toEqual([
+      { conversationId: 'c1', type: 'run_failed', message: 'post-run failed' },
+    ])
+    expect(events.reduce(reduceTranscript, emptyTranscript('c1')).status).toBe('failed')
+    await runtime.close()
+  })
+
   it('retries inside the same turn: one turn in the window, the recovery in the store', async () => {
     const { runtime, events, store, workspace, agent } = openRuntime({
       retry: createRetryPlugin({ delays: [0, 0] }),

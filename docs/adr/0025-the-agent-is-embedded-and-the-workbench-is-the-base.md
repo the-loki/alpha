@@ -71,6 +71,10 @@ plugins, so the base is exercised by everything Alpha itself needs:
   transcript removes a discarded assistant message when the retry actually starts; the usage of
   each attempted assistant message is still counted.
 
+The workbench keeps a turn running through its `afterRun` hooks, including automatic compaction.
+It emits `turn_finished` only after those hooks settle, so Stop can cancel a summary request and a
+queued message cannot start before the current turn has finished its session work.
+
 **Alpha owns the session store again.** The transcript of record is an append-only JSONL of
 entries — the same entry shapes (message / compaction / branch summary, `id`/`parentId` tree) the
 RPC reader already parsed — written live as the run produces them, in Alpha's data directory,

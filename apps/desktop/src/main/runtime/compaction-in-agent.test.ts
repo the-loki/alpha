@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { alignedHistoryOf, assembleAgent } from '@alpha/agent'
 import { aModel, errorStream, scriptedModels, textStream } from '@alpha/agent/testing'
-import type { RuntimeEvent } from '@alpha/domain'
+import { emptyTranscript, type RuntimeEvent, reduceTranscript } from '@alpha/domain'
 import { createCompactionPlugin } from '@alpha/internal-plugins'
 import { SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent } from '@earendil-works/pi-agent-core'
@@ -177,12 +177,14 @@ describe('compacting on the threshold', () => {
 
     await setup.runtime.prompt('fix the parser')
     await summarizing
+    expect(setup.events.filter((event) => event.type === 'turn_finished')).toHaveLength(0)
+    expect(setup.events.reduce(reduceTranscript, emptyTranscript('c1')).status).toBe('running')
     await setup.runtime.abort()
     expect(await setup.runtime.settle()).toBe(false)
     expect(complete.mock.calls[0]?.[2]?.signal?.aborted).toBe(true)
     expect(setup.announcements).toEqual([])
     expect(pathOf(setup).some((entry) => entry.type === 'compaction')).toBe(false)
-    expect(setup.events.some((event) => event.type === 'turn_finished')).toBe(true)
+    expect(setup.events.filter((event) => event.type === 'turn_finished')).toHaveLength(1)
     await setup.runtime.close()
   })
 })

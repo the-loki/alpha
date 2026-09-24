@@ -71,6 +71,7 @@ export class ConversationRuntime {
   private inFlight: Undef<Promise<void>>
   private runAbort: Undef<AbortController>
   private lastRunSucceeded = false
+  private pendingFinish = false
   private captureActive = false
   private lastFailedEntryId: Undef<string>
   private lastFailedMessageId: Undef<string>
@@ -116,6 +117,7 @@ export class ConversationRuntime {
     // still settling waits for it, and then runs.
     while (this.driving !== undefined) await this.driving
     this.lastRunSucceeded = false
+    this.pendingFinish = false
     this.lastFailedEntryId = undefined
     this.lastFailedMessageId = undefined
     this.runAbort = new AbortController()
@@ -249,15 +251,20 @@ export class ConversationRuntime {
       const outcome = await runAfterRunHooks(agent, this.plugins, () => this.branchPastFailedAttempt(), signal)
       this.lastRunSucceeded = outcome.failed === undefined && !outcome.aborted
     } catch (error) {
+      this.pendingFinish = false
       // A throw's own words are quoted as they came, and a throw with nothing to say is the same
       // failure as a message with nothing to say: the sentence for that case is the window's, in
       // the language the window is in (ADR-0010), so nothing is invented here for it.
       if (!signal?.aborted) this.failed(error instanceof Error && error.message !== '' ? error.message : undefined)
     } finally {
-      if (signal?.aborted) {
-        for (const event of this.translator.translate({ type: 'agent_settled' })) this.emit(event)
-      }
+      if (
+        signal?.aborted &&
+        this.translator.translate({ type: 'agent_settled' }).some((event) => event.type === 'turn_finished')
+      )
+        this.pendingFinish = true
       this.finishWorkspaceReview()
+      if (this.pendingFinish) this.emit({ conversationId: this.conversationId, type: 'turn_finished' })
+      this.pendingFinish = false
       // The run is over, however it went: the next prompt starts a run of its own.
       this.runAbort = undefined
       this.driving = undefined
@@ -297,6 +304,10 @@ export class ConversationRuntime {
         translated.type === 'assistant_message_finished'
       ) {
         this.lastFailedMessageId = translated.messageId
+      }
+      if (translated.type === 'turn_finished') {
+        this.pendingFinish = true
+        continue
       }
       this.emit(translated)
     }
