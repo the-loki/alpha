@@ -65,7 +65,11 @@ plugins, so the base is exercised by everything Alpha itself needs:
   entry;
 - **auto-retry** — coding-agent's design: a transient provider failure after `agent_end` retries
   with backoff, and the decision is published as `shouldRetry` so the translator keeps the turn
-  open while an attempt is planned.
+  open while an attempt is planned. The base announces each actual retry before continuing the
+  agent, so the runtime can move the session path past that failed attempt. Automatic compaction
+  waits for a successful run instead of summarizing an attempt about to be discarded. The live
+  transcript removes a discarded assistant message when the retry actually starts; the usage of
+  each attempted assistant message is still counted.
 
 **Alpha owns the session store again.** The transcript of record is an append-only JSONL of
 entries — the same entry shapes (message / compaction / branch summary, `id`/`parentId` tree) the

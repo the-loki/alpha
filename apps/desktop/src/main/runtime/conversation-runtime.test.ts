@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { AlphaPlugin } from '@alpha/agent'
 import { assembleAgent, historyOf } from '@alpha/agent'
 import { aModel, scriptedModels, textStream, toolNamed, toolUseStream } from '@alpha/agent/testing'
-import type { RuntimeEvent, Undef } from '@alpha/domain'
+import { emptyTranscript, type RuntimeEvent, reduceTranscript, totalUsage, type Undef } from '@alpha/domain'
 import { createRetryPlugin, type RetryPlugin } from '@alpha/internal-plugins'
 import { SessionStore, sessionDirectoryFor, tipPath } from '@alpha/sessions'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
@@ -129,6 +129,14 @@ const failingStream = (message: string, reason: 'error' | 'aborted'): AssistantM
   return stream
 }
 
+const partialFailure = (text: string, message: string): AssistantMessageEventStream => {
+  const stream = new AssistantMessageEventStream()
+  stream.push({ type: 'start', partial: partialAssistant('', 'pending') })
+  stream.push({ type: 'text_delta', contentIndex: 0, delta: text, partial: partialAssistant(text, 'pending') })
+  stream.push({ type: 'error', reason: 'error', error: { ...partialAssistant(text, 'error'), errorMessage: message } })
+  return stream
+}
+
 /** A drive that stays in flight for a while: the run is running, and the test can act inside it. */
 const slowStream =
   (text: string, milliseconds: number): (() => AssistantMessageEventStream) =>
@@ -191,7 +199,9 @@ describe('[runtime] a conversation turn, driven by the assembled agent', () => {
   })
 
   it('says a run failed when the message that ended it says so', async () => {
-    const { runtime, events } = openRuntime({ drives: [() => failingStream('the provider hung up', 'error')] })
+    const { runtime, events, store, workspace } = openRuntime({
+      drives: [() => failingStream('the provider hung up', 'error')],
+    })
 
     await runtime.prompt('hi')
     await runtime.settle()
@@ -199,6 +209,7 @@ describe('[runtime] a conversation turn, driven by the assembled agent', () => {
 
     const failure = events.find((event) => event.type === 'run_failed')
     expect(failure?.message).toBe('the provider hung up')
+    expect(messageOf(store, workspace, 1)).toMatchObject({ stopReason: 'error', errorMessage: 'the provider hung up' })
   })
 
   it('a runtime with nothing assembled refuses a prompt as a case, and can still be read', async () => {
@@ -400,7 +411,7 @@ describe('[runtime] a transient failure the retry policy takes', () => {
   it('retries inside the same turn: one turn in the window, the recovery in the store', async () => {
     const { runtime, events, store, workspace, agent } = openRuntime({
       retry: createRetryPlugin({ delays: [0, 0] }),
-      drives: [() => failingStream('transient boom', 'error'), () => textStream('recovered')],
+      drives: [() => partialFailure('discarded draft', 'transient boom'), () => textStream('recovered')],
     })
 
     await runtime.prompt('fix the parser')
@@ -416,11 +427,31 @@ describe('[runtime] a transient failure the retry policy takes', () => {
     expect(JSON.stringify(last?.message)).toContain('recovered')
     // The base dropped the failed turn, so the live context carries only what came before it.
     expect(JSON.stringify(agent?.state.messages)).not.toContain('transient boom')
+    expect(JSON.stringify(agent?.state.messages)).not.toContain('discarded draft')
     expect(JSON.stringify(agent?.state.messages)).toContain('recovered')
+    const read = store.entries('c1', workspace)
+    expect(
+      read.entries.some((entry) => entry.message?.role === 'assistant' && entry.message.stopReason === 'error'),
+    ).toBe(true)
+    expect(tipPath(read.entries, read.leafId).map((entry) => entry.type)).toEqual(['message', 'retry', 'message'])
+    expect(JSON.stringify(tipPath(read.entries, read.leafId))).not.toContain('transient boom')
+    const projected = events.reduce(reduceTranscript, emptyTranscript('c1'))
+    expect(JSON.stringify(projected.messages)).not.toContain('discarded draft')
+    expect(
+      events
+        .filter((event) => event.type === 'usage_recorded')
+        .reduce((sum, event) => sum + event.usage.totalTokens, 0),
+    ).toBe(4)
+    expect(totalUsage(projected).totalTokens).toBe(4)
+    expect(store.usage('c1', workspace).totalTokens).toBe(4)
+    const reopened = openRuntime({ store, workspace })
+    expect(JSON.stringify(reopened.agent?.state.messages)).not.toContain('transient boom')
+    expect(JSON.stringify(reopened.agent?.state.messages)).toContain('recovered')
+    await reopened.runtime.close()
   })
 
   it('the retry cap ends the run as the failure the window reads', async () => {
-    const { runtime, events } = openRuntime({
+    const { runtime, events, store, workspace } = openRuntime({
       retry: createRetryPlugin({ delays: [0] }),
       drives: [() => failingStream('boom one', 'error'), () => failingStream('boom two', 'error')],
     })
@@ -432,6 +463,15 @@ describe('[runtime] a transient failure the retry policy takes', () => {
     expect(rowOf(events, 'turn_started')).toHaveLength(1)
     expect(rowOf(events, 'run_failed')).toEqual([{ conversationId: 'c1', type: 'run_failed', message: 'boom two' }])
     expect(typesOf(events)).not.toContain('turn_finished')
+    const read = store.entries('c1', workspace)
+    const path = tipPath(read.entries, read.leafId)
+    expect(JSON.stringify(path)).not.toContain('boom one')
+    expect(path.at(-1)?.message).toMatchObject({ role: 'assistant', stopReason: 'error', errorMessage: 'boom two' })
+    expect(store.usage('c1', workspace).totalTokens).toBe(4)
+    const reopened = openRuntime({ store, workspace })
+    expect(JSON.stringify(reopened.agent?.state.messages)).not.toContain('boom one')
+    expect(JSON.stringify(reopened.agent?.state.messages)).toContain('boom two')
+    await reopened.runtime.close()
   })
 })
 

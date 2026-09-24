@@ -58,6 +58,7 @@ const entryOf = (raw: unknown): Undef<AgentEntry> => {
     timestamp:
       typeof entry.timestamp === 'string' || typeof entry.timestamp === 'number' ? entry.timestamp : Date.now(),
     ...(recordOf(entry.message).role === undefined ? {} : { message: entry.message as AgentEntry['message'] }),
+    ...(entry.usage === undefined ? {} : { usage: entry.usage }),
     ...(typeof entry.summary === 'string' ? { summary: entry.summary } : {}),
     ...(typeof entry.firstKeptEntryId === 'string' ? { firstKeptEntryId: entry.firstKeptEntryId } : {}),
   }
@@ -116,11 +117,17 @@ function standInFor(path: AgentEntry[], entry: AgentEntry): AgentEntry {
   return { ...entry, replaced: path.slice(0, kept).filter((one) => one.type === 'message').length }
 }
 
-/** What the session has spent: what its assistants reported, added up along the path. */
+/** What the session has spent: assistant messages plus discarded attempts carried by retry markers. */
 export function usageOf(entries: AgentEntry[]): UsageTotals {
   return entries.reduce((total, entry) => {
-    if (entry.type !== 'message' || entry.message?.role !== 'assistant') return total
-    const reported = usageTotals(recordOf(entry.message).usage)
+    const reportedUsage =
+      entry.type === 'retry'
+        ? entry.usage
+        : entry.type === 'message' && entry.message?.role === 'assistant'
+          ? recordOf(entry.message).usage
+          : undefined
+    if (reportedUsage === undefined) return total
+    const reported = usageTotals(reportedUsage)
     return {
       input: total.input + reported.input,
       output: total.output + reported.output,
@@ -136,6 +143,7 @@ export function usageOf(entries: AgentEntry[]): UsageTotals {
 export interface NewEntry {
   type: string
   message?: AgentEntry['message']
+  usage?: unknown
   summary?: string
   firstKeptEntryId?: string
 }
@@ -177,6 +185,24 @@ export class SessionStore {
    * disk. The caller says what happened; the store says where it went.
    */
   public append(options: { sessionId: string; workspacePath: string; entry: NewEntry }): AgentEntry {
+    return this.appendAt(options)
+  }
+
+  /** Marks a new branch before an entry that a retry discarded, leaving the old attempt on disk. */
+  public branchBefore(sessionId: string, workspacePath: string, entryId: string): Undef<AgentEntry> {
+    const { entries, leafId } = this.entries(sessionId, workspacePath)
+    const discarded = tipPath(entries, leafId).find((entry) => entry.id === entryId)
+    if (discarded === undefined) return undefined
+    return this.appendAt(
+      { sessionId, workspacePath, entry: { type: 'retry', usage: recordOf(discarded.message).usage } },
+      discarded.parentId,
+    )
+  }
+
+  private appendAt(
+    options: { sessionId: string; workspacePath: string; entry: NewEntry },
+    parentId?: Null<string>,
+  ): AgentEntry {
     const directory = sessionDirectoryFor(this.root, options.workspacePath)
     mkdirSync(directory, { recursive: true })
     const file = findSessionFile(directory, options.sessionId) ?? this.createFile(options)
@@ -186,9 +212,10 @@ export class SessionStore {
     const entry: AgentEntry = {
       type: options.entry.type,
       id: randomBytes(4).toString('hex'),
-      parentId: this.tips.get(options.sessionId) ?? null,
+      parentId: parentId === undefined ? (this.tips.get(options.sessionId) ?? null) : parentId,
       timestamp: new Date().toISOString(),
       ...(options.entry.message === undefined ? {} : { message: options.entry.message }),
+      ...(options.entry.usage === undefined ? {} : { usage: options.entry.usage }),
       ...(options.entry.summary === undefined ? {} : { summary: options.entry.summary }),
       ...(options.entry.firstKeptEntryId === undefined ? {} : { firstKeptEntryId: options.entry.firstKeptEntryId }),
     }

@@ -1,6 +1,6 @@
 /**
  * The compaction plugin (ADR-0025): coding-agent's policy on Alpha's base. After a run that was
- * not aborted, the context is estimated from the assistant usage the transcript carries; when it
+ * succeeded, the context is estimated from the assistant usage the transcript carries; when it
  * nears the model's window — reserve and keep-recent tokens — the messages beyond the kept tail
  * are summarized through the model, the live agent is rewritten around the summary, the store
  * takes a compaction entry naming where keeping begins, and the window hears `history_compacted`
@@ -53,7 +53,7 @@ export function createCompactionPlugin(ports: CompactionPluginPorts): Compaction
   return {
     name: 'compaction',
     afterRun: async (outcome) => {
-      if (outcome.aborted) return undefined
+      if (outcome.aborted || outcome.failed !== undefined) return undefined
       await compactNow(ports, settings, false)
       return undefined
     },

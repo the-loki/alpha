@@ -122,16 +122,7 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return { ...state, messages: [...state.messages, event.message] }
 
     case 'assistant_message_started':
-      return {
-        ...state,
-        streaming: {
-          id: event.messageId,
-          role: 'assistant',
-          blocks: [],
-          createdAt: event.createdAt,
-          status: 'streaming',
-        },
-      }
+      return startStreaming(state, event.messageId, event.createdAt)
 
     case 'assistant_text_delta':
       return appendDelta(state, event.messageId, 'text', event.delta, event.at)
@@ -141,6 +132,9 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
 
     case 'assistant_message_finished':
       return finishStreaming(state, event.interrupted)
+
+    case 'assistant_message_discarded':
+      return discardAssistantMessage(state, event.messageId)
 
     case 'turn_finished':
       return closeTurn({ ...state, status: 'idle', approvals: [] })
@@ -154,6 +148,21 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
 
     default:
       return reduceGateEvent(state, event)
+  }
+}
+
+function startStreaming(state: TranscriptState, messageId: string, createdAt: number): TranscriptState {
+  return {
+    ...state,
+    streaming: { id: messageId, role: 'assistant', blocks: [], createdAt, status: 'streaming' },
+  }
+}
+
+function discardAssistantMessage(state: TranscriptState, messageId: string): TranscriptState {
+  return {
+    ...state,
+    messages: state.messages.filter((message) => message.id !== messageId),
+    streaming: state.streaming?.id === messageId ? undefined : state.streaming,
   }
 }
 

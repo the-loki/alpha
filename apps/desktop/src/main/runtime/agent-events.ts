@@ -153,6 +153,7 @@ export class AgentEventTranslator {
     // lane take what I steered it with".
     if (message.role === 'user') return [this.userSaid(message)]
     if (message.role !== 'assistant') return []
+    this.usage = EMPTY_USAGE
     const opened = {
       conversationId: this.conversationId,
       type: 'assistant_message_started' as const,

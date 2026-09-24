@@ -67,6 +67,8 @@ export class ConversationRuntime {
   private sessionId: string
   private readonly workspacePath: string
   private inFlight: Undef<Promise<void>>
+  private lastFailedEntryId: Undef<string>
+  private lastFailedMessageId: Undef<string>
   /**
    * The whole of the run now ending — retries included — so the next one starts after it. This is
    * the one answer to "is a run in flight": assigned when a prompt is asked for, gone when the
@@ -107,6 +109,8 @@ export class ConversationRuntime {
     // One run at a time: the agent refuses to overlap them, so a prompt sent while the last one is
     // still settling waits for it, and then runs.
     await this.driving
+    this.lastFailedEntryId = undefined
+    this.lastFailedMessageId = undefined
     const images = imagesOf(attachments) ?? []
     this.inFlight = agent.prompt(text, images)
     this.driving = this.drive()
@@ -226,7 +230,7 @@ export class ConversationRuntime {
     if (agent === undefined) return
     try {
       await this.inFlight
-      await runAfterRunHooks(agent, this.plugins)
+      await runAfterRunHooks(agent, this.plugins, () => this.branchPastFailedAttempt())
     } catch (error) {
       // A throw's own words are quoted as they came, and a throw with nothing to say is the same
       // failure as a message with nothing to say: the sentence for that case is the window's, in
@@ -241,7 +245,16 @@ export class ConversationRuntime {
   /** Every agent event: persisted as it arrived, then translated for the window. */
   private onEvent(event: AgentEvent): void {
     this.persist(event)
-    for (const translated of this.translator.translate(event)) this.emit(translated)
+    for (const translated of this.translator.translate(event)) {
+      if (
+        event.type === 'message_end' &&
+        recordOf(event.message).stopReason === 'error' &&
+        translated.type === 'assistant_message_finished'
+      ) {
+        this.lastFailedMessageId = translated.messageId
+      }
+      this.emit(translated)
+    }
   }
 
   /**
@@ -253,7 +266,10 @@ export class ConversationRuntime {
   private persist(event: AgentEvent): void {
     if (event.type === 'message_end') {
       const role = recordOf(event.message).role
-      if (role === 'user' || role === 'assistant') this.append({ type: 'message', message: event.message })
+      if (role === 'user' || role === 'assistant') {
+        const entry = this.append({ type: 'message', message: event.message })
+        if (role === 'assistant' && recordOf(event.message).stopReason === 'error') this.lastFailedEntryId = entry.id
+      }
     }
     if (event.type === 'tool_execution_end') {
       const result = recordOf(event.result)
@@ -274,6 +290,23 @@ export class ConversationRuntime {
 
   private append(entry: NewEntry): ReturnType<SessionStore['append']> {
     return this.store.append({ sessionId: this.sessionId, workspacePath: this.workspacePath, entry })
+  }
+
+  private branchPastFailedAttempt(): void {
+    const entryId = this.lastFailedEntryId
+    if (entryId === undefined) return
+    if (this.store.branchBefore(this.sessionId, this.workspacePath, entryId) === undefined) {
+      throw new Error('Failed retry entry is missing from the session path')
+    }
+    if (this.lastFailedMessageId !== undefined) {
+      this.emit({
+        conversationId: this.conversationId,
+        type: 'assistant_message_discarded',
+        messageId: this.lastFailedMessageId,
+      })
+    }
+    this.lastFailedEntryId = undefined
+    this.lastFailedMessageId = undefined
   }
 
   /** The agent continues from the copy: its context becomes the copy's history. */

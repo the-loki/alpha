@@ -209,6 +209,7 @@ export type RuntimeEvent =
   | { conversationId: string; type: 'assistant_text_delta'; messageId: string; delta: string; at: number }
   | { conversationId: string; type: 'assistant_thinking_delta'; messageId: string; delta: string; at: number }
   | { conversationId: string; type: 'assistant_message_finished'; messageId: string; interrupted: boolean }
+  | { conversationId: string; type: 'assistant_message_discarded'; messageId: string }
   | { conversationId: string; type: 'turn_finished' }
   | {
       conversationId: string

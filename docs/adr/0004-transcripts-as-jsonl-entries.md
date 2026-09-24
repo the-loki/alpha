@@ -41,6 +41,11 @@ not: the choice was whether Alpha parsed it, or asked the agent to read it.
 - A transcript is the path from the branch tip back to its root, not the whole log. The list keeps
   answers a later edit or regenerate replaced; those are history, and the module that walks the
   path is the only place that knows the difference (#60).
+- A retried provider failure stays in the append-only log but leaves the active path: when the
+  after-run hooks choose to retry, a `retry` entry points to the failed message's parent. The
+  next attempt builds on that entry. A recovered conversation reopens without the discarded
+  failure; a retry that exhausts its budget keeps the final failed message on the active path. The
+  marker carries the discarded call's usage, so reopening keeps the actual amount spent.
 - A session an older Alpha wrote is in a format this reader refuses, so it is **copied** into one
   the reader opens, under the conversation's own id, and the old file is left untouched
   (`packages/sessions/src/legacy-sessions.ts`). Nothing is migrated by rewriting. The import runs

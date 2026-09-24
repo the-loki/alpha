@@ -114,6 +114,22 @@ describe('[domain] reduceTranscript', () => {
     expect(state.streaming).toBeUndefined()
   })
 
+  it('removes only the assistant message whose failed attempt was retried', () => {
+    const state = reduce([
+      event({ type: 'turn_started' }),
+      event({ type: 'assistant_message_started', messageId: 'failed', createdAt: 20 }),
+      event({ type: 'assistant_text_delta', messageId: 'failed', delta: 'discarded', at: 30 }),
+      event({ type: 'assistant_message_finished', messageId: 'failed', interrupted: false }),
+      event({ type: 'assistant_message_started', messageId: 'kept', createdAt: 40 }),
+      event({ type: 'assistant_text_delta', messageId: 'kept', delta: 'answer', at: 50 }),
+      event({ type: 'assistant_message_finished', messageId: 'kept', interrupted: false }),
+      event({ type: 'assistant_message_discarded', messageId: 'failed' }),
+    ])
+
+    expect(state.messages.map((message) => message.id)).toEqual(['kept'])
+    expect(state.status).toBe('running')
+  })
+
   it('marks an interrupted message as interrupted rather than complete', () => {
     const state = reduce([
       event({ type: 'assistant_message_started', messageId: 'a1', createdAt: 20 }),
