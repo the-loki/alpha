@@ -123,17 +123,22 @@ async function askOnce(models: Models, model: Model<Api>): Promise<ProviderTestO
     messages: [{ role: 'user', content: TEST_PROMPT, timestamp: Date.now() }],
   }
   let timer: Undef<ReturnType<typeof setTimeout>>
+  const timeoutError = new Error('Provider test timed out')
   const timeout = new Promise<never>((_, stop) => {
-    timer = setTimeout(
-      () => stop(new Error(`The provider did not answer within ${TEST_TIMEOUT_MS / 1000} seconds.`)),
-      TEST_TIMEOUT_MS,
-    )
+    timer = setTimeout(() => stop(timeoutError), TEST_TIMEOUT_MS)
   })
   try {
     const answer = await Promise.race([models.completeSimple(model, question), timeout])
     return answerOf(answer)
   } catch (error) {
-    return { ok: false, said: error instanceof Error ? error.message : 'The provider did not answer.' }
+    if (error === timeoutError) return { ok: false, failure: { kind: 'timeout', seconds: TEST_TIMEOUT_MS / 1000 } }
+    return {
+      ok: false,
+      failure: {
+        kind: 'request-failed',
+        ...(error instanceof Error && error.message !== '' ? { said: error.message } : {}),
+      },
+    }
   } finally {
     clearTimeout(timer)
   }
@@ -142,12 +147,12 @@ async function askOnce(models: Models, model: Model<Api>): Promise<ProviderTestO
 /** What the provider said, or why it said nothing. */
 function answerOf(answer: AssistantMessage): ProviderTestOutcome {
   if (answer.errorMessage !== undefined && answer.errorMessage !== '') {
-    return { ok: false, said: `The provider did not answer: ${answer.errorMessage}` }
+    return { ok: false, failure: { kind: 'provider-error', said: answer.errorMessage } }
   }
   const said = answer.content
     .filter((part): part is TextContent => part.type === 'text')
     .map((part) => part.text)
     .join('')
     .trim()
-  return said === '' ? { ok: false, said: 'The provider answered with nothing.' } : { ok: true, said }
+  return said === '' ? { ok: false, failure: { kind: 'empty-answer' } } : { ok: true, said }
 }

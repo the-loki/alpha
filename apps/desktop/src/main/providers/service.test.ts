@@ -1,11 +1,12 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { aModel, scriptedModels, textStream } from '@alpha/agent/testing'
+import { aModel, errorStream, scriptedModels, textStream } from '@alpha/agent/testing'
 import type { ProviderApi, ProviderAuthStyle, ProviderModelDefinition } from '@alpha/domain'
 import { CredentialVault, ProviderStore } from '@alpha/providers'
 import type { Models } from '@earendil-works/pi-ai'
-import { afterEach, describe, expect, it } from 'vitest'
+import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { closeScriptedWires, startScriptedWire } from './scripted-wire.ts'
 import { ProviderService } from './service.ts'
 
@@ -147,6 +148,48 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
     expect(await providers.test('local', 'a')).toEqual({ ok: true, said: 'ready' })
   })
 
+  it('keeps a provider error separate from Alpha’s explanation', async () => {
+    const failing = () =>
+      scriptedModels([() => errorStream('key rejected', 'error')], [{ ...aModel(), id: 'a', provider: 'local' }])
+    const { service: providers } = service(failing)
+    providers.save(endpoint)
+    providers.saveModels('local', [model('a')])
+    providers.setCredential('local', 'sk-test')
+
+    expect(await providers.test('local', 'a')).toEqual({
+      ok: false,
+      failure: { kind: 'provider-error', said: 'key rejected' },
+    })
+  })
+
+  it('names an empty answer as a case', async () => {
+    const empty = () => scriptedModels([() => textStream('')], [{ ...aModel(), id: 'a', provider: 'local' }])
+    const { service: providers } = service(empty)
+    providers.save(endpoint)
+    providers.saveModels('local', [model('a')])
+    providers.setCredential('local', 'sk-test')
+
+    expect(await providers.test('local', 'a')).toEqual({ ok: false, failure: { kind: 'empty-answer' } })
+  })
+
+  it('names a provider that never answers as a timeout case', async () => {
+    vi.useFakeTimers()
+    try {
+      const hanging = () =>
+        scriptedModels([() => new AssistantMessageEventStream()], [{ ...aModel(), id: 'a', provider: 'local' }])
+      const { service: providers } = service(hanging)
+      providers.save(endpoint)
+      providers.saveModels('local', [model('a')])
+      providers.setCredential('local', 'sk-test')
+
+      const result = providers.test('local', 'a')
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(await result).toEqual({ ok: false, failure: { kind: 'timeout', seconds: 15 } })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   // Alpha's own refusals are cases, not sentences: the panel has the words for each one, in the
   // language the panel is in, which is what a sentence composed here could never be (#199).
   it('refuses a provider with no key, without dialing, as a case', async () => {
@@ -186,8 +229,7 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
 
     const answer = await providers.test('local', 'a')
     expect(answer.ok).toBe(false)
-    // A provider that could not be reached says so in its own words, quoted: no case names this one.
-    expect(answer.ok ? '' : 'said' in answer ? answer.said : '').toContain('did not answer')
+    expect(answer.ok ? undefined : 'failure' in answer ? answer.failure.kind : undefined).toMatch(/failed|error/)
   })
 })
 

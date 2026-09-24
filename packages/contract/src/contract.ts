@@ -171,13 +171,19 @@ export interface ProvidersSnapshotMessage {
 }
 
 /**
- * What one provider test answered: what the model said, or why Alpha never asked it. Which it is, is
- * the shape rather than a flag beside it — a refusal is Alpha's own case, whose sentence is the
- * window's, in the window's language, and what a provider said is quoted as it came (ADR-0010).
+ * What one provider test answered: model text, a preflight refusal, or a failed request. Alpha's
+ * own cases get their words in the window's language; external error text travels separately and
+ * is quoted as it came (ADR-0010).
  */
+export type ProviderTestFailure =
+  | { kind: 'timeout'; seconds: number }
+  | { kind: 'request-failed'; said?: string }
+  | { kind: 'provider-error'; said: string }
+  | { kind: 'empty-answer' }
+
 export type ProviderTestOutcome =
   | { ok: true; said: string }
-  | { ok: false; said: string }
+  | { ok: false; failure: ProviderTestFailure }
   | { ok: false; refusal: TurnRefusal }
 
 /** Browser access as the settings page shows it: what is stored, and what the server makes of it. */
