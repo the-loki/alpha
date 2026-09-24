@@ -111,6 +111,26 @@ describe('[conversations] the runner that moves the queue', () => {
     expect(textsOf(events)).toEqual(['waiting its turn'])
   })
 
+  it('lets a steer go when the lane takes it, and keeps the one it did not take', async () => {
+    const { events, runner } = harness(async () => undefined, 'running')
+
+    runner.steerSent('c1', 'one')
+    runner.steerSent('c1', 'two')
+    // The lane drains one steering message per turn boundary and the run says so by producing that
+    // message: the first is in the conversation from then on. The second is still waiting — it is
+    // taken at the next boundary — so it stays on the list.
+    runner.steerTaken('c1', 'one')
+    expect(textsOf(events)).toEqual(['two'])
+
+    // A message nobody steered is nobody's: the run producing the prompt's own message leaves the
+    // list alone, which is what keeps this from clearing a row that was really still waiting.
+    runner.steerTaken('c1', 'a question of my own')
+    expect(textsOf(events)).toEqual(['two'])
+
+    runner.steerTaken('c1', 'two')
+    expect(textsOf(events)).toEqual([])
+  })
+
   it('hands the head to the send port and empties itself', async () => {
     const sent: string[] = []
     const { events, runner } = harness(async (_conversationId, text) => void sent.push(text))

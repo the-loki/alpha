@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { textOfContent, userBlocksOf } from './text.ts'
+import { textOfBlocks, textOfContent, userBlocksOf } from './text.ts'
 
 describe('[domain] user content as blocks', () => {
   it('keeps a picture next to the words it came with', () => {
@@ -32,5 +32,16 @@ describe('[domain] user content as blocks', () => {
         { type: 'text', text: 'b' },
       ]),
     ).toBe('a\nb')
+  })
+
+  it('reads the words back out of a message that was announced as blocks', () => {
+    expect(textOfBlocks(userBlocksOf('one more thing'))).toBe('one more thing')
+    expect(
+      textOfBlocks([
+        { kind: 'attachment', mimeType: 'image/png', data: 'AA==' },
+        { kind: 'text', text: 'both of these' },
+      ]),
+    ).toBe('both of these')
+    expect(textOfBlocks([{ kind: 'attachment', mimeType: 'image/png', data: 'AA==' }])).toBe('')
   })
 })

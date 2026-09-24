@@ -220,6 +220,9 @@ describe('[runtime] the policies an opening assembles', () => {
     expect(kinds.filter((type) => type === 'turn_started')).toHaveLength(1)
     expect(kinds.filter((type) => type === 'turn_finished')).toHaveLength(1)
     expect(kinds).not.toContain('run_failed')
+    // The retry continues the run rather than being given the message again, so the one question
+    // is in the conversation once: a second user message here would be the same words said twice.
+    expect(kinds.filter((type) => type === 'user_message')).toHaveLength(1)
   })
 
   // A provider that fails without a sentence of its own is still a failed run, and both ends of it

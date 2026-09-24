@@ -183,6 +183,7 @@ export const ZH = {
   'message.edit': '编辑',
   'message.editLabel': '编辑这条消息',
   'message.attachment': '附加的图片',
+  'message.transcript': '对话内容',
   'composer.attach': '附加图片',
   'composer.attached': '已附加的图片',
   'composer.removeAttachment': '移除 {name}',

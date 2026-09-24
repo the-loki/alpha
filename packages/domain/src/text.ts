@@ -37,3 +37,15 @@ export function userBlocksOf(content: unknown): ChatBlock[] {
   }
   return blocks
 }
+
+/**
+ * What a message of blocks says, which is the other way round from `userBlocksOf`: the words of a
+ * message that was announced as blocks rather than as content. A message whose words were joined
+ * into one block answers with them as they were.
+ */
+export function textOfBlocks(blocks: ChatBlock[]): string {
+  return blocks
+    .flatMap((block) => (block.kind === 'text' ? [block.text] : []))
+    .filter((text) => text !== '')
+    .join('\n')
+}

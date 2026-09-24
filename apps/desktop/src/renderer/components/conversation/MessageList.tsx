@@ -1,5 +1,6 @@
 import { type TranscriptState, visibleMessages } from '@alpha/domain'
 import { createMemo, Index } from 'solid-js'
+import { useText } from '../../stores/shell.ts'
 import { ApprovalCard } from './ApprovalCard.tsx'
 import { MessageView } from './MessageView.tsx'
 
@@ -16,12 +17,16 @@ const userIndex = (messages: { role: string }[], index: number): number =>
  */
 export function MessageList(props: { transcript: TranscriptState }) {
   const messages = createMemo(() => visibleMessages(props.transcript))
+  const t = useText()
 
   return (
     // The reader's words come in as a slip laid in a well, and the work that answers them —
     // thinking, tool calls, the answer — is written on the page itself, in the text voice. The
     // page fills the window: prose, code, tables and tool lines all start and end on its edges.
-    <div class="flex flex-col">
+    // It is the conversation, named so it can be found: not the whole page — the composer and its
+    // rows for what waits are not part of it — and not a live region, which is what `role="log"`
+    // would make of it: a screen reader would read every delta and every card out as it appeared.
+    <section aria-label={t('message.transcript')} class="flex flex-col">
       <Index each={messages()}>
         {(message, index) => (
           // A turn opens with the reader's own words and everything after it is the work done
@@ -42,6 +47,6 @@ export function MessageList(props: { transcript: TranscriptState }) {
           </div>
         )}
       </Index>
-    </div>
+    </section>
   )
 }

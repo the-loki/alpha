@@ -181,11 +181,18 @@ test('a message sent with Steer arrives inside the running turn, not after it', 
   await window.getByRole('button', { name: 'Steer' }).click()
 
   await expect(window.getByRole('main').getByText('The steered answer.')).toBeVisible({ timeout: 20_000 })
-  // Steering is a message, not a queue entry: it is in the transcript, and nothing is left waiting.
-  const transcript = await window.getByRole('main').innerText()
-  expect(transcript).toContain('actually, this instead')
-  expect(transcript).toContain('The first answer')
+  // Steering is a message, not a queue entry: it is in the conversation itself, and nothing is left
+  // waiting. The transcript is what is read, not the page around it — the composer's own rows carry
+  // the same words while a message waits, which is why the last assertion waits for the turn too.
+  const conversation = window.getByRole('region', { name: 'The conversation' })
+  await expect(conversation).toContainText('actually, this instead')
+  await expect(conversation).toContainText('The first answer')
   await expect(window.getByRole('list', { name: 'Queued messages' })).toHaveCount(0)
+
+  // And it stays there once the turn is over: the strip empties, the conversation does not.
+  await expect(window.getByRole('button', { name: 'Steer' })).toHaveCount(0, { timeout: 20_000 })
+  await expect(conversation).toContainText('actually, this instead')
+  await expect(conversation).toContainText('The steered answer.')
 
   await app.close()
 })

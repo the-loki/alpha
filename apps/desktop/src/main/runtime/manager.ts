@@ -20,6 +20,7 @@ import {
   type RuntimeEvent,
   servesModel,
   type ThinkingLevel,
+  textOfBlocks,
 } from '@alpha/domain'
 import {
   type ApprovalAnswer,
@@ -299,6 +300,9 @@ export class RuntimeManager {
    */
   private observe(event: RuntimeEvent): void {
     this.books.observe(event)
+    // A user message the run produced is the lane taking what it was steered with: the row that
+    // listed it stops waiting, because it is in the conversation now.
+    if (event.type === 'user_message') this.queue.steerTaken(event.conversationId, textOfBlocks(event.message.blocks))
     if (event.type === 'turn_finished' || event.type === 'run_failed') this.queue.steerCleared(event.conversationId)
     if (event.type === 'run_failed') this.queue.stop(event.conversationId)
     if (event.type === 'turn_finished') void this.queue.flush(event.conversationId)

@@ -142,14 +142,31 @@ export class QueueRunner {
   }
 
   /**
-   * A message sent into the turn that is running. It is listed for as long as that turn lasts: the
-   * lane drains one steering message per turn boundary and writes it into the conversation, but it
-   * says nothing when it does — pi's agent has no event for it — so the honest thing the window can
-   * be told is that this turn was steered with it, until the turn is over.
+   * A message sent into the turn that is running. It is listed until the lane takes it: the lane
+   * drains one steering message per turn boundary, and it says so when it does — the message comes
+   * back as a message of the run — which is what `steerTaken` is told.
    */
   public steerSent(conversationId: string, text: string): void {
     const steers = this.steers.get(conversationId) ?? []
     this.steers.set(conversationId, [...steers, { entryId: crypto.randomUUID(), text, kind: 'steer' }])
+    this.emit(conversationId)
+  }
+
+  /**
+   * The lane took one: it is in the conversation now, so it is no longer waiting for anything, and
+   * the first steer still listed that said this is what it took. What is left on the list is what
+   * has not been taken yet — in `one-at-a-time` mode that is a second steer sent before the first
+   * was drained, which is really still waiting.
+   */
+  public steerTaken(conversationId: string, text: string): void {
+    const steers = this.steers.get(conversationId)
+    if (steers === undefined) return
+    const at = steers.findIndex((steer) => steer.text === text)
+    if (at === -1) return
+    this.steers.set(
+      conversationId,
+      steers.filter((_steer, index) => index !== at),
+    )
     this.emit(conversationId)
   }
 

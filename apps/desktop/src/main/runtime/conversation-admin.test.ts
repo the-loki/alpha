@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
-import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent } from '@alpha/domain'
+import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent, textOfBlocks } from '@alpha/domain'
 import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
@@ -537,9 +537,48 @@ describe('[runtime] what waits for the running turn, and for the one after it', 
     expect(waitingOf(events)).toEqual(['one more thing', 'and this'])
 
     await waitedFor(events, 'turn_finished')
+    // The boundary came before the turn ended: the lane took the first steer into the conversation
+    // — it comes back as a message of the run — and the strip was told, so the taken one stopped
+    // waiting while the second one still did. Read as the strip it was given at that moment rather
+    // than as the last one, because the end of the turn clears the list itself.
+    const taken = events.findIndex(
+      (event) => event.type === 'user_message' && textOfBlocks(event.message.blocks) === 'one more thing',
+    )
+    expect(taken).toBeGreaterThan(0)
+    const told = events.slice(taken).find((event) => event.type === 'queue_updated')
+    expect(told?.type === 'queue_updated' ? told.queued.map((row) => row.text) : []).toEqual(['and this'])
+
     // Whatever became of them, nothing is held for a turn that is over.
     expect(waitingOf(events)).toEqual([])
     await manager.closeAll()
+  })
+
+  it('writes the steered message into the conversation, where the turn it drove it can be read back', async () => {
+    const { manager, workspace, dataDirectory, events } = freshManager({
+      slowReply: { text: 'The first answer.', afterMs: 200 },
+      replies: ['The first answer.', 'The steered answer.'],
+    })
+    const created = await manager.create(workspace)
+    const id = created.conversation.id
+
+    void manager.prompt(id, 'a long task')
+    await waitedFor(events, 'assistant_message_started')
+    await manager.steer(id, 'one more thing')
+    await waitedFor(events, 'turn_finished')
+
+    // The lane takes a steering message at a turn boundary and injects it as a message of the run:
+    // it is what the person said, so it belongs in the conversation between the two answers. The
+    // strip is not a record — it lists what has not been taken — and this is the read a window
+    // reopening the conversation makes, as the next assertion says from another process.
+    const said = ['a long task', 'The first answer.', 'one more thing', 'The steered answer.']
+    expect(texts(manager.reads.transcript(id))).toEqual(said)
+    await manager.closeAll()
+
+    // Nothing of this manager is left: what the steered message was written to is the session, so a
+    // relaunch that reads the same data directory reads the same conversation, steer included.
+    const reopened = freshManagerAt(dataDirectory)
+    expect(texts(reopened.manager.reads.transcript(id))).toEqual(said)
+    await reopened.manager.closeAll()
   })
 
   // Cancel is a steer's one action — it cannot be edited, because it belongs to the turn already —

@@ -185,6 +185,7 @@ export const EN = {
   'message.edit': 'Edit',
   'message.editLabel': 'Edit the message',
   'message.attachment': 'Attached image',
+  'message.transcript': 'The conversation',
   'composer.attach': 'Attach a picture',
   'composer.attached': 'Attached pictures',
   'composer.removeAttachment': 'Remove {name}',

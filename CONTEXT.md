@@ -118,8 +118,10 @@ What the user typed while the agent was working and meant to send *into* it: it 
 running turn at its next checkpoint, and it is the runtime's, not the workbench's. A steered
 message cannot be edited — by the time you would edit it, it belongs to the turn — and it can only
 be cancelled, which asks the lane to drop what it still holds. The window lists the steers a turn
-was sent for as long as that turn lasts. Avoid: *interrupt* (that is stopping the agent, which is a
-different action on a different control).
+was sent for as long as that turn lasts; once the lane has taken one, it is a message of the
+conversation like any other, said where the person said it, and the strip is only about what has
+not been taken. Avoid: *interrupt* (that is stopping the agent, which is a different action on a
+different control).
 
 *Queued* and *steered* are the two answers to "what happens to what I type while the agent is
 working?", and they are deliberately not synonyms: one changes the next turn, the other changes

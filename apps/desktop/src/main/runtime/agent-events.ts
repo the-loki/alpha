@@ -97,7 +97,6 @@ export class AgentEventTranslator {
     if (event.type === 'message_start') return this.startMessage(event)
     if (event.type === 'message_update') return this.update(event)
     if (event.type === 'message_end') return this.endMessage(event)
-    if (event.type === 'entry_appended') return this.appended(event)
     if (event.type === 'tool_execution_start') return [this.toolStarted(event)]
     if (event.type === 'tool_execution_update') return [this.toolOutput(event)]
     if (event.type === 'tool_execution_end') return [this.toolFinished(event)]
@@ -141,6 +140,11 @@ export class AgentEventTranslator {
 
   private startMessage(event: RpcLikeEvent): RuntimeEvent[] {
     const message = recordOf(event.message)
+    // The person's message is a message of the run like any other, and pi says so when the run
+    // takes it: the prompt's own at the start, a steering message at a turn boundary mid-run.
+    // Nothing else is emitted at that moment, so this is also the only answer to "when did the
+    // lane take what I steered it with".
+    if (message.role === 'user') return [this.userSaid(message)]
     if (message.role !== 'assistant') return []
     const opened = {
       conversationId: this.conversationId,
@@ -203,26 +207,22 @@ export class AgentEventTranslator {
   }
 
   /**
-   * The person's own message, which pi records rather than streams: it arrives as the entry that
-   * was added to the session, complete, and it is what the window draws on the left.
+   * The person's own message, which pi records rather than streams: it arrives whole, and it is
+   * what the window draws on the left. Its id is this file's, not the session's: the session's
+   * entry is written from the message's end, this from its start, and nothing correlates the two.
    */
-  private appended(event: RpcLikeEvent): RuntimeEvent[] {
-    const entry = recordOf(event.entry)
-    const message = recordOf(entry.message)
-    if (entry.type !== 'message' || message.role !== 'user') return []
-    return [
-      {
-        conversationId: this.conversationId,
-        type: 'user_message',
-        message: {
-          id: typeof entry.id === 'string' ? entry.id : crypto.randomUUID(),
-          role: 'user',
-          blocks: userBlocksOf(message.content),
-          createdAt: typeof message.timestamp === 'number' ? message.timestamp : Date.now(),
-          status: 'complete',
-        },
+  private userSaid(message: Record<string, unknown>): RuntimeEvent {
+    return {
+      conversationId: this.conversationId,
+      type: 'user_message',
+      message: {
+        id: crypto.randomUUID(),
+        role: 'user',
+        blocks: userBlocksOf(message.content),
+        createdAt: typeof message.timestamp === 'number' ? message.timestamp : Date.now(),
+        status: 'complete',
       },
-    ]
+    }
   }
 
   private toolStarted(event: RpcLikeEvent): RuntimeEvent {

@@ -7,13 +7,22 @@ running. Two words, two mechanisms, and the reason is that only one of them can 
 
 ## Superseded in part
 
-Three details of the mechanism have moved on; the decision itself is what stands.
+Four details of the mechanism have moved on; the decision itself is what stands.
 
 The steered half is **a workbench list** now, not the translation layer's. The translator's branch
 that turned a `queue_update` event into steer rows was fed by nothing — Alpha assembles pi's
 `Agent`, and that event belongs to the harness lane, which Alpha does not use — so what a running
 turn was steered with is kept beside the queued messages, in `QueueRunner`, which is the one place
 `queue_updated` is emitted from.
+
+A steered message is **a message of the conversation** once the lane takes it (#191). pi hands the
+run every message it is given — the prompt's own and a steering message alike — as a message of the
+run, with `message_start`, and nothing else is emitted at that moment. Alpha translates that into
+the window's `user_message` and writes the entry to the session, so what a person steered with is
+in the conversation from then on: the strip shows what has *not* been taken yet, and the transcript
+is where a taken steer lives. Before this, the translated event had one producer — the prompt
+itself, which announced and wrote its own message — so a steer was drawn on the strip and nowhere
+else, and because no entry was written for it, reopening the conversation lost it.
 
 The lane's drain mode defaults to **`one-at-a-time`**, not `all` as the Context below says: Alpha
 sets no `steeringMode`, and pi's `PendingMessageQueue` defaults to one. A run therefore takes one
@@ -56,8 +65,9 @@ it belongs to the conversation, so switching conversations and coming back finds
 
 Steering is the one thing the runtime can do that the workbench cannot fake: inject a message into
 the turn already running. It stays on the lane, uncancellable-by-edit and deliberately so — a
-steer is already in the conversation by the time it would be edited. Its only action is Cancel,
-and the runtime can answer honestly when it is too late (`already_consumed`).
+steer is already in the conversation by the time it would be edited. Its only action is Cancel.
+The design had the runtime answer honestly when it is too late (`already_consumed`); the Superseded
+section above records that this answer was never built.
 
 **The queue pauses rather than pressing on.** A failed turn and a user pressing Stop both leave
 the remaining messages where they are and stop sending; a single Resume starts them again. A
@@ -72,8 +82,8 @@ while the window is open, so what a quit would drop is exactly what can be seen.
 
 ## Consequences
 
-- The lane's `followUp` is no longer used; the translation layer keeps steers instead (it used to
-  keep only follow-ups, which is why steered messages used to vanish from the window entirely).
+- The lane's `followUp` is no longer used; the workbench's own queue keeps steers instead, and a
+  steer the lane has taken is a message of the conversation like any other.
 - "Queued" means "will start a turn of its own", not "will join this turn". A user who wants a
   message inside the current turn has Steer for it, and the queue strip labels which is which.
 - Editing is in place and does not move the message. Reordering is not offered: the order is the

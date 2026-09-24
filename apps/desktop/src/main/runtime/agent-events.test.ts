@@ -30,6 +30,29 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
     expect(kinds(events)).toEqual(['turn_started', 'turn_finished'])
   })
 
+  it('says a user message when the run takes it, which a steered one arrives as', () => {
+    const events = translate([
+      { type: 'agent_start' },
+      { type: 'turn_start' },
+      {
+        type: 'message_start',
+        message: { role: 'user', content: [{ type: 'text', text: 'actually, this instead' }], timestamp: 7 },
+      },
+      { type: 'message_end', message: { role: 'user' } },
+      { type: 'message_start', message: { role: 'assistant' } },
+    ])
+
+    // pi records the person's message as a message like any other, and it is the only signal that
+    // says when the lane took a steering message: nothing else is emitted at that moment.
+    expect(kinds(events)).toEqual(['turn_started', 'user_message', 'assistant_message_started'])
+    const said = events[1]
+    expect(said?.type === 'user_message' ? said.message.blocks : []).toEqual([
+      { kind: 'text', text: 'actually, this instead' },
+    ])
+    expect(said?.type === 'user_message' ? said.message.createdAt : 0).toBe(7)
+    expect(said?.type === 'user_message' ? said.message.role : '').toBe('user')
+  })
+
   it('opens and closes a message around its deltas, text and thinking alike', () => {
     const events = translate([
       { type: 'message_start', message: { role: 'assistant' } },

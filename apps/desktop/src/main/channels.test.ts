@@ -46,6 +46,10 @@ const stubNetwork: NetworkPort = {
   regenerateToken: async () => stubNetwork.state(),
 }
 
+/** How many events of one kind the window was handed, which is how a test waits for the run. */
+const turns = (events: unknown[], type: string): number =>
+  events.filter((event) => (event as { type?: string }).type === type).length
+
 const ports = (
   drives: Array<() => AssistantMessageEventStream> = [() => textStream('Noted.')],
 ): ChannelPorts & { events: unknown[] } => {
@@ -143,9 +147,6 @@ const partialAssistant = (text: string, stopReason: AssistantMessage['stopReason
 })
 
 describe('[main] the queue the workbench owns', () => {
-  const turns = (events: unknown[], type: string): number =>
-    events.filter((event) => (event as { type?: string }).type === type).length
-
   it('a finished turn sends the next queued one, in order', async () => {
     const context = ports([
       slowStream('working on the first thing...', 120),
@@ -238,6 +239,9 @@ describe('[main] the channel table', () => {
       'what is wrong here',
       [{ name: 'shot.png', mimeType: 'image/png', data: 'AA==' }],
     ])
+    // The run takes the message and writes it, and answering a prompt is not waiting for that: the
+    // read below is of a conversation whose turn has started.
+    await expect.poll(() => turns(context.events, 'user_message')).toBe(1)
 
     const opened = (await CHANNELS.openConversation(context, [created.conversation.id])) as {
       messages: { blocks: unknown[] }[]
@@ -256,6 +260,7 @@ describe('[main] the channel table', () => {
       conversation: { id: string }
     }
     await CHANNELS.sendPrompt(context, [created.conversation.id, '', [{ mimeType: 'image/png', data: 'AA==' }]])
+    await expect.poll(() => turns(context.events, 'user_message')).toBe(1)
 
     const opened = (await CHANNELS.openConversation(context, [created.conversation.id])) as {
       messages: { blocks: unknown[] }[]

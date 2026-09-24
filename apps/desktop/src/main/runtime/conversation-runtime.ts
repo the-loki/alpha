@@ -24,7 +24,6 @@ import {
   recordOf,
   type ThinkingLevel,
   type Undef,
-  userBlocksOf,
 } from '@alpha/domain'
 import type { RetryDecider } from '@alpha/plugin'
 import { type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
@@ -84,7 +83,12 @@ export class ConversationRuntime {
     options.agent?.subscribe((event) => this.onEvent(event))
   }
 
-  /** Announces the message in the session first, then starts the run behind it. */
+  /**
+   * Starts the run behind the message. What the person said is not announced or written here: the
+   * run takes it as a message of its own and says so (`message_start`), which is the one moment it
+   * exists — the prompt's own message and a steering message arrive through the same door, and the
+   * window and the record both come from it.
+   */
   public async prompt(text: string, attachments?: Attachment[]): Promise<void> {
     const agent = this.agent
     if (agent === undefined) {
@@ -95,21 +99,6 @@ export class ConversationRuntime {
     // still settling waits for it, and then runs.
     await this.driving
     const images = imagesOf(attachments) ?? []
-    const entry = this.append({
-      type: 'message',
-      message: { role: 'user', content: [{ type: 'text', text }, ...images], timestamp: Date.now() },
-    })
-    this.emit({
-      conversationId: this.conversationId,
-      type: 'user_message',
-      message: {
-        id: entry.id,
-        role: 'user',
-        blocks: userBlocksOf([{ type: 'text', text }, ...images]),
-        createdAt: Date.now(),
-        status: 'complete',
-      },
-    })
     this.inFlight = agent.prompt(text, images)
     this.driving = this.drive()
   }
@@ -236,10 +225,16 @@ export class ConversationRuntime {
     for (const translated of this.translator.translate(event)) this.emit(translated)
   }
 
-  /** What the run produced, written to the session the moment it exists — the store is the record. */
+  /**
+   * What the run produced, written to the session the moment it exists — the store is the record.
+   * A message the person sent is one of them: the run takes the prompt's message and any steering
+   * message as messages of its own, so this is where both are written, and steering is recorded
+   * without this file having a second rule for it.
+   */
   private persist(event: AgentEvent): void {
-    if (event.type === 'message_end' && recordOf(event.message).role === 'assistant') {
-      this.append({ type: 'message', message: event.message })
+    if (event.type === 'message_end') {
+      const role = recordOf(event.message).role
+      if (role === 'user' || role === 'assistant') this.append({ type: 'message', message: event.message })
     }
     if (event.type === 'tool_execution_end') {
       const result = recordOf(event.result)
