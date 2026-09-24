@@ -46,6 +46,19 @@ is deliberately not the user-facing word.
 One agent loop iteration: one model call plus every tool execution it requested. A conversation
 is a sequence of turns.
 
+### Turn Refusal
+
+Why a turn did not start. It is Alpha's own case — the conversation has no model, the provider does
+not serve the one it chose, a key is missing or unreadable, a picture is handed to a model that takes
+none — and it travels as a case rather than as a sentence, because the words belong to the dictionary
+in the window's language (ADR-0010). A turn refusal is not a failure: nothing ran, so there is
+nothing to retry, and nothing a provider said is ever one — those words are quoted as they came.
+
+Say *turn refusal* for this and *refusal* for the other kind, which is a run with nobody watching
+turning down a call that would have asked (ADR-0012): the gate refuses **calls**, Alpha refuses
+**turns**, and the two are counted in different places. Avoid: *error* (the word for anything that
+went wrong, a provider's included).
+
 ### Message
 
 One user-visible unit in a conversation: what the user typed, what the model produced, or what a

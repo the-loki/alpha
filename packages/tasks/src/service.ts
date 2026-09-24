@@ -12,6 +12,8 @@ import {
   type TaskRun,
   type TaskSchedule,
   type TasksSnapshot,
+  type TurnRefusal,
+  type Undef,
 } from '@alpha/domain'
 import { type RunOutcome, type RunStarted, Scheduler } from './scheduler.ts'
 import type { TaskStore } from './store.ts'
@@ -25,7 +27,7 @@ export interface TaskServicePorts {
   /** One turn with nobody watching; answers with how many steps the gate had to refuse. */
   runUnattended: (conversationId: string, text: string) => Promise<number>
   /** One turn with the person who pressed "run now" watching, so the gate may ask. */
-  prompt: (conversationId: string, text: string) => Promise<void>
+  prompt: (conversationId: string, text: string) => Promise<Undef<TurnRefusal>>
   workspaceExists: (path: string) => boolean
   changed: () => void
   now: () => Date
@@ -126,8 +128,8 @@ export class TaskService {
 
   /**
    * One run: a conversation titled with the task's name, the prompt as its first message, and the
-   * outcome answered back. A run that throws is a failed run — the conversation holds the reason,
-   * and the task's history says how it went.
+   * outcome answered back. A run that throws is a failed run, and so is one whose turn never
+   * started — the conversation holds the reason, and the task's history says how it went.
    */
   private async run(
     task: ScheduledTask,
@@ -140,7 +142,9 @@ export class TaskService {
     started(conversationId)
     try {
       const refusals = attended ? 0 : await this.ports.runUnattended(conversationId, task.prompt)
-      if (attended) await this.ports.prompt(conversationId, task.prompt)
+      if (attended && (await this.ports.prompt(conversationId, task.prompt)) !== undefined) {
+        return { conversationId, outcome: 'failed', refusals: 0 }
+      }
       return { conversationId, outcome: 'ok', refusals }
     } catch {
       return { conversationId, outcome: 'failed', refusals: 0 }

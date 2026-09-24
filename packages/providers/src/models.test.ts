@@ -26,35 +26,36 @@ const index = {
 const noKeyProblem = (): undefined => undefined
 
 describe('[providers] startProblem', () => {
-  it('refuses a conversation with nothing to run on before anyone waits for a turn', () => {
-    expect(startProblem({ index: { providers: [] }, keyProblem: noKeyProblem, pictures: 0 })).toContain(
-      'No model is configured',
-    )
+  it('refuses a conversation with nothing to run on, as a case rather than a sentence', () => {
+    expect(startProblem({ index: { providers: [] }, keyProblem: noKeyProblem, pictures: 0 })).toEqual({
+      kind: 'no-model',
+    })
   })
 
   it('starts a model-less conversation on the default, when there is one', () => {
     expect(startProblem({ index, keyProblem: noKeyProblem, pictures: 0 })).toBeUndefined()
   })
 
-  it('passes the key problem through, named for the person rather than the vault', () => {
+  it('passes the key refusal through, named for the person rather than the vault', () => {
     expect(
       startProblem({
         index,
-        keyProblem: () => 'no key for local',
+        keyProblem: () => ({ kind: 'no-key', providerId: 'local' }),
         model: { providerId: 'local', modelId: 'local-7b' },
         pictures: 0,
       }),
-    ).toBe('no key for local')
+    ).toEqual({ kind: 'no-key', providerId: 'local' })
   })
 
-  it('refuses a picture for a model that cannot read one, naming it', () => {
-    const problem = startProblem({
-      index,
-      keyProblem: noKeyProblem,
-      model: { providerId: 'local', modelId: 'local-7b' },
-      pictures: 1,
-    })
-    expect(problem).toContain('local-7b does not take pictures')
+  it('refuses a picture for a model that cannot read one, naming the model the person chose', () => {
+    expect(
+      startProblem({
+        index,
+        keyProblem: noKeyProblem,
+        model: { providerId: 'local', modelId: 'local-7b' },
+        pictures: 1,
+      }),
+    ).toEqual({ kind: 'pictures', model: 'Local 7B' })
   })
 
   it('says nothing when the model is served, keyed, and takes what is attached', () => {

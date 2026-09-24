@@ -14,9 +14,10 @@ const SHOT_DIR = join(REPO_ROOT, 'test-results')
 
 test.afterEach(() => closeScriptedProviders())
 
-async function launch() {
+async function launch(options: { provider?: boolean } = {}) {
   return launchWorkbench({
     level: 'full-access',
+    provider: options.provider,
     replies: ['The nightly check found nothing.'],
   })
 }
@@ -68,6 +69,27 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await expect(rail.getByRole('button', { name: /Nightly check/ }).first()).toBeVisible()
   await window.screenshot({ path: join(SHOT_DIR, 'tasks-rail.png') })
 
+  await app.close()
+})
+
+test('a run whose turn never started is a failed run rather than a finished one', async () => {
+  // No provider at all, so the turn cannot start. A task is asked by hand, which goes straight to
+  // the manager — past the composer's own gate, which will not send without a model at all — so this
+  // is a refusal a window really can cause; it arrives as a case rather than a sentence (#199), and
+  // the history says how the run went instead of showing a run that never ran as though it had.
+  const { app, window } = await launch({ provider: false })
+
+  await window.getByRole('button', { name: 'Tasks' }).click()
+  await makeTask(window, 'Unrunnable check', 'look at the repository')
+  await window.getByRole('button', { name: 'Run now' }).click()
+
+  await window.getByRole('main').getByRole('button', { name: 'Unrunnable check' }).first().click()
+  await expect(
+    window
+      .getByRole('main')
+      .getByText(/Failed/)
+      .first(),
+  ).toBeVisible({ timeout: 20_000 })
   await app.close()
 })
 

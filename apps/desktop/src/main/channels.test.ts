@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { scriptedModels, textStream } from '@alpha/agent/testing'
 import { IPC } from '@alpha/contract'
-import type { PermissionRule } from '@alpha/domain'
+import type { PermissionRule, TurnRefusal, Undef } from '@alpha/domain'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
 import { TaskService, TaskStore } from '@alpha/tasks'
@@ -52,6 +52,8 @@ const turns = (events: unknown[], type: string): number =>
 
 const ports = (
   drives: Array<() => AssistantMessageEventStream> = [() => textStream('Noted.')],
+  /** Which key refusal the run is answered with, when the test is about a turn that cannot start. */
+  keyProblem: (providerId: string) => Undef<TurnRefusal> = () => undefined,
 ): ChannelPorts & { events: unknown[] } => {
   const dataDirectory = mkdtempSync(join(tmpdir(), 'alpha-channels-'))
   const events: unknown[] = []
@@ -79,10 +81,7 @@ const ports = (
     providers,
     store,
     // The embedded agent, driven by a provider that streams from a script (ADR-0025's test seam).
-    agent: {
-      sessionsRoot: join(dataDirectory, 'sessions'),
-      keyProblem: () => undefined,
-    },
+    agent: { sessionsRoot: join(dataDirectory, 'sessions'), keyProblem },
     models: () => scriptedModels(drives),
     emit: (event) => events.push(event),
     emitRules: (rules: PermissionRule[]) => events.push(rules),
@@ -344,6 +343,29 @@ describe('[main] the channel table', () => {
 
     expect(() => CHANNELS.setAppearance(context, [{ language: 'de' }])).toThrow(/language/)
     expect(context.store.read().language).toBe('zh')
+  })
+
+  it('answers a turn that was refused with the case, and tells the window about it too', async () => {
+    // A refusal is a value rather than a throw (#199): the window is told as an event — which is
+    // where it draws the case in its own language — and whoever asked is answered with which case it
+    // was, so a caller knows the turn never started. Nothing is thrown for something that is not a
+    // mistake by the caller.
+    const context = ports(undefined, () => ({ kind: 'no-key', providerId: 'p' }))
+    const workspace = mkdtempSync(join(tmpdir(), 'alpha-channels-refused-'))
+    const created = (await CHANNELS.createConversation(context, [workspace])) as {
+      conversation: { id: string }
+    }
+
+    const refusal = await CHANNELS.sendPrompt(context, [created.conversation.id, 'hello'])
+
+    expect(refusal).toEqual({ kind: 'no-key', providerId: 'p' })
+    expect(context.events).toContainEqual({
+      conversationId: created.conversation.id,
+      type: 'turn_refused',
+      refusal: { kind: 'no-key', providerId: 'p' },
+    })
+    expect(turns(context.events, 'turn_started')).toBe(0)
+    await context.runtime.closeAll()
   })
 
   it('runs a conversation end to end through the table alone', async () => {

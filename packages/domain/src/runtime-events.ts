@@ -115,13 +115,38 @@ export interface ChatBlockAttachment {
 
 export type ChatMessageStatus = 'streaming' | 'complete' | 'interrupted' | 'failed'
 
+/**
+ * Why a failed row failed. Which of the two it is, is the shape rather than a flag beside it, because
+ * only one of them can be true: Alpha's own refusal, which is a case the window has words for, or
+ * what whoever failed it said — a provider's own words, quoted as they came (ADR-0010). A failure
+ * that said nothing carries neither, and that third thing is the field's absence.
+ */
+export type ChatMessageFailure = { refusal: TurnRefusal } | { said: string }
+
+/** Why a turn did not start. A case rather than a sentence: the window has the words for each one,
+ * because the window is the thing that has a language, and a sentence written down here would
+ * arrive in one language whatever language that window is in (ADR-0010). What a provider or the
+ * OS said is never here — that comes back as its own words, quoted, on a failure.
+ *
+ * The names a case carries are the ones the person typed: a provider's id, a model's.
+ */
+export type TurnRefusal =
+  | { kind: 'no-model' }
+  | { kind: 'model-not-served'; providerId: string; modelId: string }
+  | { kind: 'no-provider'; providerId: string }
+  | { kind: 'key-unreadable'; providerId: string }
+  | { kind: 'no-key'; providerId: string }
+  /** A picture handed to a model whose stored definition does not take one (ADR-0018). */
+  | { kind: 'pictures'; model: string }
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   blocks: ChatBlock[]
   createdAt: number
   status: ChatMessageStatus
-  error?: string
+  /** Present on a failed row, and on no other: what it failed of, or that it failed saying nothing. */
+  failure?: ChatMessageFailure
 }
 
 /** A message the user queued behind the running turn, waiting its turn. */
@@ -236,3 +261,10 @@ export type RuntimeEvent =
    * window has the sentence for that in its own language (ADR-0010).
    */
   | { conversationId: string; type: 'run_failed'; message?: string }
+  /**
+   * A turn that did not start, and which refusal stopped it. The refusals come before the run
+   * rather than failing it at its first token (ADR-0018), so this is not a failure: nothing ran and
+   * there is nothing to retry. The words for the case are the window's, and the provider's are not
+   * in here at all.
+   */
+  | { conversationId: string; type: 'turn_refused'; refusal: TurnRefusal }

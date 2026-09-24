@@ -8,7 +8,14 @@
  */
 
 import type { ModelStatus } from '@alpha/contract'
-import { type ConversationModel, definitionOf, type ModelIndex, modelIn, type Undef } from '@alpha/domain'
+import {
+  type ConversationModel,
+  definitionOf,
+  type ModelIndex,
+  modelIn,
+  type TurnRefusal,
+  type Undef,
+} from '@alpha/domain'
 import type { ProviderStore } from './store.ts'
 
 /**
@@ -31,34 +38,29 @@ export function describeRuntime(store: ProviderStore): ModelStatus {
   return defaultModel(store) === undefined ? { kind: 'none' } : { kind: 'configured' }
 }
 
-/** The sentence for a conversation whose model is gone, in the style of the other refusals. */
-const NO_MODEL_REFUSAL = 'No model is configured for this conversation. Choose one under Settings, Models.'
-
 /**
  * Why a turn may not start, said before anyone waits for one: no model to dial, a key that cannot
  * be read, or a picture a model that cannot read one would be handed. Absent means the turn may
- * start. The refusals come before the run rather than failing it at its first token (#114,
- * ADR-0018).
+ * start. Each is a case rather than a sentence, because the words belong to the window and this is
+ * not the thing with a language (ADR-0010). The refusals come before the run rather than failing it
+ * at its first token (#114, ADR-0018).
  */
 export function startProblem(input: {
   index: ModelIndex
-  /** Why the key cannot be dialled with, in the person's terms rather than the vault's. */
-  keyProblem: (providerId: string) => Undef<string>
+  /** Which key refusal it is, named for the person rather than the vault. */
+  keyProblem: (providerId: string) => Undef<TurnRefusal>
   model?: ConversationModel
   /** How many pictures are attached to the message about to be sent. */
   pictures: number
-}): Undef<string> {
+}): Undef<TurnRefusal> {
   const chosen = modelIn(input.index, input.model)
-  if (chosen === undefined) return NO_MODEL_REFUSAL
+  if (chosen === undefined) return { kind: 'no-model' }
   const problem = input.keyProblem(chosen.providerId)
   if (problem !== undefined) return problem
-  if (input.pictures > 0 && refusesModelIndex(input.index, chosen)) {
-    return `${chosen.modelId} does not take pictures. Turn that on for it under Settings, Models.`
+  const definition = definitionOf(input.index, chosen)
+  // The model is named the way the person named it, because that is the name they wrote.
+  if (input.pictures > 0 && definition !== undefined && definition.images !== true) {
+    return { kind: 'pictures', model: definition.name }
   }
   return undefined
-}
-
-function refusesModelIndex(index: ModelIndex, chosen: ConversationModel): boolean {
-  const definition = definitionOf(index, chosen)
-  return definition !== undefined && definition.images !== true
 }

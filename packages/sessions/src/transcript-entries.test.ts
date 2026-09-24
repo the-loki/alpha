@@ -94,7 +94,7 @@ describe('[sessions] entriesToMessages', () => {
       }),
     ])
     expect(message.status).toBe('failed')
-    expect(message.error).toBe('the provider refused the key')
+    expect(message.failure).toEqual({ said: 'the provider refused the key' })
   })
 
   it('keeps no empty answer where nothing was answered', () => {

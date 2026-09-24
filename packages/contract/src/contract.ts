@@ -22,6 +22,7 @@ import type {
   TasksSnapshot,
   Theme,
   ThinkingLevel,
+  TurnRefusal,
   Undef,
   UsageTotals,
   WorkspaceRef,
@@ -169,6 +170,16 @@ export interface ProvidersSnapshotMessage {
   defaultModelChoice?: ConversationModel
 }
 
+/**
+ * What one provider test answered: what the model said, or why Alpha never asked it. Which it is, is
+ * the shape rather than a flag beside it — a refusal is Alpha's own case, whose sentence is the
+ * window's, in the window's language, and what a provider said is quoted as it came (ADR-0010).
+ */
+export type ProviderTestOutcome =
+  | { ok: true; said: string }
+  | { ok: false; said: string }
+  | { ok: false; refusal: TurnRefusal }
+
 /** Browser access as the settings page shows it: what is stored, and what the server makes of it. */
 export interface NetworkState {
   enabled: boolean
@@ -229,7 +240,12 @@ export interface AlphaBridge {
   listConversations(): Promise<ConversationSummary[]>
   createConversation(workspacePath: string): Promise<OpenedConversation>
   openConversation(id: string): Promise<OpenedConversation>
-  sendPrompt(conversationId: string, text: string, attachments?: Attachment[]): Promise<void>
+  /**
+   * Starts a turn, and answers with why it did not start when it did not: nothing means it is
+   * running. The refusal is also said to the conversation, as `turn_refused`, which is where the
+   * window draws it — the case is answered here so a caller knows the turn never began.
+   */
+  sendPrompt(conversationId: string, text: string, attachments?: Attachment[]): Promise<Undef<TurnRefusal>>
   abortRun(conversationId: string): Promise<void>
   /** Events arrive as they happen; the returned function stops listening. */
   onRuntimeEvent(listener: (event: RuntimeEvent) => void): () => void
@@ -240,7 +256,7 @@ export interface AlphaBridge {
   saveProviderModels(id: string, models: ProviderModelInput[]): Promise<ProvidersSnapshotMessage>
   setDefaultModel(chosen: DefaultModelInput): Promise<ProvidersSnapshotMessage>
   removeProvider(id: string): Promise<ProvidersSnapshotMessage>
-  testProvider(id: string, modelId: string): Promise<{ ok: boolean; message: string }>
+  testProvider(id: string, modelId: string): Promise<ProviderTestOutcome>
   /** The one direction a credential travels: towards the main process. */
   setCredential(id: string, secret: string): Promise<ProvidersSnapshotMessage>
   setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary>

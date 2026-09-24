@@ -2,7 +2,14 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
-import { type ChatMessage, type ConversationSummary, folderTree, type RuntimeEvent, textOfBlocks } from '@alpha/domain'
+import {
+  type ChatMessage,
+  type ConversationSummary,
+  folderTree,
+  type RuntimeEvent,
+  type TurnRefusal,
+  textOfBlocks,
+} from '@alpha/domain'
 import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
@@ -33,8 +40,8 @@ const providerDefinition = (images: boolean) => ({
  */
 interface FixtureOptions {
   replies?: string[]
-  /** The sentence agent.credential answers with, for the missing-key refusal (#114). */
-  keyProblem?: string
+  /** The refusal agent.keyProblem answers with, for the missing-key case (#114). */
+  keyProblem?: TurnRefusal
   /** No provider is configured at all, which is the no-model refusal. */
   noProviders?: boolean
   /** The one model takes pictures. It does not by default (ADR-0018). */
@@ -179,7 +186,9 @@ const configuredManager = (dataDirectory?: string, seed = true, events: RuntimeE
 /** Sends a message and waits for the turn it started, which is what a reading test needs. */
 const tell = async (manager: RuntimeManager, events: RuntimeEvent[], id: string, text: string): Promise<void> => {
   const ended = (): number =>
-    events.filter((event) => event.type === 'turn_finished' || event.type === 'run_failed').length
+    events.filter(
+      (event) => event.type === 'turn_finished' || event.type === 'run_failed' || event.type === 'turn_refused',
+    ).length
   const before = ended()
   await manager.prompt(id, text)
   for (let attempt = 0; attempt < 500 && ended() === before; attempt += 1) {
@@ -209,16 +218,31 @@ describe('[runtime] what a conversation runs on', () => {
     await reopened.manager.closeAll()
   })
 
-  it('refuses a model the provider does not serve', async () => {
-    const { manager, workspace } = configuredManager()
+  it('refuses a model the provider does not serve, as a case rather than a sentence', async () => {
+    const { manager, workspace, events } = configuredManager()
     const created = await manager.create(workspace)
 
-    await expect(manager.setConversationModel(created.conversation.id, 'local', 'ghost')).rejects.toThrow(
-      /does not serve/,
-    )
-    await expect(manager.setConversationModel(created.conversation.id, 'nobody', 'local-7b')).rejects.toThrow(
-      /does not serve/,
-    )
+    // The window is told which refusal it was, in the window's language (#199), and the conversation
+    // keeps the model it had: nothing was switched, so nothing is written down.
+    await expect(manager.setConversationModel(created.conversation.id, 'local', 'ghost')).resolves.toMatchObject({
+      model: { providerId: 'local', modelId: 'local-7b' },
+    })
+    await expect(manager.setConversationModel(created.conversation.id, 'nobody', 'local-7b')).resolves.toMatchObject({
+      model: { providerId: 'local', modelId: 'local-7b' },
+    })
+
+    expect(events.filter((event) => event.type === 'turn_refused')).toEqual([
+      {
+        conversationId: created.conversation.id,
+        type: 'turn_refused',
+        refusal: { kind: 'model-not-served', providerId: 'local', modelId: 'ghost' },
+      },
+      {
+        conversationId: created.conversation.id,
+        type: 'turn_refused',
+        refusal: { kind: 'model-not-served', providerId: 'nobody', modelId: 'local-7b' },
+      },
+    ])
     await manager.closeAll()
   })
 
@@ -227,9 +251,17 @@ describe('[runtime] what a conversation runs on', () => {
     const created = await manager.create(workspace)
     const picture = { mimeType: 'image/png', data: 'AAAA' }
 
-    await expect(manager.prompt(created.conversation.id, 'look at this', [picture])).rejects.toThrow(
-      /does not take pictures/,
-    )
+    // The refusal is answered to the caller and said to the conversation: the window draws the case
+    // in its own language, and a caller that runs with nobody watching only needs "it did not start".
+    await expect(manager.prompt(created.conversation.id, 'look at this', [picture])).resolves.toEqual({
+      kind: 'pictures',
+      model: 'M',
+    })
+    expect(events.find((event) => event.type === 'turn_refused')).toMatchObject({
+      type: 'turn_refused',
+      refusal: { kind: 'pictures', model: 'M' },
+    })
+    expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
     // The same message without the picture is not the boundary's business: it goes through.
     await tell(manager, events, created.conversation.id, 'look at this')
     await manager.closeAll()
@@ -249,18 +281,23 @@ describe('[runtime] what a conversation runs on', () => {
     const { manager, workspace, events } = freshManager({ noProviders: true })
     const created = await manager.create(workspace)
 
-    await expect(manager.prompt(created.conversation.id, 'hello')).rejects.toThrow(/No model/)
+    await expect(manager.prompt(created.conversation.id, 'hello')).resolves.toEqual({ kind: 'no-model' })
     expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
     await manager.closeAll()
   })
 
   it('refuses a turn before it runs when the key cannot be read (#114)', async () => {
-    const { manager, workspace, events } = freshManager({
-      keyProblem: 'Alpha has no key for p. Add one under Settings, Providers.',
-    })
+    const { manager, workspace, events } = freshManager({ keyProblem: { kind: 'no-key', providerId: 'p' } })
     const created = await manager.create(workspace)
 
-    await expect(manager.prompt(created.conversation.id, 'hello')).rejects.toThrow(/no key for p/)
+    await expect(manager.prompt(created.conversation.id, 'hello')).resolves.toEqual({
+      kind: 'no-key',
+      providerId: 'p',
+    })
+    expect(events.find((event) => event.type === 'turn_refused')).toMatchObject({
+      type: 'turn_refused',
+      refusal: { kind: 'no-key', providerId: 'p' },
+    })
     expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
     await manager.closeAll()
   })
@@ -475,13 +512,15 @@ describe('[runtime] the gate on the full path', () => {
   // visible edge is the next turn, which has to be asked about rather than refused.
   it('a run that threw stops being watched: the next turn is asked, not refused', async () => {
     const options: FixtureOptions = {
-      keyProblem: 'Alpha has no key for p. Add one under Settings, Providers.',
+      keyProblem: { kind: 'no-key', providerId: 'p' },
       toolCall: { name: 'bash', args: { command: 'echo nobody-home' } },
     }
     const { manager, workspace, events } = freshManager(options)
     const created = await manager.create(workspace)
 
-    await expect(manager.runUnattended(created.conversation.id, 'run it')).rejects.toThrow(/no key for p/)
+    // A run with nobody watching answers with the refusal rather than a sentence: the caller that
+    // schedules these only needs to know the turn did not start.
+    await expect(manager.runUnattended(created.conversation.id, 'run it')).rejects.toThrow(/no-key/)
     // Readable again, and somebody is at the window. Prompting answers when the run is under way,
     // so what tells the two cases apart is which event comes first: the ask, or the run's end.
     options.keyProblem = undefined

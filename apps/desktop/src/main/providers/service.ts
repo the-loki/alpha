@@ -14,10 +14,9 @@
  * snapshot, so the window keeps one state instead of making a call after each edit.
  */
 
-import type { ProvidersSnapshotMessage } from '@alpha/contract'
+import type { ProvidersSnapshotMessage, ProviderTestOutcome } from '@alpha/contract'
 import {
   type ConversationModel,
-  credentialRequirement,
   readModels,
   readProvider,
   type StoredProvider,
@@ -30,12 +29,6 @@ import { createModelRuntime } from '../runtime/model-runtime.ts'
 
 /** What the service answers with: the contract's own snapshot, so the window reads one shape. */
 export type ProvidersSnapshot = ProvidersSnapshotMessage
-
-export interface ProviderTestResult {
-  ok: boolean
-  /** Either what the model answered or why it could not be reached, never a generic failure. */
-  message: string
-}
 
 /** Long enough for a slow first token, short enough that the panel is not left hanging. */
 const TEST_TIMEOUT_MS = 15_000
@@ -98,21 +91,20 @@ export class ProviderService {
   }
 
   /**
-   * One real request, so a wrong key or a wrong base URL is caught here rather than mid-turn. The
-   * refusals come before any dialing: no provider, no key, a model nobody serves — each a sentence
-   * the panel can show.
+   * One real request, so a wrong key or a wrong base URL is caught here rather than mid-turn. Alpha's
+   * own refusals come before any dialing — no provider, no key, a model nobody serves — and each is a
+   * case the panel has words for, in the panel's language (ADR-0010). What the provider itself says
+   * is quoted as it came, which is why the two never travel in the same field.
    */
-  public async test(providerId: string, modelId: string): Promise<ProviderTestResult> {
+  public async test(providerId: string, modelId: string): Promise<ProviderTestOutcome> {
     const provider = this.store.find(providerId)
-    if (provider === undefined) return { ok: false, message: `No provider ${providerId}` }
-    if (!this.store.hasCredential(providerId)) {
-      return { ok: false, message: credentialRequirement({ hasCredential: false }).reason }
-    }
+    if (provider === undefined) return { ok: false, refusal: { kind: 'no-provider', providerId } }
+    // One question about the key: missing, unreadable, or there. Nothing is dialed without one.
     const problem = this.store.keyProblem(providerId)
-    if (problem !== undefined) return { ok: false, message: problem }
+    if (problem !== undefined) return { ok: false, refusal: problem }
     const models = this.models?.() ?? this.modelRuntime(provider)
     const model = models.getModel(providerId, modelId)
-    if (model === undefined) return { ok: false, message: `${providerId} does not serve ${modelId}.` }
+    if (model === undefined) return { ok: false, refusal: { kind: 'model-not-served', providerId, modelId } }
     return askOnce(models, model)
   }
 
@@ -126,7 +118,7 @@ export class ProviderService {
 }
 
 /** One question, one answer: the shortest thing that proves a provider is reachable. */
-async function askOnce(models: Models, model: Model<Api>): Promise<ProviderTestResult> {
+async function askOnce(models: Models, model: Model<Api>): Promise<ProviderTestOutcome> {
   const question: Context = {
     messages: [{ role: 'user', content: TEST_PROMPT, timestamp: Date.now() }],
   }
@@ -141,21 +133,21 @@ async function askOnce(models: Models, model: Model<Api>): Promise<ProviderTestR
     const answer = await Promise.race([models.completeSimple(model, question), timeout])
     return answerOf(answer)
   } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : 'The provider did not answer.' }
+    return { ok: false, said: error instanceof Error ? error.message : 'The provider did not answer.' }
   } finally {
     clearTimeout(timer)
   }
 }
 
 /** What the provider said, or why it said nothing. */
-function answerOf(answer: AssistantMessage): ProviderTestResult {
+function answerOf(answer: AssistantMessage): ProviderTestOutcome {
   if (answer.errorMessage !== undefined && answer.errorMessage !== '') {
-    return { ok: false, message: `The provider did not answer: ${answer.errorMessage}` }
+    return { ok: false, said: `The provider did not answer: ${answer.errorMessage}` }
   }
   const said = answer.content
     .filter((part): part is TextContent => part.type === 'text')
     .map((part) => part.text)
     .join('')
     .trim()
-  return said === '' ? { ok: false, message: 'The provider answered with nothing.' } : { ok: true, message: said }
+  return said === '' ? { ok: false, said: 'The provider answered with nothing.' } : { ok: true, said }
 }

@@ -11,6 +11,7 @@ import {
 } from '@alpha/domain'
 import { createSignal, For, Index, type JSX, Match, Show, Switch } from 'solid-js'
 import { markdownOf } from '../../lib/clipboard.ts'
+import { refusalText } from '../../lib/refusal-text.ts'
 import { conversationActions, conversations } from '../../stores/conversations.ts'
 import { useText } from '../../stores/shell.ts'
 import { FIELD_FRAME, GROUP_LABEL, NOTICE, OUTLINED_ACTION, PRIMARY_ACTION, TEXT_ACTION } from '../controls.ts'
@@ -141,11 +142,23 @@ function StatusNote(props: { message: ChatMessage }) {
       </Show>
       <Show when={props.message.status === 'failed'}>
         <p class={`mt-2 ${NOTICE} border-danger font-mono text-code text-danger`}>
-          <span class="min-w-0 wrap-anywhere">{props.message.error || t('message.failed')}</span>
+          <span class="min-w-0 wrap-anywhere">{failedLine(props.message)}</span>
         </p>
       </Show>
     </>
   )
+}
+
+/**
+ * What a failed row says. A turn Alpha itself refused carries the case, and the sentence for it is
+ * the dictionary's, in the window's language; a failure somebody reported says its own words, quoted
+ * as they came (ADR-0010). A failure that said nothing gets the window's own sentence for a failure.
+ */
+function failedLine(message: ChatMessage): string {
+  const t = useText()
+  const failure = message.failure
+  if (failure === undefined) return t('message.failed')
+  return 'refusal' in failure ? refusalText(t, failure.refusal) : failure.said
 }
 
 /**

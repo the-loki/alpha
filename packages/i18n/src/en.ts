@@ -190,7 +190,6 @@ export const EN = {
   'composer.attached': 'Attached pictures',
   'composer.removeAttachment': 'Remove {name}',
   'composer.attachmentRefused': 'Only pictures up to 4 MB can be attached.',
-  'composer.attachmentNoVision': '{model} does not take pictures. Turn that on for it under Models in Settings.',
   'message.regenerate': 'Regenerate',
   'message.resend': 'Resend, replacing what followed',
   'message.fork': 'Fork into a new conversation',
@@ -201,6 +200,15 @@ export const EN = {
   // in the window's language. What a failure did say is the provider's own words, quoted as they
   // came (ADR-0010), and travels with the event instead.
   'message.failed': 'The turn failed.',
+  // A turn that never started, by which of Alpha's own refusals it was stopped: main answers the
+  // case and the sentences are here, in the window's language, because main is not the thing with
+  // a language (ADR-0010). Provider words never appear in these: they are quoted elsewhere.
+  'refusal.noModel': 'No model is configured for this conversation. Choose one under Settings, Models.',
+  'refusal.modelNotServed': 'Alpha has no model {model} on {provider} to run this conversation on.',
+  'refusal.noProvider': 'Alpha has no provider called {provider}.',
+  'refusal.keyUnreadable': 'Alpha could not read the key for {provider}. Enter it again under Settings, Providers.',
+  'refusal.noKey': 'Alpha has no key for {provider}. Add one under Settings, Providers.',
+  'refusal.pictures': '{model} does not take pictures. Turn that on for it under Models in Settings.',
   'message.thinking': 'Thinking',
   'message.compacted': 'History summarised here',
   'message.compactedCount': 'History summarised here · {count} messages',

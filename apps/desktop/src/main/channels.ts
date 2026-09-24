@@ -174,7 +174,9 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
     if (words.trim() === '' && (attachments ?? []).length === 0) {
       throw new Error('a message needs words or a picture')
     }
-    await runtime.prompt(conversationId, words, attachments)
+    // A turn that does not start is answered rather than thrown: the refusal is already said to the
+    // conversation as an event, and the caller is told which case it was.
+    return runtime.prompt(conversationId, words, attachments)
   },
 
   abortRun: async ({ runtime }, args) => {

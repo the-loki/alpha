@@ -16,7 +16,7 @@ const FOOT_BUTTON = `no-drag grid h-8 w-8 shrink-0 place-items-center rounded-md
  * The way in to the file picker. The picker is the platform's; this is a button that opens it, and
  * the input itself is off the page because nothing about it is worth drawing.
  */
-export function AttachButton(props: { onPicked: (picked: Attachment[], refused: Undef<Refusal>) => void }) {
+export function AttachButton(props: { onPicked: (picked: Attachment[], refused: Undef<TurnedAway>) => void }) {
   const t = useText()
   let input!: HTMLInputElement
   return (
@@ -99,22 +99,23 @@ export function PendingAttachments(props: { items: Attachment[]; onRemove: (inde
 
 /**
  * Why a picture was turned away: the file was not one the workbench can send, or the model it
- * would run on cannot be handed a picture at all.
+ * would run on cannot be handed a picture at all. It is the composer's own name for the two cases,
+ * and deliberately not a `TurnRefusal` — nothing was refused here, a pick was dropped.
  */
-export type Refusal = 'file' | 'model'
+export type TurnedAway = 'file' | 'model'
 
 /**
  * The composer's own line about attachments: a file that was turned away is said out loud, because
  * a picture that never arrived is the kind of thing noticed too late. It clears itself the next
  * time a pick goes through, so it never has to be dismissed.
  */
-export function AttachmentNote(props: { refused: Undef<Refusal>; model: Undef<string> }) {
+export function AttachmentNote(props: { refused: Undef<TurnedAway>; model: Undef<string> }) {
   const t = useText()
   return (
     <Show when={props.refused !== undefined}>
       <p class={`mt-2 ${NOTICE} border-warning font-mono text-label text-warning`}>
         {props.refused === 'model'
-          ? t('composer.attachmentNoVision', { model: props.model ?? '' })
+          ? t('refusal.pictures', { model: props.model ?? '' })
           : t('composer.attachmentRefused')}
       </p>
     </Show>

@@ -124,13 +124,16 @@ export function entriesToMessages(entries: AgentEntry[], decisions: DecisionLook
       // An empty answer is a row only when it is evidence: the one rule the live reducer applies
       // too, and it lives in `@alpha/domain` so the two cannot drift.
       if (blocks.length === 0 && !emptyAnswerIsEvidence(failed, interrupted)) continue
+      // What the entry recorded is whoever failed it saying so: the words are theirs, quoted. A
+      // record holds no refusal — a turn that never started wrote no entry to hold one.
+      const said = message.errorMessage
       messages.push({
         id: entry.id,
         role: 'assistant',
         blocks,
         createdAt: at(entry.timestamp),
         status: failed ? 'failed' : interrupted ? 'interrupted' : 'complete',
-        ...(failed ? { error: message.errorMessage } : {}),
+        ...(failed && said !== undefined ? { failure: { said } } : {}),
       })
     }
     if (message.role === 'toolResult') {

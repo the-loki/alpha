@@ -20,7 +20,8 @@ import {
   type RuntimeEvent,
   servesModel,
   type ThinkingLevel,
-  textOfBlocks,
+  type TurnRefusal,
+  type Undef,
 } from '@alpha/domain'
 import {
   type ApprovalAnswer,
@@ -133,7 +134,7 @@ export class RuntimeManager {
       workspacePath,
       now: Date.now(),
       permissionLevel: defaultLevelFor(this.options.store.read(), workspacePath),
-      model: this.startingModel(),
+      model: defaultModel(this.options.providers),
     })
     await this.launch(conversation)
     this.books.upsert(conversation)
@@ -159,12 +160,16 @@ export class RuntimeManager {
    * Runs one turn with nobody watching (a scheduled task, ADR-0012) and answers with what the gate
    * had to refuse. A run started by hand is attended: whoever pressed "run now" is right there.
    * The run is waited out here, because a refusal only happens while the run is in flight and the
-   * watching ends when the run does. A run that threw has ended too, so the watching ends with it.
+   * watching ends when the run does. A turn that did not start has ended too, so the watching ends
+   * with it — and the caller hears it as a throw, because a task says how it went, not why.
    */
   public async runUnattended(id: string, text: string): Promise<number> {
     this.unattended.start(id)
     try {
-      await this.prompt(id, text)
+      const refusal = await this.prompt(id, text)
+      // A turn that did not start has ended too, and the caller hears it as a throw: a task records
+      // how it went rather than why, and the why was said to the conversation when it was refused.
+      if (refusal !== undefined) throw new Error(`The turn did not start: ${refusal.kind}`)
       await (await this.openFor(id)).settle()
     } catch (error) {
       // A run that threw still stops being watched, and the caller hears about the failure.
@@ -174,18 +179,30 @@ export class RuntimeManager {
     return this.unattended.finish(id)
   }
 
-  public async prompt(id: string, text: string, attachments?: Attachment[]): Promise<void> {
+  /**
+   * Starts a turn, and answers with why it did not start when it did not: the refusal is both said
+   * to the conversation — so the window draws the case in its own language — and answered to the
+   * caller, which needs no words for it (ADR-0010). Nothing is thrown: a turn that cannot start is
+   * a fact about the conversation rather than a mistake by whoever asked.
+   */
+  public async prompt(id: string, text: string, attachments?: Attachment[]): Promise<Undef<TurnRefusal>> {
     const conversation = this.requireConversation(id)
     // Why the turn may not start is said before anyone waits for one: no model, an unreadable key,
-    // a picture the model cannot read (models.ts owns the sentences).
-    const problem = startProblem({
+    // a picture the model cannot read. Which case it is, is all models.ts answers.
+    const refusal = startProblem({
       index: this.options.providers.index(),
       keyProblem: (providerId) => this.options.agent.keyProblem(providerId),
       model: conversation.model,
       pictures: attachments?.length ?? 0,
     })
-    if (problem !== undefined) throw new Error(problem)
-    await (await this.openFor(id)).prompt(text, attachments)
+    // A refusal is said to the conversation, so the window can draw the case in its own language,
+    // and answered to the caller, which needs no words for it (ADR-0010). Nothing is thrown: a turn
+    // that cannot start is a fact about the conversation rather than a mistake by whoever asked.
+    if (refusal !== undefined) this.observe({ conversationId: id, type: 'turn_refused', refusal })
+    // The runtime answers the same question for itself — a conversation assembled without a model
+    // cannot run even when a model is configured now — so what the caller hears is one answer.
+    else return await (await this.openFor(id)).prompt(text, attachments)
+    return refusal
   }
 
   /**
@@ -294,18 +311,10 @@ export class RuntimeManager {
     return writeSessionMarkdown(conversation, this.reads.transcript(id))
   }
 
-  /**
-   * The runtime's events, and the moments the queue changes because of them. A turn that ended
-   * holds nothing, and it either sends what follows it or stops the queue when it failed.
-   */
+  /** The runtime's events: what the list makes of them, and what they do to what waits. */
   private observe(event: RuntimeEvent): void {
     this.books.observe(event)
-    // A user message the run produced is the lane taking what it was steered with: the row that
-    // listed it stops waiting, because it is in the conversation now.
-    if (event.type === 'user_message') this.queue.steerTaken(event.conversationId, textOfBlocks(event.message.blocks))
-    if (event.type === 'turn_finished' || event.type === 'run_failed') this.queue.steerCleared(event.conversationId)
-    if (event.type === 'run_failed') this.queue.stop(event.conversationId)
-    if (event.type === 'turn_finished') void this.queue.flush(event.conversationId)
+    this.queue.observe(event)
   }
 
   private editPorts(): EditingPorts {
@@ -336,10 +345,18 @@ export class RuntimeManager {
     rememberWorkspaceLevel(this.options.store, workspacePath, level)
   }
 
+  /** Switching the model is asked for and reported back as an event, like every other change. */
   public async setConversationModel(id: string, providerId: string, modelId: string): Promise<ConversationSummary> {
-    this.requireConversation(id)
+    const conversation = this.requireConversation(id)
+    // A model nobody serves is a refusal rather than a mistake by whoever asked: the window is told
+    // which case it was, in its own language (#199), and the conversation keeps the model it had.
     if (!servesModel(this.options.providers.index(), { providerId, modelId })) {
-      throw new Error(`${providerId} does not serve ${modelId}`)
+      this.observe({
+        conversationId: id,
+        type: 'turn_refused',
+        refusal: { kind: 'model-not-served', providerId, modelId },
+      })
+      return conversation
     }
     await this.opened.get(id)?.setModel(providerId, modelId)
     return this.books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
@@ -371,11 +388,6 @@ export class RuntimeManager {
     const conversation = this.books.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
     return conversation
-  }
-
-  /** Where a new conversation starts, and what it is named while it has no name of its own. */
-  private startingModel(): ConversationSummary['model'] {
-    return defaultModel(this.options.providers)
   }
 
   /** Opens a conversation's runtime, or returns the one already open. */

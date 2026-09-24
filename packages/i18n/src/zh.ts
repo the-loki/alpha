@@ -188,7 +188,6 @@ export const ZH = {
   'composer.attached': '已附加的图片',
   'composer.removeAttachment': '移除 {name}',
   'composer.attachmentRefused': '只能附加 4 MB 以内的图片。',
-  'composer.attachmentNoVision': '{model} 不能看图。可以在"设置 → 模型"里为它打开。',
   'message.regenerate': '重新生成',
   'message.resend': '重发，并替换其后的内容',
   'message.fork': '分叉成新会话',
@@ -197,6 +196,14 @@ export const ZH = {
   // 跑失败却什么也没说的一句：这句话是界面的，所以它在词典里、用界面自己的语言。失败自己说了
   // 什么则是 provider 的原话，照原样引用（ADR-0010），随事件一起走。
   'message.failed': '这一轮失败了。',
+  // 压根没开始的轮次，以及拦住它的那种拒绝：主进程只回答「是哪种」，句子在这里，用界面的语言
+  // （ADR-0010）。这些句子里没有 provider 的话——那些话在别处照原样引用。
+  'refusal.noModel': '这个对话还没有模型。请在"设置 → 模型"里选一个。',
+  'refusal.modelNotServed': 'Alpha 在 {provider} 上没有 {model} 这个模型，跑不起来。',
+  'refusal.noProvider': 'Alpha 里没有叫 {provider} 的供应商。',
+  'refusal.keyUnreadable': 'Alpha 读不出 {provider} 的密钥。请在"设置 → 供应商"里重新填入。',
+  'refusal.noKey': 'Alpha 还没有 {provider} 的密钥。请在"设置 → 供应商"里添加一个。',
+  'refusal.pictures': '{model} 不能看图。可以在"设置 → 模型"里为它打开。',
   'message.thinking': '思考',
   'message.compacted': '历史在这里被摘要',
   'message.compactedCount': '历史在这里被摘要 · {count} 条消息',

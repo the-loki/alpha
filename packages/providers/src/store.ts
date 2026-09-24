@@ -16,6 +16,7 @@ import {
   type ProviderView,
   parseProviders,
   type StoredProvider,
+  type TurnRefusal,
   type Undef,
 } from '@alpha/domain'
 import type { CredentialProtection, CredentialVault } from './credential-vault.ts'
@@ -100,20 +101,20 @@ export class ProviderStore {
 
   /**
    * Why a run or a test is refused before a provider is asked anything: there is no key to dial
-   * with, in the person's terms rather than the vault's (#114). Nothing to refuse means a key is
-   * there — answered to the model runtime at request time, never spoken here (C2.4).
+   * with (#114). It is a case rather than a sentence, because the sentence is the window's and this
+   * is not the thing with a language (ADR-0010) — and the three cases are three different things
+   * for a person to do. Nothing to refuse means a key is there — answered to the model runtime at
+   * request time, never spoken here (C2.4).
    */
-  public keyProblem(id: string): Undef<string> {
-    if (this.find(id) === undefined) return `Alpha has no provider called ${id}.`
+  public keyProblem(id: string): Undef<TurnRefusal> {
+    if (this.find(id) === undefined) return { kind: 'no-provider', providerId: id }
     let secret: Undef<string>
     try {
       secret = this.credential(id)
     } catch {
-      return `Alpha could not read the key for ${id}. Enter it again under Settings, Providers.`
+      return { kind: 'key-unreadable', providerId: id }
     }
-    if (secret === undefined || secret === '') {
-      return `Alpha has no key for ${id}. Add one under Settings, Providers.`
-    }
+    if (secret === undefined || secret === '') return { kind: 'no-key', providerId: id }
     return undefined
   }
 

@@ -6,7 +6,7 @@ import { runningModel } from '../../stores/next-message.ts'
 import { composerFolderOf, shell, useText } from '../../stores/shell.ts'
 import { OUTLINED_ACTION, WARNING_ACTION } from '../controls.ts'
 import { ArrowUpIcon } from '../icons.tsx'
-import { AttachButton, AttachmentNote, PendingAttachments, type Refusal } from './Attachments.tsx'
+import { AttachButton, AttachmentNote, PendingAttachments, type TurnedAway } from './Attachments.tsx'
 import { FolderLine } from './FolderLine.tsx'
 import { LevelChip } from './LevelChip.tsx'
 import { ModelChip } from './ModelChip.tsx'
@@ -62,7 +62,7 @@ function ComposerFoot(props: {
   onSend: () => void
   onStop: () => void
   onRedirect: (how: 'steer' | 'queue') => void
-  onPicked: (picked: Attachment[], refused: Undef<Refusal>) => void
+  onPicked: (picked: Attachment[], refused: Undef<TurnedAway>) => void
 }) {
   const t = useText()
   return (
@@ -195,7 +195,7 @@ function useComposerIntents(field: () => Undef<HTMLTextAreaElement>, setValue: (
 export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const [value, setValue] = createSignal('')
   const [attached, setAttached] = createSignal<Attachment[]>([])
-  const [refused, setRefused] = createSignal<Undef<Refusal>>(undefined)
+  const [refused, setRefused] = createSignal<Undef<TurnedAway>>(undefined)
   const model = runningModel()
   const composerFolder = () => composerFolderOf(shell)
   const t = useText()

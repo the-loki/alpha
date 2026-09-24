@@ -144,31 +144,38 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
     providers.saveModels('local', [model('a')])
     providers.setCredential('local', 'sk-test')
 
-    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, said: 'ready' })
   })
 
-  it('refuses a provider with no key, without dialing', async () => {
+  // Alpha's own refusals are cases, not sentences: the panel has the words for each one, in the
+  // language the panel is in, which is what a sentence composed here could never be (#199).
+  it('refuses a provider with no key, without dialing, as a case', async () => {
     const { service: providers } = service(scripted)
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
 
-    expect(await providers.test('local', 'a')).toMatchObject({ ok: false })
-    expect((await providers.test('local', 'a')).message).toContain('key')
+    expect(await providers.test('local', 'a')).toEqual({ ok: false, refusal: { kind: 'no-key', providerId: 'local' } })
   })
 
-  it('refuses a provider that is not there', async () => {
+  it('refuses a provider that is not there, as a case', async () => {
     const { service: providers } = service(scripted)
 
-    expect(await providers.test('nobody', 'a')).toMatchObject({ ok: false, message: 'No provider nobody' })
+    expect(await providers.test('nobody', 'a')).toEqual({
+      ok: false,
+      refusal: { kind: 'no-provider', providerId: 'nobody' },
+    })
   })
 
-  it('refuses a model the provider does not serve', async () => {
+  it('refuses a model the provider does not serve, as a case', async () => {
     const { service: providers } = service(scripted)
     providers.save(endpoint)
     providers.saveModels('local', [model('a')])
     providers.setCredential('local', 'sk-test')
 
-    expect((await providers.test('local', 'ghost')).message).toContain('does not serve')
+    expect(await providers.test('local', 'ghost')).toEqual({
+      ok: false,
+      refusal: { kind: 'model-not-served', providerId: 'local', modelId: 'ghost' },
+    })
   })
 
   it('says why when the provider cannot be reached', async () => {
@@ -179,7 +186,8 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
 
     const answer = await providers.test('local', 'a')
     expect(answer.ok).toBe(false)
-    expect(answer.message).toContain('did not answer')
+    // A provider that could not be reached says so in its own words, quoted: no case names this one.
+    expect(answer.ok ? '' : 'said' in answer ? answer.said : '').toContain('did not answer')
   })
 })
 
@@ -229,7 +237,7 @@ describe('[agent-runtime] the three wires a provider can speak', () => {
   it('openai-completions: chat completions, the key as a bearer, the answer parsed', async () => {
     const { wire, providers } = await asking('openai-completions')
 
-    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, said: 'ready' })
     const [arrived] = wire.requests
     expect(arrived).toMatchObject({
       method: 'POST',
@@ -243,7 +251,7 @@ describe('[agent-runtime] the three wires a provider can speak', () => {
   it('openai-responses: responses, the key as a bearer, the answer parsed', async () => {
     const { wire, providers } = await asking('openai-responses')
 
-    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, said: 'ready' })
     const [arrived] = wire.requests
     expect(arrived).toMatchObject({
       method: 'POST',
@@ -257,7 +265,7 @@ describe('[agent-runtime] the three wires a provider can speak', () => {
   it('anthropic-messages: messages, the key in x-api-key, max_tokens, the answer parsed', async () => {
     const { wire, providers } = await asking('anthropic-messages')
 
-    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, said: 'ready' })
     const [arrived] = wire.requests
     expect(arrived?.path).toMatch(/^\/v1\/messages/)
     expect(arrived).toMatchObject({
@@ -272,7 +280,7 @@ describe('[agent-runtime] the three wires a provider can speak', () => {
   it('anthropic-messages: a bearer-style key rides Authorization, and x-api-key is not sent', async () => {
     const { wire, providers } = await asking('anthropic-messages', 'bearer')
 
-    expect(await providers.test('local', 'a')).toEqual({ ok: true, message: 'ready' })
+    expect(await providers.test('local', 'a')).toEqual({ ok: true, said: 'ready' })
     const [arrived] = wire.requests
     expect(arrived).toMatchObject({ headers: { authorization: 'Bearer sk-test' } })
     expect(arrived?.headers['x-api-key']).toBeUndefined()

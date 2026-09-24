@@ -201,11 +201,18 @@ describe('[runtime] a conversation turn, driven by the assembled agent', () => {
     expect(failure?.message).toBe('the provider hung up')
   })
 
-  it('a runtime with nothing assembled refuses a prompt as an event, and can still be read', async () => {
+  it('a runtime with nothing assembled refuses a prompt as a case, and can still be read', async () => {
     const { runtime, events, store, workspace, id } = openRuntime({ unAssembled: true })
 
-    await runtime.prompt('hi')
-    expect(events.find((event) => event.type === 'run_failed')?.message).toContain('No model')
+    // The case is said to the conversation and answered to the caller, so whoever asked knows the
+    // turn never started without having to read the events to find out (#199).
+    await expect(runtime.prompt('hi')).resolves.toEqual({ kind: 'no-model' })
+    // Which refusal it was, not a sentence: the window is the thing with a language (ADR-0010).
+    expect(events.find((event) => event.type === 'turn_refused')).toMatchObject({
+      type: 'turn_refused',
+      refusal: { kind: 'no-model' },
+    })
+    expect(events.find((event) => event.type === 'run_failed')).toBeUndefined()
     expect(store.transcript(id, workspace)).toEqual([])
     expect(runtime.isRunning()).toBe(false)
     expect(store.entries('c1', workspace).entries).toEqual([])
@@ -467,5 +474,19 @@ describe('[runtime] what a conversation runs on', () => {
     // Alpha's 'off' is pi's 'off': the agent reads it as no reasoning at all, so it crosses as it is.
     void runtime.setThinkingLevel('off')
     expect(agent?.state.thinkingLevel).toBe('off')
+  })
+
+  it('names the model it could not switch to, as a case', () => {
+    const { runtime, agent, events } = openRuntime({})
+
+    void runtime.setModel('p', 'ghost')
+
+    // The model the agent was on is untouched, and the window is told which refusal this was: the
+    // sentence for it, in the window's language, is the dictionary's (ADR-0010).
+    expect(agent?.state.model.id).toBe('m')
+    expect(events.at(-1)).toMatchObject({
+      type: 'turn_refused',
+      refusal: { kind: 'model-not-served', providerId: 'p', modelId: 'ghost' },
+    })
   })
 })

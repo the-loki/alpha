@@ -8,19 +8,26 @@
 
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type ChatMessage, type ConversationSummary, exportFileName, exportMarkdown, type Undef } from '@alpha/domain'
+import {
+  type ChatMessage,
+  type ConversationSummary,
+  exportFileName,
+  exportMarkdown,
+  type TurnRefusal,
+  type Undef,
+} from '@alpha/domain'
 import { SessionStore, sessionIdOf } from './sessions.ts'
 
 /**
  * Where the sessions are, and why a run is refused: the two things the workbench still needs to
  * know about providers now that the agent is embedded — the sessions root every read goes through,
- * and the sentence for a missing key (#114). The key itself is answered to the model runtime at
+ * and which key refusal stops a turn (#114). The key itself is answered to the model runtime at
  * request time, never through this door (C2.4).
  */
 export interface AgentPorts {
   sessionsRoot: string
-  /** Why there is no key to dial with, when there is none (#114). Absent when there is one. */
-  keyProblem: (providerId: string) => Undef<string>
+  /** Which key refusal it is, when there is no key to dial with (#114). Absent when there is one. */
+  keyProblem: (providerId: string) => Undef<TurnRefusal>
 }
 
 /**

@@ -7,7 +7,7 @@
  * waiting for.
  */
 
-import type { QueuedMessage, RuntimeEvent, Undef } from '@alpha/domain'
+import { type QueuedMessage, type RuntimeEvent, type TurnRefusal, textOfBlocks, type Undef } from '@alpha/domain'
 
 export interface PendingSend {
   id: string
@@ -83,7 +83,7 @@ export class PendingQueue {
 export interface QueuePorts {
   /** The conversation as the index has it, or nothing if it is gone. */
   statusOf: (conversationId: string) => Undef<'idle' | 'running' | 'waiting'>
-  send: (conversationId: string, text: string) => Promise<void>
+  send: (conversationId: string, text: string) => Promise<Undef<TurnRefusal>>
   emit: (event: RuntimeEvent) => void
 }
 
@@ -178,6 +178,23 @@ export class QueueRunner {
     this.emit(conversationId)
   }
 
+  /**
+   * One runtime event, and what it does to what waits (ADR-0011): the run takes a message it was
+   * steered with, a turn that ended holds nothing, a failure stops the queue, and a turn that ends
+   * sends what follows it.
+   *
+   * A refusal is none of those. Nothing ran, so nothing the lane holds becomes unstuck, and there is
+   * no turn to end and send what waits — the queue's own send is where a refusal is held instead,
+   * because it is the sender that knows the message never went. Neither is a refusal the failure that
+   * stops a queue for good: the model it was refused for is usually one setting away from working.
+   */
+  public observe(event: RuntimeEvent): void {
+    if (event.type === 'user_message') this.steerTaken(event.conversationId, textOfBlocks(event.message.blocks))
+    if (event.type === 'turn_finished' || event.type === 'run_failed') this.steerCleared(event.conversationId)
+    if (event.type === 'run_failed') this.stop(event.conversationId)
+    if (event.type === 'turn_finished') void this.flush(event.conversationId)
+  }
+
   public forget(conversationId: string): void {
     this.queue.forget(conversationId)
     this.steers.delete(conversationId)
@@ -194,15 +211,25 @@ export class QueueRunner {
     if (head === undefined) return
     this.emit(conversationId)
     try {
-      await this.ports.send(conversationId, head.text)
+      // A refusal is answered rather than thrown: the turn did not start, and the case says why —
+      // which is the same ending for the queue as a send that could not happen at all.
+      const refusal = await this.ports.send(conversationId, head.text)
+      if (refusal !== undefined) this.hold(conversationId, head)
     } catch {
-      // It could not be sent at all — no model, a closed runtime — so it goes back where it was and
-      // the queue stops rather than losing the message or hammering the same failure. The pause is
-      // the answer the window gets; a background send has nobody to throw at.
-      this.queue.unshift(conversationId, head)
-      this.queue.pause(conversationId)
-      this.emit(conversationId)
+      this.hold(conversationId, head)
     }
+  }
+
+  /**
+   * A message that never went is put back where it was and the queue stops, rather than losing it or
+   * hammering the same refusal at every turn boundary. The pause is the answer the window gets: a
+   * background send has nobody to throw at. What the refusal was has already been said to the
+   * conversation.
+   */
+  private hold(conversationId: string, message: PendingSend): void {
+    this.queue.unshift(conversationId, message)
+    this.queue.pause(conversationId)
+    this.emit(conversationId)
   }
 
   /**

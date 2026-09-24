@@ -21,6 +21,7 @@ import {
   type PickWorkspaceResult,
   type ProviderModelInput,
   type ProvidersSnapshotMessage,
+  type ProviderTestOutcome,
   type WindowState,
 } from '@alpha/contract'
 import type {
@@ -34,6 +35,7 @@ import type {
   ScheduledTask,
   TasksSnapshot,
   ThinkingLevel,
+  TurnRefusal,
   Undef,
 } from '@alpha/domain'
 
@@ -267,7 +269,7 @@ export function networkBridge(): AlphaBridge {
       invoke('createConversation', [workspacePath]) as Promise<OpenedConversation>,
     openConversation: (id: string) => invoke('openConversation', [id]) as Promise<OpenedConversation>,
     sendPrompt: (conversationId: string, text: string, attachments?: Attachment[]) =>
-      invoke('sendPrompt', [conversationId, text, attachments]) as Promise<void>,
+      invoke('sendPrompt', [conversationId, text, attachments]) as Promise<Undef<TurnRefusal>>,
     abortRun: (conversationId: string) => invoke('abortRun', [conversationId]) as Promise<void>,
     onRuntimeEvent: (listener: (event: RuntimeEvent) => void) => listen('runtimeEvent', listener),
 
@@ -279,7 +281,7 @@ export function networkBridge(): AlphaBridge {
       invoke('setDefaultModel', [chosen]) as Promise<ProvidersSnapshotMessage>,
     removeProvider: (id: string) => invoke('removeProvider', [id]) as Promise<ProvidersSnapshotMessage>,
     testProvider: (id: string, modelId: string) =>
-      invoke('testProvider', [id, modelId]) as Promise<{ ok: boolean; message: string }>,
+      invoke('testProvider', [id, modelId]) as Promise<ProviderTestOutcome>,
     setCredential: (id: string, secret: string) =>
       invoke('setCredential', [id, secret]) as Promise<ProvidersSnapshotMessage>,
     setConversationModel: (id: string, providerId: string, modelId: string) =>

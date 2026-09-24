@@ -204,17 +204,6 @@ export function readModels(input: unknown): ModelsResult {
   return { models }
 }
 
-export interface CredentialRequirement {
-  kind: 'missing' | 'present'
-  reason: string
-}
-
-export function credentialRequirement(input: { hasCredential: boolean }): CredentialRequirement {
-  return input.hasCredential
-    ? { kind: 'present', reason: 'A key is stored for this provider.' }
-    : { kind: 'missing', reason: 'No key is stored yet. Add one to use this provider.' }
-}
-
 /**
  * The two facts every model rule reads. A window's snapshot carries them with more around them, so
  * typing the rules on this rather than on the whole index is what lets the window ask the same

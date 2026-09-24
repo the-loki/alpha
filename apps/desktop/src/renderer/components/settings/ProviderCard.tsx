@@ -1,7 +1,9 @@
+import type { ProviderTestOutcome } from '@alpha/contract'
 import type { ProviderApi, ProviderView, Undef } from '@alpha/domain'
 import type { TextKey } from '@alpha/i18n'
 import { createSignal, Show } from 'solid-js'
-import { type ProviderTestOutcome, providerActions } from '../../stores/providers.ts'
+import { refusalText, type Say } from '../../lib/refusal-text.ts'
+import { providerActions } from '../../stores/providers.ts'
 import { useText } from '../../stores/shell.ts'
 import {
   CONTROL_HEIGHT,
@@ -142,7 +144,7 @@ export function ProviderCard(props: { provider: ProviderView }) {
         <Show when={outcome()}>
           {(result) => (
             <span class={`min-w-0 flex-1 truncate font-text text-name ${result().ok ? 'text-success' : 'text-danger'}`}>
-              {result().message}
+              {outcomeLine(t, result())}
             </span>
           )}
         </Show>
@@ -151,4 +153,12 @@ export function ProviderCard(props: { provider: ProviderView }) {
       <ModelSubList provider={props.provider} />
     </li>
   )
+}
+
+/**
+ * What a test answered: Alpha's own refusal as a case, in this window's language, or what the
+ * provider itself said, quoted as it came (ADR-0010).
+ */
+function outcomeLine(t: Say, outcome: ProviderTestOutcome): string {
+  return 'refusal' in outcome ? refusalText(t, outcome.refusal) : outcome.said
 }

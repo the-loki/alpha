@@ -41,7 +41,7 @@ that does not is declared `['text']`
 (`apps/desktop/src/main/runtime/model-runtime.ts`). That is the fix for the silent drop — the flag
 the protocol already respects is finally set.
 
-**Where a picture is refused.** Two places, one sentence each:
+**Where a picture is refused.** Two places, one sentence:
 
 - The **window**, when its provider list serves the model: a pick for a model that does not take
   pictures is dropped and the composer says so, naming the model and where to change it. It also
@@ -50,7 +50,9 @@ the protocol already respects is finally set.
 - The **main process**, always, before the turn starts: the check that a turn may begin refuses an
   attachment for a model whose stored definition does not take pictures (`startProblem` in
   `@alpha/providers`). This is the boundary. It is also what covers the case the window cannot see:
-  the scripted test runtime, or a window whose provider list has not arrived.
+  the scripted test runtime, or a window whose provider list has not arrived. It answers the refusal
+  as a case rather than composing a sentence, so the window says both places in its own language
+  (#199); before that the two places had a sentence each, and main's was English in a Chinese window.
 
 **Unknown is not the same as no.** When the window cannot resolve the model at all it allows the
 picture and leaves the decision to the main process, because refusing on ignorance would turn a

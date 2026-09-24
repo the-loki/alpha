@@ -18,6 +18,7 @@ import {
   type PickWorkspaceResult,
   type ProviderModelInput,
   type ProvidersSnapshotMessage,
+  type ProviderTestOutcome,
   WINDOW_COMMAND_CHANNELS,
   type WindowCommand,
   type WindowState,
@@ -33,6 +34,8 @@ import type {
   ScheduledTask,
   TasksSnapshot,
   ThinkingLevel,
+  TurnRefusal,
+  Undef,
 } from '@alpha/domain'
 import { contextBridge, ipcRenderer } from 'electron'
 
@@ -55,7 +58,7 @@ const bridge: AlphaBridge = {
     ipcRenderer.invoke(IPC.setConversationLevel, id, level) as Promise<ConversationSummary>,
   sendWindowCommand: (command: WindowCommand) => ipcRenderer.invoke(WINDOW_COMMAND_CHANNELS[command]) as Promise<void>,
   testProvider: (id: string, modelId: string) =>
-    ipcRenderer.invoke(IPC.testProvider, id, modelId) as Promise<{ ok: boolean; message: string }>,
+    ipcRenderer.invoke(IPC.testProvider, id, modelId) as Promise<ProviderTestOutcome>,
   onWindowState: (listener: (state: WindowState) => void) => {
     const handler = (_event: unknown, state: WindowState) => listener(state)
     ipcRenderer.on(IPC.windowStateChanged, handler)
@@ -67,7 +70,7 @@ const bridge: AlphaBridge = {
     ipcRenderer.invoke(IPC.createConversation, workspacePath) as Promise<OpenedConversation>,
   openConversation: (id: string) => ipcRenderer.invoke(IPC.openConversation, id) as Promise<OpenedConversation>,
   sendPrompt: (conversationId: string, text: string, attachments?: Attachment[]) =>
-    ipcRenderer.invoke(IPC.sendPrompt, conversationId, text, attachments) as Promise<void>,
+    ipcRenderer.invoke(IPC.sendPrompt, conversationId, text, attachments) as Promise<Undef<TurnRefusal>>,
   abortRun: (conversationId: string) => ipcRenderer.invoke(IPC.abortRun, conversationId) as Promise<void>,
   onRuntimeEvent: (listener: (event: RuntimeEvent) => void) => {
     const handler = (_event: unknown, runtimeEvent: RuntimeEvent) => listener(runtimeEvent)

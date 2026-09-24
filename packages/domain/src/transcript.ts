@@ -13,6 +13,7 @@ import type {
   ChatBlock,
   ChatBlockTool,
   ChatMessage,
+  ChatMessageFailure,
   ConversationSummary,
   QueuedMessage,
   RuntimeEvent,
@@ -46,7 +47,6 @@ export interface TranscriptState {
   /** The turn being counted, which becomes a row when it finishes. Never carries history. */
   turnUsage: UsageTotals
   status: 'idle' | 'running' | 'failed'
-  error?: string
 }
 
 export function emptyTranscript(conversationId: string): TranscriptState {
@@ -113,11 +113,10 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
         queued: [],
         queuedPaused: false,
         status: 'idle',
-        error: undefined,
       }
 
     case 'turn_started':
-      return { ...state, status: 'running', error: undefined }
+      return { ...state, status: 'running' }
 
     case 'user_message':
       return { ...state, messages: [...state.messages, event.message] }
@@ -147,7 +146,11 @@ export function reduceTranscript(state: TranscriptState, event: RuntimeEvent): T
       return closeTurn({ ...state, status: 'idle', approvals: [] })
 
     case 'run_failed':
-      return failRun(state, event.message)
+      // A failure that said nothing is the same failure whether the nothing is absent or empty.
+      return failRun(state, event.message ? { said: event.message } : undefined)
+
+    case 'turn_refused':
+      return failRun(state, { refusal: event.refusal })
 
     default:
       return reduceGateEvent(state, event)
@@ -246,19 +249,23 @@ function assistantWith(tool: ChatBlockTool): ChatMessage {
 }
 
 /**
- * A failure keeps whatever was streamed: the half-written answer is evidence, not debris. With
- * nothing streamed, the failure is itself the message. What it says is what the failure said, when
- * it said anything: a run that failed quietly is a failed row with no sentence on it, and the one
- * drawn then is the window's own (ADR-0010).
+ * A turn that ended without an answer, either way: a failure keeps whatever was streamed, because
+ * the half-written answer is evidence rather than debris — and with nothing streamed, the failure
+ * is itself the message. A refusal is the other ending: nothing ran at all, and the row carries the
+ * case rather than words.
+ *
+ * What is drawn on the row is then either Alpha's own case — whose sentence is the window's, in the
+ * window's language — or what the failure said, when it said anything. A failure that said nothing
+ * leaves no sentence on the row at all; the one drawn then is the window's own (ADR-0010).
  */
-function failRun(state: TranscriptState, message: Undef<string>): TranscriptState {
+function failRun(state: TranscriptState, failure: Undef<ChatMessageFailure>): TranscriptState {
   const streamed = state.streaming
   const failed: ChatMessage = {
     ...(streamed ?? { id: `failure-${state.messages.length}`, role: 'assistant', blocks: [], createdAt: Date.now() }),
     status: 'failed',
-    // A failure that said nothing leaves no sentence on the row: what is drawn then is the
-    // window's own, which is the one that can be in the language the window is in.
-    error: message,
+    // Nothing to say leaves no failure on the row: what is drawn then is the window's own sentence
+    // for a turn that failed, which is the one that can be in the language the window is in.
+    ...(failure === undefined ? {} : { failure }),
   }
   return {
     ...state,
@@ -266,7 +273,6 @@ function failRun(state: TranscriptState, message: Undef<string>): TranscriptStat
     streaming: undefined,
     approvals: [],
     status: 'failed',
-    error: message,
   }
 }
 

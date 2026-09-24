@@ -136,7 +136,7 @@ describe('[domain] reduceTranscript', () => {
       event({ type: 'run_failed', message: 'the provider refused the key' }),
     ])
     expect(state.status).toBe('failed')
-    expect(state.error).toBe('the provider refused the key')
+    expect(state.messages[0].failure).toEqual({ said: 'the provider refused the key' })
     expect(state.messages[0].blocks).toEqual([{ kind: 'text', text: 'partial' }])
     expect(state.messages[0].status).toBe('failed')
   })
@@ -149,8 +149,32 @@ describe('[domain] reduceTranscript', () => {
     expect(state.messages[0]).toMatchObject({ role: 'assistant', status: 'failed' })
     // What the row says then is the window's own sentence, in the language the window is in
     // (ADR-0010). A sentence invented here would arrive in English whatever language that is.
-    expect(state.messages[0].error).toBeUndefined()
-    expect(state.error).toBeUndefined()
+    expect(state.messages[0].failure).toBeUndefined()
+  })
+
+  it('records a refusal as a row carrying the case, with no sentence of its own', () => {
+    // A turn that never started says which refusal stopped it and nothing more: the words for a
+    // case are the window's, in the window's language (ADR-0010). A sentence written here would
+    // arrive in English whatever language the window is in, which is what this replaced.
+    const state = reduce([event({ type: 'turn_refused', refusal: { kind: 'no-model' } })])
+
+    expect(state.status).toBe('failed')
+    expect(state.messages).toHaveLength(1)
+    expect(state.messages[0]).toMatchObject({
+      role: 'assistant',
+      status: 'failed',
+      failure: { refusal: { kind: 'no-model' } },
+    })
+  })
+
+  it('keeps the names a refusal names, so the sentence can name them too', () => {
+    const state = reduce([
+      event({ type: 'turn_refused', refusal: { kind: 'model-not-served', providerId: 'local', modelId: 'ghost' } }),
+    ])
+
+    expect(state.messages[0].failure).toEqual({
+      refusal: { kind: 'model-not-served', providerId: 'local', modelId: 'ghost' },
+    })
   })
 
   it('records a failure as its own message when nothing was streamed', () => {
@@ -163,7 +187,7 @@ describe('[domain] reduceTranscript', () => {
     expect(state.messages[0]).toMatchObject({
       role: 'assistant',
       status: 'failed',
-      error: 'the provider refused the key',
+      failure: { said: 'the provider refused the key' },
     })
   })
 

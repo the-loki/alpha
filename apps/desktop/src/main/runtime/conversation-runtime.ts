@@ -8,9 +8,10 @@
  * conversation. What was said is read back by `ConversationReads`, addressed by the conversation —
  * this file writes and runs, and answers no questions about the record.
  *
- * Nothing here throws at a caller for a failure that is a value: a run that fails and a model that
- * is missing are both reported as the window's own `run_failed`, because a conversation that
- * cannot run is a conversation that says why rather than one that crashes.
+ * Nothing here throws at a caller for a failure that is a value: a run that fails is reported as
+ * the window's own `run_failed`, and a turn that cannot start as a `turn_refused` carrying the case
+ * — because a conversation that cannot run is a conversation that says why rather than one that
+ * crashes, and the words for the case belong to the window (ADR-0010).
  */
 
 import type { AlphaPlugin } from '@alpha/agent'
@@ -23,6 +24,7 @@ import {
   type RuntimeEvent,
   recordOf,
   type ThinkingLevel,
+  type TurnRefusal,
   type Undef,
 } from '@alpha/domain'
 import type { RetryDecider } from '@alpha/plugin'
@@ -88,12 +90,15 @@ export class ConversationRuntime {
    * run takes it as a message of its own and says so (`message_start`), which is the one moment it
    * exists — the prompt's own message and a steering message arrive through the same door, and the
    * window and the record both come from it.
+   *
+   * Answers with why the turn did not start when it did not, so a caller never has to read the
+   * events to find out whether anything began (#199). The case is said to the conversation as well.
    */
-  public async prompt(text: string, attachments?: Attachment[]): Promise<void> {
+  public async prompt(text: string, attachments?: Attachment[]): Promise<Undef<TurnRefusal>> {
     const agent = this.agent
     if (agent === undefined) {
-      this.failed('No model is configured for this conversation, so it cannot run.')
-      return
+      this.refuse({ kind: 'no-model' })
+      return { kind: 'no-model' }
     }
     // One run at a time: the agent refuses to overlap them, so a prompt sent while the last one is
     // still settling waits for it, and then runs.
@@ -101,6 +106,7 @@ export class ConversationRuntime {
     const images = imagesOf(attachments) ?? []
     this.inFlight = agent.prompt(text, images)
     this.driving = this.drive()
+    return undefined
   }
 
   /** A message for the run in flight: it arrives now, and changes what the agent does next. */
@@ -160,9 +166,13 @@ export class ConversationRuntime {
   /** Switches the model this conversation runs on; takes effect on the next turn. */
   public async setModel(providerId: string, modelId: string): Promise<void> {
     const agent = this.agent
+    if (agent === undefined) {
+      this.refuse({ kind: 'no-model' })
+      return
+    }
     const model = this.models.getModel(providerId, modelId)
-    if (agent === undefined || model === undefined) {
-      this.failed(`Alpha has no model ${modelId} on ${providerId} to run this conversation on.`)
+    if (model === undefined) {
+      this.refuse({ kind: 'model-not-served', providerId, modelId })
       return
     }
     agent.state.model = model
@@ -278,5 +288,14 @@ export class ConversationRuntime {
       type: 'run_failed',
       ...(message === undefined ? {} : { message }),
     })
+  }
+
+  /**
+   * A turn this conversation will not start, and which refusal stopped it. The case is the whole of
+   * it: the words for it are the window's, in the window's language (ADR-0010), because a sentence
+   * written here would arrive in English whatever language the window is in.
+   */
+  private refuse(refusal: TurnRefusal): void {
+    this.emit({ conversationId: this.conversationId, type: 'turn_refused', refusal })
   }
 }

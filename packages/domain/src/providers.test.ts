@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  credentialRequirement,
   defaultModelOf,
   effectiveModelOf,
   emptyProviderIndex,
@@ -112,16 +111,6 @@ describe('[domain] readModels', () => {
 
   it('takes an empty list: a provider that serves nothing yet is a state, not a mistake', () => {
     expect(readModels([]).models).toEqual([])
-  })
-})
-
-describe('[domain] credentialRequirement', () => {
-  it('asks for a key when the provider has none stored', () => {
-    expect(credentialRequirement({ hasCredential: false }).kind).toBe('missing')
-  })
-
-  it('reports readiness when a key is stored', () => {
-    expect(credentialRequirement({ hasCredential: true }).kind).toBe('present')
   })
 })
 

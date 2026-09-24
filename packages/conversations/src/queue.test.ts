@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from '@alpha/domain'
+import type { RuntimeEvent, TurnRefusal, Undef } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
 import { PendingQueue, type QueuePorts, QueueRunner } from './queue.ts'
 
@@ -70,7 +70,7 @@ describe('[conversations] the queue of messages waiting to be sent', () => {
 
 describe('[conversations] the runner that moves the queue', () => {
   const harness = (
-    send: (conversationId: string, text: string) => Promise<void>,
+    send: (conversationId: string, text: string) => Promise<Undef<TurnRefusal>>,
     status: 'idle' | 'running' | 'waiting' = 'idle',
   ) => {
     const events: RuntimeEvent[] = []
@@ -156,5 +156,44 @@ describe('[conversations] the runner that moves the queue', () => {
         { text: 'and me', kind: 'queued' },
       ],
     })
+  })
+
+  it('holds a message the turn refused exactly as it holds one that never sent', async () => {
+    // A refusal is answered rather than thrown (#199), and for the queue it is the same ending: the
+    // turn did not start, so the message is still waiting and the queue stops rather than hammering
+    // the same refusal at every turn boundary.
+    const { events, runner } = harness(async () => ({ kind: 'no-key', providerId: 'p' }))
+
+    await runner.add('c1', 'keep me')
+    await runner.add('c1', 'and me')
+
+    expect(lastQueueUpdate(events)).toMatchObject({
+      paused: true,
+      queued: [
+        { text: 'keep me', kind: 'queued' },
+        { text: 'and me', kind: 'queued' },
+      ],
+    })
+  })
+
+  it('moves on the runtime’s events, and not on a refusal', async () => {
+    // Which events move what waits, in one place (ADR-0011): a finished turn holds nothing, a failed
+    // one stops the queue, and a user message is the lane taking a steer. A refusal is none of them —
+    // the turn never started, so nothing is unstuck, and the queue is exactly as it was.
+    const { events, runner } = harness(async () => ({ kind: 'no-model' }), 'running')
+    await runner.add('c1', 'waiting its turn')
+    runner.steerSent('c1', 'into the turn')
+    const updates = (): number => events.filter((event) => event.type === 'queue_updated').length
+
+    expect(updates()).toBe(2)
+    runner.observe({ conversationId: 'c1', type: 'turn_refused', refusal: { kind: 'no-model' } })
+    expect(updates()).toBe(2)
+
+    // A failure is the other ending: the turn is over, so what the lane held is nothing, and the
+    // queue stops rather than firing the message into the same failure again.
+    runner.observe({ conversationId: 'c1', type: 'run_failed' })
+    expect(textsOf(events)).toEqual(['waiting its turn'])
+    const last = lastQueueUpdate(events)
+    expect(last?.type === 'queue_updated' ? last.paused : false).toBe(true)
   })
 })
