@@ -146,10 +146,10 @@ const COMMAND_TOOLS = ['bash']
 const FILE_TOOLS = ['read', 'write', 'edit']
 
 /** A shell operator after the approved prefix means this is no longer the command that was approved. */
-const SHELL_OPERATORS = /[;&|<>`]|\$\(/
+const SHELL_OPERATORS = /[;&|<>`\r\n]|\$\(/
 
 export function normalizeCommand(command: string): string {
-  return command.replace(/\s+/g, ' ').trim()
+  return command.replace(/[ \t]+/g, ' ').trim()
 }
 
 export function normalizePath(path: string): string {

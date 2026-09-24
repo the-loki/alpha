@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AlphaPlugin } from '@alpha/agent'
@@ -182,6 +182,41 @@ describe('[runtime] the gate plugin', () => {
     expect(f.remembered[0]).toMatchObject({ toolName: 'bash', pattern: 'echo once-more', conversationId: 'c1' })
     expect(recordsOf(f.events).map((record) => record.kind)).toEqual(['always', 'rule'])
     expect(f.events.filter((event) => event.type === 'tool_finished')).toHaveLength(2)
+  })
+
+  it('a remembered command does not approve a second command after a newline', async () => {
+    const rules: PermissionRule[] = []
+    const f = gated({
+      level: 'plan',
+      rules,
+      drives: [
+        () => toolUseStream('bash', { command: 'printf approved\ntouch unexpected.txt' }),
+        () => textStream('Done.'),
+      ],
+    })
+    const marker = join(f.workspace, 'unexpected.txt')
+    rules.push({
+      id: 'approved-command',
+      scope: 'workspace',
+      conversationId: '',
+      workspacePath: f.workspace,
+      toolName: 'bash',
+      pattern: 'printf approved',
+      createdAt: 1,
+    })
+
+    try {
+      await f.runtime.prompt('run it')
+      await f.runtime.settle()
+      await f.runtime.close()
+
+      expect(f.asked).toEqual([])
+      expect(recordsOf(f.events).map((record) => record.kind)).toEqual(['blocked'])
+      expect(finishedOf(f.events).status).toBe('failed')
+      expect(existsSync(marker)).toBe(false)
+    } finally {
+      rmSync(marker, { force: true })
+    }
   })
 
   it('announces how an auto-allowed call got past, too', async () => {
