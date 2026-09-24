@@ -31,7 +31,7 @@ describe('driving the afterRun hooks', () => {
     const models = scriptedModels([
       () => {
         drives += 1
-        return errorStream('transient boom', 'error')
+        return errorStream('503 transient boom', 'error')
       },
       () => {
         drives += 1
@@ -56,10 +56,10 @@ describe('driving the afterRun hooks', () => {
     expect(await driven).toEqual({ failed: undefined, aborted: false })
     expect(drives).toBe(2)
     expect(outcomes).toEqual([
-      { failed: { message: 'transient boom' }, aborted: false },
+      { failed: { message: '503 transient boom', retryable: true }, aborted: false },
       { failed: undefined, aborted: false },
     ])
-    expect(seen).toEqual(['observer:transient boom', 'observer:clean'])
+    expect(seen).toEqual(['observer:503 transient boom', 'observer:clean'])
     expect(lastAssistantOf(agent.state.messages)?.content[0]).toMatchObject({ type: 'text', text: 'recovered' })
   })
 

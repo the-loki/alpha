@@ -63,13 +63,14 @@ plugins, so the base is exercised by everything Alpha itself needs:
 - **compaction** — core's `shouldCompact`/`generateSummaryWithUsage` with coding-agent's policy
   shape (reserve and keep-recent tokens), applied to the live transcript, written as a compaction
   entry;
-- **auto-retry** — coding-agent's design: a transient provider failure after `agent_end` retries
-  with backoff, and the decision is published as `shouldRetry` so the translator keeps the turn
-  open while an attempt is planned. The base announces each actual retry before continuing the
-  agent, so the runtime can move the session path past that failed attempt. Automatic compaction
-  waits for a successful run instead of summarizing an attempt about to be discarded. The live
-  transcript removes a discarded assistant message when the retry actually starts; the usage of
-  each attempted assistant message is still counted.
+- **auto-retry** — coding-agent's design: a failure pi-ai classifies as transient after `agent_end`
+  retries with backoff. A failure with no provider message keeps the same retry budget; a known
+  terminal error such as 401 does not wait. The decision is published as `shouldRetry` so the
+  translator keeps the turn open while an attempt is planned. The base announces each actual retry
+  before continuing the agent, so the runtime can move the session path past that failed attempt.
+  Automatic compaction waits for a successful run instead of summarizing an attempt about to be
+  discarded. The live transcript removes a discarded assistant message when the retry actually
+  starts; the usage of each attempted assistant message is still counted.
 
 The workbench keeps a turn running through its `afterRun` hooks, including automatic compaction.
 It emits `turn_finished` only after those hooks settle, so Stop can cancel a summary request and a

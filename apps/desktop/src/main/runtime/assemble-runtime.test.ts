@@ -253,7 +253,7 @@ describe('[runtime] the policies an opening assembles', () => {
 
   it('a transient failure on the assembled path retries inside the same turn', async () => {
     const { runtime, events } = await opened({
-      drives: [() => failing('transient boom'), () => endOf('recovered')],
+      drives: [() => failing('503 Service Unavailable'), () => endOf('recovered')],
       retryDelays: [0, 0],
     })
 
@@ -266,6 +266,19 @@ describe('[runtime] the policies an opening assembles', () => {
     // The retry continues the run rather than being given the message again, so the one question
     // is in the conversation once: a second user message here would be the same words said twice.
     expect(kinds.filter((type) => type === 'user_message')).toHaveLength(1)
+  })
+
+  it('an authentication failure ends the turn without another provider request', async () => {
+    const drives = [() => failing('401 Unauthorized'), () => endOf('should not be requested')]
+    const { runtime, events } = await opened({ drives, retryDelays: [0, 0] })
+
+    await runAndSettle(runtime, 'fix the parser')
+
+    expect(drives).toHaveLength(1)
+    expect(events.filter((event) => event.type === 'run_failed')).toEqual([
+      { conversationId: 'c1', type: 'run_failed', message: '401 Unauthorized' },
+    ])
+    expect(events.some((event) => event.type === 'turn_finished')).toBe(false)
   })
 
   // A provider that fails without a sentence of its own is still a failed run, and both ends of it

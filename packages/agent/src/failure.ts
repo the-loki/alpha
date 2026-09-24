@@ -13,11 +13,17 @@
 
 import { recordOf, type Undef } from '@alpha/domain'
 import type { RunFailure } from '@alpha/plugin'
+import type { AssistantMessage } from '@earendil-works/pi-ai'
+import { isRetryableAssistantError } from '@earendil-works/pi-ai/utils/retry'
 
 /** The failure this message carries, or nothing when the message did not fail. */
 export function failureOf(message: unknown): Undef<RunFailure> {
   const ended = recordOf(message)
   if (ended.role !== 'assistant' || ended.stopReason !== 'error') return undefined
   const said = ended.errorMessage
-  return typeof said === 'string' && said !== '' ? { message: said } : {}
+  // The classifier reads only stopReason and errorMessage, both checked above. The actual source
+  // is pi's assistant message; the loose event reader also supplies those two fields in tests.
+  return typeof said === 'string' && said !== ''
+    ? { message: said, retryable: isRetryableAssistantError(message as AssistantMessage) }
+    : {}
 }

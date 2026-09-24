@@ -1,8 +1,8 @@
 /**
  * The auto-retry plugin (ADR-0025): coding-agent's design for a transient provider failure, as a
- * face on the plugin base. The decision is pure and inspectable — a failure, no abort, attempts to
- * spend — and `afterRun` is the only place an attempt is taken: it sleeps this attempt's backoff
- * and asks the base to continue, which drops the failed trailing turn and drives again. A run that
+ * face on the plugin base. The decision is pure and inspectable — retryable failure, no abort,
+ * attempts to spend — and `afterRun` is the only place an attempt is taken: it sleeps this
+ * attempt's backoff and asks the base to continue, which drops the failed trailing turn. A run that
  * ends without a retry hands the next one a whole budget.
  *
  * The same decision keeps the window honest: the translator consults `shouldRetry` when an
@@ -33,7 +33,11 @@ export function createRetryPlugin(ports: RetryPluginPorts = {}): RetryPlugin {
   let attempts = 0
   const plugin: RetryPlugin = {
     name: 'auto-retry',
-    shouldRetry: (outcome) => outcome.aborted === false && outcome.failed !== undefined && attempts < delays.length,
+    shouldRetry: (outcome) =>
+      outcome.aborted === false &&
+      outcome.failed !== undefined &&
+      outcome.failed.retryable !== false &&
+      attempts < delays.length,
     afterRun: async (outcome, signal) => {
       if (!plugin.shouldRetry(outcome)) {
         // The run is over and took no retry: whatever failures came before it are paid for.

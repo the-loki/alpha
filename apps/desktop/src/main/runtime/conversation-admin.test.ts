@@ -697,7 +697,7 @@ describe('[runtime] exporting a conversation', () => {
 describe('[runtime] the gate on the full path', () => {
   it('reports a scheduled run as unsuccessful after its provider retries fail', async () => {
     const { manager, workspace, events } = freshManager({
-      drives: [() => errorStream('first error', 'error'), () => errorStream('last error', 'error')],
+      drives: [() => errorStream('503 first error', 'error'), () => errorStream('503 last error', 'error')],
       retryDelays: [0],
     })
     const created = await manager.create(workspace)
@@ -708,7 +708,7 @@ describe('[runtime] the gate on the full path', () => {
     expect(events).toContainEqual({
       conversationId: created.conversation.id,
       type: 'run_failed',
-      message: 'last error',
+      message: '503 last error',
     })
     await manager.closeAll()
   })

@@ -13,6 +13,16 @@ const FAILURE: AfterRunOutcome = { failed: { message: 'the provider hung up' }, 
 const CLEAN: AfterRunOutcome = { failed: undefined, aborted: false }
 
 describe('[retry] the decision', () => {
+  it('does not retry an error the agent classified as terminal', async () => {
+    const plugin = createRetryPlugin({ delays: [0, 0] })
+    expect(plugin.shouldRetry({ failed: { message: '401 Unauthorized', retryable: false }, aborted: false })).toBe(
+      false,
+    )
+    await expect(
+      plugin.afterRun({ failed: { message: '401 Unauthorized', retryable: false }, aborted: false }),
+    ).resolves.toBeUndefined()
+  })
+
   it('a failure with attempts to spend retries; an abort and a clean run never do', () => {
     const plugin = createRetryPlugin({ delays: [0, 0] })
     expect(plugin.shouldRetry(FAILURE)).toBe(true)

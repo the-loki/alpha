@@ -444,7 +444,7 @@ describe('[runtime] stopping a run', () => {
       drives: [
         () => {
           drives += 1
-          return failingStream('temporary provider failure', 'error')
+          return failingStream('503 temporary provider failure', 'error')
         },
         () => {
           drives += 1
@@ -565,7 +565,7 @@ describe('[runtime] a transient failure the retry policy takes', () => {
   it('retries inside the same turn: one turn in the window, the recovery in the store', async () => {
     const { runtime, events, store, workspace, agent } = openRuntime({
       retry: createRetryPlugin({ delays: [0, 0] }),
-      drives: [() => partialFailure('discarded draft', 'transient boom'), () => textStream('recovered')],
+      drives: [() => partialFailure('discarded draft', '503 transient boom'), () => textStream('recovered')],
     })
 
     await runtime.prompt('fix the parser')
@@ -607,7 +607,7 @@ describe('[runtime] a transient failure the retry policy takes', () => {
   it('the retry cap ends the run as the failure the window reads', async () => {
     const { runtime, events, store, workspace } = openRuntime({
       retry: createRetryPlugin({ delays: [0] }),
-      drives: [() => failingStream('boom one', 'error'), () => failingStream('boom two', 'error')],
+      drives: [() => failingStream('503 boom one', 'error'), () => failingStream('503 boom two', 'error')],
     })
 
     await runtime.prompt('fix the parser')
@@ -615,12 +615,12 @@ describe('[runtime] a transient failure the retry policy takes', () => {
     await runtime.close()
 
     expect(rowOf(events, 'turn_started')).toHaveLength(1)
-    expect(rowOf(events, 'run_failed')).toEqual([{ conversationId: 'c1', type: 'run_failed', message: 'boom two' }])
+    expect(rowOf(events, 'run_failed')).toEqual([{ conversationId: 'c1', type: 'run_failed', message: '503 boom two' }])
     expect(typesOf(events)).not.toContain('turn_finished')
     const read = store.entries('c1', workspace)
     const path = tipPath(read.entries, read.leafId)
     expect(JSON.stringify(path)).not.toContain('boom one')
-    expect(path.at(-1)?.message).toMatchObject({ role: 'assistant', stopReason: 'error', errorMessage: 'boom two' })
+    expect(path.at(-1)?.message).toMatchObject({ role: 'assistant', stopReason: 'error', errorMessage: '503 boom two' })
     expect(store.usage('c1', workspace).totalTokens).toBe(4)
     const reopened = openRuntime({ store, workspace })
     expect(JSON.stringify(reopened.agent?.state.messages)).not.toContain('boom one')

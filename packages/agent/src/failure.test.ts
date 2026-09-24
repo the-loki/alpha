@@ -11,9 +11,21 @@ import { failureOf } from './failure.ts'
  * the sentence for that case belongs to the window — in the language the window is in (ADR-0010).
  */
 describe('[agent] the failure a message carries', () => {
+  it('marks a server failure retryable and an authentication failure terminal', () => {
+    expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: '503 Service Unavailable' })).toEqual({
+      message: '503 Service Unavailable',
+      retryable: true,
+    })
+    expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: '401 Unauthorized' })).toEqual({
+      message: '401 Unauthorized',
+      retryable: false,
+    })
+  })
+
   it('carries what the failed message said', () => {
     expect(failureOf({ role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' })).toEqual({
       message: 'the provider hung up',
+      retryable: false,
     })
   })
 

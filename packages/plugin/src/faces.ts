@@ -32,6 +32,8 @@ export type BeforeToolCallHook = (call: PluginToolCall) => Promise<Undef<ToolVer
  */
 export interface RunFailure {
   message?: string
+  /** Pi classified a provider error with a message; an unsaid failure keeps the retry budget. */
+  retryable?: boolean
 }
 
 /** How the run that just ended turned out. */

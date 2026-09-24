@@ -204,7 +204,10 @@ describe("[runtime] the agent's events, in the workbench's terms", () => {
     // The one decoder: the translator says `run_failed` with it, and the retry policy is asked
     // about exactly what it read.
     const failed = { role: 'assistant', stopReason: 'error', errorMessage: 'the provider hung up' }
-    expect(failureOfRun({ type: 'agent_end', messages: [failed] })).toEqual({ message: 'the provider hung up' })
+    expect(failureOfRun({ type: 'agent_end', messages: [failed] })).toEqual({
+      message: 'the provider hung up',
+      retryable: false,
+    })
     // It failed and said nothing, which is a failure all the same: the words for that case are the
     // window's, so what comes back here is an empty failure rather than no failure.
     expect(failureOfRun({ type: 'agent_end', messages: [{ role: 'assistant', stopReason: 'error' }] })).toEqual({})
