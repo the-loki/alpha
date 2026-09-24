@@ -20,6 +20,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type McpServerDefinition, readMcpServer, sameMcpServer, type Undef } from '@alpha/domain'
 import { connect, type McpCallResult, type McpConnection, type McpTool } from './client.ts'
+import type { McpCallContext, McpRequestHandler } from './inbound.ts'
 
 /** The servers a workbench's `mcp.json` names, read as far as the file goes. */
 export function readMcpServers(dataDirectory: string): McpServerDefinition[] {
@@ -66,7 +67,13 @@ export interface McpOutcome {
 export interface McpServers {
   /** The tools as they stand now, read when they are asked for: a server may change its list. */
   tools(): McpTool[]
-  call(server: string, tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpCallResult>
+  call(
+    server: string,
+    tool: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+    context?: McpCallContext,
+  ): Promise<McpCallResult>
   /** How each configured server went, in the order it was configured. */
   outcomes(): McpOutcome[]
   /**
@@ -102,6 +109,7 @@ interface Held {
   servers: HeldServer[]
   timeoutMs: number
   announce: () => void
+  onRequest?: McpRequestHandler
 }
 
 /** How long a server has before the workbench stops waiting for it and goes on without it. */
@@ -110,7 +118,7 @@ const CONNECT_TIMEOUT_MS = 5_000
 /** One server, reached: the connection it came up with, and what refused when it did not. */
 async function reach(state: Held, definition: McpServerDefinition): Promise<HeldServer> {
   try {
-    return { definition, connection: await connect(definition, state.timeoutMs, state.announce) }
+    return { definition, connection: await connect(definition, state.timeoutMs, state.announce, state.onRequest) }
   } catch (error) {
     return { definition, connection: undefined, problem: error instanceof Error ? error.message : String(error) }
   }
@@ -165,10 +173,11 @@ function called(
   tool: string,
   args: Record<string, unknown>,
   signal?: AbortSignal,
+  context?: McpCallContext,
 ): Promise<McpCallResult> {
   const connection = live(state).find((it) => it.server === server)
   if (connection === undefined) return Promise.reject(new Error(`no MCP server ${server}`))
-  return connection.call(tool, args, signal)
+  return connection.call(tool, args, signal, context)
 }
 
 /**
@@ -182,12 +191,13 @@ function called(
  */
 export async function connectMcpServers(
   definitions: McpServerDefinition[],
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; onRequest?: McpRequestHandler } = {},
 ): Promise<McpServers> {
   const listeners = new Set<() => void>()
   const state: Held = {
     servers: [],
     timeoutMs: options.timeoutMs ?? CONNECT_TIMEOUT_MS,
+    onRequest: options.onRequest,
     announce: () => {
       for (const listener of listeners) listener()
     },
@@ -195,7 +205,7 @@ export async function connectMcpServers(
   state.servers = await Promise.all(definitions.map((definition) => reach(state, definition)))
   return {
     tools: () => live(state).flatMap((connection) => connection.tools()),
-    call: (server, tool, args, signal) => called(state, server, tool, args, signal),
+    call: (server, tool, args, signal, context) => called(state, server, tool, args, signal, context),
     outcomes: () =>
       state.servers.map((server) => ({
         name: server.definition.name,

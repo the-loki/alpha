@@ -123,7 +123,9 @@ function pluginsFor(
   announce: (callId: string, record: ApprovalRecord) => void,
 ): AssembledPlugins {
   const shared: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
-  if (options.mcp !== undefined) shared.push(createMcpPlugin({ servers: options.mcp }))
+  if (options.mcp !== undefined) {
+    shared.push(createMcpPlugin({ servers: options.mcp, conversationId: options.conversation.id }))
+  }
   shared.push(
     createGatePlugin({
       conversationId: options.conversation.id,

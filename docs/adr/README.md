@@ -35,6 +35,7 @@ that remains is what the code does today.
 | [0029](0029-a-subagent-is-one-tool-call.md) | A subagent is one tool call, and its work stays out of the conversation |
 | [0027](0027-caliper-design-language.md) | Caliper: an instrument in near-neutral and indigo |
 | [0030](0030-workspace-changes-are-observed-beside-the-transcript.md) | Workspace changes are observed beside the transcript |
+| [0031](0031-mcp-server-requests-belong-to-the-parent-call.md) | MCP server requests belong to the parent tool call |
 
 ## Superseded
 

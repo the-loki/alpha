@@ -18,6 +18,7 @@
 
 import type { McpServerDefinition, Undef } from '@alpha/domain'
 import { httpFrame } from './http.ts'
+import type { McpCallContext, McpRequestHandler } from './inbound.ts'
 import { createSession, type McpSession } from './session.ts'
 import { stdioFrame } from './stdio.ts'
 
@@ -40,7 +41,12 @@ export interface McpConnection {
   server: string
   /** The tools as they stand now: a server may grow or drop them while the run is going on. */
   tools(): McpTool[]
-  call(tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpCallResult>
+  call(
+    tool: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+    context?: McpCallContext,
+  ): Promise<McpCallResult>
   close(): void
 }
 
@@ -99,12 +105,17 @@ async function listTools(session: McpSession, server: string): Promise<McpTool[]
 
 /** What this client is, and the notification that says it is ready to be asked for anything. */
 async function handshake(session: McpSession): Promise<void> {
-  await session.request('initialize', {
-    protocolVersion: PROTOCOL_VERSION,
-    capabilities: {},
-    clientInfo: { name: 'Alpha', version: '0.1.0' },
-  })
-  session.notify('notifications/initialized', {})
+  const result = recordOf(
+    await session.request('initialize', {
+      protocolVersion: PROTOCOL_VERSION,
+      capabilities: {},
+      clientInfo: { name: 'Alpha', version: '0.1.0' },
+    }),
+  )
+  if (result.protocolVersion !== PROTOCOL_VERSION) {
+    throw new Error(`the MCP server negotiated unsupported version ${String(result.protocolVersion)}`)
+  }
+  await session.notify('notifications/initialized', {})
 }
 
 /** The handshake has to finish: a server that never answers must not hold the workbench at its boot. */
@@ -133,6 +144,7 @@ export async function connect(
   definition: McpServerDefinition,
   timeoutMs: number,
   onToolsChanged?: () => void,
+  onRequest?: McpRequestHandler,
 ): Promise<McpConnection> {
   let tools: McpTool[] = []
   async function relist(): Promise<void> {
@@ -144,10 +156,12 @@ export async function connect(
     }
   }
   const session = createSession(
-    (handlers) => ('command' in definition ? stdioFrame(definition, handlers) : httpFrame(definition, handlers)),
+    (handlers) =>
+      'command' in definition ? stdioFrame(definition, handlers) : httpFrame(definition, handlers, PROTOCOL_VERSION),
     (method) => {
       if (method === 'notifications/tools/list_changed') void relist()
     },
+    { server: definition.name, handle: onRequest },
   )
   try {
     const ready = (async () => {
@@ -158,8 +172,8 @@ export async function connect(
     return {
       server: definition.name,
       tools: () => tools,
-      call: async (tool, args, signal) => {
-        const record = recordOf(await session.request('tools/call', { name: tool, arguments: args }, signal))
+      call: async (tool, args, signal, context) => {
+        const record = recordOf(await session.request('tools/call', { name: tool, arguments: args }, signal, context))
         return { content: contentOf(record.content), isError: record.isError === true }
       },
       close: () => session.close(),

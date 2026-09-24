@@ -6,4 +6,6 @@
  */
 
 export * from './client.ts'
+export type { McpCallContext, McpRequestHandler, McpServerRequest } from './inbound.ts'
+export { McpRequestError } from './inbound.ts'
 export * from './servers.ts'

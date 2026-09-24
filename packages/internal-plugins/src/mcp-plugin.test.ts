@@ -21,11 +21,17 @@ const TOOL: McpTool = {
 
 /** A hub of one server, answering what the test tells it to and remembering what it was asked. */
 function hubOf(answer: (tool: string, args: Record<string, unknown>) => Promise<McpCallResult>) {
-  const asked: Array<{ server: string; tool: string; args: Record<string, unknown>; signal?: AbortSignal }> = []
+  const asked: Array<{
+    server: string
+    tool: string
+    args: Record<string, unknown>
+    signal?: AbortSignal
+    context?: { conversationId: string; toolCallId: string }
+  }> = []
   const servers: McpServers = {
     tools: () => [TOOL],
-    call: (server, tool, args, signal) => {
-      asked.push({ server, tool, args, signal })
+    call: (server, tool, args, signal, context) => {
+      asked.push({ server, tool, args, signal, context })
       return answer(tool, args)
     },
     outcomes: () => [],
@@ -43,7 +49,7 @@ const answered = (text: string): Promise<McpCallResult> =>
 describe('[mcp] the plugin face', () => {
   it('offers the server’s tools under a name that says which server they came from', () => {
     const { servers } = hubOf(() => answered('read'))
-    const [tool] = createMcpPlugin({ servers }).tools()
+    const [tool] = createMcpPlugin({ servers, conversationId: 'conversation-1' }).tools()
 
     expect(tool?.name).toBe('mcp__files__read_file')
     expect(tool?.label).toBe('read_file')
@@ -54,16 +60,24 @@ describe('[mcp] the plugin face', () => {
 
   it('carries the call to the server that owns the tool, arguments and all', async () => {
     const { servers, asked } = hubOf(() => answered('the file'))
-    const [tool] = createMcpPlugin({ servers }).tools()
+    const [tool] = createMcpPlugin({ servers, conversationId: 'conversation-1' }).tools()
 
     const result = await tool?.execute('call-1', { path: 'notes.txt' })
-    expect(asked).toEqual([{ server: 'files', tool: 'read_file', args: { path: 'notes.txt' }, signal: undefined }])
+    expect(asked).toEqual([
+      {
+        server: 'files',
+        tool: 'read_file',
+        args: { path: 'notes.txt' },
+        signal: undefined,
+        context: { conversationId: 'conversation-1', toolCallId: 'call-1' },
+      },
+    ])
     expect(result?.content).toEqual([{ type: 'text', text: 'the file' }])
   })
 
   it('passes on the stop, so a run that is over stops the call too', async () => {
     const { servers, asked } = hubOf(() => answered('the file'))
-    const [tool] = createMcpPlugin({ servers }).tools()
+    const [tool] = createMcpPlugin({ servers, conversationId: 'conversation-1' }).tools()
     const stop = new AbortController()
 
     await tool?.execute('call-2', { path: 'notes.txt' }, stop.signal)
@@ -74,7 +88,7 @@ describe('[mcp] the plugin face', () => {
     const { servers } = hubOf(() =>
       Promise.resolve({ content: [{ type: 'text', text: 'no such file' }], isError: true }),
     )
-    const [tool] = createMcpPlugin({ servers }).tools()
+    const [tool] = createMcpPlugin({ servers, conversationId: 'conversation-1' }).tools()
 
     await expect(tool?.execute('call-3', { path: 'gone.txt' })).rejects.toThrow('no such file')
   })
@@ -96,7 +110,7 @@ describe('[mcp] the plugin face', () => {
       reconnect: async () => {},
       close: async () => {},
     }
-    const plugin = createMcpPlugin({ servers })
+    const plugin = createMcpPlugin({ servers, conversationId: 'conversation-1' })
     const host = createPluginHost([plugin, { name: 'tools', tools: () => [toolNamed('read')] }])
     const { agent } = assembleAgentWithHost({
       models: scriptedModels([]),

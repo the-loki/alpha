@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { McpServerDefinition } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
+import type { McpServerRequest } from './inbound.ts'
 import { connectMcpServers } from './servers.ts'
 
 const SERVER = new URL('./scripted-server.ts', import.meta.url).pathname
@@ -49,6 +50,78 @@ async function until(condition: () => boolean): Promise<void> {
 }
 
 describe('an MCP server over stdio', () => {
+  it('routes one attributable server request to the parent tool call', async () => {
+    const asked: McpServerRequest[] = []
+    const servers = await connectMcpServers([scripted()], {
+      onRequest: async (request) => {
+        asked.push(request)
+        return { action: 'accept', content: { name: 'Ada' } }
+      },
+    })
+
+    const result = await servers.call('scripted', 'reverse_answered', {}, undefined, {
+      conversationId: 'conversation-1',
+      toolCallId: 'call-1',
+    })
+    expect(asked.map((request) => [request.server, request.method, request.context])).toEqual([
+      ['scripted', 'elicitation/create', { conversationId: 'conversation-1', toolCallId: 'call-1' }],
+    ])
+    expect(result.content).toEqual([
+      { type: 'text', text: JSON.stringify({ action: 'accept', content: { name: 'Ada' } }) },
+    ])
+    await servers.close()
+  })
+
+  it('refuses a request when two conversations share the same stdio server', async () => {
+    const asked: McpServerRequest[] = []
+    const servers = await connectMcpServers([scripted()], {
+      onRequest: async (request) => {
+        asked.push(request)
+        return { action: 'accept' }
+      },
+    })
+    const [first, second] = await Promise.all([
+      servers.call('scripted', 'reverse_answered', {}, undefined, { conversationId: 'first', toolCallId: 'a' }),
+      servers.call('scripted', 'reverse_answered', {}, undefined, { conversationId: 'second', toolCallId: 'b' }),
+    ])
+    expect(asked).toEqual([])
+    expect(first.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('Cannot attribute') })
+    expect(second.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('Cannot attribute') })
+    await servers.close()
+  })
+
+  it('refuses a request without a parent tool-call identity on stdio', async () => {
+    const asked: McpServerRequest[] = []
+    const servers = await connectMcpServers([scripted()], {
+      onRequest: async (request) => {
+        asked.push(request)
+        return { action: 'accept' }
+      },
+    })
+    const result = await servers.call('scripted', 'reverse_answered', {})
+    expect(asked).toEqual([])
+    expect(result.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('Cannot attribute') })
+    await servers.close()
+  })
+
+  it('aborts an unanswered server request when the stdio server cancels it', async () => {
+    const asked: McpServerRequest[] = []
+    const servers = await connectMcpServers([scripted()], {
+      onRequest: async (request) => {
+        asked.push(request)
+        return await new Promise(() => {})
+      },
+    })
+    const result = await servers.call('scripted', 'reverse_cancelled', {}, undefined, {
+      conversationId: 'conversation-1',
+      toolCallId: 'call-1',
+    })
+    expect(asked).toHaveLength(1)
+    expect(asked[0]?.signal.aborted).toBe(true)
+    expect(result.content).toEqual([{ type: 'text', text: 'cancelled by server' }])
+    await servers.close()
+  })
+
   it('lists what the server offers — paging through the list — and calls a tool', async () => {
     const servers = await connectMcpServers([scripted()])
     expect(servers.tools().map((tool) => [tool.server, tool.name])).toEqual([

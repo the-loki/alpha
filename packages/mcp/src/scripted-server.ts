@@ -75,6 +75,7 @@ if (process.argv.includes('--die')) process.exit(3)
 
 /** The calls still running here, by request id: a cancellation has something to stop. */
 const waiting = new Map<string, NodeJS.Timeout>()
+const reverseWaiting = new Set<string>()
 
 let initialized = false
 
@@ -95,6 +96,19 @@ function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
   if (name === 'reverse') {
     write({ jsonrpc: '2.0', id, method: 'sampling/createMessage', params: { messages: [] } })
     queueMicrotask(() => write({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'real result' }] } }))
+    return undefined
+  }
+  if (name === 'reverse_answered') {
+    reverseWaiting.add(String(id))
+    write({ jsonrpc: '2.0', id, method: 'elicitation/create', params: { message: 'Name?' } })
+    return undefined
+  }
+  if (name === 'reverse_cancelled') {
+    write({ jsonrpc: '2.0', id, method: 'elicitation/create', params: { message: 'Name?' } })
+    setTimeout(() => {
+      write({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: id } })
+      write({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'cancelled by server' }] } })
+    }, 20)
     return undefined
   }
   if (name === 'grow') {
@@ -155,6 +169,12 @@ createInterface({ input: process.stdin }).on('line', (line) => {
   }
   if (message.method === 'notifications/cancelled') {
     cancelled(message.params?.requestId)
+    return
+  }
+  if (message.method === undefined && reverseWaiting.delete(String(message.id))) {
+    const reply = message as { result?: unknown; error?: unknown }
+    const content = [{ type: 'text', text: JSON.stringify(reply.result ?? reply.error) }]
+    write({ jsonrpc: '2.0', id: message.id, result: { content } })
     return
   }
   if (message.id === undefined || message.method === undefined) return

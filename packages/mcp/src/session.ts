@@ -15,23 +15,30 @@
  */
 
 import type { Undef } from '@alpha/domain'
+import {
+  type ActiveCall,
+  type InboundRequests,
+  inboundRequests,
+  type McpCallContext,
+  type McpRequestHandler,
+} from './inbound.ts'
 
 /** What a transport carries: one message out, and whatever comes back through the handlers. */
 export interface McpFrame {
   /** Carries one message. Rejects when the transport could not carry it. */
-  send(text: string): Promise<void>
+  send(text: string, originatingRequestId?: number, signal?: AbortSignal): Promise<void>
   close(): void
 }
 
 /** How a frame reports what it carried, and that it can carry no more. */
 export interface FrameHandlers {
-  message: (text: string) => void
+  message: (text: string, originatingRequestId?: number) => void
   closed: (why: string) => void
 }
 
 export interface McpSession {
-  request(method: string, params: unknown, signal?: AbortSignal): Promise<unknown>
-  notify(method: string, params: unknown): void
+  request(method: string, params: unknown, signal?: AbortSignal, context?: McpCallContext): Promise<unknown>
+  notify(method: string, params: unknown): Promise<void>
   close(): void
 }
 
@@ -40,6 +47,8 @@ interface Waiting {
   reject: (error: Error) => void
   /** Gives up on the answer: the caller stopped, or the transport failed to carry the request. */
   stop: (why: string) => void
+  context?: McpCallContext
+  signal?: AbortSignal
 }
 
 /** One message from the server: an answer, or something it says with nobody waiting for it. */
@@ -57,21 +66,27 @@ type Notify = (method: string, params: unknown) => void
 function handlersOf(
   waiting: Map<number, Waiting>,
   end: (why: string) => void,
-  rejectRequest: (id: string | number) => void,
+  receive: (id: string | number, method: string, params: unknown, originId?: number) => void,
+  cancel: (params: unknown) => void,
+  settled: (id: number) => void,
   notifications?: Notify,
 ): FrameHandlers {
   return {
-    message: (text) => {
+    message: (text, originId) => {
       const answer = answerOf(text)
       if (answer === undefined) return
       // Requests and notifications carry a method; neither can answer our outbound request, even
       // when the server reused the same id in its own direction.
       if (typeof answer.method === 'string') {
-        if (answer.id === undefined) notifications?.(answer.method, answer.params)
-        else if (typeof answer.id === 'string' || typeof answer.id === 'number') rejectRequest(answer.id)
+        if (answer.id === undefined) {
+          if (answer.method === 'notifications/cancelled') cancel(answer.params)
+          else notifications?.(answer.method, answer.params)
+        } else if (typeof answer.id === 'string' || typeof answer.id === 'number') {
+          receive(answer.id, answer.method, answer.params, originId)
+        }
         return
       }
-      deliver(answer, waiting)
+      deliver(answer, waiting, settled)
     },
     closed: end,
   }
@@ -88,45 +103,95 @@ function answerOf(text: string): Undef<Answer> {
 }
 
 /** One answer delivered to whoever is waiting for it; an id nobody waits for is nobody's answer. */
-function deliver(answer: Answer, waiting: Map<number, Waiting>): void {
+function deliver(answer: Answer, waiting: Map<number, Waiting>, settled: (id: number) => void): void {
   const id = typeof answer.id === 'number' ? answer.id : undefined
   if (id === undefined) return
   const entry = waiting.get(id)
   if (entry === undefined) return
   waiting.delete(id)
+  settled(id)
   const message = answer.error?.message
   if (answer.error === undefined) entry.resolve(answer.result)
   else entry.reject(new Error(typeof message === 'string' ? message : 'the server answered with an error'))
 }
 
 /** What a stop does: the caller's answer is given up on, and the server is told to stop working. */
-function stopOf(waiting: Map<number, Waiting>, notify: Notify, id: number, method: string): () => void {
+function stopOf(
+  waiting: Map<number, Waiting>,
+  notify: Notify,
+  settled: (id: number) => void,
+  id: number,
+  method: string,
+): () => void {
   return () => {
     const entry = waiting.get(id)
     if (entry === undefined) return
     entry.stop(`stopped before the MCP server answered ${method}`)
+    settled(id)
     notify('notifications/cancelled', { requestId: id, reason: 'the caller stopped waiting' })
   }
 }
 
-function rejectUnknownRequest(frame: McpFrame, id: string | number): void {
-  const reply = { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } }
-  void frame.send(JSON.stringify(reply)).catch(() => {
-    // No caller waits for this answer; the server may already have gone away.
+function activeCalls(waiting: Map<number, Waiting>, originId?: number): ActiveCall[] {
+  const entries = originId === undefined ? [...waiting] : [[originId, waiting.get(originId)] as const]
+  return entries.flatMap(([id, entry]) =>
+    entry?.context === undefined ? [] : [{ id, context: entry.context, signal: entry.signal }],
+  )
+}
+
+async function ask(
+  frame: McpFrame,
+  waiting: Map<number, Waiting>,
+  inbound: InboundRequests,
+  notify: Notify,
+  id: number,
+  method: string,
+  params: unknown,
+  signal?: AbortSignal,
+  context?: McpCallContext,
+): Promise<unknown> {
+  const answered = new Promise<unknown>((resolve, reject) => {
+    waiting.set(id, {
+      resolve,
+      reject,
+      stop: (why) => {
+        waiting.delete(id)
+        reject(new Error(why))
+      },
+      context,
+      signal,
+    })
   })
+  const stop = stopOf(waiting, notify, (parentId) => inbound.cancelParent(parentId), id, method)
+  if (signal?.aborted === true) stop()
+  else signal?.addEventListener('abort', stop, { once: true })
+  void frame.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }), id, signal).catch((error: unknown) => {
+    const entry = waiting.get(id)
+    if (entry === undefined) return
+    entry.stop(error instanceof Error ? error.message : String(error))
+    inbound.cancelParent(id)
+  })
+  try {
+    return await answered
+  } finally {
+    signal?.removeEventListener('abort', stop)
+  }
 }
 
 export function createSession(
   open: (handlers: FrameHandlers) => McpFrame,
   notifications?: (method: string, params: unknown) => void,
+  requests?: { server: string; handle?: McpRequestHandler },
 ): McpSession {
   const waiting = new Map<number, Waiting>()
   let nextId = 1
   let closed: Undef<string>
+  let inbound: Undef<InboundRequests>
 
   const end = (why: string): void => {
     if (closed !== undefined) return
     closed = why
+    inbound?.close()
     for (const [id, entry] of waiting) {
       waiting.delete(id)
       entry.reject(new Error(why))
@@ -134,7 +199,24 @@ export function createSession(
   }
 
   let frame: McpFrame
-  frame = open(handlersOf(waiting, end, (id) => rejectUnknownRequest(frame, id), notifications))
+  frame = open(
+    handlersOf(
+      waiting,
+      end,
+      (id, method, params, originId) => {
+        if (closed === undefined) inbound?.receive(id, method, params, originId)
+      },
+      (params) => inbound?.cancel(params),
+      (id) => inbound?.cancelParent(id),
+      notifications,
+    ),
+  )
+  inbound = inboundRequests(
+    frame,
+    requests?.server ?? '',
+    (originId) => activeCalls(waiting, originId),
+    requests?.handle,
+  )
 
   const notify: Notify = (method, params) => {
     void frame.send(JSON.stringify({ jsonrpc: '2.0', method, params })).catch(() => {
@@ -143,31 +225,13 @@ export function createSession(
   }
 
   return {
-    request: async (method, params, signal) => {
+    request: async (method, params, signal, context) => {
       if (closed !== undefined) throw new Error(closed)
       const id = nextId
       nextId += 1
-      const answered = new Promise<unknown>((resolve, reject) => {
-        waiting.set(id, {
-          resolve,
-          reject,
-          stop: (why) => {
-            waiting.delete(id)
-            reject(new Error(why))
-          },
-        })
-      })
-      const stop = stopOf(waiting, notify, id, method)
-      if (signal?.aborted === true) stop()
-      else signal?.addEventListener('abort', stop, { once: true })
-      try {
-        await frame.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }))
-      } catch (error) {
-        waiting.get(id)?.stop(error instanceof Error ? error.message : String(error))
-      }
-      return answered
+      return await ask(frame, waiting, inbound, notify, id, method, params, signal, context)
     },
-    notify,
+    notify: (method, params) => frame.send(JSON.stringify({ jsonrpc: '2.0', method, params })),
     close: () => {
       end('the workbench closed this MCP connection')
       frame.close()

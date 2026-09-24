@@ -84,8 +84,11 @@ second place to audit and a way to say yes without ever being asked.
   date: the plugin replaces its own half of the live agent's tools and pi announces the difference
   to the model before the next request. The other notifications are read and dropped, because there
   is nothing here they belong to (`progress` is for calls we never gave a token, `message` is a log
-  with no log, `cancelled` cancels requests we did not send). Server-pushed *requests* — sampling,
-  elicitation — are still the second face this ADR left alone: they need a hook pointing inward,
-  and the decisions that come with it (#185). Until that hook exists, Alpha declares neither
-  capability and answers such requests with `Method not found`; a request with an ID is never
-  mistaken for a response to Alpha's own call, even when the IDs match (#209).
+  with no log). A request with an ID is never mistaken for a response to Alpha's own call, even when
+  the IDs match (#209).
+
+## Superseded in part
+
+The earlier consequence that discarded server `cancelled` notifications and left server-pushed
+requests without an inward port was replaced by [ADR-0031](0031-mcp-server-requests-belong-to-the-parent-call.md).
+The server/tool/plugin boundary and the shared hub lifetime above remain in force.

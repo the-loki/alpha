@@ -26,6 +26,7 @@ import { type TSchema, Type } from 'typebox'
 export interface McpPluginPorts {
   /** The servers this workbench run holds, already connected: `main` makes one hub per run. */
   servers: McpServers
+  conversationId: string
 }
 
 /** A plugin that carries one face: what the base needs to hang it on the agent. */
@@ -71,7 +72,7 @@ function argumentsOf(params: unknown): Record<string, unknown> {
   return typeof params === 'object' && params !== null ? (params as Record<string, unknown>) : {}
 }
 
-function asAgentTool(servers: McpServers, tool: McpTool): AgentTool<TSchema, undefined> {
+function asAgentTool(ports: McpPluginPorts, tool: McpTool): AgentTool<TSchema, undefined> {
   return {
     name: mcpToolName(tool.server, tool.name),
     label: tool.name,
@@ -79,8 +80,15 @@ function asAgentTool(servers: McpServers, tool: McpTool): AgentTool<TSchema, und
     parameters: Type.Unsafe<Record<string, unknown>>(schemaOf(tool.inputSchema)),
     // A server may not be able to answer two calls at once, and one of these is a call to a server.
     executionMode: 'sequential',
-    execute: async (_toolCallId, params, signal) => {
-      const result: McpCallResult = await servers.call(tool.server, tool.name, argumentsOf(params), signal)
+    execute: async (toolCallId, params, signal) => {
+      const context = { conversationId: ports.conversationId, toolCallId }
+      const result: McpCallResult = await ports.servers.call(
+        tool.server,
+        tool.name,
+        argumentsOf(params),
+        signal,
+        context,
+      )
       // A result the server marked as a failure is the tool failing: pi reads a throw as the failed
       // tool result the model sees, which is how pi's own tools report one too.
       if (result.isError) throw new Error(failureText(result.content))
@@ -90,15 +98,15 @@ function asAgentTool(servers: McpServers, tool: McpTool): AgentTool<TSchema, und
 }
 
 /** What the servers offer now, in the shape the agent takes. */
-function offeredBy(servers: McpServers): AgentTool<TSchema, undefined>[] {
-  return servers.tools().map((tool) => asAgentTool(servers, tool))
+function offeredBy(ports: McpPluginPorts): AgentTool<TSchema, undefined>[] {
+  return ports.servers.tools().map((tool) => asAgentTool(ports, tool))
 }
 
 /** The plugin: one tool per tool the servers offer, read when the agent is assembled or grown. */
 export function createMcpPlugin(ports: McpPluginPorts): McpPlugin {
   return {
     name: 'mcp',
-    tools: () => offeredBy(ports.servers),
+    tools: () => offeredBy(ports),
     onToolsChanged: (listener) => ports.servers.onToolsChanged(listener),
   }
 }
