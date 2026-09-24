@@ -465,6 +465,39 @@ describe('[runtime] the gate on the full path', () => {
     const finished = events.find((event) => event.type === 'tool_finished')
     expect(finished?.type === 'tool_finished' ? finished.output : '').toContain('Nobody is watching this run')
   })
+
+  // The watching ends when the run does, and a run that never started has ended. Left on, it
+  // would refuse every approval this conversation asks for from then on — so the rule's only
+  // visible edge is the next turn, which has to be asked about rather than refused.
+  it('a run that threw stops being watched: the next turn is asked, not refused', async () => {
+    const options: FixtureOptions = {
+      keyProblem: 'Alpha has no key for p. Add one under Settings, Providers.',
+      toolCall: { name: 'bash', args: { command: 'echo nobody-home' } },
+    }
+    const { manager, workspace, events } = freshManager(options)
+    const created = await manager.create(workspace)
+
+    await expect(manager.runUnattended(created.conversation.id, 'run it')).rejects.toThrow(/no key for p/)
+    // Readable again, and somebody is at the window. Prompting answers when the run is under way,
+    // so what tells the two cases apart is which event comes first: the ask, or the run's end.
+    options.keyProblem = undefined
+    void manager.prompt(created.conversation.id, 'run it')
+    const asked = await Promise.race([
+      waitedFor(events, 'approval_requested').then(() => true),
+      waitedFor(events, 'turn_finished').then(() => false),
+      waitedFor(events, 'run_failed').then(() => false),
+    ])
+    if (!asked) throw new Error('the risky call was refused, not asked about')
+    const request = events.find((event) => event.type === 'approval_requested')
+    if (request?.type !== 'approval_requested') throw new Error('no approval was requested')
+    manager.answerApproval(created.conversation.id, request.request.requestId, { decision: 'once' })
+    await waitedFor(events, 'turn_finished')
+    await manager.closeAll()
+
+    // The answer let the call run: the tool echoed its command rather than a refusal.
+    const finished = events.find((event) => event.type === 'tool_finished')
+    expect(finished?.type === 'tool_finished' ? finished.output : '').toContain('nobody-home')
+  })
 })
 
 const freshManagerAt = (

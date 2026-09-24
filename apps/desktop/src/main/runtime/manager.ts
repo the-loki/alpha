@@ -149,8 +149,8 @@ export class RuntimeManager {
   /**
    * Runs one turn with nobody watching (a scheduled task, ADR-0012) and answers with what the gate
    * had to refuse. A run started by hand is attended: whoever pressed "run now" is right there.
-   * The run is waited out here, because a refusal only happens while the run is in flight — the
-   * watching ends when the run does, or the count would always be zero.
+   * The run is waited out here, because a refusal only happens while the run is in flight and the
+   * watching ends when the run does. A run that threw has ended too, so the watching ends with it.
    */
   public async runUnattended(id: string, text: string): Promise<number> {
     this.unattended.start(id)
