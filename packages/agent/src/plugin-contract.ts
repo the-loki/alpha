@@ -4,7 +4,8 @@
  * which of the library's hooks the workbench carries. Tools concatenate in assembly order; `beforeToolCall`
  * and `afterRun` chain in that order, each with its own rule (`chainToolVerdicts`,
  * `chainAfterRunVerdicts`, in the library). The contract is Alpha's own: no external files, no
- * loader, no re-implementation of coding-agent's extension format.
+ * loader, no re-implementation of coding-agent's extension format. The host owns dynamic tool
+ * subscriptions and releases a plugin's resources when its conversation closes.
  */
 
 import type { AfterRunHook, BeforeToolCallHook } from '@alpha/plugin'
@@ -14,6 +15,10 @@ import type { AgentTool } from '@earendil-works/pi-agent-core'
 export interface AlphaPlugin {
   name: string
   tools?: () => AgentTool[]
+  /** Tells the host that the tools returned by `tools` should be read again. */
+  onToolsChanged?: (listener: () => void) => () => void
   beforeToolCall?: BeforeToolCallHook
   afterRun?: AfterRunHook
+  /** Releases subscriptions and other resources owned by this plugin instance. */
+  close?: () => void | Promise<void>
 }

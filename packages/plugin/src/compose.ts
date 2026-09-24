@@ -6,7 +6,7 @@
  * deciding it.
  *
  * Pure on purpose: the decisions are testable without an agent, and the adapter that asks pi's
- * context for the call stays in `main`. The same call, or the same outcome, is handed to each hook
+ * context for the call stays in `@alpha/agent`. The same call, or the same outcome, is handed to each hook
  * in turn — hooks read it, they do not own it — and the hooks to ask are read from the list each
  * time, so a plugin registered after assembly is still asked.
  */

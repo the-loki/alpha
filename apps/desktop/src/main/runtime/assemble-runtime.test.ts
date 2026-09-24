@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
 import type { ConversationSummary, PermissionLevel, RuntimeEvent } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
+import type { McpServers } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { DecisionLog, SessionStore } from '@alpha/sessions'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
@@ -55,6 +56,7 @@ interface OpenOptions {
   level?: PermissionLevel
   /** The backoff the assembled retry policy waits with, shrunk for the test. */
   retryDelays?: number[]
+  mcp?: McpServers
 }
 
 const opened = async (
@@ -76,6 +78,7 @@ const opened = async (
     providers,
     models: () => scriptedModels(options.drives),
     decisions: new DecisionLog(dataDirectory).opened(conversation.id),
+    mcp: options.mcp,
     retryDelays: options.retryDelays,
     permissions: () => ({
       ...permissionsAt(level),
@@ -96,6 +99,29 @@ const runAndSettle = async (runtime: ConversationRuntime, text: string): Promise
 }
 
 describe('[runtime] what an opening assembles', () => {
+  it('releases its MCP tool subscription when the conversation closes', async () => {
+    const listeners = new Set<() => void>()
+    const mcp: McpServers = {
+      tools: () => [],
+      call: async () => ({ content: [], isError: false }),
+      outcomes: () => [],
+      reconfigure: async () => {},
+      reconnect: async () => {},
+      onToolsChanged: (listener) => {
+        listeners.add(listener)
+        return () => {
+          listeners.delete(listener)
+        }
+      },
+      close: async () => {},
+    }
+    const { runtime } = await opened({ drives: [], mcp })
+
+    expect(listeners.size).toBe(1)
+    await runtime.close()
+    expect(listeners.size).toBe(0)
+  })
+
   it('a Plan conversation cannot run bash through the assembled runtime', async () => {
     const { runtime, events, asked } = await opened({
       level: 'plan',

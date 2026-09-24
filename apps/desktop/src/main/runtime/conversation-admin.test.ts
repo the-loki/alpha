@@ -966,7 +966,13 @@ function hubOf(
       return { content, isError: false }
     },
     outcomes: () => [],
-    onToolsChanged: (listener) => heard.push(listener),
+    onToolsChanged: (listener) => {
+      heard.push(listener)
+      return () => {
+        const index = heard.indexOf(listener)
+        if (index !== -1) heard.splice(index, 1)
+      }
+    },
     reconfigure: async () => {},
     reconnect: async () => {},
     close: async () => {},

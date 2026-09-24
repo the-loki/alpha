@@ -5,11 +5,10 @@
  * only whether the shape handed to the agent is the shape the protocol promised.
  */
 
-import { assembleAgent } from '@alpha/agent'
+import { assembleAgentWithHost, createPluginHost } from '@alpha/agent'
 import { aModel, scriptedModels, toolNamed } from '@alpha/agent/testing'
-import { toolRiskOf, type Undef } from '@alpha/domain'
+import { toolRiskOf } from '@alpha/domain'
 import type { McpCallResult, McpServers, McpTool } from '@alpha/mcp'
-import type { Agent } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
 import { createMcpPlugin, mcpToolName } from './mcp-plugin.ts'
 
@@ -30,7 +29,7 @@ function hubOf(answer: (tool: string, args: Record<string, unknown>) => Promise<
       return answer(tool, args)
     },
     outcomes: () => [],
-    onToolsChanged: () => {},
+    onToolsChanged: () => () => {},
     reconfigure: async () => {},
     reconnect: async () => {},
     close: async () => {},
@@ -80,24 +79,29 @@ describe('[mcp] the plugin face', () => {
     await expect(tool?.execute('call-3', { path: 'gone.txt' })).rejects.toThrow('no such file')
   })
 
-  it('hands a server’s new tools to the conversation that is already open', () => {
-    const listeners: Array<() => void> = []
+  it('hands a server’s new tools to the conversation that is already open, then lets it go', async () => {
+    const listeners = new Set<() => void>()
     let offered: McpTool[] = [TOOL]
     const servers: McpServers = {
       tools: () => offered,
       call: () => Promise.resolve({ content: [], isError: false }),
       outcomes: () => [],
-      onToolsChanged: (listener) => listeners.push(listener),
+      onToolsChanged: (listener) => {
+        listeners.add(listener)
+        return () => {
+          listeners.delete(listener)
+        }
+      },
       reconfigure: async () => {},
       reconnect: async () => {},
       close: async () => {},
     }
-    let agent: Undef<Agent>
-    const plugin = createMcpPlugin({ servers, agent: () => agent })
-    agent = assembleAgent({
+    const plugin = createMcpPlugin({ servers })
+    const host = createPluginHost([plugin, { name: 'tools', tools: () => [toolNamed('read')] }])
+    const { agent } = assembleAgentWithHost({
       models: scriptedModels([]),
       model: aModel(),
-      plugins: [plugin, { name: 'tools', tools: () => [toolNamed('read')] }],
+      host,
       systemPrompt: 's',
     })
     expect(agent.state.tools.map((tool) => tool.name)).toEqual(['mcp__files__read_file', 'read'])
@@ -107,10 +111,12 @@ describe('[mcp] the plugin face', () => {
 
     // The server's half is replaced, and Alpha's own tools are left exactly as they were.
     expect(agent.state.tools.map((tool) => tool.name)).toEqual([
-      'read',
       'mcp__files__read_file',
       'mcp__files__stat_file',
+      'read',
     ])
+    await host.close()
+    expect(listeners.size).toBe(0)
   })
 
   it('a name no rule knows is the strictest class, which is how it reaches the gate', () => {

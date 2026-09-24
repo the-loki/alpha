@@ -110,7 +110,7 @@ function hubOf(outcomes: McpOutcome[] = [{ name: 'files', tools: 5 }]) {
     tools: () => [],
     call: async () => ({ content: [], isError: false }),
     outcomes: () => current,
-    onToolsChanged: () => {},
+    onToolsChanged: () => () => {},
     reconfigure: async (definitions) => {
       told.push(definitions)
       current = definitions.map((server) => ({ name: server.name, tools: 5 }))

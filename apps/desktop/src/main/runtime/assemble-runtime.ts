@@ -8,7 +8,7 @@
 
 import { readFileSync } from 'node:fs'
 import type { AlphaPlugin } from '@alpha/agent'
-import { assembleAgent, historyOf } from '@alpha/agent'
+import { assembleAgentWithHost, createPluginHost, historyOf, type PluginHost } from '@alpha/agent'
 import type { ApprovalRecord, ConversationSummary, RuntimeEvent, Undef } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import {
@@ -121,7 +121,7 @@ function pluginsFor(
   announce: (callId: string, record: ApprovalRecord) => void,
 ): AssembledPlugins {
   const shared: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
-  if (options.mcp !== undefined) shared.push(createMcpPlugin({ servers: options.mcp, agent: () => agent() }))
+  if (options.mcp !== undefined) shared.push(createMcpPlugin({ servers: options.mcp }))
   shared.push(
     createGatePlugin({
       conversationId: options.conversation.id,
@@ -160,18 +160,18 @@ async function assembleFor(
   session: { id: string; workspacePath: string },
   models: Models,
   model: Model<Api>,
-  plugins: AlphaPlugin[],
+  host: PluginHost,
 ): Promise<Agent> {
   const history = options.sessions.entries(session.id, session.workspacePath)
-  return assembleAgent({
+  return assembleAgentWithHost({
     models,
     model,
-    plugins,
+    host,
     systemPrompt: await systemPromptFor(session.workspacePath, readTextFile),
     messages: historyOf(tipPath(history.entries, history.leafId)),
     thinkingLevel: options.conversation.thinkingLevel,
     sessionId: session.id,
-  })
+  }).agent
 }
 
 /** The runtime for a conversation, ready to prompt, steer, fork, or just be read. */
@@ -197,8 +197,8 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
     () => agent,
     (callId, approval) => runtime?.decided(callId, approval),
   )
-  const assembled =
-    model === undefined ? undefined : await assembleFor(options, session, models, model, policies.plugins)
+  const host = createPluginHost(policies.plugins)
+  const assembled = model === undefined ? undefined : await assembleFor(options, session, models, model, host)
   agent = assembled
   runtime = new ConversationRuntime({
     conversationId: conversation.id,
@@ -207,6 +207,7 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
     session,
     store: options.sessions,
     plugins: policies.plugins,
+    host,
     compact: policies.compact,
     retry: policies.retry,
     emit: options.emit,

@@ -47,8 +47,11 @@ path ends at the model runtime's auth resolver instead of a child's environment.
 
 **The workbench is the plugin base.** Alpha defines the contract its agent is assembled from: a
 plugin contributes tools and two hooks — `beforeToolCall`, which chains across plugins and any of
-which may block, and `afterRun`, which sees how the run ended — and the base composes them into the
-one `Agent`. The contract is Alpha's own, not a re-implementation of coding-agent's extension
+which may block, and `afterRun`, which sees how the run ended. One host per open conversation
+composes them into the `Agent`, rejects duplicate tool names, refreshes tools when a plugin's list
+changes, and releases subscriptions when the conversation closes. The MCP hub remains shared by
+the workbench; the MCP plugin subscribes through its conversation's host. The contract is Alpha's
+own, not a re-implementation of coding-agent's extension
 loader: no jiti, no external files, no `pi.registerCommand` surface. Built-ins ship as the first
 plugins, so the base is exercised by everything Alpha itself needs:
 

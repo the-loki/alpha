@@ -211,7 +211,10 @@ handed the outcome and not the agent, through `chainAfterRunVerdicts`, where any
 retry is enough and an aborted run is never one. So a capability is added as a face on that
 contract, with a decision behind it that stands without the agent. A hook that needs more than the
 outcome holds its own ports — the compaction plugin reads the live agent and the store that way —
-so what travels through a face is never pi's own shapes. The base is what other functions are built
+so what travels through a face is never pi's own shapes. One host belongs to each open conversation:
+it validates assembled tool names, refreshes the agent's tools when a plugin reports a change, and
+releases plugin subscriptions on close. A plugin does not edit the live agent's tool array itself.
+The base is what other functions are built
 on, not one more thing wired into the runtime.
 
 A plugin may also hand the runtime a handle, and two built-ins do: the compaction plugin's

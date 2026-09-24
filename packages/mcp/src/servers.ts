@@ -81,7 +81,7 @@ export interface McpServers {
    */
   reconnect(name: string): Promise<void>
   /** Told when any server's tool list changes, so what is already assembled can be brought up to date. */
-  onToolsChanged(listener: () => void): void
+  onToolsChanged(listener: () => void): () => void
   close(): Promise<void>
 }
 
@@ -184,7 +184,7 @@ export async function connectMcpServers(
   definitions: McpServerDefinition[],
   options: { timeoutMs?: number } = {},
 ): Promise<McpServers> {
-  const listeners: Array<() => void> = []
+  const listeners = new Set<() => void>()
   const state: Held = {
     servers: [],
     timeoutMs: options.timeoutMs ?? CONNECT_TIMEOUT_MS,
@@ -205,9 +205,13 @@ export async function connectMcpServers(
     reconfigure: (next) => configure(state, next),
     reconnect: (name) => reconnect(state, name),
     onToolsChanged: (listener) => {
-      listeners.push(listener)
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
     },
     close: async () => {
+      listeners.clear()
       for (const connection of live(state)) connection.close()
     },
   }

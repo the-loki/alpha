@@ -108,6 +108,20 @@ describe('the servers one workbench holds', () => {
     await expect(servers.reconnect('nobody')).rejects.toThrow('no MCP server nobody')
     await servers.close()
   })
+
+  it('stops notifying an open conversation after it unsubscribes', async () => {
+    const servers = await connectMcpServers([scripted('one')])
+    let heard = 0
+    const unsubscribe = servers.onToolsChanged(() => {
+      heard += 1
+    })
+
+    unsubscribe()
+    await servers.reconfigure([])
+
+    expect(heard).toBe(0)
+    await servers.close()
+  })
 })
 
 /** Waits for the client to have heard about a change the server made on its own. */

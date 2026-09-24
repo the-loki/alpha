@@ -2,7 +2,7 @@
  * What a plugin is handed and what it answers, in Alpha's own words: one pending tool call, the
  * verdict about it, the outcome of a run, and the retry policy's decision. Pure — no pi, no disk,
  * no window — so the faces can be stated, implemented and tested without the agent being present.
- * The adapter that hands these to pi lives in `main`.
+ * The adapter that hands these to pi lives in `@alpha/agent`.
  */
 import type { Undef } from '@alpha/domain'
 

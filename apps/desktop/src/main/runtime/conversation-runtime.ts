@@ -14,7 +14,7 @@
  * crashes, and the words for the case belong to the window (ADR-0010).
  */
 
-import type { AlphaPlugin } from '@alpha/agent'
+import type { AlphaPlugin, PluginHost } from '@alpha/agent'
 import { historyOf, runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
@@ -45,6 +45,7 @@ export interface ConversationRuntimeOptions {
   session: { id: string; workspacePath: string }
   store: SessionStore
   plugins: AlphaPlugin[]
+  host?: PluginHost
   /** Asks the compaction plugin to run now, threshold aside; answered whether it did. */
   compact?: () => Promise<boolean>
   /** The retry policy, whose decision keeps the turn open across a retry it has planned. */
@@ -57,6 +58,8 @@ export class ConversationRuntime {
   private readonly models: Models
   private readonly store: SessionStore
   private readonly plugins: AlphaPlugin[]
+  private readonly host: Undef<PluginHost>
+  private readonly unsubscribe: Undef<() => void>
   private readonly compactor: Undef<() => Promise<boolean>>
   private readonly emit: (event: RuntimeEvent) => void
   private readonly translator: AgentEventTranslator
@@ -77,12 +80,13 @@ export class ConversationRuntime {
     this.models = options.models
     this.store = options.store
     this.plugins = options.plugins
+    this.host = options.host
     this.compactor = options.compact
     this.emit = options.emit
     this.sessionId = options.session.id
     this.workspacePath = options.session.workspacePath
     this.translator = new AgentEventTranslator(options.conversationId, options.retry)
-    options.agent?.subscribe((event) => this.onEvent(event))
+    this.unsubscribe = options.agent?.subscribe((event) => this.onEvent(event))
   }
 
   /**
@@ -208,9 +212,12 @@ export class ConversationRuntime {
    * session nobody is driving (ADR-0008). There is nothing to reap — no child was ever started.
    */
   public async close(): Promise<void> {
-    if (this.driving === undefined) return
-    this.agent?.abort()
-    await this.settle()
+    if (this.driving !== undefined) {
+      this.agent?.abort()
+      await this.settle()
+    }
+    this.unsubscribe?.()
+    await this.host?.close()
   }
 
   /** The run's other half: wait it out, then let the plugins see how it went. A failure is news. */
