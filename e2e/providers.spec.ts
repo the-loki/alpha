@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
-import { launchWorkbench } from './agent'
+import { launchWorkbench, sizeWindow } from './agent'
 import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
 
 test.afterEach(() => closeScriptedProviders())
@@ -80,6 +80,52 @@ test('a fresh workbench can send its first turn after configuring a model', asyn
   await window.getByRole('button', { name: 'Send' }).click()
   await expect(window.getByRole('main').locator('[data-role="assistant"]')).toContainText('First answer.')
   await app.close()
+})
+
+test('configured model rates appear in the conversation total and survive reopening', async () => {
+  const scripted = await startScriptedProvider({ script: JSON.stringify(['A priced answer.']) })
+  const { app, window, directory, workspace } = await launch()
+  await openSettings(window, 'Providers')
+  await describeProvider(window, { id: 'priced', name: 'Priced', baseUrl: scripted.url })
+  await window.getByLabel('API key for Priced').fill('sk-test')
+  await window.getByRole('button', { name: 'Save key' }).click()
+  const box = window.getByRole('region', { name: 'Priced' })
+  await box.getByRole('button', { name: 'Add model' }).click()
+  const row = box.getByRole('group', { name: 'Model 1' })
+  await row.getByRole('textbox', { name: 'Model id' }).fill('priced-model')
+  await row.getByRole('checkbox', { name: 'Track cost' }).check()
+  await row.getByRole('spinbutton', { name: 'Input' }).fill('1000')
+  await row.getByRole('spinbutton', { name: 'Output' }).fill('1000')
+  await window.screenshot({ path: join(SHOT_DIR, 'settings-model-rates.png') })
+  await sizeWindow(app, window, 390, 800)
+  await expect.poll(() => window.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await row.getByRole('spinbutton', { name: 'Input' }).scrollIntoViewIfNeeded()
+  await window.screenshot({ path: join(SHOT_DIR, 'settings-model-rates-narrow.png') })
+  await sizeWindow(app, window, 1200, 800)
+  await box.getByRole('button', { name: 'Save models' }).click()
+  expect(JSON.parse(readFileSync(join(directory, 'providers.json'), 'utf-8')).providers[0].models[0].rates).toEqual({
+    input: 1000,
+    output: 1000,
+    cacheRead: 0,
+    cacheWrite: 0,
+  })
+
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window.getByRole('textbox', { name: 'Message the agent' }).fill('price this turn')
+  await window.getByRole('button', { name: 'Send' }).click()
+  await expect(window.getByRole('main').getByText('A priced answer.')).toBeVisible()
+  const heading = window.getByRole('heading', { level: 1 })
+  await expect(heading).toHaveAttribute('title', /Tokens for this conversation: .* · \$[0-9]/)
+  const title = await heading.getAttribute('title')
+  await app.close()
+
+  const reopened = await launchWorkbench({ provider: false, dataDirectory: directory, workspace, keepState: true })
+  await expect(reopened.window.getByRole('heading', { level: 1 })).toHaveAttribute('title', title ?? '')
+  await openSettings(reopened.window, 'Providers')
+  const reopenedRow = reopened.window.getByRole('region', { name: 'Priced' }).getByRole('group', { name: 'Model 1' })
+  await expect(reopenedRow.getByRole('checkbox', { name: 'Track cost' })).toBeChecked()
+  await expect(reopenedRow.getByRole('spinbutton', { name: 'Input' })).toHaveValue('1000')
+  await reopened.app.close()
 })
 
 test('a connection is described by hand, given a key, and deleted', async () => {

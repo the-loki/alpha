@@ -48,7 +48,9 @@ there either, because there is no window of ours to move.
    paste its base URL, then add the models it serves underneath it. Nothing is bundled and no key
    ships with the workbench.
 3. **Pick a model.** The chip at the foot of a conversation's composer, or Settings. Each
-   conversation keeps its own choice, and so does its thinking effort.
+   conversation keeps its own choice, and so does its thinking effort. To show conversation cost,
+   enable *Track cost* on a model and enter its USD rates per million tokens; Alpha does not supply
+   prices.
 4. **Ask for something.** `Enter` sends. The reply streams in, and every tool call it makes appears
    as a row in the ledger.
 
@@ -97,6 +99,7 @@ per-user data directory.
 | `conversations.json` | The sidebar's index: titles, ordering, status |
 | `sessions/<workspace>/<timestamp>_<id>.jsonl` | The transcripts themselves, append-only (ADR-0004), grouped one folder per workspace |
 | `credentials.json` | Provider credentials, encrypted by the OS keychain where there is one |
+| `providers.json` | Provider connections, models, optional price rates, and the default model |
 | `decisions/<id>.json` | How each tool call got past the gate, so a restored ledger still says why (ADR-0007) |
 
 Deleting a conversation deletes its session file and its decision log. Export writes a

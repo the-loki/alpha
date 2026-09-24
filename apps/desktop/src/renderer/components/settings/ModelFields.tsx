@@ -1,7 +1,19 @@
-import { Index } from 'solid-js'
+import type { ModelRates, ProviderModelDefinition } from '@alpha/domain'
+import type { TextKey } from '@alpha/i18n'
+import { Index, Show } from 'solid-js'
 import { useText } from '../../stores/shell.ts'
 import { DESTRUCTIVE_ACTION, GROUP_LABEL, OUTLINED_ACTION } from '../controls.ts'
-import { TextField } from './Fields.tsx'
+import { FIELD, TextField } from './Fields.tsx'
+
+type DraftRates = Record<keyof ModelRates, string>
+
+const ZERO_RATES: DraftRates = { input: '0', output: '0', cacheRead: '0', cacheWrite: '0' }
+const RATE_FIELDS: ReadonlyArray<readonly [keyof ModelRates, TextKey]> = [
+  ['input', 'settings.priceInput'],
+  ['output', 'settings.priceOutput'],
+  ['cacheRead', 'settings.priceCacheRead'],
+  ['cacheWrite', 'settings.priceCacheWrite'],
+]
 
 /** One model as the form holds it: every field is a string until the save reads it. */
 export interface DraftModel {
@@ -11,6 +23,7 @@ export interface DraftModel {
   maxTokens: string
   reasoning: boolean
   images: boolean
+  rates?: DraftRates
 }
 
 /** Two digits, so a column of ordinals reads as a column. */
@@ -27,23 +40,28 @@ const emptyModel = (): DraftModel => ({
   images: false,
 })
 
-export const asDraft = (model: {
-  id: string
-  name: string
-  contextWindow: number
-  maxTokens: number
-  reasoning: boolean
-  images: boolean
-}): DraftModel => ({
+export const asDraft = (model: ProviderModelDefinition): DraftModel => ({
   id: model.id,
   name: model.name,
   contextWindow: String(model.contextWindow),
   maxTokens: String(model.maxTokens),
   reasoning: model.reasoning,
   images: model.images,
+  ...(model.rates === undefined
+    ? {}
+    : {
+        rates: {
+          input: String(model.rates.input),
+          output: String(model.rates.output),
+          cacheRead: String(model.rates.cacheRead),
+          cacheWrite: String(model.rates.cacheWrite),
+        },
+      }),
 })
 
 /** The draft in the shape the boundary validates: the numbers become numbers here and nowhere else. */
+const rateNumber = (value: string): number => (value.trim() === '' ? Number.NaN : Number(value))
+
 export const modelInput = (models: DraftModel[]) =>
   models.map((model) => ({
     id: model.id,
@@ -52,7 +70,45 @@ export const modelInput = (models: DraftModel[]) =>
     maxTokens: Number(model.maxTokens),
     reasoning: model.reasoning,
     images: model.images,
+    ...(model.rates === undefined
+      ? {}
+      : {
+          rates: {
+            input: rateNumber(model.rates.input),
+            output: rateNumber(model.rates.output),
+            cacheRead: rateNumber(model.rates.cacheRead),
+            cacheWrite: rateNumber(model.rates.cacheWrite),
+          },
+        }),
   }))
+
+function RateFields(props: { rates: DraftRates; onChange: (rates: DraftRates) => void }) {
+  const t = useText()
+  return (
+    <fieldset class="mt-2 border-t border-line pt-2">
+      <legend class={GROUP_LABEL}>{t('settings.priceUnit')}</legend>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Index each={RATE_FIELDS}>
+          {(field) => (
+            <label class="block min-w-0">
+              <span class={`mb-1 block ${GROUP_LABEL}`}>{t(field()[1])}</span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                inputmode="decimal"
+                aria-label={t(field()[1])}
+                value={props.rates[field()[0]]}
+                onInput={(event) => props.onChange({ ...props.rates, [field()[0]]: event.target.value })}
+                class={FIELD}
+              />
+            </label>
+          )}
+        </Index>
+      </div>
+    </fieldset>
+  )
+}
 
 /** The models a provider serves, as rows being edited. Rows are positional until they are saved. */
 export function ModelFields(props: { models: DraftModel[]; onChange: (models: DraftModel[]) => void }) {
@@ -107,7 +163,7 @@ export function ModelFields(props: { models: DraftModel[]; onChange: (models: Dr
                     onChange={(maxTokens) => replace(index, { maxTokens })}
                   />
                 </div>
-                <div class="mt-2 flex items-center gap-4">
+                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
                   <label class={`flex items-center gap-2 ${GROUP_LABEL}`}>
                     <input
                       type="checkbox"
@@ -131,16 +187,30 @@ export function ModelFields(props: { models: DraftModel[]; onChange: (models: Dr
                     />
                     {t('settings.takesPictures')}
                   </label>
-                  <span class="flex-1" />
+                  <label class={`flex items-center gap-2 ${GROUP_LABEL}`}>
+                    <input
+                      type="checkbox"
+                      aria-label={t('settings.trackCost')}
+                      checked={model().rates !== undefined}
+                      onInput={(event) =>
+                        replace(index, { rates: event.target.checked ? { ...ZERO_RATES } : undefined })
+                      }
+                      class="h-3.5 w-3.5 accent-accent"
+                    />
+                    {t('settings.trackCost')}
+                  </label>
                   <button
                     type="button"
                     aria-label={t('settings.removeModel')}
                     onClick={() => props.onChange(props.models.filter((_unused, at) => at !== index))}
-                    class={DESTRUCTIVE_ACTION}
+                    class={`${DESTRUCTIVE_ACTION} ml-auto`}
                   >
                     {t('settings.removeModel')}
                   </button>
                 </div>
+                <Show when={model().rates !== undefined}>
+                  <RateFields rates={model().rates ?? ZERO_RATES} onChange={(rates) => replace(index, { rates })} />
+                </Show>
               </div>
             </fieldset>
           )

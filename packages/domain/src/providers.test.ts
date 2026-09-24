@@ -85,6 +85,13 @@ describe('[domain] readProvider', () => {
 })
 
 describe('[domain] readModels', () => {
+  it('keeps configured rates and rejects invalid prices', () => {
+    const rates = { input: 1.5, output: 6, cacheRead: 0.15, cacheWrite: 1.875 }
+    expect(readModels([{ ...model, rates }]).models?.[0]?.rates).toEqual(rates)
+    expect(readModels([{ ...model, rates: { ...rates, output: -1 } }]).error).toContain('price')
+    expect(readModels([{ ...model, rates: { ...rates, output: Number.NaN } }]).error).toContain('price')
+  })
+
   it('reads a list and fills in what was left out', () => {
     expect(readModels([{ id: 'local-7b', contextWindow: 128_000 }]).models).toEqual([
       { id: 'local-7b', name: 'local-7b', contextWindow: 128_000, maxTokens: 4096, reasoning: false, images: false },
@@ -115,6 +122,18 @@ describe('[domain] readModels', () => {
 })
 
 describe('[domain] parseProviders', () => {
+  it('preserves configured rates while older models remain without rates', () => {
+    const rates = { input: 1.5, output: 6, cacheRead: 0.15, cacheWrite: 1.875 }
+    const priced = { ...stored, providers: [{ ...stored.providers[0], models: [{ ...model, rates }] }] }
+    expect(parseProviders(priced).providers[0]?.models[0]?.rates).toEqual(rates)
+    expect(parseProviders(stored).providers[0]?.models[0]?.rates).toBeUndefined()
+  })
+
+  it('keeps a stored provider when an optional rate is malformed', () => {
+    const invalid = { ...stored, providers: [{ ...stored.providers[0], models: [{ ...model, rates: { input: -1 } }] }] }
+    expect(parseProviders(invalid)).toEqual(stored)
+  })
+
   it('round-trips a stored provider and the default model', () => {
     const index = { ...stored, defaultModel: { providerId: 'local-llama', modelId: 'local-7b' } }
     expect(parseProviders(JSON.parse(JSON.stringify(index)))).toEqual(index)

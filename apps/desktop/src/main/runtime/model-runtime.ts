@@ -22,7 +22,7 @@ const WIRE: Record<ProviderApi, ProviderStreams> = {
   'anthropic-messages': anthropicMessages,
 }
 
-/** One stored model, as pi-ai's stream functions expect it. Cost stays zero: Alpha does not guess. */
+/** One stored model, as pi-ai's stream functions expect it. Unpriced models stay at zero. */
 function modelOf(provider: StoredProvider, definition: StoredProvider['models'][number]): Model<ProviderApi> {
   return {
     id: definition.id,
@@ -34,7 +34,7 @@ function modelOf(provider: StoredProvider, definition: StoredProvider['models'][
     input: definition.images === true ? ['text', 'image'] : ['text'],
     contextWindow: definition.contextWindow,
     maxTokens: definition.maxTokens,
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    cost: definition.rates ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   }
 }
 

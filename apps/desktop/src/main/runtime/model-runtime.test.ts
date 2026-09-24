@@ -21,6 +21,15 @@ const aProvider = (overrides: Partial<StoredProvider> = {}): StoredProvider => (
 })
 
 describe('the model runtime Alpha dials with', () => {
+  it('passes configured USD-per-million-token rates through to pi-ai', () => {
+    const rates = { input: 1.5, output: 6, cacheRead: 0.15, cacheWrite: 1.875 }
+    const models = createModelRuntime({
+      providers: [aProvider({ models: [{ ...aProvider().models[0], rates }] })],
+      credential: () => 'a key',
+    })
+    expect(models.getModel('scripted', 'scripted-model')?.cost).toEqual(rates)
+  })
+
   it('builds one provider per configured one, with its models', () => {
     const models = createModelRuntime({
       providers: [aProvider(), aProvider({ id: 'other', models: [] })],

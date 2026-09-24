@@ -66,6 +66,12 @@ yet is listed, counted as zero, and the models panel says what to do about it.
 model and validated on every read, so deleting a model or a provider cannot leave the workbench
 pointing at nothing; no write path has to remember to clean up after itself.
 
+**Model prices are optional user settings.** Alpha has no catalog from which to infer current
+prices. A model can carry four USD-per-million-token rates for input, output, cache reads and cache
+writes. Those rates reach pi-ai's usage calculation; the conversation title shows the resulting
+total. A model without rates still reports tokens but has no known cost. Invalid prices are refused
+on save, while an older or malformed optional price field does not hide a stored provider.
+
 ## Consequences
 
 - Adding a provider is more typing than it was: the name, the base URL and the protocol, then the

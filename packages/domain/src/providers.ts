@@ -28,6 +28,14 @@ export const PROVIDER_AUTH_STYLES = ['api-key', 'bearer'] as const
 
 export type ProviderAuthStyle = (typeof PROVIDER_AUTH_STYLES)[number]
 
+/** User-supplied USD prices per million tokens, in pi-ai's four usage categories. */
+export interface ModelRates {
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite: number
+}
+
 export interface ProviderModelDefinition {
   id: string
   name: string
@@ -41,6 +49,8 @@ export interface ProviderModelDefinition {
    * out (ADR-0018).
    */
   images: boolean
+  /** Absent when the person has not supplied prices; Alpha never guesses them. */
+  rates?: ModelRates
 }
 
 export interface StoredProvider {
@@ -85,7 +95,29 @@ const ModelSchema = Type.Object({
   // Optional in the schema and defaulted below: a file written before this setting existed is
   // still a valid file, and it is read as a model that takes text only.
   images: Type.Optional(Type.Boolean()),
+  // Invalid optional prices must not hide a provider read from disk. They are checked below and
+  // omitted when a file carries a malformed value; writes reject them instead.
+  rates: Type.Optional(Type.Unknown()),
 })
+
+const RatesSchema = Type.Object({
+  input: Type.Number({ minimum: 0 }),
+  output: Type.Number({ minimum: 0 }),
+  cacheRead: Type.Number({ minimum: 0 }),
+  cacheWrite: Type.Number({ minimum: 0 }),
+})
+
+function readRates(value: unknown): Undef<ModelRates> {
+  if (!Value.Check(RatesSchema, value)) return undefined
+  const rates: Static<typeof RatesSchema> = value
+  if (![rates.input, rates.output, rates.cacheRead, rates.cacheWrite].every(Number.isFinite)) return undefined
+  return {
+    input: rates.input,
+    output: rates.output,
+    cacheRead: rates.cacheRead,
+    cacheWrite: rates.cacheWrite,
+  }
+}
 
 const ModelRefSchema = Type.Object({ providerId: Type.String(), modelId: Type.String() })
 
@@ -118,7 +150,11 @@ export function parseProviders(raw: unknown): ProviderIndex {
     version: 1,
     providers: index.providers.map((provider) => ({
       ...provider,
-      models: provider.models.map((model) => ({ ...model, images: model.images === true })),
+      models: provider.models.map((model) => {
+        const rates = readRates(model.rates)
+        const { rates: _storedRates, ...rest } = model
+        return { ...rest, images: model.images === true, ...(rates === undefined ? {} : { rates }) }
+      }),
     })),
     defaultModel: index.defaultModel,
   }
@@ -190,6 +226,10 @@ export function readModels(input: unknown): ModelsResult {
     if (modelId === '') return { error: 'every model needs an id' }
     const contextWindow = typeof model.contextWindow === 'number' ? model.contextWindow : 0
     if (contextWindow <= 0) return { error: 'every model needs a context window above zero' }
+    const rates = readRates(model.rates)
+    if (model.rates !== undefined && rates === undefined) {
+      return { error: 'model prices must be finite, non-negative USD amounts per million tokens' }
+    }
     models.push({
       id: modelId,
       name: typeof model.name === 'string' && model.name.trim() !== '' ? model.name.trim() : modelId,
@@ -199,6 +239,7 @@ export function readModels(input: unknown): ModelsResult {
       // Off unless it is said: a picture sent to a model that cannot read one is a turn that
       // answers about nothing, which is worse than being told to turn the setting on.
       images: model.images === true,
+      ...(rates === undefined ? {} : { rates }),
     })
   }
   return { models }
