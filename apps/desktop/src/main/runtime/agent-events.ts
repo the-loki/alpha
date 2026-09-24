@@ -20,6 +20,7 @@
  *   in which case the run is still running.
  */
 
+import { failureOf } from '@alpha/agent'
 import {
   EMPTY_USAGE,
   listOf,
@@ -67,19 +68,14 @@ const isNothing = (usage: UsageTotals): boolean => usage.totalTokens === 0 && us
 const reportedUsage = (event: RpcLikeEvent): UsageTotals => usageTotals(recordOf(event.message).usage ?? event.usage)
 
 /**
- * The failure a raw `agent_end` carries, when its last message is an assistant one that erred —
- * pi has no failure event of its own. This is the one decoder: the translator reads it to say
- * `run_failed`, and the retry policy is asked about exactly what it read.
+ * The failure a raw `agent_end` carries, when its last message is an assistant one that erred:
+ * pi has no failure event of its own. The reading itself is `@alpha/agent`'s (`failureOf`), so the
+ * translator and the retry policy are asking about one answer and not two — this is only the
+ * event-shaped way in.
  */
 export function failedMessageOf(event: RpcLikeEvent): Undef<string> {
   if (event.type !== 'agent_end' || !Array.isArray(event.messages)) return undefined
-  const last = event.messages.at(-1)
-  if (typeof last !== 'object' || last === null) return undefined
-  const message = last as { role?: unknown; stopReason?: unknown; errorMessage?: unknown }
-  if (message.role !== 'assistant' || message.stopReason !== 'error') return undefined
-  return typeof message.errorMessage === 'string' && message.errorMessage !== ''
-    ? message.errorMessage
-    : 'The run failed.'
+  return failureOf(event.messages.at(-1))
 }
 
 export class AgentEventTranslator {
@@ -121,7 +117,9 @@ export class AgentEventTranslator {
   /**
    * A run that ended with the agent's own error message is a failure, not a finished turn — and
    * whether that failure is final is the retry policy's one decision, the same one its own hook
-   * consults when it takes an attempt. Nothing is written on the event to coordinate the two.
+   * consults when it takes an attempt. Both ends read that failure through `failureOf`, so they are
+   * asking about one answer; `aborted` is false here because a message that failed is not the
+   * aborted one, which reads as no failure at all and never reaches this question.
    */
   private endRun(event: RpcLikeEvent): RuntimeEvent[] {
     if (!this.runOpen) return []

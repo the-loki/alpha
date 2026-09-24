@@ -12,5 +12,6 @@
  */
 export * from './after-run.ts'
 export * from './assemble-agent.ts'
+export * from './failure.ts'
 export * from './history.ts'
 export * from './plugin-contract.ts'

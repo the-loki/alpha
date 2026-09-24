@@ -11,6 +11,7 @@ import type { Undef } from '@alpha/domain'
 import { type AfterRunHook, type AfterRunOutcome, chainAfterRunVerdicts } from '@alpha/plugin'
 import type { Agent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
+import { failureOf } from './failure.ts'
 import type { AlphaPlugin } from './plugin-contract.ts'
 
 /** The transcript's last assistant message, or nothing when the run never produced one. */
@@ -22,10 +23,17 @@ function lastAssistant(messages: AgentMessage[]): Undef<AssistantMessage> {
   return undefined
 }
 
-/** How the finished run turned out, read off the transcript: an abort is not a failure. */
+/**
+ * How the finished run turned out, read off the message that ended it: an abort is not a failure,
+ * and the failure is whatever that message carries — the same sentence the window is given, since
+ * `failureOf` is the one reader of it. pi's own `state.errorMessage` is not asked: it holds a
+ * sentence only when there was one, which is exactly how a silent failure came to be neither
+ * retried nor reported.
+ */
 function outcomeOf(agent: Agent): AfterRunOutcome {
-  const aborted = lastAssistant(agent.state.messages)?.stopReason === 'aborted'
-  return { failed: aborted ? undefined : agent.state.errorMessage, aborted }
+  const last = lastAssistant(agent.state.messages)
+  const aborted = last?.stopReason === 'aborted'
+  return { failed: aborted ? undefined : failureOf(last), aborted }
 }
 
 /**

@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { aModel, scriptedModels, toolUseStream } from '@alpha/agent/testing'
+import { aModel, scriptedModels, textStream, toolUseStream } from '@alpha/agent/testing'
 import type { ConversationSummary, PermissionLevel, RuntimeEvent } from '@alpha/domain'
 import type { PermissionPorts } from '@alpha/gate'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
@@ -218,6 +218,31 @@ describe('[runtime] the policies an opening assembles', () => {
     const kinds = events.map((event) => event.type)
     expect(kinds.filter((type) => type === 'turn_started')).toHaveLength(1)
     expect(kinds.filter((type) => type === 'turn_finished')).toHaveLength(1)
+    expect(kinds).not.toContain('run_failed')
+  })
+
+  // A provider that fails without a sentence of its own is still a failed run, and both ends of it
+  // have to read the same thing: the window's `run_failed` carries "The run failed." when there is
+  // nothing else to say, and the retry policy is asked about exactly that. Read the failure twice —
+  // once off pi's event, once off the agent's own field, which holds a sentence only when there is
+  // one — and a run comes to be neither retried nor reported: the composer waits for a turn that is
+  // already over.
+  it('a failure with nothing to say of its own is retried, and ends the turn', async () => {
+    const { runtime, events } = await opened({
+      drives: [() => failing(''), () => textStream('recovered')],
+      retryDelays: [0, 0],
+    })
+
+    await runAndSettle(runtime, 'fix the parser')
+
+    const kinds = events.map((event) => event.type)
+    expect(kinds.filter((type) => type === 'turn_finished')).toHaveLength(1)
+    // The retry really was taken: what the second drive streamed is what the window read.
+    const said = events
+      .filter((event) => event.type === 'assistant_text_delta')
+      .map((event) => (event.type === 'assistant_text_delta' ? event.delta : ''))
+      .join('')
+    expect(said).toContain('recovered')
     expect(kinds).not.toContain('run_failed')
   })
 })

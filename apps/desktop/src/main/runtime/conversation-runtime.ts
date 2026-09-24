@@ -14,7 +14,7 @@
  */
 
 import type { AlphaPlugin } from '@alpha/agent'
-import { historyOf, runAfterRunHooks } from '@alpha/agent'
+import { historyOf, RUN_FAILED, runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
   type Attachment,
@@ -243,7 +243,8 @@ export class ConversationRuntime {
       await this.inFlight
       await runAfterRunHooks(agent, this.plugins)
     } catch (error) {
-      this.failed(error instanceof Error ? error.message : 'The run failed.')
+      // A throw with nothing to say is the same failure as a message with nothing to say.
+      this.failed(error instanceof Error ? error.message : RUN_FAILED)
     } finally {
       // The run is over, however it went: the next prompt starts a run of its own.
       this.driving = undefined
