@@ -7,6 +7,7 @@ import type { PermissionPorts } from '@alpha/gate'
 import type { McpServers } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { DecisionLog, SessionStore } from '@alpha/sessions'
+import type { Api, Model } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
 import { openRuntime } from './assemble-runtime.ts'
@@ -51,6 +52,7 @@ const permissionsAt = (level: PermissionLevel): PermissionPorts => ({
 
 interface OpenOptions {
   drives: Array<() => AssistantMessageEventStream>
+  catalog?: readonly Model<Api>[]
   /** The answer to a call that the gate asks about. */
   ports?: Pick<PermissionPorts, 'ask'>
   level?: PermissionLevel
@@ -76,7 +78,7 @@ const opened = async (
     sessions: new SessionStore(join(dataDirectory, 'sessions')),
     sessionsRoot: join(dataDirectory, 'sessions'),
     providers,
-    models: () => scriptedModels(options.drives),
+    models: () => scriptedModels(options.drives, options.catalog),
     decisions: new DecisionLog(dataDirectory).opened(conversation.id),
     mcp: options.mcp,
     retryDelays: options.retryDelays,
@@ -99,6 +101,17 @@ const runAndSettle = async (runtime: ConversationRuntime, text: string): Promise
 }
 
 describe('[runtime] what an opening assembles', () => {
+  it('does not run a different model when the configured one is absent from the model runtime', async () => {
+    const { runtime, events } = await opened({
+      drives: [() => textStream('wrong model')],
+      catalog: [{ ...aModel(), id: 'other' }],
+    })
+
+    await expect(runtime.prompt('hello')).resolves.toEqual({ kind: 'no-model' })
+    expect(events.filter((event) => event.type === 'turn_started')).toEqual([])
+    await runtime.close()
+  })
+
   it('releases its MCP tool subscription when the conversation closes', async () => {
     const listeners = new Set<() => void>()
     const mcp: McpServers = {

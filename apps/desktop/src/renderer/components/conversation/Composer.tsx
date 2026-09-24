@@ -218,7 +218,7 @@ export function Composer(props: { streaming?: boolean; folder?: boolean }) {
   const running = () => conversations.transcript.status === 'running'
   const words = () => value().trim() !== ''
   // A picture is a message on its own: "look at this" is often the whole thing being said.
-  const writable = () => hasWorkspace() && shell.model.kind !== 'none' && (words() || attached().length > 0)
+  const writable = () => hasWorkspace() && model.chosen() !== undefined && (words() || attached().length > 0)
   const canSend = () => writable() && !running()
   // Steering and queueing carry words: a picture waits in the composer for a turn of its own.
   const canRedirect = () => writable() && running() && words()

@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
 import { launchWorkbench } from './agent'
+import { closeScriptedProviders, startScriptedProvider } from './scripted-provider'
+
+test.afterEach(() => closeScriptedProviders())
 
 const REPO_ROOT = process.cwd()
 const SHOT_DIR = join(REPO_ROOT, 'test-results')
@@ -61,6 +64,23 @@ async function addModel(
 
 /** The card for one provider on the providers panel. */
 const card = (window: Page, name: string) => window.locator('li').filter({ hasText: name })
+
+test('a fresh workbench can send its first turn after configuring a model', async () => {
+  const scripted = await startScriptedProvider({ script: JSON.stringify(['First answer.']) })
+  const { app, window } = await launch()
+  await openSettings(window, 'Providers')
+  await describeProvider(window, { id: 'fresh', name: 'Fresh', baseUrl: scripted.url })
+  await window.getByLabel('API key for Fresh').fill('sk-test')
+  await window.getByRole('button', { name: 'Save key' }).click()
+  await addModel(window, 'Fresh', { id: 'fresh-model' })
+
+  await window.getByRole('link', { name: 'Back to the workbench' }).click()
+  await window.getByRole('textbox', { name: 'Message the agent' }).fill('first turn')
+  await expect(window.getByRole('button', { name: 'Send' })).toBeEnabled()
+  await window.getByRole('button', { name: 'Send' }).click()
+  await expect(window.getByRole('main').locator('[data-role="assistant"]')).toContainText('First answer.')
+  await app.close()
+})
 
 test('a connection is described by hand, given a key, and deleted', async () => {
   const { app, window, directory } = await launch()

@@ -83,6 +83,11 @@ entry, built through pi-ai's `createProvider` with the wire protocol Alpha alrea
 base URL Alpha already stores, and an auth resolver that answers from the vault at request time.
 No `models.json`, no env vars, no catalog files.
 
+An open conversation is assembled against the provider definitions current when it opens. When
+those definitions change, the manager waits for any active turn to settle and reassembles before
+the next prompt. Credentials are resolved at request time and do not require reassembly. The
+chosen model must be served by that runtime; another available model is never substituted for it.
+
 ## Consequences
 
 Alpha ships the agent it runs, so Alpha's release carries the library's bugs and fixes alike —

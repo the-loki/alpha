@@ -32,49 +32,19 @@ import {
   revokeRule,
   UnattendedRuns,
 } from '@alpha/gate'
-import type { McpServers } from '@alpha/mcp'
-import { defaultModel, describeRuntime, type ProviderStore, startProblem } from '@alpha/providers'
-import {
-  type AgentPorts,
-  ConversationReads,
-  DecisionLog,
-  SessionStore,
-  sessionIdOf,
-  writeSessionMarkdown,
-} from '@alpha/sessions'
-import type { StateStore } from '@alpha/state'
-import type { CompactionSettings } from '@earendil-works/pi-agent-core'
-import type { Models } from '@earendil-works/pi-ai'
-import { openRuntime } from './assemble-runtime.ts'
+import { defaultModel, describeRuntime, startProblem } from '@alpha/providers'
+import { ConversationReads, DecisionLog, SessionStore, sessionIdOf, writeSessionMarkdown } from '@alpha/sessions'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { type EditingPorts, editMessage, regenerate } from './editing.ts'
+import { openManagedRuntime, type RuntimeManagerOptions, RuntimeRefresh } from './managed-runtime.ts'
 import { askOrRefuse } from './unattended.ts'
-
-export interface RuntimeManagerOptions {
-  dataDirectory: string
-  sessionsRoot: string
-  providers: ProviderStore
-  /** Where the sessions are and how a key is answered: the slim shape the embedded agent needs. */
-  agent: AgentPorts
-  /** The remembered level and the rules the user has stopped wanting to be asked about. */
-  store: StateStore
-  /** Builds the model runtime an open conversation dials with; tests script one. */
-  models?: () => Models
-  /** The MCP servers of this run, connected by `main`; a conversation waits for them here. */
-  mcp?: () => Promise<McpServers>
-  /** The compaction thresholds and retry backoff, when the caller shrinks them; tests do. */
-  compactionSettings?: CompactionSettings
-  retryDelays?: number[]
-  emit: (event: RuntimeEvent) => void
-  /** Told when the rules change, so a settings page that is open can follow along. */
-  emitRules: (rules: PermissionRule[]) => void
-}
 
 export class RuntimeManager {
   private readonly options: RuntimeManagerOptions
   private readonly books: ConversationBookkeeper
   private readonly sessions: SessionStore
   private readonly opened = new Map<string, ConversationRuntime>()
+  private readonly runtimeRefresh = new RuntimeRefresh()
   private readonly approvals: ApprovalBroker
   private readonly decisions: DecisionLog
   /**
@@ -201,7 +171,7 @@ export class RuntimeManager {
     if (refusal !== undefined) this.observe({ conversationId: id, type: 'turn_refused', refusal })
     // The runtime answers the same question for itself — a conversation assembled without a model
     // cannot run even when a model is configured now — so what the caller hears is one answer.
-    else return await (await this.openFor(id)).prompt(text, attachments)
+    else return await (await this.openForPrompt(id)).prompt(text, attachments)
     return refusal
   }
 
@@ -358,7 +328,14 @@ export class RuntimeManager {
       })
       return conversation
     }
-    await this.opened.get(id)?.setModel(providerId, modelId)
+    const runtime = this.opened.get(id)
+    if (
+      runtime !== undefined &&
+      this.runtimeRefresh.isCurrent(runtime, this.options.providers.index()) &&
+      !(await runtime.setModel(providerId, modelId))
+    ) {
+      return conversation
+    }
     return this.books.update(id, { model: { providerId, modelId }, updatedAt: Date.now() })
   }
 
@@ -384,6 +361,19 @@ export class RuntimeManager {
     return runtime
   }
 
+  /** Reassembles a stale runtime after its current turn, before it takes the next prompt. */
+  private async openForPrompt(id: string): Promise<ConversationRuntime> {
+    return this.runtimeRefresh.forPrompt(
+      id,
+      () => this.openFor(id),
+      () => this.options.providers.index(),
+      (stale) => {
+        if (this.opened.get(id) === stale) this.opened.delete(id)
+        return this.launch(this.requireConversation(id))
+      },
+    )
+  }
+
   private requireConversation(id: string): ConversationSummary {
     const conversation = this.books.find(id)
     if (conversation === undefined) throw new Error(`No conversation ${id}`)
@@ -392,20 +382,17 @@ export class RuntimeManager {
 
   /** Opens a conversation's runtime, or returns the one already open. */
   private async launch(conversation: ConversationSummary): Promise<ConversationRuntime> {
-    const runtime = await openRuntime({
+    const modelIndex = this.options.providers.index()
+    const runtime = await openManagedRuntime(
+      this.options,
       conversation,
-      mcp: await this.options.mcp?.(),
-      sessions: this.sessions,
-      sessionsRoot: this.options.sessionsRoot,
-      providers: this.options.providers,
-      models: this.options.models,
-      compactionSettings: this.options.compactionSettings,
-      retryDelays: this.options.retryDelays,
-      decisions: this.decisions.opened(conversation.id),
-      permissions: () => this.permissionPorts(),
-      emit: (event) => this.observe(event),
-    })
+      this.sessions,
+      this.decisions.opened(conversation.id),
+      () => this.permissionPorts(),
+      (event) => this.observe(event),
+    )
     this.opened.set(conversation.id, runtime)
+    this.runtimeRefresh.note(runtime, modelIndex)
     return runtime
   }
 

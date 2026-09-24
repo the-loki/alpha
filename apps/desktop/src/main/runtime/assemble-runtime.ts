@@ -80,11 +80,11 @@ function modelRuntime(options: OpenRuntimeOptions): Models {
   })
 }
 
-/** The model the conversation runs on: its choice, or the first the runtime can serve. */
-async function modelForConversation(options: OpenRuntimeOptions, models: Models): Promise<Undef<Model<Api>>> {
+/** The configured choice or default, only when this runtime serves that exact model. */
+function modelForConversation(options: OpenRuntimeOptions, models: Models): Undef<Model<Api>> {
   const chosen = modelFor(options.providers, options.conversation)
   if (chosen === undefined) return undefined
-  return models.getModel(chosen.providerId, chosen.modelId) ?? (await models.getAvailable())[0]
+  return models.getModel(chosen.providerId, chosen.modelId)
 }
 
 /** The plugins and the two policy handles an opening hands the runtime. */
@@ -184,7 +184,7 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
     importLegacySessionIn(sessionDirectoryFor(options.sessionsRoot, conversation.workspacePath), conversation.id)
   }
   const models = modelRuntime(options)
-  const model = await modelForConversation(options, models)
+  const model = modelForConversation(options, models)
   // The runtime does not exist until the plugins do, so the gate's announcements are bound here
   // and travel the rest of the way through it. The policies read the agent through a cell, which
   // the assembly fills in below.

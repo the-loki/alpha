@@ -172,18 +172,19 @@ export class ConversationRuntime {
   }
 
   /** Switches the model this conversation runs on; takes effect on the next turn. */
-  public async setModel(providerId: string, modelId: string): Promise<void> {
+  public async setModel(providerId: string, modelId: string): Promise<boolean> {
     const agent = this.agent
     if (agent === undefined) {
       this.refuse({ kind: 'no-model' })
-      return
+      return false
     }
     const model = this.models.getModel(providerId, modelId)
     if (model === undefined) {
       this.refuse({ kind: 'model-not-served', providerId, modelId })
-      return
+      return false
     }
     agent.state.model = model
+    return true
   }
 
   /**
