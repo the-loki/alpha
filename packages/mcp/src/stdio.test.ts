@@ -41,6 +41,13 @@ async function markerText(path: string): Promise<string> {
   }
 }
 
+/** Waits for something that happens a message later than the call that caused it. */
+async function until(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200 && !condition(); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+}
+
 describe('an MCP server over stdio', () => {
   it('lists what the server offers — paging through the list — and calls a tool', async () => {
     const servers = await connectMcpServers([scripted()])
@@ -81,6 +88,20 @@ describe('an MCP server over stdio', () => {
     expect(refused.content).toEqual([{ type: 'text', text: 'the tool refused' }])
 
     await expect(servers.call('scripted', 'nope', {})).rejects.toThrow('no tool nope')
+    await servers.close()
+  })
+
+  it('re-lists when the server says its tools changed, and says so to whoever listens', async () => {
+    const servers = await connectMcpServers([scripted()])
+    const heard: string[][] = []
+    servers.onToolsChanged(() => heard.push(servers.tools().map((tool) => tool.name)))
+    expect(servers.tools().map((tool) => tool.name)).not.toContain('grown')
+
+    await servers.call('scripted', 'grow', {})
+    await until(() => heard.length > 0)
+
+    expect(heard).toHaveLength(1)
+    expect(heard[0]).toContain('grown')
     await servers.close()
   })
 

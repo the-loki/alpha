@@ -118,7 +118,7 @@ function pluginsFor(
   announce: (callId: string, record: ApprovalRecord) => void,
 ): AssembledPlugins {
   const plugins: AlphaPlugin[] = [createWorkspaceToolsPlugin({ workspacePath: session.workspacePath })]
-  if (options.mcp !== undefined) plugins.push(createMcpPlugin({ servers: options.mcp }))
+  if (options.mcp !== undefined) plugins.push(createMcpPlugin({ servers: options.mcp, agent: () => agent() }))
   const permissions = options.permissions?.()
   if (permissions !== undefined) {
     plugins.push(

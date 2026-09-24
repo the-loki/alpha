@@ -72,6 +72,11 @@ second place to audit and a way to say yes without ever being asked.
 - A conversation assembled before the servers came up still reaches them — the assembly waits for the
   one connection — so a slow server costs the first conversation its first moment, once, instead of
   costing every conversation a second copy of itself.
-- Server-pushed messages are not read: notifications, sampling and elicitation — a server asking
-  Alpha for something, rather than answering — are a second face on the base and a decision of their
-  own, not a corner of this one.
+- A server's tool list is not fixed. When it says the list changed — the one notification the client
+  acts on (#184) — the hub re-reads it, and a conversation that is already open is brought up to
+  date: the plugin replaces its own half of the live agent's tools and pi announces the difference
+  to the model before the next request. The other notifications are read and dropped, because there
+  is nothing here they belong to (`progress` is for calls we never gave a token, `message` is a log
+  with no log, `cancelled` cancels requests we did not send). Server-pushed *requests* — sampling,
+  elicitation — are still the second face this ADR left alone: they need a hook pointing inward,
+  and the decisions that come with it (#185).

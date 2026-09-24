@@ -4,6 +4,11 @@
  * result keeps the parts the server named, so text stays text and an image stays an image; and a
  * part this client has no shape for is passed on as what the server said rather than dropped.
  *
+ * A server may change what it offers while it is running, and says so with a notification; the list
+ * read at the handshake is then re-read, and the caller that asked to hear about it is told. A
+ * server that says so and then cannot answer keeps the list we have — an old list beats none, and
+ * the next notification is another chance.
+ *
  * Nothing here knows where the server runs: it is handed a frame, and stdio or HTTP is the frame's
  * business. A server that cannot be reached is not this package's to announce — whether a missing
  * server is a problem belongs to whoever asked for it — so a connection that does not come up
@@ -37,7 +42,8 @@ export interface McpCallResult {
 
 export interface McpConnection {
   server: string
-  tools: McpTool[]
+  /** The tools as they stand now: a server may grow or drop them while the run is going on. */
+  tools(): McpTool[]
   call(tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpCallResult>
   close(): void
 }
@@ -122,20 +128,40 @@ function within<T>(work: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-/** The server a definition names, handshaken and listed, or nothing when it did not come up. */
-export async function connect(definition: McpServerDefinition, timeoutMs: number): Promise<Undef<McpConnection>> {
-  const session = createSession((handlers) =>
-    'command' in definition ? stdioFrame(definition, handlers) : httpFrame(definition, handlers),
+/**
+ * The server a definition names, handshaken and listed, or nothing when it did not come up. The
+ * third argument is how the caller hears that the server's list changed — it may arrive at any
+ * moment, so it is a callback rather than a return value.
+ */
+export async function connect(
+  definition: McpServerDefinition,
+  timeoutMs: number,
+  onToolsChanged?: () => void,
+): Promise<Undef<McpConnection>> {
+  let tools: McpTool[] = []
+  async function relist(): Promise<void> {
+    try {
+      tools = await listTools(session, definition.name)
+      onToolsChanged?.()
+    } catch {
+      // Said the list changed and did not answer: keep what we have and wait for the next word.
+    }
+  }
+  const session = createSession(
+    (handlers) => ('command' in definition ? stdioFrame(definition, handlers) : httpFrame(definition, handlers)),
+    (method) => {
+      if (method === 'notifications/tools/list_changed') void relist()
+    },
   )
   try {
     const ready = (async () => {
       await handshake(session)
       return await listTools(session, definition.name)
     })()
-    const tools = await within(ready, timeoutMs)
+    tools = await within(ready, timeoutMs)
     return {
       server: definition.name,
-      tools,
+      tools: () => tools,
       call: async (tool, args, signal) => {
         const record = recordOf(await session.request('tools/call', { name: tool, arguments: args }, signal))
         return { content: contentOf(record.content), isError: record.isError === true }

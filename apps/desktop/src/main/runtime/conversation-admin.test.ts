@@ -43,6 +43,8 @@ interface FixtureOptions {
   slowReply?: { text: string; afterMs: number }
   /** The call the first scripted turn asks for, which puts the gate on the path. */
   toolCall?: { name: string; args: Record<string, string> }
+  /** A script of the test's own, for the shapes `replies` and `toolCall` cannot say. */
+  drives?: Array<() => AssistantMessageEventStream>
   /** The compaction thresholds the assembled policy runs with, shrunk for the test. */
   compactionSettings?: { reserveTokens: number; keepRecentTokens: number }
   /** The MCP servers this run holds, when the test gives it any. */
@@ -76,7 +78,7 @@ const freshManager = (options: FixtureOptions = {}) => {
       sessionsRoot: join(dataDirectory, 'sessions'),
       keyProblem: () => options.keyProblem,
     },
-    models: () => scriptedModels(scriptOf(options)),
+    models: () => scriptedModels(options.drives ?? scriptOf(options)),
     mcp: held === undefined ? undefined : () => Promise.resolve(held),
     compactionSettings:
       options.compactionSettings === undefined ? undefined : { enabled: true, ...options.compactionSettings },
@@ -483,7 +485,7 @@ const freshManagerAt = (
       sessionsRoot: join(dataDirectory, 'sessions'),
       keyProblem: () => options.keyProblem,
     },
-    models: () => scriptedModels(scriptOf(options)),
+    models: () => scriptedModels(options.drives ?? scriptOf(options)),
     emit: (event) => events.push(event),
     emitRules: () => undefined,
   })
@@ -681,6 +683,14 @@ describe('[runtime] compacting a conversation by hand', () => {
   })
 })
 
+/** The one tool the scripted hub offers, until a test hands it a longer list. */
+const MCP_ECHO: McpTool = {
+  server: 'scripted',
+  name: 'echo',
+  description: 'Answers with what it was given.',
+  inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
+}
+
 /**
  * The MCP servers a workbench run holds (ADR-0028): a hub handed to the manager, its tools offered
  * to the model, and a call to one of them a row like any other. The transport under it is
@@ -718,23 +728,65 @@ describe('[runtime] the MCP servers a workbench holds', () => {
       approval: { kind: 'once' },
     })
   })
+
+  /**
+   * A server that grows a tool while the conversation is open (#184, ADR-0028): the hub is up to
+   * date at once, and the agent that is already assembled — never reopened — finds out through the
+   * plugin's agent port. The second turn is what proves it: a tool the agent does not have is a
+   * failed call, and this one answers. The calls carry different ids so the two rows stay two.
+   */
+  it('a server that grows a tool is usable in the same conversation, with nothing reopened', async () => {
+    const asked: Array<{ server: string; tool: string; args: Record<string, unknown> }> = []
+    const heard: Array<() => void> = []
+    const offered: McpTool[] = [MCP_ECHO]
+    const { manager, workspace, events } = freshManager({
+      mcp: hubOf(asked, heard, () => offered),
+      drives: [
+        () => toolUseStream('mcp__scripted__echo', { text: 'hello' }, 'call-1'),
+        () => textStream('Noted.'),
+        () => toolUseStream('mcp__scripted__stamp', {}, 'call-2'),
+        () => textStream('Stamped.'),
+      ],
+    })
+    const created = await manager.create(workspace)
+    // At the widest level the ladder asks nothing, so both turns run to their end unattended: what
+    // this test is about is the tool list, not the gate.
+    manager.setConversationLevel(created.conversation.id, 'full-access')
+
+    await tell(manager, events, created.conversation.id, 'use the server')
+    offered.push({ server: 'scripted', name: 'stamp', description: 'Stamps.', inputSchema: {} })
+    for (const listener of heard) listener()
+    await tell(manager, events, created.conversation.id, 'and the new one')
+
+    const rows = (await manager.transcriptFor(created.conversation.id))
+      .flatMap((message) => message.blocks)
+      .filter((block) => block.kind === 'tool')
+    await manager.closeAll()
+
+    expect(rows.map((row) => row.name)).toEqual(['mcp__scripted__echo', 'mcp__scripted__stamp'])
+    expect(rows.map((row) => row.output)).toEqual(['echo: hello', 'ran stamp'])
+    expect(rows.every((row) => row.status === 'ok')).toBe(true)
+  })
 })
 
-/** One scripted server as the manager is handed it, and the calls it was asked to make. */
-function hubOf(asked: Array<{ server: string; tool: string; args: Record<string, unknown> }>): McpServers {
-  const tool: McpTool = {
-    server: 'scripted',
-    name: 'echo',
-    description: 'Answers with what it was given.',
-    inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
-  }
+/**
+ * One scripted server as the manager is handed it: the calls it was asked to make, the listeners it
+ * was told to shout at when its list changes, and the list it offers — which a test may grow.
+ */
+function hubOf(
+  asked: Array<{ server: string; tool: string; args: Record<string, unknown> }>,
+  heard: Array<() => void> = [],
+  offered: () => McpTool[] = () => [MCP_ECHO],
+): McpServers {
   return {
-    tools: () => [tool],
+    tools: offered,
     call: async (server, name, args): Promise<McpCallResult> => {
       asked.push({ server, tool: name, args })
-      const content: McpContent[] = [{ type: 'text', text: `echo: ${String(args.text ?? '')}` }]
+      const said = String(args.text ?? '')
+      const content: McpContent[] = [{ type: 'text', text: said === '' ? `ran ${name}` : `${name}: ${said}` }]
       return { content, isError: false }
     },
+    onToolsChanged: (listener) => heard.push(listener),
     close: async () => {},
   }
 }

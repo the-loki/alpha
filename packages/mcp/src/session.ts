@@ -4,6 +4,9 @@
  * input and output, or one HTTP endpoint — so this is where the two transports meet, and the only
  * place the request bookkeeping lives.
  *
+ * What a server says without being asked — a notification, which has a method and no id — is handed
+ * to the caller's own handler: whether a tool list that changed matters is not this file's business.
+ *
  * A request the caller stops becomes a rejection here and a `notifications/cancelled` on the wire,
  * which is what the protocol asks of a client that no longer wants the answer: the server should
  * stop working rather than finish something nobody will read. When the frame ends — the child
@@ -39,14 +42,34 @@ interface Waiting {
   stop: (why: string) => void
 }
 
-/** One answer, as much of it as this client reads: an id, and either a result or an error. */
+/** One message from the server: an answer, or something it says with nobody waiting for it. */
 interface Answer {
   id?: unknown
+  method?: unknown
+  params?: unknown
   result?: unknown
   error?: { message?: unknown }
 }
 
 type Notify = (method: string, params: unknown) => void
+
+/** How a frame's messages are read: an answer to whoever waits, and anything else to the caller. */
+function handlersOf(waiting: Map<number, Waiting>, end: (why: string) => void, notifications?: Notify): FrameHandlers {
+  return {
+    message: (text) => {
+      const answer = answerOf(text)
+      if (answer === undefined) return
+      // A message with a method and no id is the server saying something, not answering: it has
+      // nobody waiting for it, and what it means is the caller's to decide.
+      if (answer.id === undefined && typeof answer.method === 'string') {
+        notifications?.(answer.method, answer.params)
+        return
+      }
+      deliver(answer, waiting)
+    },
+    closed: end,
+  }
+}
 
 function answerOf(text: string): Undef<Answer> {
   try {
@@ -80,7 +103,10 @@ function stopOf(waiting: Map<number, Waiting>, notify: Notify, id: number, metho
   }
 }
 
-export function createSession(open: (handlers: FrameHandlers) => McpFrame): McpSession {
+export function createSession(
+  open: (handlers: FrameHandlers) => McpFrame,
+  notifications?: (method: string, params: unknown) => void,
+): McpSession {
   const waiting = new Map<number, Waiting>()
   let nextId = 1
   let closed: Undef<string>
@@ -94,13 +120,7 @@ export function createSession(open: (handlers: FrameHandlers) => McpFrame): McpS
     }
   }
 
-  const frame = open({
-    message: (text) => {
-      const answer = answerOf(text)
-      if (answer !== undefined) deliver(answer, waiting)
-    },
-    closed: end,
-  })
+  const frame = open(handlersOf(waiting, end, notifications))
 
   const notify: Notify = (method, params) => {
     void frame.send(JSON.stringify({ jsonrpc: '2.0', method, params })).catch(() => {

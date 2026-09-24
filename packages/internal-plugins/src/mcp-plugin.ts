@@ -9,19 +9,28 @@
  * server's own: the description is how the model decides, and the JSON Schema is the shape the
  * server promised to accept — rewriting either would be inventing a second one.
  *
+ * A server may change what it offers while a conversation is running, and says so. When it does,
+ * what the hub holds is already up to date and the conversation that is open is not, so the plugin
+ * listens and replaces its own half of the live agent's tools — leaving Alpha's own exactly as they
+ * were. pi announces the difference to the model before the next request, so the session finds out
+ * the same way it finds out about a model swap.
+ *
  * Nothing here decides whether a call is allowed. An MCP tool name is a name no rule knows, and
  * `toolRiskOf` reads a name it does not know as `execute`, the strictest class, so every one of
  * these goes through the gate like any other tool (C3.4) — which is the whole of the permission
  * story: there is nothing to add and nothing to remember to add.
  */
 
+import type { Undef } from '@alpha/domain'
 import type { McpCallResult, McpContent, McpServers, McpTool } from '@alpha/mcp'
-import type { AgentTool } from '@earendil-works/pi-agent-core'
+import type { Agent, AgentTool } from '@earendil-works/pi-agent-core'
 import { type TSchema, Type } from 'typebox'
 
 export interface McpPluginPorts {
   /** The servers this workbench run holds, already connected: `main` makes one hub per run. */
   servers: McpServers
+  /** The live agent, when the caller has one: a server's new tools are handed to it at once. */
+  agent?: () => Undef<Agent>
 }
 
 /** A plugin that carries one face: what the base needs to hang it on the agent. */
@@ -30,9 +39,12 @@ export interface McpPlugin {
   tools: () => AgentTool[]
 }
 
+/** What every tool from a server is called, which is also how Alpha's own are told from them. */
+const MCP_PREFIX = 'mcp__'
+
 /** The name the model sees: the server's in front of the tool's, so two servers cannot collide. */
 export function mcpToolName(server: string, tool: string): string {
-  return `mcp__${wordOf(server)}__${wordOf(tool)}`
+  return `${MCP_PREFIX}${wordOf(server)}__${wordOf(tool)}`
 }
 
 /** A name a provider will take: the characters a function name may carry, and nothing else. */
@@ -81,10 +93,21 @@ function asAgentTool(servers: McpServers, tool: McpTool): AgentTool<TSchema, und
   }
 }
 
-/** The plugin: one tool per tool the servers offer, read when the agent is assembled. */
+/** What the servers offer now, in the shape the agent takes. */
+function offeredBy(servers: McpServers): AgentTool<TSchema, undefined>[] {
+  return servers.tools().map((tool) => asAgentTool(servers, tool))
+}
+
+/** The plugin: one tool per tool the servers offer, read when the agent is assembled or grown. */
 export function createMcpPlugin(ports: McpPluginPorts): McpPlugin {
+  ports.servers.onToolsChanged(() => {
+    const live = ports.agent?.()
+    if (live === undefined) return
+    const others = live.state.tools.filter((tool) => !tool.name.startsWith(MCP_PREFIX))
+    live.state.tools = [...others, ...offeredBy(ports.servers)]
+  })
   return {
     name: 'mcp',
-    tools: () => ports.servers.tools().map((tool) => asAgentTool(ports.servers, tool)),
+    tools: () => offeredBy(ports.servers),
   }
 }

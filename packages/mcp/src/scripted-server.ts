@@ -51,6 +51,13 @@ const TOOLS: ScriptedTool[] = [
   },
 ]
 
+/** The tool `grow` adds, so a list that was read before it can be seen to be stale. */
+const GROWN: ScriptedTool = {
+  name: 'grown',
+  description: 'Was not offered when the list was last read.',
+  inputSchema: { type: 'object', properties: {} },
+}
+
 /** One page, and the cursor that reaches the next — a server that pages its list, as they do. */
 function listPage(cursor: unknown): Record<string, unknown> {
   const asked = Number(cursor)
@@ -85,6 +92,13 @@ function callOf(id: unknown, params: Record<string, unknown>): Undef<object> {
   const args = params.arguments
   const given = typeof args === 'object' && args !== null ? (args as Record<string, unknown>) : {}
   if (name === 'quit') process.exit(4)
+  if (name === 'grow') {
+    TOOLS.push(GROWN)
+    // The answer comes first and the notification after it, in the order a server would send them.
+    const result = { content: [{ type: 'text', text: 'grew' }] }
+    queueMicrotask(() => write({ jsonrpc: '2.0', method: 'notifications/tools/list_changed' }))
+    return { jsonrpc: '2.0', id, result }
+  }
   if (name === 'echo') {
     const label = process.env.SCRIPTED_MCP_NAME ?? ''
     const text = `echo: ${label}${String(given.text ?? '')}`

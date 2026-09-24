@@ -5,8 +5,11 @@
  * only whether the shape handed to the agent is the shape the protocol promised.
  */
 
-import { toolRiskOf } from '@alpha/domain'
+import { assembleAgent } from '@alpha/agent'
+import { aModel, scriptedModels, toolNamed } from '@alpha/agent/testing'
+import { toolRiskOf, type Undef } from '@alpha/domain'
 import type { McpCallResult, McpServers, McpTool } from '@alpha/mcp'
+import type { Agent } from '@earendil-works/pi-agent-core'
 import { describe, expect, it } from 'vitest'
 import { createMcpPlugin, mcpToolName } from './mcp-plugin.ts'
 
@@ -26,6 +29,7 @@ function hubOf(answer: (tool: string, args: Record<string, unknown>) => Promise<
       asked.push({ server, tool, args, signal })
       return answer(tool, args)
     },
+    onToolsChanged: () => {},
     close: async () => {},
   }
   return { servers, asked }
@@ -71,6 +75,36 @@ describe('[mcp] the plugin face', () => {
     const [tool] = createMcpPlugin({ servers }).tools()
 
     await expect(tool?.execute('call-3', { path: 'gone.txt' })).rejects.toThrow('no such file')
+  })
+
+  it('hands a server’s new tools to the conversation that is already open', () => {
+    const listeners: Array<() => void> = []
+    let offered: McpTool[] = [TOOL]
+    const servers: McpServers = {
+      tools: () => offered,
+      call: () => Promise.resolve({ content: [], isError: false }),
+      onToolsChanged: (listener) => listeners.push(listener),
+      close: async () => {},
+    }
+    let agent: Undef<Agent>
+    const plugin = createMcpPlugin({ servers, agent: () => agent })
+    agent = assembleAgent({
+      models: scriptedModels([]),
+      model: aModel(),
+      plugins: [plugin, { name: 'tools', tools: () => [toolNamed('read')] }],
+      systemPrompt: 's',
+    })
+    expect(agent.state.tools.map((tool) => tool.name)).toEqual(['mcp__files__read_file', 'read'])
+
+    offered = [...offered, { server: 'files', name: 'stat_file', description: 'Sizes a file.', inputSchema: {} }]
+    for (const listener of listeners) listener()
+
+    // The server's half is replaced, and Alpha's own tools are left exactly as they were.
+    expect(agent.state.tools.map((tool) => tool.name)).toEqual([
+      'read',
+      'mcp__files__read_file',
+      'mcp__files__stat_file',
+    ])
   })
 
   it('a name no rule knows is the strictest class, which is how it reaches the gate', () => {

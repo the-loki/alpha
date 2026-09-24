@@ -69,8 +69,11 @@ export function readMcpServers(dataDirectory: string): McpServerDefinition[] {
 
 /** What every open conversation reaches MCP tools through: the list, a call, and the way out. */
 export interface McpServers {
+  /** The tools as they stand now, read when they are asked for: a server may change its list. */
   tools(): McpTool[]
   call(server: string, tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpCallResult>
+  /** Told when any server's tool list changes, so what is already assembled can be brought up to date. */
+  onToolsChanged(listener: () => void): void
   close(): Promise<void>
 }
 
@@ -90,14 +93,21 @@ export async function connectMcpServers(
   options: { timeoutMs?: number } = {},
 ): Promise<McpServers> {
   const timeoutMs = options.timeoutMs ?? CONNECT_TIMEOUT_MS
-  const reached = await Promise.all(definitions.map((definition) => connect(definition, timeoutMs)))
+  const listeners: Array<() => void> = []
+  function announce(): void {
+    for (const listener of listeners) listener()
+  }
+  const reached = await Promise.all(definitions.map((definition) => connect(definition, timeoutMs, announce)))
   const held = reached.flatMap((connection) => (connection === undefined ? [] : [connection]))
   return {
-    tools: () => held.flatMap((connection) => connection.tools),
+    tools: () => held.flatMap((connection) => connection.tools()),
     call: (server, tool, args, signal) => {
       const connection = held.find((it) => it.server === server)
       if (connection === undefined) return Promise.reject(new Error(`no MCP server ${server}`))
       return connection.call(tool, args, signal)
+    },
+    onToolsChanged: (listener) => {
+      listeners.push(listener)
     },
     close: async () => {
       for (const connection of held) connection.close()

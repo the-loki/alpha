@@ -65,14 +65,18 @@ export const textStream = (text: string): AssistantMessageEventStream => {
 }
 
 /** One scripted drive that asks for `toolName` and stops, as a model mid-task does. */
-export const toolUseStream = (toolName: string, args: Record<string, string>): AssistantMessageEventStream => {
+export const toolUseStream = (
+  toolName: string,
+  args: Record<string, string>,
+  id = 'call-1',
+): AssistantMessageEventStream => {
   const stream = new AssistantMessageEventStream()
   stream.push({
     type: 'done',
     reason: 'toolUse',
     message: assistantText('', {
       stopReason: 'toolUse',
-      content: [{ type: 'toolCall', id: 'call-1', name: toolName, arguments: args }],
+      content: [{ type: 'toolCall', id, name: toolName, arguments: args }],
     }),
   })
   return stream
