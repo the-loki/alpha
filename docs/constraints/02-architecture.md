@@ -56,7 +56,7 @@ else sits directly on the rules.
 | Library | Holds | May import |
 | --- | --- | --- |
 | `@alpha/i18n` | The dictionary: the interface's words in both languages, and `text()` | nothing from this repo |
-| `@alpha/domain` | The rules: permissions, providers, transcripts, tasks, schedules, tool rows, validation schemas | `@alpha/i18n` |
+| `@alpha/domain` | The rules: permissions, providers, MCP servers, transcripts, tasks, schedules, tool rows, validation schemas | `@alpha/i18n` |
 | `@alpha/contract` | The IPC contract: the channel names and the types the bridge exposes | `@alpha/domain`, `@alpha/i18n` |
 | `@alpha/plugin` | The plugin base: what a face is handed and what it answers, and how faces in order become one decision | `@alpha/domain` |
 | `@alpha/state` | The one file the workbench persists for itself | `@alpha/domain` |
@@ -66,7 +66,7 @@ else sits directly on the rules.
 | `@alpha/providers` | The connections: the providers configured, the key vault, and which model a conversation runs on | `@alpha/domain`, `@alpha/contract` |
 | `@alpha/agent` | The agent base: the history a run starts from, the plugin contract bound to pi, the assembly that makes one `Agent` of the plugins, and the `afterRun` driver | `@alpha/domain`, `@alpha/plugin`, `@alpha/sessions`, the agent library |
 | `@alpha/gate` | The permission machinery the workbench owns: the ladder, the approvals broker, the refusal a run with nobody watching gets, and the ports into the workbench's own file | `@alpha/domain`, `@alpha/plugin`, `@alpha/state` |
-| `@alpha/mcp` | The MCP client: the request bookkeeping, the handshake and the tool list, the stdio and HTTP transports, and the servers file | `@alpha/domain` |
+| `@alpha/mcp` | The MCP client: the request bookkeeping, the handshake and the tool list, the stdio and HTTP transports, the servers file and the hub that holds the connections | `@alpha/domain` |
 | `@alpha/subagents` | The subagent policy: what may be handed work, what each one may reach for, how long it runs, and the words the model reads | `@alpha/domain` |
 | `@alpha/internal-plugins` | Alpha's own plugins, one file each: the gate on `beforeToolCall`, auto-retry on `afterRun`, the four tools, compaction, the MCP servers' tools, and the subagents' `task` | `@alpha/agent`, `@alpha/domain`, `@alpha/gate`, `@alpha/mcp`, `@alpha/plugin`, `@alpha/sessions`, `@alpha/subagents`, the agent library |
 | `@alpha/desktop` | The Electron main process, the agent runtime, storage, the contextBridge, the Solid UI | every library, node, electron (not in the renderer) |
@@ -141,6 +141,14 @@ in plaintext: the renderer may learn *that* a credential exists, and may send a 
 stored, never read one back. Nor is it written into a file or an environment variable — there is
 no second process to hand it to, and a secret that sits in a file or an env line outlives the run
 that needed it.
+
+This is about the credential the workbench keeps *for itself*: the key it dials a provider with. An
+MCP server's own configuration is a different thing and stays where it is — the environment or the
+headers it is reached with are part of its definition in `mcp.json`, in plain text, and go to the
+server's process because that is how a server is configured at all (ADR-0028). The file is the
+person's, on the person's disk, and a server that needs a secret is reached like any other program
+on that machine. Moving one of those into the vault would change where a server is configured, not
+where a secret is stored, and it is its own piece of work.
 
 **Enforcement:** `pnpm check:constraints` rule `02-architecture:renderer-has-no-credentials`
 fails on every shape a credential is read in — a property named `apiKey`, `api_key`, `secret`,
@@ -219,8 +227,9 @@ a package may hold several, and this one holds all the built-ins; splitting them
 each would make the package the unit and leave the app importing four names for one idea. Where the
 policy behind a face is the workbench's to use as well, it lives in the library the plugin wraps:
 `@alpha/gate` decides what a call may do and owns the approvals broker, and the gate plugin is the
-face hung on it; `@alpha/mcp` speaks the protocol — the transports, the handshake, the list — and
-the MCP plugin is the face that turns what it offers into tools; `@alpha/subagents` says what may
+face hung on it; `@alpha/mcp` speaks the protocol — the transports, the handshake, the list, the
+servers file, and the hub those come to — and the MCP plugin is the face that turns what it offers
+into tools; `@alpha/subagents` says what may
 be handed work and for how long, and the subagents plugin is the face that runs one. Nothing is copied either way: the plugin holds the ladder's ports, and the runtime
 asks the retry plugin's own decision whether a turn is over.
 

@@ -160,26 +160,31 @@ export const functionBlocks = (lines) => {
   for (let index = 0; index < lines.length; index += 1) {
     if (!startPatterns.some((pattern) => pattern.test(lines[index]))) continue
     let depth = 0
-    let opened = false
+    // Where the *body* opens, which is not always the signature's first line: a signature may be
+    // written across several, and the braces in it — an inline object type, a default `{}` — open
+    // and close again before the body does. So the body opens at the first line whose net braces
+    // leave the depth above zero, which is the line a lone `{ timeoutMs?: number } = {}` never
+    // reaches and the line ending in `): Promise<X> {` always does.
+    let opened = -1
     let end = index
     for (let cursor = index; cursor < lines.length; cursor += 1) {
       const text = stripStrings(lines[cursor]).replace(/\/\/.*$/, '')
       for (const char of text) {
-        if (char === '{') {
-          depth += 1
-          opened = true
-        } else if (char === '}') {
-          depth -= 1
-        }
+        if (char === '{') depth += 1
+        else if (char === '}') depth -= 1
       }
-      if (opened && depth <= 0) {
+      if (opened === -1 && depth > 0) {
+        opened = cursor
+        continue
+      }
+      if (opened !== -1 && depth <= 0) {
         end = cursor
         break
       }
     }
-    // The limit in 02-architecture.md is on the body, so the signature line and the closing
-    // brace are not counted.
-    if (opened) blocks.push({ start: index + 1, length: Math.max(end - index - 1, 0) })
+    // The limit in 02-architecture.md is on the body, so the signature — however many lines it
+    // takes — and the line the closing brace stands on are not counted.
+    if (opened !== -1) blocks.push({ start: opened + 1, length: Math.max(end - opened - 1, 0) })
   }
   return blocks
 }

@@ -29,7 +29,10 @@ function hubOf(answer: (tool: string, args: Record<string, unknown>) => Promise<
       asked.push({ server, tool, args, signal })
       return answer(tool, args)
     },
+    outcomes: () => [],
     onToolsChanged: () => {},
+    reconfigure: async () => {},
+    reconnect: async () => {},
     close: async () => {},
   }
   return { servers, asked }
@@ -83,7 +86,10 @@ describe('[mcp] the plugin face', () => {
     const servers: McpServers = {
       tools: () => offered,
       call: () => Promise.resolve({ content: [], isError: false }),
+      outcomes: () => [],
       onToolsChanged: (listener) => listeners.push(listener),
+      reconfigure: async () => {},
+      reconnect: async () => {},
       close: async () => {},
     }
     let agent: Undef<Agent>

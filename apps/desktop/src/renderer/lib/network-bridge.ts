@@ -14,6 +14,7 @@ import {
   type EditEffect,
   IPC,
   type LaunchState,
+  type McpSnapshotMessage,
   type NetworkPatch,
   type NetworkState,
   type OpenedConversation,
@@ -25,6 +26,7 @@ import {
 import type {
   Attachment,
   ConversationSummary,
+  McpServerDefinition,
   PermissionLevel,
   PermissionRule,
   ProviderInput,
@@ -252,6 +254,10 @@ export function networkBridge(): AlphaBridge {
     networkState: () => invoke('networkState', []) as Promise<NetworkState>,
     setNetworkAccess: (patch: NetworkPatch) => invoke('setNetworkAccess', [patch]) as Promise<NetworkState>,
     regenerateNetworkToken: () => invoke('regenerateNetworkToken', []) as Promise<NetworkState>,
+    mcpServers: () => invoke('mcpServers', []) as Promise<McpSnapshotMessage>,
+    saveMcpServer: (server: McpServerDefinition) => invoke('saveMcpServer', [server]) as Promise<McpSnapshotMessage>,
+    removeMcpServer: (name: string) => invoke('removeMcpServer', [name]) as Promise<McpSnapshotMessage>,
+    reconnectMcpServer: (name: string) => invoke('reconnectMcpServer', [name]) as Promise<McpSnapshotMessage>,
     // A browser has no window to move; the chrome controls are not drawn in one either.
     sendWindowCommand: async () => undefined,
     onWindowState: (listener: (state: WindowState) => void) => listen('windowStateChanged', listener),

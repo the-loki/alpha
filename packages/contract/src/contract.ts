@@ -9,6 +9,7 @@ import type {
   ChatMessage,
   ConversationModel,
   ConversationSummary,
+  McpServerDefinition,
   NetworkBind,
   PermissionLevel,
   PermissionRule,
@@ -30,6 +31,22 @@ import type { LanguageSetting } from '@alpha/i18n'
 
 /** A model as the models panel sends it — the same shape it is stored as. */
 export type ProviderModelInput = ProviderModelDefinition
+
+/** An MCP server as the settings page sends it, which is the shape it is written down in. */
+export type McpServerInput = McpServerDefinition
+
+/** How a server went: what is known of it before it is reached, what it offers, or why not. */
+export type McpReached =
+  | { state: 'starting' }
+  | { state: 'connected'; tools: number }
+  | { state: 'unreachable'; problem: string }
+
+/** A server as the settings page shows it: how it is reached, and how that went. */
+export type McpServerView = McpServerDefinition & { reached: McpReached }
+
+export interface McpSnapshotMessage {
+  servers: McpServerView[]
+}
 
 /** Which model new conversations start on. Absent clears the choice, so the first model wins. */
 export type DefaultModelInput = Undef<ConversationModel>
@@ -84,6 +101,10 @@ export const IPC = {
   networkState: 'alpha:network-state',
   setNetworkAccess: 'alpha:set-network-access',
   regenerateNetworkToken: 'alpha:regenerate-network-token',
+  mcpServers: 'alpha:mcp-servers',
+  saveMcpServer: 'alpha:save-mcp-server',
+  removeMcpServer: 'alpha:remove-mcp-server',
+  reconnectMcpServer: 'alpha:reconnect-mcp-server',
 } as const
 
 /**
@@ -195,6 +216,13 @@ export interface AlphaBridge {
   networkState(): Promise<NetworkState>
   setNetworkAccess(patch: NetworkPatch): Promise<NetworkState>
   regenerateNetworkToken(): Promise<NetworkState>
+  /** The MCP servers this workbench is configured with, and how each of them went. */
+  mcpServers(): Promise<McpSnapshotMessage>
+  /** A server: what to call it, and one of the two ways to reach it. Answers with the whole list. */
+  saveMcpServer(server: McpServerInput): Promise<McpSnapshotMessage>
+  removeMcpServer(name: string): Promise<McpSnapshotMessage>
+  /** Reaches one again, which is how a server that was down is picked back up without a restart. */
+  reconnectMcpServer(name: string): Promise<McpSnapshotMessage>
   sendWindowCommand(command: WindowCommand): Promise<void>
   onWindowState(listener: (state: WindowState) => void): () => void
 

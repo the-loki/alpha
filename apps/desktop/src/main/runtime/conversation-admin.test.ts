@@ -786,7 +786,10 @@ function hubOf(
       const content: McpContent[] = [{ type: 'text', text: said === '' ? `ran ${name}` : `${name}: ${said}` }]
       return { content, isError: false }
     },
+    outcomes: () => [],
     onToolsChanged: (listener) => heard.push(listener),
+    reconfigure: async () => {},
+    reconnect: async () => {},
     close: async () => {},
   }
 }

@@ -24,6 +24,8 @@ export interface IpcContext {
   window: ChannelPorts['window']
   /** Browser access, which the settings page reads and changes. */
   network: NetworkPort
+  /** The MCP servers, which the settings page reads and changes. */
+  mcp: ChannelPorts['mcp']
   /** The scheduled tasks, which every client may read and edit. */
   tasks: ChannelPorts['tasks']
 }
@@ -35,6 +37,7 @@ export function registerIpcHandlers(context: IpcContext): void {
     providers: context.providers,
     window: context.window,
     network: context.network,
+    mcp: context.mcp,
     tasks: context.tasks,
   }
 

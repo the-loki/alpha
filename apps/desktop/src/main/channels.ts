@@ -9,7 +9,14 @@
  * runtime, and so a browser client is refused the folder picker by construction rather than by a
  * check someone has to remember.
  */
-import type { IPC, LaunchState, NetworkPatch, NetworkState, PickWorkspaceResult } from '@alpha/contract'
+import type {
+  IPC,
+  LaunchState,
+  McpSnapshotMessage,
+  NetworkPatch,
+  NetworkState,
+  PickWorkspaceResult,
+} from '@alpha/contract'
 import {
   defaultLevelFor,
   isPermissionLevel,
@@ -78,12 +85,25 @@ export interface TasksPort {
   runNow(id: string): Promise<TasksSnapshot>
 }
 
+/**
+ * The MCP servers as the channels see them: read them, and change them. Each change answers with
+ * the whole list, because the panel draws one state rather than a list it patches.
+ */
+export interface McpPort {
+  snapshot(): McpSnapshotMessage
+  save(input: unknown): Promise<McpSnapshotMessage>
+  remove(name: string): Promise<McpSnapshotMessage>
+  reconnect(name: string): Promise<McpSnapshotMessage>
+}
+
 export interface ChannelPorts {
   store: StateStore
   runtime: RuntimeManager
   /** The scheduled tasks: their list, their runs, and the button that runs one now. */
   tasks: TasksPort
   providers: ProviderService
+  /** The MCP servers this workbench reaches, which the settings page is the editor of. */
+  mcp: McpPort
   window: WindowPort
   network: NetworkPort
 }
@@ -237,6 +257,14 @@ export const CHANNELS: Record<NamedChannel, ChannelHandler> = {
   setNetworkAccess: ({ network }, args) => network.set(readNetworkPatch(args[0])),
 
   regenerateNetworkToken: ({ network }) => network.regenerateToken(),
+
+  mcpServers: ({ mcp }) => mcp.snapshot(),
+
+  saveMcpServer: ({ mcp }, args) => mcp.save(args[0]),
+
+  removeMcpServer: ({ mcp }, args) => mcp.remove(requireString(args[0], 'serverName')),
+
+  reconnectMcpServer: ({ mcp }, args) => mcp.reconnect(requireString(args[0], 'serverName')),
 
   providersSnapshot: ({ providers }) => providers.snapshot(),
 

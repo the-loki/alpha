@@ -6,7 +6,7 @@ import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/provid
 import { StateStore } from '@alpha/state'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Broadcast } from '../broadcast.ts'
-import { type ChannelPorts, headlessWindowPort, type NetworkPort } from '../channels.ts'
+import { type ChannelPorts, headlessWindowPort, type McpPort, type NetworkPort } from '../channels.ts'
 import { ProviderService } from '../providers/service.ts'
 import { RuntimeManager } from '../runtime/manager.ts'
 import { NetworkService, networkUrls } from './service.ts'
@@ -18,6 +18,14 @@ const testCipher: SecretCipher = {
 }
 
 /** Browser access in a test that is not about browser access. */
+/** MCP in a test that is not about MCP: no servers, and nothing to reach. */
+const stubMcp: McpPort = {
+  snapshot: () => ({ servers: [] }),
+  save: async () => ({ servers: [] }),
+  remove: async () => ({ servers: [] }),
+  reconnect: async () => ({ servers: [] }),
+}
+
 const stubNetwork: NetworkPort = {
   state: () => ({ enabled: false, port: 4123, bind: 'local', token: '', urls: [], error: '' }),
   set: async () => stubNetwork.state(),
@@ -58,6 +66,7 @@ const serviceWith = (options: { bundle?: boolean } = {}) => {
         providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
         window: headlessWindowPort,
         network: stubNetwork,
+        mcp: stubMcp,
         tasks: {
           snapshot: () => ({ tasks: [], runs: [] }),
           save: () => ({ tasks: [], runs: [] }),

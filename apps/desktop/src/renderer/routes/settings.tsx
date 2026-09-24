@@ -3,9 +3,10 @@ import { useSearchParams } from '@solidjs/router'
 import { For, type JSX, Show } from 'solid-js'
 import { RailToggle, WindowControls } from '../components/chrome/TitleBar.tsx'
 import { GROUP_LABEL, LIVE_SPINE, PAGE_TITLE, RAIL_ROW, ROW_LIVE } from '../components/controls.ts'
-import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
+import { ArrowLeftIcon, GlobeIcon, PaletteIcon, ServerIcon, ShieldIcon, SlidersIcon } from '../components/icons.tsx'
 import { AppearanceSection } from '../components/settings/AppearanceSection.tsx'
 import { BrowserAccessSection } from '../components/settings/BrowserAccessSection.tsx'
+import { McpSection } from '../components/settings/McpSection.tsx'
 import { PermissionSection } from '../components/settings/PermissionSection.tsx'
 import { ProvidersSection } from '../components/settings/ProvidersSection.tsx'
 import { RememberedRules } from '../components/settings/RememberedRules.tsx'
@@ -17,12 +18,13 @@ import { useText } from '../stores/shell.ts'
  * Settings is a menu, not a scroll: one panel at a time, and each panel has an address of its own
  * so a link to "the browser access page" means something.
  */
-const SETTING_TABS = ['providers', 'permissions', 'appearance', 'browser-access'] as const
+const SETTING_TABS = ['providers', 'mcp', 'permissions', 'appearance', 'browser-access'] as const
 
 type SettingTab = (typeof SETTING_TABS)[number]
 
 const TAB_LABELS: Record<SettingTab, TextKey> = {
   providers: 'settings.tabProviders',
+  mcp: 'settings.tabMcp',
   permissions: 'settings.tabPermissions',
   appearance: 'settings.tabAppearance',
   'browser-access': 'settings.tabBrowserAccess',
@@ -32,6 +34,7 @@ const TAB_ICONS: Record<SettingTab, () => JSX.Element> = {
   // Providers is the connection the workbench runs over — the closest thing to an engine panel,
   // which is why it shares its icon with nothing else here.
   providers: () => <SlidersIcon />,
+  mcp: () => <ServerIcon />,
   permissions: () => <ShieldIcon />,
   appearance: () => <PaletteIcon />,
   'browser-access': () => <GlobeIcon />,
@@ -39,13 +42,14 @@ const TAB_ICONS: Record<SettingTab, () => JSX.Element> = {
 
 /** The menu, grouped the way the reference groups it: what the agent may do, then how it looks. */
 const TAB_GROUPS: { label: TextKey; tabs: SettingTab[] }[] = [
-  { label: 'settings.groupAgent', tabs: ['providers', 'permissions'] },
+  { label: 'settings.groupAgent', tabs: ['providers', 'mcp', 'permissions'] },
   { label: 'settings.groupApp', tabs: ['appearance', 'browser-access'] },
 ]
 
 /** What each panel is about, said once at the top of it rather than inferred from its controls. */
 const TAB_NOTES: Record<SettingTab, TextKey> = {
   providers: 'settings.providersNote',
+  mcp: 'settings.mcpNote',
   permissions: 'settings.permissionsNote',
   appearance: 'settings.appearanceNote',
   'browser-access': 'settings.browserAccessNote',
@@ -58,6 +62,8 @@ function isSettingTab(value: unknown): value is SettingTab {
 /** What a panel holds. Providers is first because it is what a person comes here to change. */
 function panelOf(tab: SettingTab): JSX.Element {
   switch (tab) {
+    case 'mcp':
+      return <McpSection />
     case 'permissions':
       return (
         <>

@@ -9,8 +9,8 @@
 import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { McpServerDefinition } from '@alpha/domain'
 import { describe, expect, it } from 'vitest'
-import type { McpServerDefinition } from './client.ts'
 import { connectMcpServers } from './servers.ts'
 
 const SERVER = new URL('./scripted-server.ts', import.meta.url).pathname

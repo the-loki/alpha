@@ -11,6 +11,7 @@ import {
   type EditEffect,
   IPC,
   type LaunchState,
+  type McpSnapshotMessage,
   type NetworkPatch,
   type NetworkState,
   type OpenedConversation,
@@ -24,6 +25,7 @@ import {
 import type {
   Attachment,
   ConversationSummary,
+  McpServerDefinition,
   PermissionLevel,
   PermissionRule,
   ProviderInput,
@@ -44,6 +46,11 @@ const bridge: AlphaBridge = {
   networkState: () => ipcRenderer.invoke(IPC.networkState) as Promise<NetworkState>,
   setNetworkAccess: (patch: NetworkPatch) => ipcRenderer.invoke(IPC.setNetworkAccess, patch) as Promise<NetworkState>,
   regenerateNetworkToken: () => ipcRenderer.invoke(IPC.regenerateNetworkToken) as Promise<NetworkState>,
+  mcpServers: () => ipcRenderer.invoke(IPC.mcpServers) as Promise<McpSnapshotMessage>,
+  saveMcpServer: (server: McpServerDefinition) =>
+    ipcRenderer.invoke(IPC.saveMcpServer, server) as Promise<McpSnapshotMessage>,
+  removeMcpServer: (name: string) => ipcRenderer.invoke(IPC.removeMcpServer, name) as Promise<McpSnapshotMessage>,
+  reconnectMcpServer: (name: string) => ipcRenderer.invoke(IPC.reconnectMcpServer, name) as Promise<McpSnapshotMessage>,
   setConversationLevel: (id: string, level: PermissionLevel) =>
     ipcRenderer.invoke(IPC.setConversationLevel, id, level) as Promise<ConversationSummary>,
   sendWindowCommand: (command: WindowCommand) => ipcRenderer.invoke(WINDOW_COMMAND_CHANNELS[command]) as Promise<void>,

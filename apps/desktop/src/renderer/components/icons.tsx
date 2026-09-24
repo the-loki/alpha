@@ -91,6 +91,15 @@ export const TuneIcon = (props: IconProps) => (
   </Glyph>
 )
 
+export const ServerIcon = (props: IconProps) => (
+  <Glyph {...props}>
+    <rect x="2.5" y="3" width="11" height="4.5" rx="1.2" />
+    <rect x="2.5" y="8.5" width="11" height="4.5" rx="1.2" />
+    <circle cx="5" cy="5.25" r="0.7" fill="currentColor" stroke="none" />
+    <circle cx="5" cy="10.75" r="0.7" fill="currentColor" stroke="none" />
+  </Glyph>
+)
+
 export const FolderIcon = (props: IconProps) => (
   <Glyph {...props}>
     <path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.3l1.3 1.5h4.6c.7 0 1.2.5 1.2 1.2v5.3c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2V4.6Z" />

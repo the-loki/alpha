@@ -1,6 +1,7 @@
 /**
  * The rules the workbench decides with: what a permission level allows, what a transcript is,
- * when a scheduled task comes due, what a tool row says, what a provider and its models are.
+ * when a scheduled task comes due, what a tool row says, what a provider and its models are, what
+ * an MCP server is.
  * Pure — no disk, no process, no window — which is what lets every layer above it be tested
  * against it on its own.
  */
@@ -10,6 +11,7 @@ export * from './conversation-index.ts'
 export * from './duration.ts'
 export * from './export.ts'
 export * from './maybe.ts'
+export * from './mcp.ts'
 export * from './permission.ts'
 export * from './persisted-state.ts'
 export * from './preview.ts'

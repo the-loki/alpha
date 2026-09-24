@@ -8,7 +8,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { readMcpServers } from './servers.ts'
+import { readMcpServers, writeMcpServers } from './servers.ts'
 
 /** A data directory holding this text as its servers file. */
 function withFile(text: string): string {
@@ -44,5 +44,25 @@ describe('the servers file', () => {
 
   it('has no servers when the file is not JSON at all', () => {
     expect(readMcpServers(withFile('{ this is not json'))).toEqual([])
+  })
+
+  it('writes a list where it reads one from, so the settings page owns the file', () => {
+    // What the panel writes is what the next launch reads: the file has one shape, and the writer
+    // and the reader are the two halves of it.
+    const directory = mkdtempSync(join(tmpdir(), 'alpha-mcp-'))
+    writeMcpServers(directory, [
+      { name: 'files', command: 'mcp-files', args: ['/tmp'], env: { HOME: '/tmp' } },
+      { name: 'hosted', url: 'http://127.0.0.1:8787/mcp' },
+    ])
+    expect(readMcpServers(directory)).toEqual([
+      { name: 'files', command: 'mcp-files', args: ['/tmp'], env: { HOME: '/tmp' } },
+      { name: 'hosted', url: 'http://127.0.0.1:8787/mcp' },
+    ])
+  })
+
+  it('writes no servers as no servers, not as a file nothing can read', () => {
+    const directory = withFile('{"servers": [{"name": "files", "command": "mcp-files"}]}')
+    writeMcpServers(directory, [])
+    expect(readMcpServers(directory)).toEqual([])
   })
 })

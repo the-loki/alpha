@@ -46,6 +46,8 @@ export type LaunchOptions = {
   network?: { port: number; token: string }
   /** Seeds conversations.json, so the workbench opens with conversations already in it. */
   conversations?: unknown[]
+  /** Seeds mcp.json: the MCP servers this launch is configured with, written as the panel writes them. */
+  mcp?: unknown[]
   /** False starts no scripted endpoint and writes no providers.json. */
   provider?: boolean
   /** What configureProvider is told besides the scripted endpoint's URL. */
@@ -158,6 +160,9 @@ export async function launchWorkbench(options: LaunchOptions = {}): Promise<Laun
     })
     configureProvider(dataDirectory, { baseUrl: scripted.url, ...options.providerOptions })
   }
+  if (options.mcp !== undefined) {
+    writeFileSync(join(dataDirectory, 'mcp.json'), JSON.stringify({ servers: options.mcp }), 'utf-8')
+  }
   if (options.conversations !== undefined) {
     writeFileSync(
       join(dataDirectory, 'conversations.json'),
@@ -235,6 +240,19 @@ export async function sizeWindow(app: ElectronApplication, window: Page, width: 
         `${width}x${height}: sizeWindow has to resize the window, because a page laid out for a size ` +
         'its window does not have is what a person sees as content pushed off the edge',
     )
+  }
+}
+
+/**
+ * The scripted MCP server as a definition this machine can run: the fixture in `@alpha/mcp` is a
+ * real server, so the spec drives the real client rather than a stand-in for it.
+ */
+export function scriptedMcp(name: string, extra: { command?: string; env?: Record<string, string> } = {}): unknown {
+  return {
+    name,
+    command: extra.command ?? process.execPath,
+    args: ['--experimental-strip-types', join(process.cwd(), 'packages', 'mcp', 'src', 'scripted-server.ts')],
+    env: { SCRIPTED_MCP_NAME: `${name}-`, ...extra.env },
   }
 }
 

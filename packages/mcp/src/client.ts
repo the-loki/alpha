@@ -10,20 +10,16 @@
  * the next notification is another chance.
  *
  * Nothing here knows where the server runs: it is handed a frame, and stdio or HTTP is the frame's
- * business. A server that cannot be reached is not this package's to announce — whether a missing
- * server is a problem belongs to whoever asked for it — so a connection that does not come up
- * answers Undef, and the workbench goes on without it.
+ * business. A server that cannot be reached is reported to whoever asked, with what went wrong —
+ * whether a missing server is a problem belongs to that caller, and the only thing this package
+ * may not do is decide it quietly. `connectMcpServers` is the caller that has an answer: it keeps
+ * the reason and goes on without the server.
  */
 
-import type { Undef } from '@alpha/domain'
+import type { McpServerDefinition, Undef } from '@alpha/domain'
 import { httpFrame } from './http.ts'
 import { createSession, type McpSession } from './session.ts'
 import { stdioFrame } from './stdio.ts'
-
-/** How a workbench is told to reach one server: a command to run, or a URL to post to. */
-export type McpServerDefinition =
-  | { name: string; command: string; args?: string[]; env?: Record<string, string> }
-  | { name: string; url: string; headers?: Record<string, string> }
 
 export interface McpTool {
   server: string
@@ -129,15 +125,15 @@ function within<T>(work: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * The server a definition names, handshaken and listed, or nothing when it did not come up. The
- * third argument is how the caller hears that the server's list changed — it may arrive at any
- * moment, so it is a callback rather than a return value.
+ * The server a definition names, handshaken and listed, or why it could not be reached. The third
+ * argument is how the caller hears that the server's list changed — it may arrive at any moment, so
+ * it is a callback rather than a return value.
  */
 export async function connect(
   definition: McpServerDefinition,
   timeoutMs: number,
   onToolsChanged?: () => void,
-): Promise<Undef<McpConnection>> {
+): Promise<McpConnection> {
   let tools: McpTool[] = []
   async function relist(): Promise<void> {
     try {
@@ -168,9 +164,10 @@ export async function connect(
       },
       close: () => session.close(),
     }
-  } catch {
-    // Whatever went wrong, this server is not part of the workbench: let go of it and say nothing.
+  } catch (error) {
+    // Let go of it, and say what went wrong: a command that is not there, an endpoint that
+    // refuses, a server that never answers — each is a sentence the caller can act on.
     session.close()
-    return undefined
+    throw error instanceof Error ? error : new Error(String(error))
   }
 }

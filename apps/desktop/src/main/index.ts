@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { connectMcpServers, readMcpServers } from '@alpha/mcp'
 import { CredentialVault, ProviderStore, type SecretCipher } from '@alpha/providers'
 import { StateStore } from '@alpha/state'
 import { TaskService, TaskStore } from '@alpha/tasks'
@@ -9,6 +8,7 @@ import { Broadcast } from './broadcast.ts'
 import { type ChannelPorts, headlessWindowPort } from './channels.ts'
 import { desktopWindowPort } from './desktop-window.ts'
 import { registerIpcHandlers, windowSubscriber } from './ipc.ts'
+import { McpService } from './mcp/service.ts'
 import { ProviderService } from './providers/service.ts'
 import { RuntimeManager } from './runtime/manager.ts'
 import { NetworkService } from './server/service.ts'
@@ -52,10 +52,12 @@ app.whenReady().then(async () => {
   }
   // The MCP servers this workbench run holds: the connection starts now and is awaited when a
   // conversation is opened, so nothing waits on it at boot and every conversation reaches it (C2.8).
-  const mcpServers = connectMcpServers(readMcpServers(dataDirectory))
+  // The settings page edits the same service, so a server added there is reached without a restart.
+  const mcp = new McpService(dataDirectory)
+  void mcp.servers()
   const runtime = new RuntimeManager({
     dataDirectory,
-    mcp: () => mcpServers,
+    mcp: () => mcp.servers(),
     sessionsRoot,
     providers,
     store,
@@ -88,7 +90,7 @@ app.whenReady().then(async () => {
 
   // Two clients, two windows on the same workbench: the desktop window may open a native folder
   // dialog and move itself, and a browser may do neither. Everything else is one set of handlers.
-  const shared = { store, runtime, providers: providerService, network: service, tasks }
+  const shared = { store, runtime, providers: providerService, mcp, network: service, tasks }
   const serverPorts: ChannelPorts = { ...shared, window: headlessWindowPort }
   const desktopPorts: ChannelPorts = {
     ...shared,
@@ -105,7 +107,7 @@ app.whenReady().then(async () => {
   app.on('before-quit', () => {
     tasks.stop()
     void runtime.closeAll()
-    void mcpServers.then((servers) => servers.close())
+    void mcp.servers().then((servers) => servers.close())
   })
 
   return window

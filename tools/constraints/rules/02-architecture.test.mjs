@@ -242,6 +242,21 @@ describe('02-architecture:max-function-lines', () => {
     const text = ['function outer() {', '  if (true) {', '    return 1', '  }', '}'].join('\n')
     expect(violationsFor(rule, file('packages/domain/src/a.ts', text))).toEqual([])
   })
+
+  it('counts the body of a function whose signature is written across several lines', () => {
+    // The braces in a signature — an inline object type, a default `{}` — open and close before the
+    // body does, so a counter that stops at the first balanced brace measures a function written
+    // this way as empty and gives every long body with a wrapped signature a free pass.
+    const text = [
+      'export async function big(',
+      '  first: string,',
+      '  options: { timeoutMs?: number } = {},',
+      '): Promise<void> {',
+      ...Array.from({ length: 61 }, (_, i) => `  const a${i} = ${i}`),
+      '}',
+    ].join('\n')
+    expect(violationsFor(rule, file('packages/mcp/src/a.ts', text))).toHaveLength(1)
+  })
 })
 
 describe('02-architecture:capabilities-are-plugins', () => {

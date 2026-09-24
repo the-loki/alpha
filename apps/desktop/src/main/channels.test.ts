@@ -10,7 +10,14 @@ import { TaskService, TaskStore } from '@alpha/tasks'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { describe, expect, it } from 'vitest'
-import { CHANNELS, type ChannelPorts, type NetworkPort, PUSHED_CHANNELS, type WindowPort } from './channels.ts'
+import {
+  CHANNELS,
+  type ChannelPorts,
+  type McpPort,
+  type NetworkPort,
+  PUSHED_CHANNELS,
+  type WindowPort,
+} from './channels.ts'
 import { ProviderService } from './providers/service.ts'
 import { RuntimeManager } from './runtime/manager.ts'
 
@@ -22,6 +29,14 @@ const testCipher: SecretCipher = {
   available: true,
   encrypt: (plaintext) => `enc:${plaintext}`,
   decrypt: (payload) => payload.replace(/^enc:/, ''),
+}
+
+/** MCP in a test that is not about MCP: no servers, and nothing to reach. */
+const stubMcp: McpPort = {
+  snapshot: () => ({ servers: [] }),
+  save: async () => ({ servers: [] }),
+  remove: async () => ({ servers: [] }),
+  reconnect: async () => ({ servers: [] }),
 }
 
 /** Browser access in a test that is not about browser access. */
@@ -72,6 +87,7 @@ const ports = (
     store,
     window,
     providers: new ProviderService(new ProviderStore(dataDirectory, vault)),
+    mcp: stubMcp,
     network: stubNetwork,
     runtime,
     tasks: new TaskService({
@@ -208,6 +224,7 @@ describe('[main] the channel table', () => {
     expect(() => CHANNELS.editMessage(ports(), ['c1', 0, 'text', 'sideways'])).toThrow(/effect/)
     expect(() => CHANNELS.editMessage(ports(), ['c1', -1, 'text', 'replace'])).toThrow(/whole number/)
     expect(() => CHANNELS.answerApproval(ports(), [{ decision: 'maybe' }])).toThrow(/decision/)
+    expect(() => CHANNELS.reconnectMcpServer(ports(), [7])).toThrow(/serverName/)
   })
 
   it('carries a picture through the table to the transcript it belongs to', async () => {

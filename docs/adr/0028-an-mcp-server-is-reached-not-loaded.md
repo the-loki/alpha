@@ -63,9 +63,16 @@ second place to audit and a way to say yes without ever being asked.
 
 ## Consequences
 
-- The tools a workbench has depend on a file it does not manage. `mcp.json` is edited by hand
-  because nothing adds a server from the window yet; a settings panel is the natural next step, and
-  it is a panel, not a new mechanism.
+- The tools a workbench has depend on a file, and the workbench is now its editor: the settings
+  page lists the servers, says how each one went, and writes `mcp.json`, which stays the thing a
+  person may also edit by hand (#186). A save is not only a write — it hands the list to the hub,
+  which keeps the connections that came back unchanged, lets go of the ones that are gone, reaches
+  the new ones, and tells what is already assembled, so a server added in the window is reachable in
+  a conversation that is already open. Nothing about the mechanism moved: it is the same hub, given
+  a new list.
+- A server's environment and headers are stored in plain text in `mcp.json` and shown in the panel,
+  which is what the file always was. A token that deserves a vault is a change to where a server is
+  configured, not a field on this page; that is its own piece of work.
 - What a server's tool call costs is not visible in Alpha's usage totals: a server may spend its own
   tokens, and its result arrives as text like any other tool's output. The number stayed honest by
   staying what it was.
