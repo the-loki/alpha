@@ -888,6 +888,29 @@ describe('[runtime] what waits for the running turn, and for the one after it', 
     expect(waitingOf(events)).toEqual([])
     await manager.closeAll()
   })
+
+  it('cancelling one steer preserves another until the run takes it', async () => {
+    const { manager, workspace, events } = freshManager({
+      slowReply: { text: 'First answer.', afterMs: 500 },
+    })
+    const id = (await manager.create(workspace)).conversation.id
+    const run = manager.runAttended(id, 'a long task')
+    await waitedFor(events, 'assistant_message_started')
+    await manager.steer(id, 'cancel this')
+    await manager.steer(id, 'keep this')
+    const listed = events.filter((event) => event.type === 'queue_updated').at(-1)
+    const entryId = listed?.type === 'queue_updated' ? listed.queued[0]?.entryId : undefined
+    if (entryId === undefined) throw new Error('the first steer was never listed')
+
+    await manager.cancelQueued(id, 'no-such-entry')
+    expect(waitingOf(events)).toEqual(['cancel this', 'keep this'])
+    await manager.cancelQueued(id, entryId)
+    expect(waitingOf(events)).toEqual(['keep this'])
+    await run
+    expect(texts(manager.reads.transcript(id))).toContain('keep this')
+    expect(texts(manager.reads.transcript(id))).not.toContain('cancel this')
+    await manager.closeAll()
+  })
 })
 
 const freshManagerAt = (

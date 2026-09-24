@@ -152,6 +152,16 @@ export class QueueRunner {
     this.emit(conversationId)
   }
 
+  /** Remove one steer and answer what the lane must still hold, in order. */
+  public cancelSteer(conversationId: string, entryId: string): Undef<string[]> {
+    const steers = this.steers.get(conversationId) ?? []
+    const remaining = steers.filter((steer) => steer.entryId !== entryId)
+    if (remaining.length === steers.length) return undefined
+    this.steers.set(conversationId, remaining)
+    this.emit(conversationId)
+    return remaining.map((steer) => steer.text)
+  }
+
   /**
    * The lane took one: it is in the conversation now, so it is no longer waiting for anything, and
    * the first steer still listed that said this is what it took. What is left on the list is what

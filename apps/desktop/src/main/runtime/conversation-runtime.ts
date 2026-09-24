@@ -135,13 +135,12 @@ export class ConversationRuntime {
     this.agent?.steer(this.userMessage(text))
   }
 
-  /**
-   * Emptying what the agent is holding. Its queue is its own and is emptied whole, which is why the
-   * workbench keeps its own list for messages that are waiting for a turn: those are Alpha's, and
-   * they are taken back one at a time there.
-   */
-  public async cancelQueued(): Promise<void> {
-    this.agent?.clearAllQueues()
+  /** Pi clears steering as a group; Alpha restores the steers that were not cancelled. */
+  public replaceSteers(texts: readonly string[]): void {
+    const agent = this.agent
+    if (agent === undefined) return
+    agent.clearSteeringQueue()
+    for (const text of texts) agent.steer(this.userMessage(text))
   }
 
   /** Stops the run in flight: the agent keeps the message it was writing, marked interrupted. */

@@ -30,9 +30,10 @@ steered message per turn boundary, and a second steer sent before the first is t
 still waiting — which is why the strip lists both.
 
 The **"too late" answer was never built**. The contract's only cancel is
-`cancelQueued(conversationId, entryId)`, which answers nothing: Cancel asks the lane to drop what it
-still holds, and the row goes when the turn is over. A steer is listed for as long as the turn that
-was steered with it lasts.
+`cancelQueued(conversationId, entryId)`, which answers nothing. Cancel removes that one waiting
+steer by ID. Pi can clear its steering queue only as a group, so Alpha synchronously clears and
+requeues the other steers in their original order; an ID already taken changes nothing. A steer is
+listed until the lane takes it, the user cancels it, or the turn ends.
 
 ## Context
 

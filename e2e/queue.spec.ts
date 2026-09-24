@@ -69,6 +69,31 @@ test('a queued message waits, is edited where it stands, and then goes', async (
   await app.close()
 })
 
+test('cancelling one steer keeps the other in the running turn', async () => {
+  const { app, window } = await launch()
+
+  await composer(window).fill('first task')
+  await composer(window).press('Enter')
+  await expect(window.getByRole('button', { name: 'Steer', exact: true })).toBeVisible({ timeout: 15_000 })
+
+  await composer(window).fill('cancel this')
+  await window.getByRole('button', { name: 'Steer', exact: true }).click()
+  await composer(window).fill('keep this')
+  await window.getByRole('button', { name: 'Steer', exact: true }).click()
+
+  const strip = window.getByRole('list', { name: 'Queued messages' })
+  await expect(strip.getByText('cancel this')).toBeVisible()
+  await expect(strip.getByText('keep this')).toBeVisible()
+  await window.getByRole('button', { name: 'Cancel the queued message: cancel this' }).click()
+  await expect(strip.getByText('cancel this')).toHaveCount(0)
+  await expect(strip.getByText('keep this')).toBeVisible()
+
+  const said = window.getByRole('main').locator('[data-role="user"]')
+  await expect(said.filter({ hasText: 'keep this' })).toHaveCount(1, { timeout: 20_000 })
+  await expect(said.filter({ hasText: 'cancel this' })).toHaveCount(0)
+  await app.close()
+})
+
 test('a queue and a full draft still leave the composer inside the page', async () => {
   const { app, window } = await launch()
   // A short window, because the workbench can be served to a browser (ADR-0009) and a browser

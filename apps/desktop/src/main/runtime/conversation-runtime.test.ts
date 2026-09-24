@@ -347,12 +347,12 @@ describe('[runtime] steering a running turn', () => {
     expect(rowOf(events, 'turn_finished')).toHaveLength(1)
   })
 
-  it('cancelQueued empties what the agent is holding', async () => {
+  it('replaceSteers empties what the agent is holding', async () => {
     const { runtime, agent } = openRuntime({})
 
     await runtime.steer('one')
     expect(agent?.hasQueuedMessages()).toBe(true)
-    await runtime.cancelQueued()
+    runtime.replaceSteers([])
     expect(agent?.hasQueuedMessages()).toBe(false)
   })
 })

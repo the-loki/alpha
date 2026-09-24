@@ -228,8 +228,9 @@ export class RuntimeManager {
    */
   public async cancelQueued(id: string, entryId: string): Promise<void> {
     if (this.queue.cancel(id, entryId)) return
-    await (await this.openFor(id)).cancelQueued()
-    this.queue.steerCleared(id)
+    const runtime = await this.openFor(id)
+    const remaining = this.queue.cancelSteer(id, entryId)
+    if (remaining !== undefined) runtime.replaceSteers(remaining)
   }
 
   /** Starting a stopped queue again: pressing Stop, or a failed turn, is what stopped it. */
