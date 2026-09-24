@@ -176,6 +176,7 @@ export const ZH = {
   'model.menuLabel': '使用的模型',
   'model.none': '没有模型',
   'model.noneHint': '在这里选一个模型；如果还没有，请先到设置里添加。',
+  'model.configureHint': '前往供应商设置添加模型。',
   'message.copy': '复制',
   'message.copied': '已复制',
   'message.copyFailed': '复制失败',

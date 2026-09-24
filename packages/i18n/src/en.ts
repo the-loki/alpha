@@ -178,6 +178,7 @@ export const EN = {
   'model.menuLabel': 'The model this runs on',
   'model.none': 'No model',
   'model.noneHint': 'Choose a model here, or add one in Settings.',
+  'model.configureHint': 'Open Providers settings to add a model.',
   'message.copy': 'Copy',
   'message.copied': 'Copied',
   'message.copyFailed': 'Copy failed',

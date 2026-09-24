@@ -319,12 +319,13 @@ test('a long line wraps inside the box, and a long code line scrolls in its bloc
   await app.close()
 })
 
-test('with no model configured the composer opens whole, and nothing under it explains the model', async () => {
+test('with no model configured the composer leads directly to provider setup', async () => {
   const { app, window } = await launch({ provider: false })
 
   // The foot is where a missing model is answered — by the control that chooses one, which reads
   // "No model" and carries the hint — so the box says nothing about it underneath.
-  await expect(window.getByRole('button', { name: 'No model', exact: true })).toBeVisible()
+  const model = window.getByRole('button', { name: 'No model', exact: true })
+  await expect(model).toBeVisible()
   await expect(window.getByRole('button', { name: 'Attach a picture', exact: true })).toBeVisible()
   await expect(window.getByRole('button', { name: 'Ask', exact: true })).toBeVisible()
   // Nothing under the box at all, and no mark in front of it.
@@ -335,6 +336,10 @@ test('with no model configured the composer opens whole, and nothing under it ex
   // And a message cannot leave: the box holds it, and the send control says so by being disabled.
   await ask(window, 'anything')
   await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
+
+  await expect(model).toBeEnabled()
+  await model.click()
+  await expect(window.getByRole('heading', { name: 'Providers', exact: true })).toBeVisible()
 
   await app.close()
 })

@@ -1,4 +1,5 @@
 import type { ConversationModel } from '@alpha/domain'
+import { useNavigate } from '@solidjs/router'
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { SCROLLS } from '../../lib/ledger.ts'
 import { inConversation, runningModel, setRunningModel } from '../../stores/next-message.ts'
@@ -26,6 +27,7 @@ const CHIP = `${CHIP_SHAPE} max-w-56 ${CHIP_QUIET}`
  */
 export function ModelChip() {
   const t = useText()
+  const navigate = useNavigate()
   const [open, setOpen] = createSignal(false)
   let container!: HTMLDivElement
 
@@ -40,10 +42,11 @@ export function ModelChip() {
   )
 
   const running = runningModel()
+  const hasModels = () => providers.snapshot.providers.some((provider) => provider.models.length > 0)
   const title = () => {
     const name = running.name()
     return name === undefined
-      ? t('model.noneHint')
+      ? t(hasModels() ? 'model.noneHint' : 'model.configureHint')
       : t(inConversation() ? 'model.chipTitleHere' : 'model.chipTitleDefault', { model: name })
   }
   const choose = (next: ConversationModel) => {
@@ -59,17 +62,22 @@ export function ModelChip() {
     <div class="relative no-drag w-fit min-w-0 max-w-40" ref={container}>
       <button
         type="button"
-        aria-haspopup="menu"
-        aria-expanded={open()}
-        disabled={providers.snapshot.providers.length === 0}
+        aria-haspopup={hasModels() ? 'menu' : undefined}
+        aria-expanded={hasModels() ? open() : undefined}
         title={title()}
-        onClick={() => setOpen((value) => !value)}
-        class={`${CHIP} max-w-full disabled:cursor-not-allowed disabled:opacity-60`}
+        onClick={() => {
+          if (!hasModels()) {
+            navigate('/settings?tab=providers')
+            return
+          }
+          setOpen((value) => !value)
+        }}
+        class={`${CHIP} max-w-full`}
       >
         <span class="min-w-0 truncate">{running.name() ?? t('model.none')}</span>
       </button>
 
-      <Show when={open()}>
+      <Show when={open() && hasModels()}>
         {/* Upwards and right-aligned: the chip sits on the floor of the window, at its right edge.
             The menu is a floating layer — surface-3, a frame, a medium shadow (C5.4). */}
         <div
