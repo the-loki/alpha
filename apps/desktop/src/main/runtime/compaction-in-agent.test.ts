@@ -98,7 +98,7 @@ describe('compacting on the threshold', () => {
       role: 'user',
       content: [{ type: 'text', text: 'They were fixing a parser.' }],
     })
-    const live = await setup.runtime.transcript()
+    const live = setup.store.transcript('c1', setup.workspace)
     expect(live.at(-1)).toMatchObject({
       role: 'assistant',
       blocks: [{ kind: 'compaction', summary: 'They were fixing a parser.', replaced: 2 }],

@@ -13,7 +13,7 @@
  */
 import type { EditEffect, OpenedConversation } from '@alpha/contract'
 import { type ChatMessage, type ConversationSummary, textOfContent } from '@alpha/domain'
-import { type AgentPorts, forkSession } from '@alpha/sessions'
+import { type AgentPorts, type ConversationReads, forkSession } from '@alpha/sessions'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 
 export interface EditingPorts {
@@ -21,6 +21,8 @@ export interface EditingPorts {
   conversation: (id: string) => ConversationSummary
   /** The runtime for a conversation, opening it first when it is not already open. */
   runtime: (id: string) => Promise<ConversationRuntime>
+  /** Reading a conversation back, which is a different question from driving it. */
+  reads: ConversationReads
   /** Records a conversation the index has not seen before, which is what a fork produces. */
   register: (conversation: ConversationSummary) => void
   openConversation: (id: string) => Promise<OpenedConversation>
@@ -34,13 +36,13 @@ export interface EditingPorts {
 /** Answers the last user message again, with the replaced answer leaving the transcript's path. */
 export async function regenerate(ports: EditingPorts, id: string): Promise<void> {
   const runtime = await idleRuntime(ports, id)
-  const last = (await runtime.userEntries()).at(-1)
+  const last = ports.reads.userEntries(id).at(-1)
   const text = last === undefined ? '' : textOfContent(last.message?.content)
   if (text === '' || last === undefined) return
   if (!(await moveTip(ports, id, runtime, last.id))) return
   await runtime.prompt(text)
   await runtime.settle()
-  ports.replaceTranscript(id, await runtime.transcript())
+  ports.replaceTranscript(id, ports.reads.transcript(id))
 }
 
 /**
@@ -57,18 +59,18 @@ export async function editMessage(
 ): Promise<OpenedConversation> {
   const runtime = await idleRuntime(ports, id)
   const conversation = ports.conversation(id)
-  const entry = (await runtime.userEntries())[userMessageIndex]
+  const entry = ports.reads.userEntries(id)[userMessageIndex]
   if (entry === undefined) throw new Error('That message is not in this conversation.')
 
   if (effect === 'replace') {
     if (await moveTip(ports, id, runtime, entry.id)) {
       await runtime.prompt(text)
       await runtime.settle()
-      const messages = await runtime.transcript()
+      const messages = ports.reads.transcript(id)
       ports.replaceTranscript(id, messages)
-      return { conversation, messages, usage: await runtime.usage() }
+      return { conversation, messages, usage: ports.reads.usage(id) }
     }
-    return { conversation, messages: await runtime.transcript(), usage: await runtime.usage() }
+    return { conversation, messages: ports.reads.transcript(id), usage: ports.reads.usage(id) }
   }
 
   // The copy is made outside this conversation's runtime, so the conversation on screen is not
@@ -90,7 +92,7 @@ export async function editMessage(
   const forkedRuntime = await ports.runtime(copy.id)
   await forkedRuntime.prompt(text)
   await forkedRuntime.settle()
-  return { conversation: copy, messages: await forkedRuntime.transcript(), usage: opened.usage }
+  return { conversation: copy, messages: ports.reads.transcript(copy.id), usage: opened.usage }
 }
 
 /** Moves the conversation's tip, recording the session the agent forked it into. */

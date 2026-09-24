@@ -12,7 +12,6 @@ import type { EditEffect, ModelStatus, OpenedConversation } from '@alpha/contrac
 import { ConversationBookkeeper, DEFAULT_TITLE, newConversation, QueueRunner } from '@alpha/conversations'
 import {
   type Attachment,
-  type ChatMessage,
   type ConversationSummary,
   defaultLevelFor,
   EMPTY_USAGE,
@@ -35,8 +34,8 @@ import type { McpServers } from '@alpha/mcp'
 import { defaultModel, describeRuntime, type ProviderStore, startProblem } from '@alpha/providers'
 import {
   type AgentPorts,
+  ConversationReads,
   DecisionLog,
-  readSessionTranscript,
   SessionStore,
   sessionIdOf,
   writeSessionMarkdown,
@@ -76,6 +75,12 @@ export class RuntimeManager {
   private readonly opened = new Map<string, ConversationRuntime>()
   private readonly approvals: ApprovalBroker
   private readonly decisions: DecisionLog
+  /**
+   * Everything read back out of a conversation, addressed by its id: the transcript, what it has
+   * spent, the user's own messages. It is the door a caller that only reads takes (a markdown
+   * export, an open, a screen that shows a conversation), so no such caller has to hold a runtime.
+   */
+  public readonly reads: ConversationReads
   /** Messages waiting for a turn of their own, and what the agent is holding for this one. */
   private readonly queue: QueueRunner
   /** Runs with nobody watching, and the refusals their gate had to hand out (ADR-0012). */
@@ -87,6 +92,11 @@ export class RuntimeManager {
     this.sessions = new SessionStore(options.sessionsRoot)
     this.approvals = new ApprovalBroker({ emit: options.emit })
     this.decisions = new DecisionLog(options.dataDirectory)
+    this.reads = new ConversationReads({
+      conversation: (id) => this.requireConversation(id),
+      store: this.sessions,
+      decisions: (id) => this.decisions.opened(id),
+    })
     this.queue = new QueueRunner({
       statusOf: (id) => this.books.find(id)?.status,
       send: (id, text) => this.prompt(id, text),
@@ -135,15 +145,13 @@ export class RuntimeManager {
     const conversation = this.requireConversation(id)
 
     this.options.store.rememberConversation(id)
-    const existing = this.opened.get(id)
-    if (existing !== undefined) {
-      return { conversation, messages: await existing.transcript(), usage: await existing.usage() }
+    // A conversation that is already running is not launched again, and it was named when it was.
+    if (!this.opened.has(id)) {
+      await this.launch(conversation)
+      if (conversation.title !== DEFAULT_TITLE) this.books.markNamed(id)
     }
 
-    const runtime = await this.launch(conversation)
-    if (conversation.title !== DEFAULT_TITLE) this.books.markNamed(id)
-
-    return { conversation, messages: await runtime.transcript(), usage: await runtime.usage() }
+    return { conversation, messages: this.reads.transcript(id), usage: this.reads.usage(id) }
   }
 
   /**
@@ -282,15 +290,7 @@ export class RuntimeManager {
   /** A markdown file beside the workspace, with everything the conversation said and did. */
   public async exportMarkdown(id: string): Promise<{ path: string }> {
     const conversation = this.requireConversation(id)
-    return writeSessionMarkdown(conversation, await this.transcriptFor(id))
-  }
-
-  /** The transcript of a conversation, open or not: the same reading either way. */
-  public async transcriptFor(id: string): Promise<ChatMessage[]> {
-    const runtime = this.opened.get(id)
-    if (runtime !== undefined) return runtime.transcript()
-    const conversation = this.requireConversation(id)
-    return readSessionTranscript(this.sessions, conversation, this.decisions.opened(id))
+    return writeSessionMarkdown(conversation, this.reads.transcript(id))
   }
 
   /**
@@ -308,6 +308,7 @@ export class RuntimeManager {
     return {
       conversation: (id) => this.requireConversation(id),
       runtime: (id) => this.openFor(id),
+      reads: this.reads,
       register: (conversation) => {
         this.books.upsert(conversation)
         this.books.markNamed(conversation.id)

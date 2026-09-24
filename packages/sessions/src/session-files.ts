@@ -1,14 +1,14 @@
 /**
- * The conversation's own files, answered by the session store: reading a conversation that is not
- * running, forking one without disturbing the conversation on screen, and writing it out as
- * markdown. The store is where a conversation lives now that Alpha owns its sessions, so nothing
- * here asks an agent for anything.
+ * The conversation's own files, for what is done to one rather than read out of it: forking a
+ * conversation without disturbing the one on screen, and writing it out as markdown. What is read
+ * back — the transcript, the usage, the user's own messages — is `ConversationReads`. The store is
+ * where a conversation lives now that Alpha owns its sessions, so nothing here asks an agent for
+ * anything.
  */
 
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type ChatMessage, type ConversationSummary, exportFileName, exportMarkdown, type Undef } from '@alpha/domain'
-import type { DecisionLookup } from './decisions.ts'
 import { SessionStore, sessionIdOf } from './sessions.ts'
 
 /**
@@ -21,15 +21,6 @@ export interface AgentPorts {
   sessionsRoot: string
   /** Why there is no key to dial with, when there is none (#114). Absent when there is one. */
   keyProblem: (providerId: string) => Undef<string>
-}
-
-/** The transcript of a conversation that is not open: the store reads the same file a run wrote. */
-export function readSessionTranscript(
-  store: SessionStore,
-  conversation: ConversationSummary,
-  decisions?: DecisionLookup,
-): ChatMessage[] {
-  return store.transcript(sessionIdOf(conversation), conversation.workspacePath, decisions)
 }
 
 /**

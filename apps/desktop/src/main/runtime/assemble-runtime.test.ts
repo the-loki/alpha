@@ -167,10 +167,11 @@ describe('[runtime] the policies an opening assembles', () => {
     const providers = new ProviderStore(dataDirectory, new CredentialVault(dataDirectory, testCipher))
     providers.save(provider)
     const events: RuntimeEvent[] = []
+    const store = new SessionStore(sessionsRoot)
     const open = (drives: Array<() => AssistantMessageEventStream>) =>
       openRuntime({
         conversation: conversationIn(workspace),
-        sessions: new SessionStore(sessionsRoot),
+        sessions: store,
         sessionsRoot,
         providers,
         models: () => scriptedModels(drives, [{ ...aModel(), contextWindow: 5 }]),
@@ -191,9 +192,9 @@ describe('[runtime] the policies an opening assembles', () => {
 
     // A reopened conversation is the compacted conversation, and the block is on screen once.
     const second = await open([() => endOf('again')])
-    const blocks = (await second.transcript()).flatMap((message) =>
-      message.blocks.filter((block) => block.kind === 'compaction'),
-    )
+    const blocks = store
+      .transcript('c1', workspace)
+      .flatMap((message) => message.blocks.filter((block) => block.kind === 'compaction'))
     expect(blocks).toHaveLength(1)
     expect(blocks[0]).toMatchObject({ kind: 'compaction', summary: 'They were fixing a parser.', replaced: 2 })
     await second.close()

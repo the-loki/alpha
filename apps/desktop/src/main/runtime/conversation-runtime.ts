@@ -4,9 +4,9 @@
  *
  * The agent owns the run and its tools; a prompt is a method call and an event subscription, with
  * no child to keep alive. Alpha owns the transcript of record: every message the run produces is
- * written to the session store the moment it exists, and every question about what was said — the
- * transcript, the usage, the user's own messages — is answered by the store, which is why a
- * reopened conversation is the conversation.
+ * written to the session store the moment it exists, which is why a reopened conversation is the
+ * conversation. What was said is read back by `ConversationReads`, addressed by the conversation —
+ * this file writes and runs, and answers no questions about the record.
  *
  * Nothing here throws at a caller for a failure that is a value: a run that fails and a model that
  * is missing are both reported as the window's own `run_failed`, because a conversation that
@@ -18,18 +18,16 @@ import { historyOf, RUN_FAILED, runAfterRunHooks } from '@alpha/agent'
 import {
   type ApprovalRecord,
   type Attachment,
-  type ChatMessage,
   imagesOf,
   listOf,
   type RuntimeEvent,
   recordOf,
   type ThinkingLevel,
   type Undef,
-  type UsageTotals,
   userBlocksOf,
 } from '@alpha/domain'
 import type { RetryDecider } from '@alpha/plugin'
-import { type AgentEntry, type DecisionLookup, type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
+import { type NewEntry, type SessionStore, tipPath } from '@alpha/sessions'
 import type { Agent, AgentEvent, AgentMessage } from '@earendil-works/pi-agent-core'
 import type { Models } from '@earendil-works/pi-ai'
 import { AgentEventTranslator } from './agent-events.ts'
@@ -50,8 +48,6 @@ export interface ConversationRuntimeOptions {
   compact?: () => Promise<boolean>
   /** The retry policy, whose decision keeps the turn open across a retry it has planned. */
   retry?: RetryDecider
-  /** How earlier calls got past the gate, for the rows in a rendered transcript (decisions.ts). */
-  decisions?: DecisionLookup
   emit: (event: RuntimeEvent) => void
 }
 
@@ -61,7 +57,6 @@ export class ConversationRuntime {
   private readonly store: SessionStore
   private readonly plugins: AlphaPlugin[]
   private readonly compactor: Undef<() => Promise<boolean>>
-  private readonly decisions: Undef<DecisionLookup>
   private readonly emit: (event: RuntimeEvent) => void
   private readonly translator: AgentEventTranslator
   private agent: Undef<Agent>
@@ -82,7 +77,6 @@ export class ConversationRuntime {
     this.store = options.store
     this.plugins = options.plugins
     this.compactor = options.compact
-    this.decisions = options.decisions
     this.emit = options.emit
     this.sessionId = options.session.id
     this.workspacePath = options.session.workspacePath
@@ -172,21 +166,6 @@ export class ConversationRuntime {
    */
   public async settle(): Promise<void> {
     await this.driving
-  }
-
-  /** The conversation as it stands, read from the store: what a window just opening it draws. */
-  public async transcript(): Promise<ChatMessage[]> {
-    return this.store.transcript(this.sessionId, this.workspacePath, this.decisions)
-  }
-
-  /** What the session has spent so far, which is what a window opening it has to show. */
-  public async usage(): Promise<UsageTotals> {
-    return this.store.usage(this.sessionId, this.workspacePath)
-  }
-
-  /** The user's own messages, in order: what a resend or a fork works from. */
-  public async userEntries(): Promise<AgentEntry[]> {
-    return this.store.userEntries(this.sessionId, this.workspacePath)
   }
 
   /** Switches the model this conversation runs on; takes effect on the next turn. */

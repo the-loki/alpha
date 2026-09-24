@@ -216,7 +216,6 @@ export async function openRuntime(options: OpenRuntimeOptions): Promise<Conversa
     plugins: policies.plugins,
     compact: policies.compact,
     retry: policies.retry,
-    decisions: options.decisions,
     emit: options.emit,
   })
   return runtime

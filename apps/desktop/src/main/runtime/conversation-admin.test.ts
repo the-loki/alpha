@@ -289,17 +289,21 @@ describe('[runtime] open, prompt, and the events between', () => {
     expect(events.filter((event) => event.type === 'turn_finished')).toHaveLength(1)
   })
 
-  it('answers a conversation reopened after a relaunch with the same transcript', async () => {
+  it('answers a conversation reopened after a relaunch with the same transcript and usage', async () => {
     const { manager, workspace, dataDirectory, events } = freshManager({ replies: ['Noted.'] })
     const created = await manager.create(workspace)
     await tell(manager, events, created.conversation.id, 'remember this')
-    const live = await manager.transcriptFor(created.conversation.id)
+    const live = manager.reads.transcript(created.conversation.id)
+    const spent = manager.reads.usage(created.conversation.id)
     await manager.closeAll()
 
+    // Two managers over one data directory, which is what makes this two reads: the conversation
+    // was live in one process and is read back in another, so nothing here is the same call twice.
     const reopened = freshManagerAt(dataDirectory)
     const opened = await reopened.manager.open(created.conversation.id)
     expect(opened.messages).toEqual(live)
     expect(opened.messages.map((message) => message.role)).toEqual(['user', 'assistant'])
+    expect(opened.usage).toEqual(spent)
     await reopened.manager.closeAll()
   })
 
@@ -371,7 +375,7 @@ describe('[runtime] deleting a conversation', () => {
     const created = await manager.create(workspace)
     await manager.remove(created.conversation.id)
     expect(manager.list()).toEqual([])
-    await expect(manager.transcriptFor(created.conversation.id)).rejects.toThrow('No conversation')
+    expect(() => manager.reads.transcript(created.conversation.id)).toThrow('No conversation')
   })
 })
 
@@ -595,7 +599,7 @@ describe('[runtime] reading a conversation back', () => {
     const created = await manager.create(workspace)
     await tell(manager, events, created.conversation.id, 'a question')
     await manager.regenerate(created.conversation.id)
-    const live = await manager.transcriptFor(created.conversation.id)
+    const live = manager.reads.transcript(created.conversation.id)
     await manager.closeAll()
 
     const reopened = freshManagerAt(dataDirectory)
@@ -611,7 +615,7 @@ describe('[runtime] reading a conversation back', () => {
     const created = await manager.create(workspace)
     await tell(manager, events, created.conversation.id, 'a question')
     await manager.editMessage(created.conversation.id, 0, 'a better question', 'replace')
-    const live = await manager.transcriptFor(created.conversation.id)
+    const live = manager.reads.transcript(created.conversation.id)
     await manager.closeAll()
 
     const reopened = freshManagerAt(dataDirectory)
@@ -770,9 +774,9 @@ describe('[runtime] compacting a conversation by hand', () => {
     await expect(manager.compactConversation(created.conversation.id)).resolves.toBe(true)
 
     expect(events.some((event) => event.type === 'history_compacted')).toBe(true)
-    const blocks = (await manager.transcriptFor(created.conversation.id)).flatMap((message) =>
-      message.blocks.filter((block) => block.kind === 'compaction'),
-    )
+    const blocks = manager.reads
+      .transcript(created.conversation.id)
+      .flatMap((message) => message.blocks.filter((block) => block.kind === 'compaction'))
     expect(blocks).toHaveLength(1)
     expect(blocks[0]?.kind).toBe('compaction')
   })
@@ -812,7 +816,8 @@ describe('[runtime] the MCP servers a workbench holds', () => {
     await manager.closeAll()
 
     expect(asked).toEqual([{ server: 'scripted', tool: 'echo', args: { text: 'hello' } }])
-    const row = (await manager.transcriptFor(created.conversation.id))
+    const row = manager.reads
+      .transcript(created.conversation.id)
       .flatMap((message) => message.blocks)
       .find((block) => block.kind === 'tool')
     expect(row).toMatchObject({
@@ -853,7 +858,8 @@ describe('[runtime] the MCP servers a workbench holds', () => {
     for (const listener of heard) listener()
     await tell(manager, events, created.conversation.id, 'and the new one')
 
-    const rows = (await manager.transcriptFor(created.conversation.id))
+    const rows = manager.reads
+      .transcript(created.conversation.id)
       .flatMap((message) => message.blocks)
       .filter((block) => block.kind === 'tool')
     await manager.closeAll()

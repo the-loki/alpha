@@ -63,7 +63,7 @@ const openRuntime = (options: OpenOptions = {}) => {
     retry: options.retry,
     emit: (event) => events.push(event),
   })
-  return { runtime, events, store, workspace, agent }
+  return { runtime, events, store, workspace, agent, id }
 }
 
 const typesOf = (events: RuntimeEvent[]): string[] => events.map((event) => event.type)
@@ -202,11 +202,11 @@ describe('[runtime] a conversation turn, driven by the assembled agent', () => {
   })
 
   it('a runtime with nothing assembled refuses a prompt as an event, and can still be read', async () => {
-    const { runtime, events, store, workspace } = openRuntime({ unAssembled: true })
+    const { runtime, events, store, workspace, id } = openRuntime({ unAssembled: true })
 
     await runtime.prompt('hi')
     expect(events.find((event) => event.type === 'run_failed')?.message).toContain('No model')
-    expect(await runtime.transcript()).toEqual([])
+    expect(store.transcript(id, workspace)).toEqual([])
     expect(runtime.isRunning()).toBe(false)
     expect(store.entries('c1', workspace).entries).toEqual([])
   })
@@ -259,14 +259,16 @@ describe('[runtime] the session the store owns', () => {
     const first = openRuntime({ store, workspace, drives: [() => textStream('Noted.')] })
     await first.runtime.prompt('remember this')
     await first.runtime.settle()
-    const live = await first.runtime.transcript()
+    const live = store.transcript(first.id, workspace)
     await first.runtime.close()
 
-    // Reopening is a new runtime over the same store and session: the store is the record.
+    // Reopening is a new runtime over the same store and the same session, and the read is the
+    // store's either way: the session is the record, and a runtime never held one of its own. That
+    // the two agree is now a property of there being one read path, so what is left to say here is
+    // that what was said is in the file the second runtime starts from.
     const second = openRuntime({ store, workspace, drives: [() => textStream('again')] })
-    expect(await second.runtime.transcript()).toEqual(live)
-    expect((await second.runtime.transcript()).map((message) => message.role)).toEqual(['user', 'assistant'])
-    expect(await second.runtime.usage()).toEqual(await first.runtime.usage())
+    expect(store.transcript(second.id, workspace)).toEqual(live)
+    expect(store.transcript(second.id, workspace).map((message) => message.role)).toEqual(['user', 'assistant'])
     await second.runtime.close()
 
     expect(textsOf(store, workspace)).toEqual(['remember this', 'Noted.'])
@@ -437,7 +439,7 @@ describe('[runtime] moving the branch tip', () => {
     await first.runtime.close()
 
     const second = openRuntime({ store, workspace, drives: [() => textStream('The second answer.')] })
-    const lastUser = (await second.runtime.userEntries()).at(-1)
+    const lastUser = store.userEntries(second.id, workspace).at(-1)
     const forked = await second.runtime.forkAt(lastUser?.id ?? '')
     expect(forked).toBeDefined()
     expect(forked).not.toBe('c1')

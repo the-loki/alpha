@@ -84,11 +84,18 @@ const gated = (drives: Array<() => ReturnType<typeof textStream>>, level: Permis
     session: { id: 'c1', workspacePath: workspace },
     store,
     plugins,
-    decisions: ledger,
     emit: (event) => events.push(event),
   })
 
-  return { runtime, events, decisions, asked, answer: (answer: ApprovalAnswer) => waiters.shift()?.(answer) }
+  return {
+    runtime,
+    events,
+    decisions,
+    asked,
+    store,
+    workspace,
+    answer: (answer: ApprovalAnswer) => waiters.shift()?.(answer),
+  }
 }
 
 const waitedFor = async (condition: () => boolean): Promise<void> => {
@@ -142,9 +149,9 @@ describe('[runtime] a subagent inside a conversation', () => {
     f.answer({ decision: 'once' })
     await f.runtime.settle()
 
-    const rows = (await f.runtime.transcript()).flatMap((message) =>
-      message.blocks.filter((block) => block.kind === 'tool'),
-    )
+    const rows = f.store
+      .transcript('c1', f.workspace, f.decisions)
+      .flatMap((message) => message.blocks.filter((block) => block.kind === 'tool'))
     await f.runtime.close()
 
     expect(rows).toHaveLength(1)
