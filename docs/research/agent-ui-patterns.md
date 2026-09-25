@@ -18,10 +18,10 @@ scoped "always allow", remembered rules that are listed and revocable, a queue r
 interrupt, a denial that carries its reason back to the model, and thinking collapsed above the
 answer with its own duration.
 
-Not taken: the side panel for work-in-progress state and the diff panel beside the conversation —
-nothing floats over the page (C5.4), and a diff is drawn inside the tool row that produced it — and
-the one-key approve/decline pair, since `Enter` allows once while `Escape` only moves focus away
-(C5.7).
+Not taken: the side panel for work-in-progress state and the diff panel beside the conversation.
+Tool-specific diffs appear in their tool rows, and the conversation has an in-page workspace-changes
+view (ADR-0030). The one-key approve/decline pair was also not taken: `Enter` allows once while
+`Escape` only moves focus away (C5.7).
 
 ## 1. ChatGPT desktop app
 

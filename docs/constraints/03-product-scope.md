@@ -45,8 +45,8 @@ when the user enables browser access (C6).
 
 Four levels, exactly: `plan`, `ask`, `accept-edits`, `full-access`. They are the whole answer to
 "what can the agent do without asking?". Alpha does not add a sandbox, a container, a seccomp
-profile, or a per-tool allowlist DSL beyond the remembered rules a user creates by approving
-something twice.
+profile, or a per-tool allowlist DSL beyond the remembered rules a user creates by choosing
+"Always allow" for a call.
 
 The level is chosen per conversation, defaulting from the workspace, and is always visible in the
 window — a user must never have to guess which level is active.

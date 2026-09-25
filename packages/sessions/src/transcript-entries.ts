@@ -1,5 +1,5 @@
 /**
- * A session's entries, turned into what the window renders. The transcript the agent keeps is the
+ * A session's entries, turned into what the window renders. The transcript Alpha keeps is the
  * record of truth; this is the read side of the same mapping the translator does for live events,
  * and the caller hands the entries in transcript order — walking back from the tip is the session
  * reader's job, not this one's.
@@ -19,7 +19,7 @@ import {
 } from '@alpha/domain'
 import type { DecisionLookup } from './decisions.ts'
 
-/** One entry of a session, as the agent reports it over the protocol. */
+/** One entry of a session, written by Alpha or read from a legacy session. */
 export interface AgentEntry {
   type: string
   id: string

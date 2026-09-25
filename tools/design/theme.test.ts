@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_THEME } from '../../packages/domain/src/persisted-state.ts'
 
 /**
  * The Caliper palette, checked as numbers. docs/constraints/05-design.md C5.2 says every text
@@ -14,6 +15,7 @@ import { describe, expect, it } from 'vitest'
  */
 const REPO_ROOT = join(import.meta.dirname, '..', '..')
 const CSS = readFileSync(join(REPO_ROOT, 'apps/desktop/src/renderer/styles/app.css'), 'utf-8')
+const WINDOW = readFileSync(join(REPO_ROOT, 'apps/desktop/src/main/window.ts'), 'utf-8')
 
 type Palette = Record<string, string>
 
@@ -40,6 +42,12 @@ const PALETTES: [string, Palette][] = [
   ['light', light],
   ['dark', dark],
 ]
+
+it('paints the first window frame with the default theme surface', () => {
+  const firstFrame = WINDOW.match(/backgroundColor: '(#[0-9a-fA-F]{6})'/)?.[1]
+  const defaultPalette = PALETTES.find(([name]) => name === DEFAULT_THEME)?.[1]
+  expect(firstFrame?.toLowerCase()).toBe(defaultPalette?.['surface-0'])
+})
 
 function channel(value: number): number {
   const normalized = value / 255

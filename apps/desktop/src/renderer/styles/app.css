@@ -10,9 +10,9 @@
  * Caliper — docs/constraints/05-design.md is the source of truth for these values (ADR-0027).
  * Components use the token names, never the hex values.
  *
- * The values in `@theme` are the light palette: both themes are first-class, the window follows
- * the system, and the dark one is the override (C5.2). One accent — indigo — carries here / now /
- * primary / decisive; red is danger alone (C5.1).
+ * The values in `@theme` are the default light palette: both themes are first-class, `system`
+ * follows the client's colour scheme, and the dark one is the override (C5.2). One accent —
+ * indigo — carries here / now / primary / decisive; red is danger alone (C5.1).
  */
 @theme {
   /*

@@ -26,9 +26,9 @@ Avoid: *project*, *repo*, *directory* (a directory is a filesystem fact, not a d
 ### Language
 
 Which of the two languages the interface is written in — `en` or `zh`. A setting of the
-workbench, not of a conversation: what the agent is told stays in the language the conversation
-is in, so the two can differ without either being wrong. Avoid: *locale* (that is the machine's,
-and the workbench only reads it to answer `system`).
+workbench, not of a conversation: changing it does not translate what the agent is told or what
+the transcript already contains. Avoid: *locale* (that is the machine's, and the workbench only
+reads it to answer `system`).
 
 *Dictionary* is the interface's own words: the keys and their two translations. It holds chrome
 only — never what the agent is told, and never a vendor's sentence.
@@ -36,15 +36,16 @@ only — never what the agent is told, and never a vendor's sentence.
 ### Conversation
 
 One thread of messages between the user and the agent, persisted and resumable. A conversation
-is bound to one workspace and one model for its lifetime. Avoid: *chat*, *session*.
+belongs to one workspace for its lifetime; its model may change between turns. Avoid: *chat*,
+*session*.
 
-*Session* is reserved for the runtime's persistence unit (the JSONL transcript, the lane), and
+*Session* is reserved for the runtime's persistence unit (the JSONL transcript), and
 is deliberately not the user-facing word.
 
 ### Turn
 
-One agent loop iteration: one model call plus every tool execution it requested. A conversation
-is a sequence of turns.
+One user prompt and the agent run it starts, including any model calls and tool executions before
+the run finishes. A conversation is a sequence of turns.
 
 ### Turn Refusal
 
@@ -62,14 +63,15 @@ went wrong, a provider's included).
 ### Message
 
 One user-visible unit in a conversation: what the user typed, what the model produced, or what a
-tool returned. Messages are the only thing the transcript stores.
+tool returned. The transcript also stores entries for compaction, retries and delegated usage.
 
 ### Entry
 
-One line of a session's transcript, written as the run produces it: a message, a compaction, or a
-branch summary, each carrying an id and the id of the entry it follows. The entries are the tree
-a transcript's tip names its way back through, and the transcript is what they add up to. Distinct
-from what the window shows: the reader sees *messages*, and a call the agent made is a *tool row*.
+One line of a session's transcript, written as the run produces it: a message, a compaction, a
+branch summary, a retry or delegated usage, each carrying an id and the id of the entry it follows.
+The entries are the tree a transcript's tip names its way back through, and the transcript is what
+they add up to. Distinct from what the window shows: the reader sees *messages*, and a call the
+agent made is a *tool row*.
 
 ### Page
 
@@ -109,10 +111,10 @@ answer lives inside it. Avoid: *closed*, *deleted* (deleting is the other action
 
 ### Task
 
-A prompt the workbench runs on its own, in one workspace, at a level chosen when the task is made
-and frozen with it: a schedule, a name, and the promise that it may act that far while nobody is
-watching. A task that is stopped keeps its prompt and its runs. Avoid: *job*, *cron* (that is one
-way of writing a schedule, and this workbench does not use it).
+A prompt the workbench runs on its own, in one workspace, at its own permission level (initially
+`ask`, and explicitly editable with the task): a schedule, a name, and the promise that it may act
+that far while nobody is watching. A task that is stopped keeps its prompt and its runs. Avoid:
+*job*, *cron* (that is one way of writing a schedule, and this workbench does not use it).
 
 *Run* is one execution of a task: a conversation of its own, titled with the task's name, started
 by the clock or by hand. A run that missed its moment while the workbench was closed is caught up
@@ -129,10 +131,10 @@ record. Avoid: *pending* (everything not yet finished is pending; this is one sp
 ### Steered Message
 
 What the user typed while the agent was working and meant to send *into* it: it goes to the
-running turn at its next checkpoint, and it is the runtime's, not the workbench's. A steered
-message cannot be edited — by the time you would edit it, it belongs to the turn — and it can only
-be cancelled, which asks the lane to drop what it still holds. The window lists the steers a turn
-was sent for as long as that turn lasts; once the lane has taken one, it is a message of the
+running turn at its next checkpoint. The workbench tracks it while it waits; the agent carries it
+into the turn. A steered message cannot be edited, but it can be cancelled while waiting: the
+workbench removes it and asks the agent to drop what it still holds. The window lists the steers a
+turn was sent for as long as that turn lasts; once the agent has taken one, it is a message of the
 conversation like any other, said where the person said it, and the strip is only about what has
 not been taken. Avoid: *interrupt* (that is stopping the agent, which is a different action on a
 different control).

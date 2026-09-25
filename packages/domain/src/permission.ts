@@ -1,6 +1,6 @@
 /**
  * The permission ladder: four levels, the decision table they make over a tool's risk class, and
- * the rules that stand in for a decision the user has already made twice. All of it is pure — the
+ * the rules remembered when the user chose "Always allow". All of it is pure — the
  * gate asks these functions, and the window only ever sees their answers.
  */
 import type { TextKey } from '@alpha/i18n'

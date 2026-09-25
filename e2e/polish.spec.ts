@@ -237,10 +237,13 @@ test('a fresh workbench opens light, and the dark palette is one click away', as
   await openAppearance(window)
   // Scoped to the theme section: "Follow the system" is also the language section's first choice,
   // and the two are different questions.
+  await window.emulateMedia({ colorScheme: 'light' })
   await window.getByRole('region', { name: 'Theme' }).getByRole('button', { name: 'Follow the system' }).click()
-  // Whatever the machine says, the mode is resolved to one of the two palettes rather than a
-  // third one: `system` is a choice about which palette, not a palette of its own.
-  await expect(window.locator('html')).toHaveAttribute('data-theme', /^(light|dark)$/)
+  await expect(window.locator('html')).toHaveAttribute('data-theme', 'light')
+  await window.emulateMedia({ colorScheme: 'dark' })
+  await expect(window.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await window.emulateMedia({ colorScheme: 'light' })
+  await expect(window.locator('html')).toHaveAttribute('data-theme', 'light')
   await app.close()
 })
 

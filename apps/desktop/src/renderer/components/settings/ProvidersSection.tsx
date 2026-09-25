@@ -6,7 +6,7 @@ import { DefaultModel } from './DefaultModel.tsx'
 import { ProviderCard } from './ProviderCard.tsx'
 import { ProviderForm } from './ProviderForm.tsx'
 
-/** The connections the workbench may talk to. What each one serves is the models panel's job. */
+/** The connections the workbench may talk to, with each one's models in its card. */
 export function ProvidersSection() {
   const t = useText()
 

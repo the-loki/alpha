@@ -26,8 +26,8 @@ the text voice *reads*, and nothing on screen is a costume. Concretely, all of i
 
 - **Near-neutral surfaces, four steps** (page / panel / raised / floating) in both themes, cool
   and close in lightness — hierarchy comes from steps and space, not from rules and shadows.
-  Both themes are first-class and the window follows the system; the dark palette is the design's
-  first draft (supersedes Codex's single warm sheet and its paper/press metaphor).
+  Both themes are first-class; the window starts light and can follow the system. The dark palette
+  is the design's first draft (supersedes Codex's single warm sheet and its paper/press metaphor).
 - **One indigo accent** absorbs what rubric red used to mean — *you are here*, *happening now*,
   *the primary act*, *decisive* (selected rows, streaming caret, primary buttons, focus ring).
   **Red is demoted to danger alone**: failure, destruction, deny. Semantics keep
@@ -41,9 +41,9 @@ the text voice *reads*, and nothing on screen is a costume. Concretely, all of i
   display voice alike; the faces are re-chosen within this same rule — both SIL OFL, no
   copyright exposure — replacing Inter + JetBrains Mono for a more precise tool voice).
 - **Soft shape, measured motion.** Radius scale 0.25–0.75rem, five shadow levels for floating
-  layers only, hairlines where kinds meet and space elsewhere ("structure should be felt, not
-  seen"). Motion tokens 100/160/250ms on ease-out-quad; hover answers in colour and never moves
-  a box; controls are 2rem standard (supersedes Codex's square corners, zero shadows, 1.75rem).
+  layers and inline decision cards, hairlines where kinds meet and space elsewhere ("structure
+  should be felt, not seen"). Motion tokens 100/160/250ms on ease-out-quad; hover answers in colour
+  and never moves a box; controls are 2rem standard (supersedes Codex's square corners, zero shadows, 1.75rem).
 - **The skeleton is one template everywhere**: a 16rem collapsible rail (folders as collapsible
   sections, flat conversation rows with right-aligned mono meta — no dot leaders, no two-level
   tree, no "index as table of contents"), an *embedded view head* (no standalone band; the
@@ -66,5 +66,4 @@ the text voice *reads*, and nothing on screen is a costume. Concretely, all of i
 - Codex vocabulary leaves the code and the docs with the print form: `paper`/`press`/`sunk`/
   `rubric`/`docket`/`colophon` tokens and comments are renamed as the components are rewritten;
   the `¶` mark retires; the `ALPHA` wordmark stays.
-- The appearance settings keep exactly what they have now: theme and language, following the
-  system by default.
+- The appearance settings keep theme and language; theme starts light and offers `system`.

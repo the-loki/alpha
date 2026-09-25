@@ -15,7 +15,7 @@ export interface ScheduledTask {
   /** The message the run is started with. */
   prompt: string
   workspacePath: string
-  /** Chosen when the task is made and frozen with it: a workspace's default may move, a task may not. */
+  /** Defaults to `ask`; editing the task may change it independently of the workspace default. */
   permissionLevel: ConversationSummary['permissionLevel']
   schedule: TaskSchedule
   /** A task that is off keeps its prompt and its history and runs nothing. */

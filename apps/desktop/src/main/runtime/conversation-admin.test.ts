@@ -491,7 +491,7 @@ describe('[runtime] what a conversation runs on', () => {
     await manager.closeAll()
   })
 
-  it('starts what is created later on the default the models panel chose', async () => {
+  it('starts what is created later on the default chosen in Providers', async () => {
     const { manager, providers, workspace } = configuredManager()
     providers.setDefaultModel({ providerId: 'local', modelId: 'local-70b' })
 

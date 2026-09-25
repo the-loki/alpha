@@ -1,6 +1,6 @@
 /**
  * The single workbench window. It has no native frame: the workbench draws its own view head, which is
- * what keeps the Iris surface unbroken from the top edge down. The macOS traffic lights
+ * what keeps the page surface unbroken from the top edge down. The macOS traffic lights
  * stay, because replacing those on that platform is a worse experience than keeping them.
  */
 
@@ -26,10 +26,8 @@ export function createMainWindow(options: {
     minWidth: 1024,
     minHeight: 720,
     show: false,
-    // The window is painted before any state file has been read, so its first colour is the
-    // default palette's own: the porcelain window behind the panels (C5.2), not a guess at what
-    // was saved — a flash of the wrong room is what an unpainted frame looks like.
-    backgroundColor: '#eceef3',
+    // First paint precedes the saved theme; use the default light palette's page surface (C5.2).
+    backgroundColor: '#ffffff',
     frame: isMac,
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     trafficLightPosition: isMac ? { x: 14, y: 14 } : undefined,

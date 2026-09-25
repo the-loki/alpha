@@ -98,7 +98,7 @@ const applyLaunchState = (state: LaunchState) => ({
 /**
  * Paints the look onto the document. The palette is resolved here rather than left to the stylesheet:
  * "system" is a choice about which palette to use, not a third palette, and resolving it in one
- * place is what lets the paper/press blocks stay plain selectors (C5.2).
+ * place keeps both palette blocks as plain selectors (C5.2).
  */
 function applyAppearance(theme: Theme): void {
   const root = document.documentElement
@@ -109,8 +109,13 @@ function applyAppearance(theme: Theme): void {
 }
 
 function systemPalette(): 'light' | 'dark' {
-  return globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches === true ? 'dark' : 'light'
+  return systemTheme?.matches === true ? 'dark' : 'light'
 }
+
+const systemTheme = globalThis.matchMedia?.('(prefers-color-scheme: dark)')
+systemTheme?.addEventListener('change', () => {
+  if (shell.theme === 'system') applyAppearance('system')
+})
 
 /**
  * The interface's words, in the language this client is showing. `system` is resolved per client

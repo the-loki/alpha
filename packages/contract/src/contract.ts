@@ -36,7 +36,7 @@ import type {
 } from '@alpha/domain'
 import type { LanguageSetting } from '@alpha/i18n'
 
-/** A model as the models panel sends it — the same shape it is stored as. */
+/** A model as a provider card sends it — the same shape it is stored as. */
 export type ProviderModelInput = ProviderModelDefinition
 
 /** An MCP server as the settings page sends it, which is the shape it is written down in. */

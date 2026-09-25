@@ -62,11 +62,11 @@ ends normally, the head of that list becomes a new turn — one at a time, never
 list is main-process state, so it survives a window reload and a browser client reconnecting, and
 it belongs to the conversation, so switching conversations and coming back finds it as it was.
 
-**A steered message is the lane's, and it lands inside the turn.**
+**A steered message is handed to the running agent, and it lands inside the turn.**
 
 Steering is the one thing the runtime can do that the workbench cannot fake: inject a message into
-the turn already running. It stays on the lane, uncancellable-by-edit and deliberately so — a
-steer is already in the conversation by the time it would be edited. Its only action is Cancel.
+the turn already running. `QueueRunner` lists a steer until the agent takes it; it cannot be edited,
+and its only action while waiting is Cancel.
 The design had the runtime answer honestly when it is too late (`already_consumed`); the Superseded
 section above records that this answer was never built.
 
@@ -83,8 +83,9 @@ while the window is open, so what a quit would drop is exactly what can be seen.
 
 ## Consequences
 
-- The lane's `followUp` is no longer used; the workbench's own queue keeps steers instead, and a
-  steer the lane has taken is a message of the conversation like any other.
+- The agent's `followUp` is not used; the workbench's own queue keeps follow-up messages, while
+  `QueueRunner` tracks steers until the agent takes them. A taken steer is a message of the
+  conversation like any other.
 - "Queued" means "will start a turn of its own", not "will join this turn". A user who wants a
   message inside the current turn has Steer for it, and the queue strip labels which is which.
 - Editing is in place and does not move the message. Reordering is not offered: the order is the

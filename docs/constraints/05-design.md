@@ -2,9 +2,9 @@
 
 Alpha must look like a tool someone works in for six hours, not like a landing page. The visual
 language is called **Caliper**: an instrument in near-neutral greys with exactly one indigo
-signal. The window follows the system theme — both palettes are complete and first-class, the
-dark one is the design's first draft. What is read is set in sans; what is operated or measured
-is set in mono. Nothing on screen is a costume.
+signal. The window starts in the light theme and can follow the system — both palettes are
+complete and first-class, the dark one is the design's first draft. What is read is set in sans;
+what is operated or measured is set in mono. Nothing on screen is a costume.
 
 Caliper replaces Codex (ADR-0027): the ruled sheet, rubric red and the print furniture (dot
 leaders, dockets, colophons, uppercase labels, the `¶`) retire; the discipline stays — one
@@ -28,8 +28,8 @@ space, not from drawing a rule at every joint.
 These are the only colours in the app; components reference tokens, never raw hex (asserted
 numerically by `tools/design/theme.test.ts`, which reads the palettes out of the stylesheet).
 
-**The window follows the system.** The renderer resolves `prefers-color-scheme` and the saved
-choice between the same two palettes; `system` is a choice, not a third theme.
+**The window starts in light.** The renderer resolves `prefers-color-scheme` when the saved choice
+is `system`; that is a choice between the same two palettes, not a third theme.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
@@ -141,9 +141,10 @@ tokens set to those values): the first for marks and tags, the second for contro
 the third for cards and the selected row, the fourth for menus, the palette and dialogs. There
 is no other radius and no `rounded-full`; `e2e/design.spec.ts` measures every visible control's
 radius against this set. Borders are hairlines — the `border` utility's own width, a utility
-rather than a length. **Shadows exist only for floating layers**, on a five-token scale
-(`none / tiny / low / medium / high`): content cards are `none` and stand on a surface step;
-menus and popovers are `medium`; dialogs and the palette are `high`. Shadow offsets and blurs
+rather than a length. **Shadows mark floating layers and inline requests for a decision**, on a
+five-token scale (`none / tiny / low / medium / high`): ordinary content cards are `none` and stand
+on a surface step; approval, elicitation and sampling cards, menus and popovers are `medium`;
+dialogs and the palette are `high`. Shadow offsets and blurs
 are rem like every other length: **no `px` appears anywhere in the renderer, comments included**
 — a length is rem or a Tailwind utility's own size, and `05-design:no-px-lengths` fails
 `pnpm check` on the first one it finds, wherever it hides.

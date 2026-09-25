@@ -1,8 +1,8 @@
 # The interface is written in a dictionary, and only the interface
 
 The window has two languages, and the words it says come from a typed dictionary in `@alpha/i18n` rather
-than from the places that draw them. What the agent is told stays in the conversation's own
-language, and so does anything a vendor or the operating system said: those are not the
+than from the places that draw them. Changing the interface language does not translate what the
+agent is told or anything a vendor or the operating system said: those are not the
 interface's words, and translating them would change what a conversation is.
 
 ## Superseded in part
@@ -52,7 +52,7 @@ with no code characters in it, which is how a wrapped paragraph reads to a check
 (`{t('sidebar.search')}`) is what passes, and a single word is left alone — `Alpha` is the app's
 name in both languages.
 
-**No i18n library.** Two languages, ~80 strings, no plural rules worth the name, and no date or
+**No i18n library.** Two languages, no plural rules worth the name, and no date or
 number formatting that is not already ours (`formatTokens`, `formatAge`). A library would add a
 dependency, a build step and a runtime to save a `Record` and a `replace`.
 
@@ -63,7 +63,7 @@ Chinese does not inflect at all, so a count picks between two keys — `conversa
 count)` writes that rule once.
 
 **The language is a workbench setting, resolved per client.** `language: 'system' | 'en' | 'zh'`
-lives in the state file beside the theme and the accent, and reaches every client as part of the
+lives in the state file beside the theme, and reaches every client as part of the
 launch state. `system` is resolved in the client against `navigator.language`: the desktop window
 and a browser on the far side of the room are not necessarily in the same language, and each of
 them is reading for itself. A machine whose language the interface does not have gets English —
@@ -76,9 +76,9 @@ the machine reading it. Telling a client the workbench's settings before it hold
 have to be a second, unauthenticated endpoint, which is a worse trade than one screen in the
 wrong language.
 
-**Errors are cases, not sentences.** Main no longer composes a user-facing sentence. `ModelStatus`
-is `{ kind: 'none' } | { kind: 'configured' }`: main says which case it is, and the window decides
-what follows from it — with none configured the composer will not send, and its chip says "No
+**Alpha-owned status and turn refusals are cases, not sentences.** Main does not compose their
+user-facing sentences. `ModelStatus` is `{ kind: 'none' } | { kind: 'configured' }`: main says
+which case it is, and the window decides what follows from it — with none configured the composer will not send, and its chip says "No
 model" — in whatever language the window is in. A sentence assembled in the main process would be
 an English clause in the middle of a Chinese window, and no amount of care in the renderer fixes
 that afterwards.

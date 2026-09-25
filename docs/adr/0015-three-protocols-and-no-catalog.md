@@ -2,7 +2,7 @@
 
 Alpha names exactly three wire protocols — OpenAI chat completions, OpenAI responses, Anthropic
 messages — and ships **no catalog of providers and no model ids**. A provider is a connection the
-user describes; the models it serves are a separate setting.
+user describes; the models it serves are configured under that connection.
 
 The protocols are Alpha's to *name* (the record's `api`) and Alpha's to *speak*: the name selects
 the pi-ai implementation that carries the request, built from the provider Alpha already stores
@@ -51,16 +51,16 @@ goes through.
 works. That is a stronger version of C3.1 than the catalog was: the previous rule had to exempt
 one module that was allowed to hold provider hosts, and now no module is.
 
-**A provider is a connection; a model is a name that connection serves.** Two settings panels.
-*Providers* is the connection: name, protocol, base URL, credential, a test button. *Models* is
-what travels over it: the wire id, the display name, the context window, the max output, whether it
-thinks — plus the **default model**, which is what a new conversation starts on and what a
-scheduled run uses. A model is editable where it is defined, and the provider form no longer asks
-for one.
+**A provider is a connection; a model is a name that connection serves.** The Providers panel
+holds each connection's name, protocol, base URL, credential and test button, with its models as a
+sub-list of that provider's card. Each model has a wire id, display name, context window, max
+output and thinking capability. The **default model**, which a new conversation starts on and a
+scheduled run uses, is chosen above the provider cards. The add-provider form does not ask for a
+model.
 
 **A provider with no models is a state, not an error.** Adding a connection and adding its models
-are two acts in two places, so the one between them has to exist: a provider that serves nothing
-yet is listed, counted as zero, and the models panel says what to do about it.
+are two acts in the same panel, so the one between them has to exist: a provider that serves nothing
+yet is listed, counted as zero, and its model sub-list says what to do about it.
 
 **The default model is a pointer, checked where it is read.** The choice is stored as provider +
 model and validated on every read, so deleting a model or a provider cannot leave the workbench
@@ -78,10 +78,11 @@ on save, while an older or malformed optional price field does not hide a stored
   models. In exchange, an endpoint nobody has heard of works exactly as well as a famous one, and
   nothing here needs a code change to keep working.
 - A provider configured before this change keeps its base URL and protocol and arrives with **no
-  models** — the list used to come from pi-ai at runtime. The models panel is where they go back
-  in, which is also the first thing the workbench says if a conversation has nothing to run on.
-- The model picker in a conversation is filled from the models panel and nowhere else. A model
-  that is not written down there cannot be chosen, which is the point: what the workbench may send
+  models** — the list used to come from pi-ai at runtime. The provider's model sub-list is where
+  they go back in, which is also the first thing the workbench says if a conversation has nothing
+  to run on.
+- The model picker in a conversation is filled from the stored provider models and nowhere else.
+  A model that is not written down there cannot be chosen, which is the point: what the workbench may send
   a request to is one list, written by the person who pays for it.
 - `CustomProviderInput` and `saveCustomProvider` are gone with the distinction they named: with no
   catalog, every provider is custom, so `saveProvider` is the only way one is written down.

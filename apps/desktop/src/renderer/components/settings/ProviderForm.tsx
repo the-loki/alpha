@@ -17,8 +17,8 @@ const emptyDraft = (): Draft => ({ id: '', name: '', api: 'openai-completions', 
 
 /**
  * Adding a provider is describing a connection: what to call it, how to reach it, and which of the
- * three protocols it speaks. What it serves is the models panel's business, so a provider added
- * here starts with no models and says so there.
+ * three protocols it speaks. A provider added here starts with no models; its card says so and
+ * lets the user add them.
  */
 export function ProviderForm() {
   const t = useText()

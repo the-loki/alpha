@@ -59,7 +59,7 @@ describe('[main] adding a connection', () => {
   })
 })
 
-describe('[main] the models panel', () => {
+describe('[main] provider models', () => {
   it('writes a model list, and refuses one it cannot read', () => {
     const { service: providers } = service()
     providers.save(endpoint)

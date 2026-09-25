@@ -6,12 +6,12 @@
  * turn takes and not a second implementation of it that could disagree.
  *
  * The service never returns a credential. It can say whether one is stored, and it can replace
- * or delete one (docs/constraints/02-architecture.md C2.4). The vault is read at request time and
- * no secret leaves the process.
+ * or delete one (docs/constraints/02-architecture.md C2.4). The vault is read at request time;
+ * no secret is returned to the window.
  *
- * Two panels, two jobs: a provider is a connection (protocol, base url, key), and a model is a name
- * that connection serves with the limits that go with it. Every change answers with the whole
- * snapshot, so the window keeps one state instead of making a call after each edit.
+ * One panel holds each provider connection (protocol, base URL, key) and the models it serves.
+ * Every change answers with the whole snapshot, so the window keeps one state instead of making
+ * a call after each edit.
  */
 
 import type { ProvidersSnapshotMessage, ProviderTestOutcome } from '@alpha/contract'

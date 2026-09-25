@@ -4,7 +4,7 @@
  * that is the point — a browser client is a client of the same workbench, not a second app.
  *
  * The token is the transport's own business, not the contract's: the browser trades it for a
- * cookie once (see `unlock`) and keeps it in local storage so a reload does not ask again.
+ * cookie once (see `unlock`) and keeps the typed token in session storage across reloads.
  */
 import {
   type AlphaBridge,
@@ -75,8 +75,8 @@ export function isBrowserClient(): boolean {
 }
 
 /**
- * The token lives in this tab and no longer: it is kept so a reload does not ask again, and the
- * cookie it was traded for is a session cookie, so the tab is the honest lifetime for both.
+ * The token is kept in this tab's session storage so a reload does not ask again. The cookie it
+ * was traded for lasts for the browser session.
  */
 export function rememberedToken(): string {
   try {

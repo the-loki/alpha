@@ -56,7 +56,7 @@ export class ProviderStore {
     this.flush()
   }
 
-  /** The model list of one provider, which is the models panel's whole job. */
+  /** The model list edited in this provider's card. */
   public saveModels(id: string, models: ProviderModelDefinition[]): void {
     const provider = this.find(id)
     if (provider === undefined) throw new Error(`No provider ${id}`)
@@ -65,7 +65,7 @@ export class ProviderStore {
     this.save({ ...provider, models })
   }
 
-  /** What the user chose, which may be nothing: the models panel shows this one as selected. */
+  /** What the user chose, if anything, in the Providers panel's default-model control. */
   public chosenModel(): Undef<ConversationModel> {
     return defaultModelOf(this.file)
   }

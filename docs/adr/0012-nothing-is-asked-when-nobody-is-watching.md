@@ -43,10 +43,11 @@ starts. A person who opens a scheduled task's conversation later and types a mes
 and everything behaves exactly as it always did: cards wait, and no call is refused on the grounds
 that nobody is watching.
 
-**The level is the task's own, chosen when the task is made.** It is pre-filled from the
-workspace's default and then frozen: changing the workspace default never silently changes what an
-existing task is allowed to do overnight. All four levels are available to a task — none is
-forbidden — because the level a task needs is a property of the work, and `plan` is not a
+**The level is the task's own.** A new task starts at `ask`, independently of the workspace's
+default, and its level can be changed explicitly when the task is edited. Changing the workspace
+default never silently changes what an existing task is allowed to do overnight. All four levels
+are available to a task — none is forbidden — because the level a task needs is a property of the
+work, and `plan` is not a
 substitute for `ask` (it also tells the agent to propose rather than act, which is a different
 instruction, not a stricter one).
 
@@ -58,9 +59,9 @@ shows the level beside the task so it stays visible.
 
 ## Consequences
 
-- A task whose work needs a command needs `full-access`; `accept-edits` auto-approves edits only,
-  so a "change something and run the tests" task is refused at the test step. The creation
-  sentence is what makes that predictable instead of mysterious.
+- A task whose work needs a command without a matching remembered rule needs `full-access`;
+  `accept-edits` auto-approves edits only, so a "change something and run the tests" task may be
+  refused at the test step. The creation sentence makes that predictable.
 - Every refusal is visible twice: as a denied row in the transcript (with the unattended reason)
   and as a count in the task's own history, so a task that "didn't do anything" explains itself.
 - The refusal reason is agent-facing prose (ADR-0010), not a translated label: the model reads it.

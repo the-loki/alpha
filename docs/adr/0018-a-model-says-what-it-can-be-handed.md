@@ -31,9 +31,9 @@ configured: nothing in the app knows what a hand-typed model id can read.
 ## Decision
 
 **The capability is a setting on the model**, beside the limits it already carries: a checkbox per
-model row in the models panel, stored in `providers.json` with the rest of the model, and carried
-through the same validator. It is **off** for a model that does not say otherwise, including every
-model stored before this setting existed.
+model row in its provider's model sub-list, stored in `providers.json` with the rest of the model,
+and carried through the same validator. It is **off** for a model that does not say otherwise,
+including every model stored before this setting existed.
 
 **The runtime is told, and its protocol decides.** The setting becomes the model's `input` where
 the runtime builds the model: a model that takes pictures is declared `['text', 'image']`, and one
@@ -61,7 +61,7 @@ actually point at.
 
 ## Consequences
 
-- The models panel gains one checkbox and one line of explanation in its intro, and `providers.json`
+- Each provider's model rows gain the checkbox, and `providers.json`
   gains one field per model. An older file is read as text-only models: attachments stop working
   until the setting is turned on for the model in use. That is the intended direction — the
   previous behaviour was to send them into a void.
