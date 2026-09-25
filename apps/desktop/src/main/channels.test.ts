@@ -348,7 +348,7 @@ describe('[main] the channel table', () => {
   })
 
   it('answers a turn that was refused with the case, and tells the window about it too', async () => {
-    // A refusal is a value rather than a throw (#199): the window is told as an event — which is
+    // A refusal is a value rather than a throw: the window is told as an event — which is
     // where it draws the case in its own language — and whoever asked is answered with which case it
     // was, so a caller knows the turn never started. Nothing is thrown for something that is not a
     // mistake by the caller.

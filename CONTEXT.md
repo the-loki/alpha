@@ -94,8 +94,9 @@ than anything about the page).
 
 A picture the user sends with a message. It travels as bytes rather than as a path, so the model
 is handed the picture itself and the transcript keeps it: a message means the same thing when it
-is re-read as it did when it was sent. Pictures only — a provider takes images and nothing else —
-and the composer is where they are picked and where a file that is too large is refused. Avoid:
+is re-read as it did when it was sent. Pictures only — other file types are not attachments in
+this workbench — and the composer is where they are picked and where a file that is too large is
+refused. Avoid:
 *file* (an attachment is a picture, and nothing about the folder is involved).
 
 ### Archived Conversation
@@ -216,8 +217,8 @@ that travel over it are its own sub-list, edited inside the provider's card. Avo
 ### Credential
 
 The secret that authenticates a provider — in practice an API key. Credentials are owned by the
-user (BYOK), stored encrypted on this machine, and never transmitted anywhere except to the
-provider they belong to. Avoid: *token* (confusable with model tokens), *password*.
+user (BYOK), kept on this machine, and never transmitted anywhere except to the provider they
+belong to. Avoid: *token* (confusable with model tokens), *password*.
 
 ### Model
 

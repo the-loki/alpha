@@ -12,7 +12,7 @@ const SHOWN_RUNS = 5
 
 /**
  * One task, in the folder it runs in, with the conversations its runs made beneath it — the third
- * level of the rail (ticket #85). Folding it is what keeps a daily task from filling the sidebar
+ * level of the rail. Folding it is what keeps a daily task from filling the sidebar
  * with a month of the same title, so the folded row has to say how the last run went: a task that
  * has been failing all week must not look like one that has been fine.
  */

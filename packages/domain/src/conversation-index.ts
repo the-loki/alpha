@@ -30,7 +30,7 @@ const ConversationSummarySchema = Type.Object({
   sessionId: Type.Optional(Type.String()),
   // Absent means not archived, and it is optional on purpose: a required field would fail the
   // whole index on the first launch after an upgrade and empty the sidebar (ADR-0011's sibling
-  // decision, ticket #79).
+  // decision).
   archivedAt: Type.Optional(Type.Number()),
 })
 
@@ -136,7 +136,7 @@ export function archivedConversations(conversations: ConversationSummary[]): Con
 /**
  * A conversation that is working, or waiting on an approval, is not offered for archiving: the
  * card asking for an answer lives inside its transcript, and folding that away would hide the one
- * thing that needs a person (ticket #79).
+ * thing that needs a person.
  */
 export function canArchive(conversation: ConversationSummary): boolean {
   return conversation.status === 'idle'

@@ -97,7 +97,7 @@ Playwright's own default locale.
 - A string that is the same in both languages (a language's own name, a palette's name, an id)
   is deliberately not in the dictionary: it is not copy, and translating it would be wrong.
 - The interface is not fully Chinese on a machine with no CJK font installed; that is a font
-  question (`#69`), not a dictionary one.
+  question ([C5.3](../constraints/05-design.md)), not a dictionary one.
 - Adding a string means adding it twice, and the compiler says so if you forget.
 - The three classes are a judgement call at the boundary: a sentence that is both "what the user
   reads" and "what the agent is told" has to be split, or the agent's copy stays English.

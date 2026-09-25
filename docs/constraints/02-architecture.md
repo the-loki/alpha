@@ -4,7 +4,7 @@
 
 A conversation is an in-process agent session: Alpha embeds `@earendil-works/pi-agent-core` in the
 main process and builds each run on it ([ADR-0025](../adr/0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)).
-There is no child process to find, install or keep alive, and no package of Alpha's ships a CLI.
+There is no agent child process to find, install or keep alive, and no package of Alpha's ships a CLI.
 What Alpha builds on top of the library is its own: the plugin base the agent is assembled from,
 the gate, the session store, the conversation list, and the credentials. The window never imports a
 pi package — it reaches the agent through the contract.
@@ -135,12 +135,12 @@ under `apps/desktop/src/renderer/`, so the framework cannot creep back one file 
 
 ## C2.4 — A key goes from the vault to the model runtime, and nowhere else
 
-A credential is read from encrypted storage inside `main` and handed to the model runtime in
-memory, as the answer to an auth question asked at request time. It never crosses the IPC boundary
-in plaintext: the renderer may learn *that* a credential exists, and may send a new one *to* be
-stored, never read one back. Nor is it written into a file or an environment variable — there is
-no second process to hand it to, and a secret that sits in a file or an env line outlives the run
-that needed it.
+A credential is read from the vault inside `main` and handed to the model runtime in memory, as
+the answer to an auth question asked at request time. The renderer sends a new credential to `main`
+for storage and may learn *that* one exists; `main` never returns the credential to the renderer.
+The vault persists it in `credentials.json` with OS encryption when available and an announced
+plaintext fallback (ADR-0003). The model runtime receives it in memory, not through a generated
+configuration file or an environment variable.
 
 This is about the credential the workbench keeps *for itself*: the key it dials a provider with. An
 MCP server's own configuration is a different thing and stays where it is — the environment or the

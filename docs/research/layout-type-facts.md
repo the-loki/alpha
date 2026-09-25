@@ -1,10 +1,10 @@
-# Linear 与 Raycast 的排版与布局事实清单（issue #142）
+# Linear 与 Raycast 的排版与布局事实清单
 
 调研日期：2026-09-22。方法：抓取两家线上资产的实测 CSS（linear.app 首页/登录页挂载的应用样式表、raycast.com 及其子站的 CSS chunks）、两家官方博客/文档/更新日志正文、以及 GitHub license 元数据。全部事实逐条附来源与置信度（高/中/低）。
 
 > 环境说明：`app.linear.app` 在公开 DNS 不存在（NXDOMAIN，已用 Cloudflare/Google DoH 双查确认）；Linear 应用真实入口是 `https://linear.app/login`，其 HTML 挂载 `app-stylesheet`（应用全局样式表）。Raycast 桌面应用 v2 的前端是本地 WKWebView/WebView2 内运行的 React+TS 工程（见其技术博文），CSS 不公网托管，故应用内像素级数值只能引官方文档/博客/日志的表述，标 Medium/Low。搜索引擎与 WebFetch 在本环境被拦截，全部来源用 curl 直取（berkeleygraphics.com 对 curl 返回 403，经 reader 代理取回正文，引用仍指原 URL）。
 
-> **这是证据，不是规范。** 本文是 wayfinder #141 / 票 #142 的研究产物，Caliper 语言由它决定，而现行规范在
+> **这是证据，不是规范。** 本文是 Caliper 语言的前期研究，现行规范在
 > [ADR-0027](../adr/0027-caliper-design-language.md) 与 [constraints/05-design.md](../constraints/05-design.md)。
 > 第 5 节里被采纳的是：OFL 等宽（Raycast 的 Geist Mono）做 apparatus voice；侧栏 256px（窗口里是 rail
 > 16rem）；密列表用行、设置与表单才用卡片；CJK 不内嵌、但把回退家族显式命名（`PingFang SC` /
@@ -151,5 +151,3 @@
 
 - Linear 应用侧栏真实默认宽（256px 候选）、issue 列表行高（38px grid-auto-rows 候选）、评论 composer 贴底——StyleX 哈希类名 + 文档客户端渲染导致静态抓取无法坐实。
 - Raycast 应用内的确切字体文件与行高（本地 WebView，无公开 CSS）；仅有 Interface Size 与「v2 补更大字号」的官方表述。
-
-（本文件由 wayfinder #141 的研究子任务产出，票：the-loki/alpha#142。）

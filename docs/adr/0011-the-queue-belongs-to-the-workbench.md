@@ -15,7 +15,7 @@ that turned a `queue_update` event into steer rows was fed by nothing — Alpha 
 turn was steered with is kept beside the queued messages, in `QueueRunner`, which is the one place
 `queue_updated` is emitted from.
 
-A steered message is **a message of the conversation** once the lane takes it (#191). pi hands the
+A steered message is **a message of the conversation** once the lane takes it. pi hands the
 run every message it is given — the prompt's own and a steering message alike — as a message of the
 run, with `message_start`, and nothing else is emitted at that moment. Alpha translates that into
 the window's `user_message` and writes the entry to the session, so what a person steered with is

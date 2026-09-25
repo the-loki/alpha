@@ -49,9 +49,9 @@ the same channel table the IPC handlers are registered from.
 - The security of the port is the token's. There is no per-client identity, no read-only mode, and
   no audit trail that distinguishes the desk from the phone. That is deliberate: a second role
   model would double the gate's surface for a feature whose users are one person.
-- The token lives in the workbench state file beside the encrypted credentials, in plaintext. Files
-  on that machine are readable by its user, who can already run the agent; anything that can read
-  the state file can already act as the workbench.
+- The token lives in plaintext in the workbench state file, in the same data directory as the
+  credential vault. Files on that machine are readable by its user, who can already run the agent;
+  anything that can read the state file can already act as the workbench.
 - A refusal takes a moment to arrive — the server delays one deliberately, so guessing is pointless
   — and a page can sign in while its own refusal is still in flight. The renderer counts the
   sessions it has been on and disbelieves a refusal that was answered before the current one, which

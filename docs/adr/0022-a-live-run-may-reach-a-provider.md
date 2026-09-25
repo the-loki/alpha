@@ -31,7 +31,7 @@ second provider is an env file rather than a second test file.
 
 **The key never leaves the run.** It is read from the environment, written only into the vault file
 of that run's own `/tmp` data directory — the teardown sweeps it — and printed nowhere. No
-credential is committed, and the default run still starts no agent and makes no network request.
+credential is committed, and the default run still starts no live agent and makes no external network request.
 
 **It asserts wiring, not wording.** The first turn asks for a fixed string and waits for it. The
 second asks in words for a command to be run, waits for the approval the Ask level demands, allows

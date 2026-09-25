@@ -23,7 +23,7 @@ aborts the inbound request without sending a late answer. An HTTP answer to a se
 new POST carrying the protocol version and any session ID assigned at initialization.
 
 The initialized client declares `elicitation` and `sampling` after their attended paths are
-complete (#216, #217). Sampling requires consent for each request, even at full-access permission
+complete. Sampling requires consent for each request, even at full-access permission
 level. The person may edit the server's text prompt, then review the model's text before sharing it.
 The model call uses the conversation's configured model but receives only those explicit messages:
 it adds no private conversation history, even when the server requests context. Audio and other

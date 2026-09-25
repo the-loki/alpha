@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 import { launchWorkbench } from './agent'
 
 /**
- * A long list in the rail shows a screenful and offers the rest (ticket #86): the palette is the
+ * A long list in the rail shows a screenful and offers the rest: the palette is the
  * list you find things in, so a folder that folds is not a folder that hides. The fold is the
  * folder's own row — there is no chevron to aim at — and a folder with nothing under it is a
  * heading: it has nothing to fold and nothing to say about folding.

@@ -26,7 +26,7 @@ export class StateStore {
     return this.state
   }
 
-  /** Which conversation is open, so the next launch can come back to it (T2). */
+  /** Which conversation is open, so the next launch can come back to it. */
   public rememberConversation(id: string): void {
     this.write({ ...this.state, lastConversationId: id })
   }

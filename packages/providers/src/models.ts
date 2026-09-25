@@ -39,7 +39,7 @@ export function describeRuntime(store: ProviderStore): ModelStatus {
  * be read, or a picture a model that cannot read one would be handed. Absent means the turn may
  * start. Each is a case rather than a sentence, because the words belong to the window and this is
  * not the thing with a language (ADR-0010). The refusals come before the run rather than failing it
- * at its first token (#114, ADR-0018).
+ * at its first token (ADR-0018).
  */
 export function startProblem(input: {
   index: ModelIndex

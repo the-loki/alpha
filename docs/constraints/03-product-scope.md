@@ -8,16 +8,15 @@ of being rediscovered in every feature discussion.
 Alpha ships **no** bundled credentials, no shared proxy, no trial quota, and no account. A user
 adds a provider and a key, or the workbench has no model to talk to and says so plainly.
 
-The key is stored encrypted on the machine, is sent only to the provider it belongs to, and is
-deleted when the user deletes the provider. Nothing about the user's usage is reported anywhere.
+The key is encrypted with the OS keychain when available; otherwise the workbench stores it in
+plaintext and says so in Settings (ADR-0003). It is sent only to its provider and is deleted when
+the user deletes that provider. Nothing about the user's usage is reported by Alpha.
 
-**Enforcement:** no network call may be made to a host that is not a configured provider, the
-app's own update check, or a documented documentation link. `pnpm check:constraints` scans every
-file in the repository for a hard-coded host, exempting the constraint documents themselves, the
-specs, the tests, the checker's own sources, and the one module that listens on this machine's own
-address (`apps/desktop/src/main/server/http.ts` — it listens, so it has to say where, and a
-provider host is a violation there too). There is no provider catalog to make an exception for: the
-user types the base URL, and the only address Alpha knows is the one it binds
+**Enforcement:** `pnpm check:constraints` rule `03-product-scope:no-hardcoded-hosts` flags literal
+HTTP(S) hosts in source files, except tests, documentation, the checker, and the browser server's
+own listener module. Review covers network requests: model calls use configured provider URLs, MCP
+calls use configured server URLs (ADR-0028), and the optional browser server binds to this machine
+(C6). There is no bundled provider catalog or hard-coded third-party service address
 ([ADR-0015](../adr/0015-three-protocols-and-no-catalog.md)).
 
 ## C3.2 — No worktree support
@@ -33,13 +32,14 @@ new user must learn, and solves a problem that permission levels already make vi
 
 **Enforcement:** review. This constraint exists to stay cut.
 
-## C3.3 — One window, one machine, no sync
+## C3.3 — One workbench, one machine, no sync
 
-Alpha is local-first and single-user. There is no account, no cloud storage, no collaboration, no
-telemetry beyond an optional crash log the user can read, and no background daemon. Conversations
-live in the app's data directory and can be exported as plain files.
+Alpha is local-first and single-user. It provides no account, cloud sync, collaboration or
+telemetry, and runs no background daemon. Conversations live in the workbench's data directory and
+can be exported as plain files. A browser client can operate the same workbench over the network
+when the user enables browser access (C6).
 
-**Enforcement:** review; C3.1's host allowlist covers the network angle.
+**Enforcement:** review; C3.1's hard-coded-host check covers bundled service addresses.
 
 ## C3.4 — The permission levels are the safety model
 
@@ -100,7 +100,7 @@ changed is written with them rather than quietly dropped.
   or at the endpoint they name — and never loaded into Alpha, so what the cut was protecting holds:
   nothing a person installs runs inside the workbench, and the tools it offers are decided about by
   the same ladder as Alpha's own.
-- No image generation, no voice, no attachments beyond images pasted into the composer.
+- No image generation, no voice, no attachments beyond pictures selected in the composer.
 - No mobile app. *Changed:* the workbench is served to a browser (C6), which was once a cut, and
   that page is expected to stay usable at phone widths (C5.4) — but nothing ships for a phone, and
   there is no phone build.

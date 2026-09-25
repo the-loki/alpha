@@ -218,7 +218,7 @@ describe('[runtime] a conversation turn, driven by the assembled agent', () => {
     const { runtime, events, store, workspace, id } = openRuntime({ unAssembled: true })
 
     // The case is said to the conversation and answered to the caller, so whoever asked knows the
-    // turn never started without having to read the events to find out (#199).
+    // turn never started without having to read the events to find out.
     await expect(runtime.prompt('hi')).resolves.toEqual({ kind: 'no-model' })
     // Which refusal it was, not a sentence: the window is the thing with a language (ADR-0010).
     expect(events.find((event) => event.type === 'turn_refused')).toMatchObject({

@@ -31,7 +31,7 @@ scripted provider — so a passing suite means the wiring works, not that a mock
 
 ## C4.3 — The scripted provider, not a mocked runtime
 
-Tests replace the *model*, never the wiring. Unit and integration tests drive the assembled
+Tests replace the *model*, never the wiring. Agent integration tests drive the assembled
 agent — the same plugin base the workbench runs — through the scripted provider fixture the base
 ships beside itself, `@alpha/agent/testing`: a real pi-ai `Models` whose one provider streams a
 scripted answer, so a run goes through the real dispatch, the real gate, and the real session
@@ -49,10 +49,10 @@ agent through the scripted provider is the finding.
 
 ## C4.4 — The live tests, gated by an environment variable
 
-The suite's own seam is the scripted provider on the loopback interface — no network, no
-credential. The one test that needs a real provider runs only when the environment names one: it
-is what the credential's path to the model runtime and a tool call the model decided to make are
-checked against, none of which a script can show
+The suite's own seam is the scripted provider on the loopback interface — no external network or
+real credential. The live-provider suite runs only when the environment names one. It checks the
+credential's path to the model runtime and a tool call the model decided to make, neither of which
+a script can show
 ([ADR-0022](../adr/0022-a-live-run-may-reach-a-provider.md)).
 
 | Variable | Meaning |
@@ -66,11 +66,12 @@ checked against, none of which a script can show
 | `ALPHA_LIVE_IMAGES` | `1` enables the attached-picture turn, for a model that takes images |
 
 Naming fewer than the first three skips it, so `e2e/live.spec.ts` is the only file in the
-repository that dials out. It covers the whole surface a conversation has against a real model: a
+repository that dials out. It covers representative conversation paths against a real model: a
 plain turn with the provider's own usage, regenerating an answer, closing and reopening the
 workbench onto the stored conversation, a tool call the gate waits on, an attached picture, and a
 thinking level the person picked. No credential is ever committed, and the default test run makes
-no network request. CI skips it; a developer names their own provider when they want the real one.
+no external network request. CI skips it; a developer names their own provider when they want the
+real one.
 
 **Enforcement:** the live test file skips itself when its variables are absent, and the scripted
 provider is started on `127.0.0.1` by the specs that need it.

@@ -23,8 +23,8 @@ reversals is the process.
 Two shapes were available once Alpha stopped embedding an agent. Ship one (a package Alpha
 updates), or drive the one the person has (`pi`, installed the way they install anything else).
 Shipping one means owning a distribution, a version skew against the person's own pi, and every
-security fix in between. Driving theirs means Alpha ships no agent at all: it finds `pi`, says so
-when it is missing, and can install it if asked ([#109]).
+security fix in between. Driving theirs meant Alpha shipped no agent at all: it found `pi`, said so
+when it was missing, and could install it if asked.
 
 ## Considered options
 
@@ -53,5 +53,3 @@ when it is missing, and can install it if asked ([#109]).
   provider's reachability, and a real model deciding to call a tool — is checked by the live spec
   when the environment names a provider
   ([ADR-0022](0022-a-live-run-may-reach-a-provider.md)).
-
-[#109]: https://github.com/the-loki/alpha/issues/109

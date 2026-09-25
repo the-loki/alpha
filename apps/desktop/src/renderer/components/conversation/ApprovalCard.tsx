@@ -126,7 +126,7 @@ export function ApprovalCard(props: { request: ApprovalRequest }) {
         />
 
         {/* The refusal wears no frame: a row of decisions is one weight, and the word Deny in
-            danger with the tint under the hand is the whole control (#151). */}
+            danger with the tint under the hand is the whole control. */}
         <button type="button" onClick={deny} disabled={busy()} class={GHOST_DANGER}>
           {t('approval.deny')}
         </button>

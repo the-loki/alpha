@@ -61,7 +61,7 @@ test('a renamed conversation keeps its name across a relaunch', async () => {
   await ask(first.window, 'rename me')
   await expect(first.window.getByRole('main').getByText('The answer.')).toBeVisible({ timeout: 20_000 })
 
-  // Renaming lives behind the row's menu since #80: one `⋯` instead of words painted over the name.
+  // Renaming lives behind the row's menu: one `⋯` instead of words painted over the name.
   await first.window.getByRole('button', { name: /^rename me/ }).hover()
   await first.window.getByRole('button', { name: 'Actions for rename me' }).click()
   await first.window.getByRole('menuitem', { name: 'Rename' }).click()

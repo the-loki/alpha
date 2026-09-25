@@ -7,9 +7,8 @@ content — never as a path to a file on the machine.
 
 The obvious way to send a picture is to name it: the composer knows the path, the runtime reads the
 file when it builds the prompt, and the transcript records where the file was. It is less data over
-the wire, and it is what a tool call does. What still holds with the agent doing the sending is that
-the picture has to cross the process boundary as content: Alpha hands it to `pi` in the prompt, and
-it is the agent that puts it on the wire.
+the wire, and it is what a tool call does. The picture instead crosses from the window to the main
+process as content; the embedded agent sends those bytes to the provider.
 
 Three things make it the wrong shape here. The workbench is served to a browser
 ([ADR-0009](0009-the-workbench-can-be-served-to-a-browser.md)), and a path on the machine that runs
@@ -22,13 +21,12 @@ transcript has already lost what the answer was about.
 
 ## Decision
 
-**The window reads the file and sends the bytes.** Base64 in the contract, in the same shape the
-provider takes, so nothing downstream has to open anything. It is the only attachment kind that
-travels, because images are the only kind every provider takes — a document is a path handed to a
-tool, which the agent already has.
+**The window reads the file and sends the bytes.** Base64 in the contract, in the shape the model
+runtime accepts, so nothing downstream has to open anything. Pictures are the only attachment kind
+the workbench supports; a document in the workspace is a path the agent can read with a tool.
 
-**The pictures ride inside the message's own content, and nowhere else.** The lane is given
-`ImageContent[]` beside the text; the harness echoes the message back, and the session writes it
+**The pictures ride inside the message's own content, and nowhere else.** The embedded agent receives
+`ImageContent[]` beside the text; the agent emits the user message, and the session writes it
 down. The live event and the transcript read off disk are therefore built by the same function
 (`userBlocksOf`), and there is no second store to keep in step.
 

@@ -62,7 +62,7 @@ test('a task is made, runs on demand, and leaves a conversation behind', async (
   await window.screenshot({ path: join(SHOT_DIR, 'tasks-history.png') })
 
   // The rail has the task in its folder, folded, saying how the last run went; the run is a
-  // conversation like any other, one fold below it (ticket #85). The rail is the workbench's own
+  // conversation like any other, one fold below it. The rail is the workbench's own
   // index, so it speaks from beside the tasks page too — going back is one row in it, not a link.
   const rail = window.getByRole('complementary')
   const taskRow = rail.getByRole('button', { name: 'Expand the tasks in Nightly check' })
@@ -165,7 +165,7 @@ test('a running task disables both run controls until its turn finishes', async 
 test('a run whose turn never started is a failed run rather than a finished one', async () => {
   // No provider at all, so the turn cannot start. A task is asked by hand, which goes straight to
   // the manager — past the composer's own gate, which will not send without a model at all — so this
-  // is a refusal a window really can cause; it arrives as a case rather than a sentence (#199), and
+  // is a refusal a window really can cause; it arrives as a case rather than a sentence, and
   // the history says how the run went instead of showing a run that never ran as though it had.
   const { app, window } = await launch({ provider: false })
 

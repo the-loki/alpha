@@ -66,7 +66,7 @@ export type LaunchOptions = {
 
 /**
  * A connection for the conversation to run on, with a key for it. A turn is refused before the
- * provider is asked unless Alpha knows a model and holds a key (#114), so a spec that asks for a
+ * provider is asked unless Alpha knows a model and holds a key, so a spec that asks for a
  * turn writes both files. The key is a plaintext vault entry — the scripted endpoint on loopback
  * ignores Authorization entirely — and the base URL is the endpoint a spec started for itself
  * (`http://127.0.0.1:<port>/v1`); a spec that means to reach a real provider names one (C4.4's
@@ -151,8 +151,8 @@ export async function launchWorkbench(options: LaunchOptions = {}): Promise<Laun
   const dataDirectory = options.dataDirectory ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-'))
   const workspace = options.workspace ?? mkdtempSync(join(tmpdir(), 'alpha-e2e-ws-'))
 
-  // A turn is refused before the provider is asked unless Alpha knows a model and holds a key
-  // (#114), so a launch that means to answer writes both files.
+  // A turn is refused before the provider is asked unless Alpha knows a model and holds a key,
+  // so a launch that means to answer writes both files.
   if (options.provider !== false) {
     const scripted = await startScriptedProvider({
       script: JSON.stringify(options.replies ?? ['Answer.']),

@@ -16,9 +16,9 @@ remembered rules. §4.3's two notes landed differently, and both differences wer
 - **The classifier rung was left out.** There is no `auto` level: C3.4 says the four levels *are*
   the safety model, and the survey's own evidence is why — the products that ship a classifier warn
   it is not a security boundary.
-- **The rule store was refused.** Alpha has no file-backed rules with per-project precedence and no
-  admin ceiling: a rule lives in the workbench's state file, scoped to one conversation or to a
-  workspace, and it is only ever written by the user approving the same thing twice. Nothing
+- **The separate rule store was refused.** Alpha has no per-project rule files with precedence and
+  no admin ceiling: a rule lives in the workbench's state file, scoped to one conversation or to a
+  workspace, and is written when the user chooses **Always allow**. Nothing
   outranks the level except such a rule.
 
 ## 1. Claude Code / Claude Desktop

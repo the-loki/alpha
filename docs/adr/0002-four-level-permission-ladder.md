@@ -22,7 +22,7 @@ transcript, and the UI.
 - **A general rule engine with glob patterns and precedence.** Most powerful, and the least
   predictable: the user cannot tell what will happen from the level chip alone.
 - **A fixed ladder plus remembered rules** (chosen). The level is the always-visible default; a
-  rule is only ever created by the user approving something twice, and is scoped to the
+  rule is created when the user chooses **Always allow** on an approval card, and is scoped to the
   conversation or the workspace.
 
 ## Consequences

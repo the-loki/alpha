@@ -40,7 +40,7 @@ not: the choice was whether Alpha parsed it, or asked the agent to read it.
 
 - A transcript is the path from the branch tip back to its root, not the whole log. The list keeps
   answers a later edit or regenerate replaced; those are history, and the module that walks the
-  path is the only place that knows the difference (#60).
+  path is the only place that knows the difference.
 - A retried provider failure stays in the append-only log but leaves the active path: when the
   after-run hooks choose to retry, a `retry` entry points to the failed message's parent. The
   next attempt builds on that entry. A recovered conversation reopens without the discarded

@@ -101,7 +101,7 @@ export class ProviderStore {
 
   /**
    * Why a run or a test is refused before a provider is asked anything: there is no key to dial
-   * with (#114). It is a case rather than a sentence, because the sentence is the window's and this
+   * with. It is a case rather than a sentence, because the sentence is the window's and this
    * is not the thing with a language (ADR-0010) — and the three cases are three different things
    * for a person to do. Nothing to refuse means a key is there — answered to the model runtime at
    * request time, never spoken here (C2.4).

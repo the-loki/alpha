@@ -1,6 +1,6 @@
 # A run nobody is driving is over
 
-A run belongs to the process that started it. If the window is killed while a turn is streaming,
+A run belongs to the process that started it. If that process is killed while a turn is streaming,
 nothing is driving that turn any more, and the conversation is over as far as the workbench is
 concerned: opening it finds no run in flight, and it can be edited, regenerated or continued
 straight away.
@@ -20,10 +20,11 @@ now a property of the design rather than a step somebody has to remember.
 
 ## Context
 
-A turn lives in the runtime, and what it produced lives on disk with the session. Closing the
-window gracefully is not a crash: `ConversationRuntime.close()` stops a run that is in flight
-first, so the run ends the way a Stop does. A process killed with the run in flight leaves the
-opposite: work stopped mid-sentence, with no one left to finish it.
+A turn lives in the runtime, and what it produced lives on disk with the session. Explicitly
+closing an open conversation through `ConversationRuntime.close()` stops a run in flight first, so
+the run ends the way a Stop does. Closing the window alone does not do this on macOS, where the
+process remains alive. A process killed with the run in flight leaves the opposite: work stopped
+mid-sentence, with no one left to finish it.
 
 Before the runtime answered for itself, the window refused earlier and louder: a run's state was
 read back from disk and never cleared, so an edit was refused for good. That is the failure this
@@ -50,8 +51,8 @@ so only the process that started a run may speak for it.
 - After a crash the turn is over, and the conversation holds what the run had produced by its last
   finished message. An entry is written when a message ends, so text still streaming when the
   process died was never written and is not kept half-formed.
-- A run stopped on purpose — Stop, or closing the window — is the other case: it keeps what had
-  arrived, because the message is persisted as `interrupted` and reads back that way.
+- A run stopped on purpose — Stop, or explicitly closing its runtime — is the other case: it keeps
+  what had arrived, because the message is persisted as `interrupted` and reads back that way.
 - Edits and regenerates are refused only while this process is actually running a turn.
 - A conversation whose turn was killed can be edited, regenerated, or continued as soon as it is
   opened again.

@@ -22,7 +22,7 @@ click does — this file says which one today's window does.
 | `row-menu-open.png` | The chosen candidate's menu: Rename / Archive / Delete |
 
 **Decided: the single `⋯`.** A row of icons covered the name it was drawn over — the reason is
-recorded in the component (`components/chrome/ConversationRow.tsx`). Since then the menu gained
+recorded in the component (`apps/desktop/src/renderer/components/chrome/ConversationRow.tsx`). Since then the menu gained
 **Export**, and the rail moved on in the other ways: the places are New conversation, Search and
 Tasks; adding a folder is the `+` beside the `Folders` heading; a conversation row ends in its age
 in mono; the foot holds Settings, and the version number lives in the masthead's tooltip.
@@ -34,8 +34,8 @@ in mono; the foot holds Settings, and the version number lives in the masthead's
 | `tasks-collapsed.png` | A task row under a folder's conversations, folded, with a verdict per run listed under the expanded one |
 | `tasks-expanded.png` | The same task with every run as its own row: a date, and a verdict word at the row's end |
 
-**Decided and built** (ticket #85): a task sits under the conversations of the folder it runs in
-(`components/chrome/TaskGroup.tsx`). Two differences today: the verdict is said once, at the end of
+**Decided and built**: a task sits under the conversations of the folder it runs in
+(`apps/desktop/src/renderer/components/chrome/TaskGroup.tsx`). Two differences today: the verdict is said once, at the end of
 the *task's* own row, from its latest run, rather than on every run row; and that row ends in a count
 that opens the task's page, with `Run now` in the expanded list. The chevron and the filter icon the
 pictures show are not in the code — folding is `aria-expanded`, and the icon is used in settings.

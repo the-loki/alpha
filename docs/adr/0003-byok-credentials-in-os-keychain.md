@@ -1,9 +1,9 @@
-# BYOK credentials are encrypted with the OS keychain and never cross IPC in plaintext
+# BYOK credentials use the OS keychain when available and never cross IPC back to the window
 
-A provider credential is written by the renderer once, encrypted in the main process with
-Electron's `safeStorage`, and stored next to the provider definition in the app's data
-directory. The renderer can write a credential and learn whether one exists; it can never read
-one back.
+A provider credential is sent from the renderer to the main process for storage in
+`credentials.json`, separate from its provider definition. Electron's `safeStorage` encrypts it
+when the OS offers a backend; otherwise it is stored in plaintext and Settings says so. The
+renderer can write a credential and learn whether one exists; it can never read one back.
 
 ## Context
 

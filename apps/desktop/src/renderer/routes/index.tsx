@@ -7,7 +7,7 @@ import { shell, shellActions } from '../stores/shell.ts'
 /**
  * Comes back to the conversation that was open when the window last closed. The conversation
  * route reads the transcript off the session file, so a relaunch costs nothing but the
- * navigation (T2).
+ * navigation.
  */
 function useResumeLastConversation(): void {
   const navigate = useNavigate()

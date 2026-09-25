@@ -191,7 +191,7 @@ describe('[agent-runtime] asking a provider whether it answers', () => {
   })
 
   // Alpha's own refusals are cases, not sentences: the panel has the words for each one, in the
-  // language the panel is in, which is what a sentence composed here could never be (#199).
+  // language the panel is in, which is what a sentence composed here could never be.
   it('refuses a provider with no key, without dialing, as a case', async () => {
     const { service: providers } = service(scripted)
     providers.save(endpoint)

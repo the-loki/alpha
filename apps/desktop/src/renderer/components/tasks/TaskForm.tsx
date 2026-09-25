@@ -125,7 +125,7 @@ function LevelField(props: { level: PermissionLevel; onChange: (level: Permissio
 
 /**
  * Making a task or editing one. It is a form on the page rather than a dialog: a task has five
- * fields and one sentence that has to be read, and that is a page's worth of things (ticket #85).
+ * fields and one sentence that has to be read, and that is a page's worth of things.
  */
 export function TaskForm(props: {
   form: Partial<ScheduledTask>

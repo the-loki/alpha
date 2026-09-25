@@ -107,7 +107,7 @@ export class ConversationBookkeeper {
   }
 
   /**
-   * Putting a conversation away. Which section it lands in is the window's business (#79), but the
+   * Putting a conversation away. Which section it lands in is the window's business, but the
    * refusal is not: a conversation that is working or waiting on an approval is not archived,
    * because the card asking for that answer lives inside its transcript and folding it away hides
    * the one thing that needs a person. The window greys the action out for the same reason.
@@ -141,7 +141,7 @@ export class ConversationBookkeeper {
       this.apply(conversation, { title: titleFromMessage(text) })
     }
 
-    // A message means it is in use again, so it leaves the archived section (#79). After the
+    // A message means it is in use again, so it leaves the archived section. After the
     // rename above, so the title and the unarchiving are not two answers about the same summary.
     if (event.type === 'user_message' && conversation.archivedAt !== undefined) this.unarchive(conversation.id)
 

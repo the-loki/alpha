@@ -159,7 +159,7 @@ describe('[conversations] the runner that moves the queue', () => {
   })
 
   it('holds a message the turn refused exactly as it holds one that never sent', async () => {
-    // A refusal is answered rather than thrown (#199), and for the queue it is the same ending: the
+    // A refusal is answered rather than thrown, and for the queue it is the same ending: the
     // turn did not start, so the message is still waiting and the queue stops rather than hammering
     // the same refusal at every turn boundary.
     const { events, runner } = harness(async () => ({ kind: 'no-key', providerId: 'p' }))

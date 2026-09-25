@@ -17,14 +17,14 @@ const matches = (available: ConversationSummary[], query: string): ConversationS
 }
 
 /**
- * Switching conversations without leaving the keyboard (T1's story 8): Control/Command-K opens a
+ * Switching conversations without leaving the keyboard: Control/Command-K opens a
  * list of the ones there are, typed into it filters them, arrows move, Enter opens, Escape leaves.
  * It is a floating layer over the page — the floating surface, a frame, a shadow, arriving on its
  * own slip of motion (C5.4, C5.6).
  */
 export function ConversationPalette(props: { open: boolean; onClose: () => void }) {
   // Archived conversations are not offered here: this is the list of what you are working on, and
-  // the palette shows eight at a time — an archived one would push a live one out (ticket #79).
+  // the palette shows eight at a time — an archived one would push a live one out.
   const available = () => conversations.list.filter((conversation) => conversation.archivedAt === undefined)
   const t = useText()
   const navigate = useNavigate()

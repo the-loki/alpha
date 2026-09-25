@@ -12,7 +12,7 @@ the pi-ai implementation that carries the request, built from the provider Alpha
 
 One thing has moved here, and it moved back. The protocols were described rather than implemented
 for the length of the RPC era — the table picked a string in another program's configuration and
-Alpha contained no provider client at all (#115) — and embedding the agent
+Alpha contained no provider client at all — and embedding the agent
 ([ADR-0025](0025-the-agent-is-embedded-and-the-workbench-is-the-base.md)) put the client back in
 Alpha's own process. So the table picks an implementation per `api` again, and it is the same three
 names.

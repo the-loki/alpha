@@ -52,7 +52,7 @@ server (`mcp__<server>__<tool>`), because two servers may each offer a `read` an
 reach the one it means. Names with special characters use a readable part plus a stable digest, and
 long names use a fixed-length digest; this keeps distinct tools distinct within the provider's
 64-character name limit. The parameters are the server's JSON Schema, taken as the shape
-it promised; calls run one at a time, because a server may not answer two at once; the `AbortSignal`
+it promised; calls may overlap and their answers are matched by request ID; the `AbortSignal`
 a stop travels on is forwarded, and a cancelled request is announced to the server as the protocol
 asks. Whether a call may run is the ladder's answer and nothing else's — an MCP tool name is a name
 no rule knows, and `toolRiskOf` reads an unknown name as the strictest class — which is why
@@ -67,7 +67,7 @@ second place to audit and a way to say yes without ever being asked.
 
 - The tools a workbench has depend on a file, and the workbench is now its editor: the settings
   page lists the servers, says how each one went, and writes `mcp.json`, which stays the thing a
-  person may also edit by hand (#186). A save is not only a write — it hands the list to the hub,
+  person may also edit by hand. A save is not only a write — it hands the list to the hub,
   which keeps the connections that came back unchanged, lets go of the ones that are gone, reaches
   the new ones, and tells what is already assembled, so a server added in the window is reachable in
   a conversation that is already open. Nothing about the mechanism moved: it is the same hub, given
@@ -82,12 +82,12 @@ second place to audit and a way to say yes without ever being asked.
   one connection — so a slow server costs the first conversation its first moment, once, instead of
   costing every conversation a second copy of itself.
 - A server's tool list is not fixed. When it says the list changed — the one notification the client
-  acts on (#184) — the hub re-reads it, and a conversation that is already open is brought up to
+  acts on — the hub re-reads it, and a conversation that is already open is brought up to
   date: the plugin replaces its own half of the live agent's tools and pi announces the difference
   to the model before the next request. The other notifications are read and dropped, because there
   is nothing here they belong to (`progress` is for calls we never gave a token, `message` is a log
   with no log). A request with an ID is never mistaken for a response to Alpha's own call, even when
-  the IDs match (#209).
+  the IDs match.
 
 ## Superseded in part
 

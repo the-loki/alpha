@@ -106,7 +106,7 @@ export class ConversationRuntime {
    * window and the record both come from it.
    *
    * Answers with why the turn did not start when it did not, so a caller never has to read the
-   * events to find out whether anything began (#199). The case is said to the conversation as well.
+   * events to find out whether anything began. The case is said to the conversation as well.
    */
   public async prompt(text: string, attachments?: Attachment[]): Promise<Undef<TurnRefusal>> {
     const agent = this.agent

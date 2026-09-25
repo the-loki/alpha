@@ -112,7 +112,7 @@ test('the card takes the keyboard: Enter allows once, Escape never decides', asy
   const escaped = await launch()
   await ask(escaped.window, 'write the file')
   await expect(card(escaped.window)).toBeVisible({ timeout: 20_000 })
-  // Escape never decides (#151, C5.7): at most the focus leaves the card — the card stays, the
+  // Escape never decides (C5.7): at most the focus leaves the card — the card stays, the
   // decision is untouched, and nothing runs.
   await escaped.window.keyboard.press('Escape')
   await expect(card(escaped.window)).toHaveCount(1)

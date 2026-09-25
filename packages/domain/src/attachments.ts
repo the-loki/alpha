@@ -47,7 +47,7 @@ export function byteLengthOf(attachment: Attachment): number {
 
 /**
  * The pictures a message carries, read back out of its content. The content is where they end up
- * on both sides: what the lane was given, and what the session wrote down.
+ * on both sides: what the agent received, and what the session wrote down.
  */
 export function attachmentsOf(content: unknown): Attachment[] {
   if (!Array.isArray(content)) return []
@@ -62,7 +62,7 @@ export function attachmentsOf(content: unknown): Attachment[] {
   return found
 }
 
-/** A picture as a message's content takes it, which is what the lane is handed. */
+/** A picture as a message's content takes it, which is what the agent receives. */
 export interface ImagePart {
   type: 'image'
   data: string
@@ -70,8 +70,8 @@ export interface ImagePart {
 }
 
 /**
- * The attachments as content parts, or nothing at all when there are none: a lane handed an empty
- * list has been told something different from a lane handed no pictures.
+ * The attachments as content parts, or nothing at all when there are none: an agent handed an empty
+ * list has been told something different from an agent handed no pictures.
  */
 export function imagesOf(attachments: Undef<Attachment[]>): Undef<ImagePart[]> {
   if (attachments === undefined || attachments.length === 0) return undefined

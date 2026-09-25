@@ -97,18 +97,23 @@ per-user data directory.
 | --- | --- |
 | `workbench-state.json` | The workbench's own settings: the workspace and the recent folders, the default permission level (and any the folders override), the theme, the language, the last conversation opened, the remembered rules, and the browser access settings |
 | `conversations.json` | The sidebar's index: titles, ordering, status |
-| `sessions/<workspace>/<timestamp>_<id>.jsonl` | The transcripts themselves, append-only (ADR-0004), grouped one folder per workspace |
+| `sessions/--<workspace-slug>--/<timestamp>_<id>.jsonl` | The transcripts themselves, append-only (ADR-0004), grouped one folder per workspace |
 | `credentials.json` | Provider credentials, encrypted by the OS keychain where there is one |
 | `providers.json` | Provider connections, models, optional price rates, and the default model |
 | `decisions/<id>.json` | How each tool call got past the gate, so a restored ledger still says why (ADR-0007) |
+| `mcp.json` | Configured MCP servers, including their environment variables or HTTP headers in plaintext |
+| `tasks.json` | Scheduled tasks and recent run outcomes |
+| `workspace-changes/<id>.json` | Recent per-run workspace reviews and a recoverable pending baseline |
+| `mcp-exchanges/<id>.json` | MCP elicitation and sampling requests, decisions, and usage for a conversation |
 
-Deleting a conversation deletes its session file and its decision log. Export writes a
-self-contained markdown file next to the workspace.
+Deleting a conversation deletes its session file, decision log, workspace reviews, and MCP request
+audit. Export writes a self-contained markdown file next to the workspace.
 
 ## What it does not do
 
 - No sandbox and no worktrees: the safety model is the ladder and the approval card (ADR-0002).
-- No telemetry, and no host but the providers you configure.
+- No telemetry. Outbound model calls go to configured providers; configured MCP servers may also be
+  reached over HTTP. Browser access listens on this machine only when enabled.
 
 ## Working on it
 

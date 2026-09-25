@@ -6,7 +6,7 @@ import { launchWorkbench } from './agent'
 import { closeScriptedProviders } from './scripted-provider'
 
 /**
- * Putting a conversation away and taking it back out (tickets #79 and #80): the row's `⋯` holds
+ * Putting a conversation away and taking it back out: the row's `⋯` holds
  * the actions, the archived section is where they land, and a message is what brings one back.
  */
 const REPO_ROOT = process.cwd()
@@ -93,7 +93,7 @@ test('a conversation is archived from the row and comes back when a message is s
 test('a conversation that is waiting on an answer is not offered for archiving', async () => {
   // A run that stops on the card it asked for: the conversation is working in the sense that
   // matters — somebody is being waited on — and folding it away would hide the one thing that
-  // needs a person (#79).
+  // needs a person.
   const { app, window } = await launch({ replies: [WRITE] })
 
   await row(window).click()

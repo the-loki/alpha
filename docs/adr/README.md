@@ -16,7 +16,7 @@ that remains is what the code does today.
 | --- | --- |
 | [0001](0001-agent-runtime-in-main-process.md) | The agent runs in the main process |
 | [0002](0002-four-level-permission-ladder.md) | Four permission levels, with interactive approvals and remembered rules |
-| [0003](0003-byok-credentials-in-os-keychain.md) | BYOK credentials are encrypted with the OS keychain and never cross IPC in plaintext |
+| [0003](0003-byok-credentials-in-os-keychain.md) | BYOK credentials use the OS keychain when available and never cross IPC back to the window |
 | [0004](0004-transcripts-as-jsonl-entries.md) | The transcript is a JSONL session on disk |
 | [0007](0007-gate-decisions-beside-the-session.md) | The gate's decisions live in Alpha's own file, beside the session |
 | [0008](0008-a-run-nobody-is-driving-is-over.md) | A run nobody is driving is over |

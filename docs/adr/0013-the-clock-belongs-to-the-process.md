@@ -1,8 +1,9 @@
 # The clock belongs to the process, and a missed run is caught up once
 
 There is no daemon: tasks fire while the workbench is running, and a run whose minute passed while
-it was not is caught up **once** when it next runs — never replayed as a burst. One task runs at a
-time; an occurrence that arrives while its task is still working is skipped and recorded.
+it was not is caught up **once** when it next runs — never replayed as a burst. The scheduler runs
+one scheduled task at a time; an occurrence that arrives while its task is still working is skipped
+and recorded. Manual runs of different tasks can overlap.
 
 ## Context
 
@@ -36,8 +37,8 @@ occurrence is the next scheduled time, not the one it just replaced.
 **One scheduled run at a time.** Occurrences that arrive while their own task is still running are
 skipped and recorded as skipped, never queued and never interrupting: two runs of the same task
 touch the same folder, and the second was written for the state the first is in the middle of
-changing. Different tasks overdue at the same moment take turns for the same reason a burst is
-bad — one model provider, one machine.
+changing. Different scheduled tasks overdue at the same moment take turns for the same reason a
+burst is bad — one model provider, one machine. A manually started run of another task may overlap.
 
 **Two kinds of schedule, and no cron.** *Every N minutes* (floor: 5, below which the workbench is
 being used as a loop), and *every day at HH:MM*. Cron is a language to learn, validate and explain

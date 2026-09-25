@@ -257,7 +257,7 @@ test('a refused key is said out loud: one failed answer carrying the reason, and
   await ask(window, 'Reply with exactly this and nothing else: ALPHA LIVE OK')
 
   // The provider refuses the key; the window says so. Silence — and empty rows for the attempts
-  // tried before giving up — is the bug this guards against (#157).
+  // tried before giving up — is the bug this guards against.
   await expect(window.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 60_000 })
   await settled(window)
   const answersIn = window.getByRole('main').locator('[data-role="assistant"]')

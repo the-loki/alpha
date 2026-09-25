@@ -51,8 +51,8 @@ the protocol already respects is finally set.
   attachment for a model whose stored definition does not take pictures (`startProblem` in
   `@alpha/providers`). This is the boundary. It is also what covers the case the window cannot see:
   the scripted test runtime, or a window whose provider list has not arrived. It answers the refusal
-  as a case rather than composing a sentence, so the window says both places in its own language
-  (#199); before that the two places had a sentence each, and main's was English in a Chinese window.
+  as a case rather than composing a sentence, so the window says both places in its own language.
+  Before that the two places had a sentence each, and main's was English in a Chinese window.
 
 **Unknown is not the same as no.** When the window cannot resolve the model at all it allows the
 picture and leaves the decision to the main process, because refusing on ignorance would turn a

@@ -41,7 +41,7 @@ const providerDefinition = (images: boolean) => ({
  */
 interface FixtureOptions {
   replies?: string[]
-  /** The refusal agent.keyProblem answers with, for the missing-key case (#114). */
+  /** The refusal agent.keyProblem answers with, for the missing-key case. */
   keyProblem?: TurnRefusal
   /** No provider is configured at all, which is the no-model refusal. */
   noProviders?: boolean
@@ -325,7 +325,7 @@ describe('[runtime] what a conversation runs on', () => {
     const { manager, workspace, events } = configuredManager()
     const created = await manager.create(workspace)
 
-    // The window is told which refusal it was, in the window's language (#199), and the conversation
+    // The window is told which refusal it was, in the window's language, and the conversation
     // keeps the model it had: nothing was switched, so nothing is written down.
     await expect(manager.setConversationModel(created.conversation.id, 'local', 'ghost')).resolves.toMatchObject({
       model: { providerId: 'local', modelId: 'local-7b' },
@@ -475,7 +475,7 @@ describe('[runtime] what a conversation runs on', () => {
     await manager.closeAll()
   })
 
-  it('refuses a turn before it runs when the key cannot be read (#114)', async () => {
+  it('refuses a turn before it runs when the key cannot be read', async () => {
     const { manager, workspace, events } = freshManager({ keyProblem: { kind: 'no-key', providerId: 'p' } })
     const created = await manager.create(workspace)
 
@@ -1063,7 +1063,7 @@ describe('[runtime] a change to a conversation', () => {
 
   it('reaches the window whichever field changed', async () => {
     // The provider store is the configured one here, because switching a model is a check against
-    // the models Alpha serves rather than the scripted stand-in (#114).
+    // the models Alpha serves rather than the scripted stand-in.
     const collected: RuntimeEvent[] = []
     const { manager, workspace } = configuredManager(undefined, true, collected)
     const created = await manager.create(workspace)
@@ -1177,7 +1177,7 @@ describe('[runtime] the MCP servers a workbench holds', () => {
   })
 
   /**
-   * A server that grows a tool while the conversation is open (#184, ADR-0028): the hub is up to
+   * A server that grows a tool while the conversation is open (ADR-0028): the hub is up to
    * date at once, and the agent that is already assembled — never reopened — finds out through the
    * plugin's agent port. The second turn is what proves it: a tool the agent does not have is a
    * failed call, and this one answers. The calls carry different ids so the two rows stay two.

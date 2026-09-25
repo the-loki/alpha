@@ -40,7 +40,7 @@ export function newTaskRun(run: Undef<TaskRun>): Undef<RunVerdict> {
 /**
  * The conversations that are nobody's run. A run belongs under its task, so the folder's own list
  * — and the count on its row — is what was asked by hand: a daily task must not turn the folder
- * into a list of the same title (ticket #85).
+ * into a list of the same title.
  */
 export function withoutRuns(conversations: ConversationSummary[], runs: TaskRun[]): ConversationSummary[] {
   const made = new Set(runs.map((run) => run.conversationId))
